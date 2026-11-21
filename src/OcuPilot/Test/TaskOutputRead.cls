@@ -254,6 +254,78 @@ Method TestAFileLargerThanTheWindowReadsOnlyItsEnd()
     Do $$$AssertEquals(tRows.%Get(4094).offset, 18, "so the oldest row is the second line, a whole line")
 }
 
+/// <p>An unterminated final line is a line: a one-line file with no line feed reads that line, whole
+/// and not truncated, and a last line with no line feed after complete lines is the newest row.</p>
+/// <p>Mutation: in <code>TaskOutputRows</code>, drop the window's last line when the file does not end
+/// in a line feed -&gt; both legs go red.</p>
+Method TestAnUnterminatedFinalLineIsALine()
+{
+    If $$$ISERR(..ArmProbe("only line, no line feed")) Quit
+    Set tSC = ..Read("OcuPilot.Port.LogSourcePort", ..ProbeTaskId, 0, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tRows.%Size(), 1, "a one-line file with no line feed is one row, not No entries")
+    Do $$$AssertEquals(tRows.%Get(0).text, "only line, no line feed", "the whole line")
+    Do $$$AssertEquals(tRows.%Get(0).offset, 1, "from byte 1")
+    Do $$$AssertEquals(tTruncated, 0, "a file under the window is not truncated")
+
+    Set tSC = ##class(OcuPilot.Test.LogSource).WriteFile(..ProbePath(), "first" _ $Char(10) _ "last, unterminated")
+    Do $$$AssertStatusOK(tSC, "a two-line file whose last line has no line feed is written")
+    Set tSC = ..Read("OcuPilot.Port.LogSourcePort", ..ProbeTaskId, 0, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tRows.%Size(), 2, "both lines are rows")
+    Do $$$AssertEquals(tRows.%Get(0).text, "last, unterminated", "the unterminated line is the newest row")
+    Do $$$AssertEquals(tRows.%Get(0).offset, 7, "starting after the first line and its line feed")
+}
+
+/// <p>A file larger than the window whose last line has no line feed: after complete lines the
+/// unterminated line is the newest row and the window still begins on a line boundary; when the whole
+/// window is one line (70,000 bytes, with or without its line feed) the row is the end of the line,
+/// without the terminator, from the window's first byte, with the answer truncated and never No
+/// entries.</p>
+/// <p>Mutation: in <code>TaskOutputRows</code>, answer no rows when the window holds no line feed -&gt;
+/// the single-line leg goes red; drop the last line when the file does not end in a line feed -&gt;
+/// the first leg's newest-row assertions go red.</p>
+Method TestAnUnterminatedFinalLineInAFileLargerThanTheWindow()
+{
+    If $$$ISERR(..ArmProbe(..Lines(1000, 100) _ "tail-no-lf")) Quit
+    Set tSC = ..Read("OcuPilot.Port.LogSourcePort", ..ProbeTaskId, 0, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tTruncated, 1, "a file larger than the window is truncated")
+    Do $$$AssertEquals(tRows.%Size(), 656, "the window holds 655 whole lines and the unterminated one")
+    Do $$$AssertEquals(tRows.%Get(0).text, "tail-no-lf", "the unterminated line is the newest row")
+    Do $$$AssertEquals(tRows.%Get(0).offset, 100001, "starting where it starts in the file")
+    Do $$$AssertEquals(tRows.%Get(655).offset, 34501, "and the oldest row is still a whole line on a line boundary")
+
+    ; 70,000 bytes: "S" is byte 4,465, the window's first, and "E" is byte 70,000, its last.
+    Set tLong = $Translate($Justify("", 4464), " ", "x") _ "S" _ $Translate($Justify("", 65534), " ", "x") _ "E"
+    Set tSC = ##class(OcuPilot.Test.LogSource).WriteFile(..ProbePath(), tLong)
+    Do $$$AssertStatusOK(tSC, "a single 70,000-byte line with no line feed is written")
+    Set tSC = ..Read("OcuPilot.Port.LogSourcePort", ..ProbeTaskId, 0, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tRows.%Size(), 1, "the one line is one row, not No entries")
+    Do $$$AssertEquals($Length(tRows.%Get(0).text), 65536, "holding the last 65,536 bytes of it")
+    Do $$$AssertEquals($Extract(tRows.%Get(0).text, 1), "S", "starting at the window's first byte")
+    Do $$$AssertEquals($Extract(tRows.%Get(0).text, *), "E", "and ending at the file's last byte")
+    Do $$$AssertEquals(tRows.%Get(0).offset, 4465, "from the byte the window starts at")
+    Do $$$AssertEquals(tTruncated, 1, "and the answer says only the end is shown")
+
+    ; The same line ended by a line feed: the row is the line's end without the terminator.
+    Set tSC = ##class(OcuPilot.Test.LogSource).WriteFile(..ProbePath(), tLong _ $Char(10))
+    Do $$$AssertStatusOK(tSC, "the same line with a line feed is written")
+    Set tSC = ..Read("OcuPilot.Port.LogSourcePort", ..ProbeTaskId, 0, .tRows, .tHttp, .tFault, .tTruncated)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tRows.%Size(), 1, "one row")
+    Do $$$AssertEquals($Length(tRows.%Get(0).text), 65535, "the end of the line, 65,535 bytes")
+    Do $$$AssertEquals($Extract(tRows.%Get(0).text, *), "E", "with no line feed in the text")
+    Do $$$AssertEquals(tRows.%Get(0).offset, 4466, "from the byte the window starts at")
+    Do $$$AssertEquals(tTruncated, 1, "still cut")
+}
+
 /// <p>A row cap shorter than the file keeps the newest rows, and the caller sees the cut from the one
 /// row it asked beyond its cap.</p>
 Method TestARowCapKeepsTheNewestRows()

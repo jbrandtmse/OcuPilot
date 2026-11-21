@@ -3503,7 +3503,9 @@ ClassMethod IntegrityTime(pStart As %String) As %String
 /// <code>LOG.TASKOUTPUT.NONE</code> for a task that writes no file, 409
 /// <code>LOG.TASKOUTPUT.ELSEWHERE</code> unless <method>TaskOutputHere</method> admits the stored
 /// location, and 404 <code>LOG.TASKOUTPUT.ABSENT</code> for a file not yet written. No refusal
-/// echoes a path, and a file that exists with no bytes answers no rows.</p>
+/// echoes a path, and a file that exists with no bytes answers no rows. A last line with no line
+/// feed is a line, and a file whose last <parameter>DEFAULTMAXBYTES</parameter> bytes hold no whole
+/// line answers that end of its one line as a single row.</p>
 ClassMethod TaskOutputRows(pMaxRows As %Integer, pTaskId As %String, Output pAnswer As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pTruncated As %Boolean) As %Status [ Private ]
 {
     Set pAnswer = ""
@@ -3531,6 +3533,20 @@ ClassMethod TaskOutputRows(pMaxRows As %Integer, pTaskId As %String, Output pAns
     If tStart < 1 Set tStart = 1
     Set tWindowSC = ..ReadWindow(tStream, tStart, ..#DEFAULTMAXBYTES, tSize, .tLines, .tNext, .tCut, 0, .tOffsets)
     If $$$ISERR(tWindowSC) Quit ..Unreadable(tWindowSC, .pHttpStatus, .pFault)
+    ; A non-empty file whose window holds no whole line is one line longer than the window: its end
+    ; is the row, from the first byte of the window, without the line feed or carriage return that
+    ; ends it.
+    If (tLines.%Size() = 0) && (tSize >= tStart) {
+        Do tStream.MoveTo(tStart)
+        Set tTailSC = ..ReadBytes(tStream, tSize - tStart + 1, .tTail)
+        If $$$ISERR(tTailSC) Quit ..Unreadable(tTailSC, .pHttpStatus, .pFault)
+        If $Extract(tTail, *) = $Char(10) Set tTail = $Extract(tTail, 1, *-1)
+        If $Extract(tTail, *) = $Char(13) Set tTail = $Extract(tTail, 1, *-1)
+        If tTail '= "" {
+            Do tLines.%Push(tTail)
+            Do tOffsets.%Push(tStart, "number")
+        }
+    }
 
     Set tWanted = pMaxRows
     If tWanted < 1 Set tWanted = tLines.%Size()

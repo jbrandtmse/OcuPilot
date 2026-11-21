@@ -2,7 +2,7 @@
 title: 'Story 21.36: Task output and mail password'
 type: 'feature'
 created: '2026-11-20'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '18ca3836456d8febb2446a9caebdb7d3238b729d'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -10,21 +10,6 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-19-shell-advisor-permission-and-task-leaves.md'
 warnings: ['multiple-goals', 'oversized']
-deferred:
-  - summary: >-
-      The Set mail password dialog shows the reused clear hint twice (banner and caption) and the line "Current value: (none)", because the shared dialog falls back to its own sentences and no read reports whether a password is stored.
-    evidence: |-
-      The implement stage passed the existing "Leave it empty to clear the value." as the dialog's statement so the production-restart fallback sentence does not show; the current-value line is the dialog's own. A ruled sentence or a dialog edit (which the spec excludes) settles it. Not seen in a browser render.
-    location: >-
-      ui/src/app/areas/os-management/config-settings.page.ts, ui/src/app/areas/interoperability/interop-item-setting-dialog.ts
-    severity: low (unverified)
-  - summary: >-
-      The matrix names 403 PORT.ACCESSDENIED for a caller missing a pair on the task output read, but the shared log-source gate answers 403 AUTH.NOPRIVILEGE, as every sibling log source does.
-    evidence: |-
-      OcuPilot.Test.LogSourceDenial pins AUTH.NOPRIVILEGE for the other log sources and TaskOutputRead pins the same for taskoutput. Either the matrix wording or the shared gate's code changes; the story kept the sibling behavior.
-    location: >-
-      src/OcuPilot/Port/LogSourcePort.cls, spec I/O matrix row "Missing pair"
-    severity: low
 ---
 
 <intent-contract>
@@ -109,7 +94,7 @@ deferred:
 
 ### Review Findings
 
-- [ ] [Review][Patch] (rework 2, orchestrator ruling 2026-11-21: DW-2811 is fixed here, not deferred) An unterminated final line is a line: a task output whose last line has no line feed must show that line, so a one-line output written without a trailing LF never reads "No entries." The fix is local to the tail read (`LogSourcePort` `ReadWindow` / `TaskOutputRows`); the 65,536-byte window still starts at a line boundary, and a file of 64 KB or less is still never marked truncated. Add a test with a short no-LF file (its one line shows, not truncated) and one longer than 64 KB whose cut falls inside a no-LF tail (the rows the window can honestly show, the truncated sentence, never a mid-line start), each with a `mutation:` line; check the change leaves every other log source's tail unchanged (`LogSourceDenial`, every class starting `LogSource`, `TaskOutputRead`). [src/OcuPilot/Port/LogSourcePort.cls, src/OcuPilot/Test/TaskOutputRead.cls]
+- [x] [Review][Patch] (rework 2, orchestrator ruling 2026-11-21: DW-2811 is fixed here, not deferred) An unterminated final line is a line: a task output whose last line has no line feed must show that line, so a one-line output written without a trailing LF never reads "No entries." The fix is local to the tail read (`LogSourcePort` `ReadWindow` / `TaskOutputRows`); the 65,536-byte window still starts at a line boundary, and a file of 64 KB or less is still never marked truncated. Add a test with a short no-LF file (its one line shows, not truncated) and one longer than 64 KB whose cut falls inside a no-LF tail (the rows the window can honestly show, the truncated sentence, never a mid-line start), each with a `mutation:` line; check the change leaves every other log source's tail unchanged (`LogSourceDenial`, every class starting `LogSource`, `TaskOutputRead`). [src/OcuPilot/Port/LogSourcePort.cls, src/OcuPilot/Test/TaskOutputRead.cls] -- closed in rework 2: `TaskOutputRows` serves the end of a no-line-feed window as one row; `ReadWindow` is unchanged.
 
 Code review 2026-11-21 (full-opus, four layers; measured on `ocupilot-ci`): 37 rows, 7 patch, 8 defer, 22 rejected; no high.
 
@@ -190,6 +175,19 @@ Rides the rework the ruling already schedules.
   - `[low]` `[reject]` the password write and draft are untouched by this diff — this pass changes only the dialog's presentation, by ruling (2); the write legs closed in earlier passes.
   - `[false]` `[reject]` no browser-level check exists — `task-output`, `tasks`, `config-settings` and `a11y-structural-invariants` ran against the rebuilt bundle, all green.
 
+### 2026-11-21 — Review pass (rework 2)
+
+- verdicts: 8 findings — high 0, medium 1, low 5, false 0, maybe-false 2
+- findings:
+  - `[low]` `[patch]` the fallback's read position was not pinned (70,000 identical bytes) — the long leg now carries `S` at the window's first byte and `E` at its last; two mutations recorded.
+  - `[medium]` `[patch]` a line longer than the window ending in a line feed answered a row ending in that line feed — the fallback strips a trailing line feed and carriage return; a 70,001-byte leg and its mutation recorded.
+  - `[low]` `[patch]` the second read in `TestAnUnterminatedFinalLineIsALine` had no status assertion — added.
+  - `[low]` `[reject]` a read error inside the fallback has no test — forcing a second-read failure needs a seam the class lacks, and the status handling is the existing window read's.
+  - `[low]` `[reject]` the short-file leg and the first long leg pass without the fix — they pin that the existing end-of-file handling keeps serving an unterminated last line (regression guards, as the item asks); the single-line leg is the one red before the fix.
+  - `[maybe-false]` `[reject]` the row for a window holding no whole line starts mid-line, against "never a mid-line start" — the one row a window with no line boundary can show; the row is the end of the file's last line, offset at the window's first byte, with the answer truncated and the ruled truncated sentence drawn (decided in-stage; the lead may veto).
+  - `[low]` `[reject]` the "No entries." and truncated-sentence rendering is not asserted at the client for this case — `log-viewer.spec.ts` and `task-output.browser-spec.mjs` own the rendering of rows and the truncated line; this pass changes only the rows.
+  - `[maybe-false]` `[reject]` other log sources' tails answer no rows for a no-line-feed window — out of this pass's scope by the ruling, and `ReadWindow` is unchanged, so they are as before.
+
 ## Design Notes
 
 **Governing ADs:** AD-5, AD-6, AD-8, AD-10, AD-11, AD-12/AD-39, AD-13, AD-14, AD-15, AD-16, AD-21 (Story 21.19's consumer line), AD-22, AD-24, AD-29, AD-35 (the Task Manager mail password), AD-36, AD-37, AD-44, AD-51, AD-52, AD-53, AD-56 (i) and (ii), AD-58, AD-59, AD-60.
@@ -259,6 +257,10 @@ Pinning tests and the mutation each must show red (the implement stage records e
   - mutation: `%DB_IRISSYS:READ` removed from `TaskOutput`'s privileges -> `WireSecurityRead.TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal` red on the `%Admin_Task` alone entry (observed, reverted, reloaded).
   - mutation: the `LOG.TASKOUTPUT.` branch dropped from `Error.ReasonForToolCode`, and `TaskError.ReasonFor` answering `REASONNONE` for ELSEWHERE -> `TaskOutputRead.TestTheAgentsStepReasonForEachRefusalIsThePublishedSentence` red on each, alone (observed separately, reverted, reloaded).
   - mutation: `LogSourcePort.Fail` carrying the failed status's text as the fault reason -> `TaskOutputRead.TestARecordThatCannotBeReadAnswersFiveHundredWithoutAPath` red alone on its no-text legs (observed, reverted, reloaded).
+  - mutation: `TaskOutputRows` answering no rows when the window holds no whole line (the fallback absent) -> `TaskOutputRead.TestAnUnterminatedFinalLineInAFileLargerThanTheWindow` red alone on its single-line leg (observed before the fix, run 1132).
+  - mutation: `TaskOutputRows` dropping the last line when the file does not end in a line feed -> `TestAnUnterminatedFinalLineIsALine` and `TestAnUnterminatedFinalLineInAFileLargerThanTheWindow` red, alone (observed, reverted, reloaded; run 1134).
+  - mutation: the fallback reading from `tStart - 1` -> `TestAnUnterminatedFinalLineInAFileLargerThanTheWindow` red on its first-byte, last-byte and length legs (observed, reverted, reloaded; run 1168).
+  - mutation: the fallback keeping the terminating line feed -> `TestAnUnterminatedFinalLineInAFileLargerThanTheWindow` red on its length and no-line-feed legs, alone (observed, reverted, reloaded; run 1169).
 - AC2: `ConfigPort`'s `PASSWORD` branch sends `""` in place of the body's value -> `TaskMailPasswordWrite`'s set leg red; the draft renders the body's value in place of `<AuthPassword>` -> `DraftRegistry.TestNoSecretReachesAnyRenderedScript` red; the page sends `setkey`/`GoogleMapsKey` for Task Manager email -> `config-settings.page.spec.ts` red.
   - mutation: `SetPassword` sends `""` in place of the body's value -> `TaskMailPasswordWrite` red on the set legs of all three of its write tests (observed, reverted, reloaded).
   - mutation: the draft's script renders `""` in place of `<AuthPassword>` (the Snippet's `PASSWORD` branch) -> `DraftRegistry.TestNoSecretReachesAnyRenderedScript` red naming `tasks.mail.password` (observed, reverted, reloaded). The planned form, rendering the body's value, stays green: the draft masks the body before the port renders it.
@@ -288,12 +290,14 @@ Pinning tests and the mutation each must show red (the implement stage records e
 Status: done
 Blocking condition: none
 
-**Rework 1 (this pass only).** Closed: the two CI reds (`ScreenRead` now supplies the task-output read's `taskId` from a test-owned task and counts ten; `WireSecurityRead` lists the eight task screens); the six `LOG.TASKOUTPUT.*` codes and reasons moved to the new `OcuPilot.Api.TaskError` with the code strings unchanged, `Api/Error.cls` back at feature's 991 parameters with `PATHROOT`'s "AD-21" restored and one `ReasonForToolCode` dispatch line added; the Set mail password dialog draws no "Current value" line and the clear hint once, through add-only `currentShown` and `consequenceShown` inputs on `interop-item-setting-dialog.ts` (a dialog edit the original spec excluded; the ruling needs it; no new sentence); Fix Pack 1 (`ui/tools/task-error.test.mjs`) and 2 (`TestARecordThatCannotBeReadAnswersFiveHundredWithoutAPath`).
+**Rework 2 (this pass only).** Closed DW-2811 (Review Findings, first item): `LogSourcePort.TaskOutputRows` serves the end of a window that holds no whole line (a last line longer than 64 KB) as one row, offset at the window's first byte, without a terminating line feed or carriage return, the answer truncated; `ReadWindow` and every other log source's tail are unchanged. A last line with no line feed after complete lines, and a short no-line-feed file, were already rows and are now pinned. The two resolved `deferred:` entries are removed (closed in rework 1). Earlier passes closed in the Review Findings.
 
 **Decided in-stage (kept from the first pass).** `childListFor` prefers a non-`log-viewer` child, so Task schedule's History stays its child list beside Task output; the logsource read requires its route criterion as the interop read does; `Registry.CriteriaProblem` and the mirror admit a logsource read's parent route id; `DraftRegistry` gains `UNSENTSECRETS` (`tasks.mail.set=AuthPassword`).
 
-**Review.** 9 findings: 3 patched at low (the agent step reason now has `TestTheAgentsStepReasonForEachRefusalIsThePublishedSentence`; the 500 test's no-text legs and the new test have observed mutations), 5 rejected low, 1 false, all in the Triage Log. Follow-up review recommended: false (no high patched).
+**Decided in-stage (rework 2).** A window with no line boundary has no whole line to show; its row starts mid-line, which the truncated sentence states. This reads "never a mid-line start" as applying to windows that contain a line boundary (inference); the lead may veto.
 
-**Verification.** On `ocupilot-ci`, 49 classes green one per call (`ScreenRead`, `WireSecurityRead`, `TaskOutputRead` 15, `TaskMailPasswordWrite`, `LogSourceDenial`, `Envelope`, `ClaimReach`, `ProposalConfirm`, `DraftRegistry`, every `Task*`, `ConfigSetting*` and `LogSource*` class); `npm run test:tools` 2361 and `test:components` green; `check-objectscript.py` 0 problems; browser specs `config-settings`, `task-output`, `tasks` and `a11y-structural-invariants` green on the rebuilt bundle (the new Task output screen is walked, no governance settle timeout). The Rule 19 mutations were each observed red, reverted and reloaded. No probe task or file remains on the throwaway.
+**Review.** 8 findings: 3 patched (1 medium, 2 low), 5 rejected (3 low, 2 maybe-false), in the Triage Log. Follow-up review recommended: false (no high patched).
 
-**Residual risks.** `interop-item-setting-dialog.ts` is a shared file; Epic 24 has no change to it. `ScreenRead` is 970 lines, over the roughly 500-line guidance.
+**Verification.** On `ocupilot-ci`: `TaskOutputRead` 17 green (two new tests), `LogSource`, `LogSourceDenial`, `LogSourceFiles`, `LogSourceClock`, `LogSourceRotation`, `LogSourceWire`, `ScreenRead`, `TaskDetails`, `TaskMailPasswordWrite` and the other `Task*` test classes green, one class per call; `npm run test:tools` 2361 green; `check-objectscript.py` 0 problems; `task-output` browser spec green (4) on the rebuilt, redeployed bundle. Four Rule 19 mutations observed red, reverted and reloaded (see Verification). No probe task or file remains.
+
+**Residual risks.** None named beyond the in-stage decision above.
