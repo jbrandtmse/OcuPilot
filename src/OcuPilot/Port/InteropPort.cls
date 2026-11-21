@@ -7969,8 +7969,8 @@ ClassMethod DefaultSettingAccepts(pNamespace As %String, pParts As %List, pValue
 /// <parameter>DEFAULTSETTINGKEYMAX</parameter>, holds a control character or <code>||</code>, or a key the instance cannot address is
 /// <code>KEY</code> on that part (judged only when <var>pJudgeKey</var>); a value or description past
 /// <parameter>DEFAULTSETTINGTEXTMAX</parameter> is <code>VALUE</code>; a field of the wrong type is <code>PORT.FIELD.SHAPE</code>; and,
-/// when nothing else is wrong and a value is given, a value the vendor refuses (<method>DefaultSettingAccepts</method>) is
-/// <code>VALUE</code>. <var>pFields</var> is the body: <code>Value</code> and <code>Description</code> strings and <code>Deployable</code> a boolean.</p>
+/// when nothing else is wrong and a value is given, or an add names none (the empty value), a value the vendor refuses
+/// (<method>DefaultSettingAccepts</method>) is <code>VALUE</code>. <var>pFields</var> is the body: <code>Value</code> and <code>Description</code> strings and <code>Deployable</code> a boolean.</p>
 ClassMethod DefaultSettingViolations(pNamespace As %String, pProduction As %String, pItem As %String, pHostClass As %String, pSetting As %String, pFields As %DynamicObject, Output pViolations, pJudgeKey As %Boolean = 1) As %Status
 {
     Kill pViolations
@@ -7995,7 +7995,7 @@ ClassMethod DefaultSettingViolations(pNamespace As %String, pProduction As %Stri
     Set tType = pFields.%GetTypeOf("Deployable")
     If (tType '= "boolean") && (tType '= "unassigned") Set pViolations($Increment(pViolations)) = $ListBuild("Deployable", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
     If pViolations Quit $$$OK
-    If (pFields.%GetTypeOf("Value") = "string") && (pFields.%Get("Value") '= "") && '..DefaultSettingAccepts(pNamespace, tParts, pFields.%Get("Value")) {
+    If ((pFields.%GetTypeOf("Value") = "string") || (pJudgeKey && (pFields.%GetTypeOf("Value") = "unassigned"))) && '..DefaultSettingAccepts(pNamespace, tParts, pFields.%Get("Value")) {
         Set pViolations($Increment(pViolations)) = $ListBuild("Value", ##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGVALUE)
     }
     Quit $$$OK

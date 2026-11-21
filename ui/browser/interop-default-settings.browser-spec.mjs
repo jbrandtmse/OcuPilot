@@ -27,7 +27,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { interopListHelpers } from './interop-list-spec.mjs';
-import { ROW_SELECTOR, waitForRows } from './list-spec.mjs';
+import { ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { waitForMapAnswered } from './namespace-features.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { VIEWPORTS, assertThrowaway } from './structural-walk.mjs';
@@ -44,6 +44,7 @@ const LIST_ROUTE = 'interoperability/default-settings';
 const DIFF_URL = '/ocupilot/interoperability/default-settings-diff?ns=USER';
 const ACTION_PATH = '/api/ocupilot/screens/interop.defaultsettings/action';
 const ADD_PATH = '/api/ocupilot/interop/default-settings';
+const AUDIT_READ_PATH = '/api/ocupilot/screens/logs.audit/read';
 /** The cell that holds a setting's name, and the one that holds its value. */
 const SETTING_CELL = 3;
 const VALUE_CELL = 4;
@@ -257,6 +258,141 @@ test('AC5: New default setting adds a setting, Edit changes its value with the k
     assert.equal(await settled(SETTING, true), '<absent>', 'the setting is gone from the instance');
     assert.notEqual(stored(HELD), '<absent>', 'and the other setting is untouched');
     assert.equal(stored(SETTING, 'HSCUSTOM'), '9|probe description|0', 'as is the setting HSCUSTOM holds');
+  } finally {
+    await context.close();
+    drop();
+  }
+});
+
+const THERE = 'OcuThere2415';
+const SAME = 'OcuSame2415';
+const SECRET = 'SSLPassword';
+const HERE_MARKER = 'OcuBrowserMarker2415Here';
+const THERE_MARKER = 'OcuBrowserMarker2415There';
+
+/** Open Compare default settings with `target` typed, and wait for its rows. */
+async function openDiff(page, target) {
+  await page.goto(`${config.origin}${DIFF_URL}`, { waitUntil: 'networkidle2' });
+  await waitForMapAnswered(page, config.navigationTimeoutMs);
+  await page.waitForSelector('#ocu-audit-criterion-target', { timeout: config.navigationTimeoutMs });
+  await fill(page, '#ocu-audit-criterion-target', target);
+  await page.click('.ocu-criteria-controls button[type="submit"]');
+  await waitForRows(page, config.navigationTimeoutMs);
+}
+
+/** The compare's probe rows as `[setting, change, value here, value there]`. */
+async function diffRows(page) {
+  return (await allRows(page)).filter((cells) => cells[0] === PRODUCTION).map((cells) => [cells[3], cells[4], cells[5], cells[6]]);
+}
+
+// Mutation (Rule 19): drop the only-there branch of `InteropPort.ListDefaultSettingDiff` (a server change, so no rebuild) -> the
+// comparison lists no only-there row and this goes red.
+test('Compare default settings lists the only-here, only-there and differing settings and never an identical one', async () => {
+  drop();
+  arrange(SETTING, '1');
+  arrange(SETTING, '9', 'HSCUSTOM');
+  arrange(HELD, '3');
+  arrange(THERE, '7', 'HSCUSTOM');
+  arrange(SAME, 'alike');
+  arrange(SAME, 'alike', 'HSCUSTOM');
+  const { context, page } = await signedInAt(browser, config, DIFF_URL, VIEWPORTS.wide);
+  try {
+    await openDiff(page, 'HSCUSTOM');
+    assert.deepEqual(
+      await diffRows(page),
+      [
+        [SETTING, 'differs', '1', '9'],
+        [HELD, 'only here', '3', STRINGS.tableEmptyValue],
+        [THERE, 'only there', STRINGS.tableEmptyValue, '7'],
+      ],
+      'the three kinds of change are listed with each side\'s value, and the identical setting is absent'
+    );
+    assert.ok(!(await page.evaluate(() => document.body.textContent)).includes(SAME), 'no part of the page names the identical setting');
+  } finally {
+    await context.close();
+    drop();
+  }
+});
+
+// Mutation (Rule 19): make `InteropPort.DefaultSettingRow` keep a secret-named setting's value (a server change) -> the list and the
+// comparison carry the marker and this goes red; make `OcuPilot.Screen.Read` stop masking the audit rows -> the audit rows carry it.
+test('a secret-named setting\'s value appears in no list, comparison or audit row the screens show', async () => {
+  drop();
+  const since = probe('DSSTAMP', '$ZDateTime($Horolog,3)').value;
+  assert.match(since, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/, 'the instance\'s own clock reads as the audit criterion spells it');
+  arrange(SECRET, HERE_MARKER);
+  arrange(SECRET, THERE_MARKER, 'HSCUSTOM');
+  const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
+  const bodyText = () => page.evaluate(() => document.body.textContent);
+  try {
+    await openList(page);
+    await rowPresent(page, SECRET);
+    const row = await rowOf(page, SECRET);
+    assert.ok(!row.some((cell) => cell.includes(HERE_MARKER)), `the list row carries no value: ${JSON.stringify(row)}`);
+    assert.ok(!(await bodyText()).includes(HERE_MARKER), 'and no part of the list does');
+
+    await openDiff(page, 'HSCUSTOM');
+    const compared = (await diffRows(page)).find((cells) => cells[0] === SECRET);
+    assert.ok(compared !== undefined && compared[1] === 'differs', `the comparison lists the setting as differing: ${JSON.stringify(compared)}`);
+    assert.ok(!compared.some((cell) => cell.includes(HERE_MARKER) || cell.includes(THERE_MARKER)), 'showing neither value');
+    const compareText = await bodyText();
+    assert.ok(!compareText.includes(HERE_MARKER) && !compareText.includes(THERE_MARKER), 'and no part of the comparison does');
+
+    // Logs > Audit: the vendor's own rows of these two inserts, read since before they were written.
+    await page.goto(`${config.origin}/ocupilot/logs/audit?ns=USER`, { waitUntil: 'networkidle2' });
+    await page.waitForSelector('#ocu-audit-criterion-events', { timeout: config.navigationTimeoutMs });
+    await fill(page, '#ocu-audit-criterion-beginDateTime', since);
+    await fill(page, '#ocu-audit-criterion-events', 'ModifyDefaultSetting');
+    const answered = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === AUDIT_READ_PATH && response.url().includes('events=ModifyDefaultSetting'),
+      { timeout: config.navigationTimeoutMs }
+    );
+    await page.click('.ocu-criteria-controls button[type="submit"]');
+    await answered;
+    await page.waitForFunction(
+      (rowSelector) => {
+        const rows = Array.from(document.querySelectorAll(rowSelector));
+        return rows.length > 0 && rows.every((row) => row.textContent.includes('ModifyDefaultSetting'));
+      },
+      { timeout: config.navigationTimeoutMs },
+      ROW_SELECTOR
+    );
+    const opened = [];
+    for (let index = 0; index < 2; index += 1) {
+      await clickRowCentre(page, { index, link: true });
+      await page.waitForSelector('[role="dialog"] .ocu-dialog-payload', { timeout: config.navigationTimeoutMs });
+      opened.push(await page.$eval('[role="dialog"] .ocu-dialog-payload', (node) => node.textContent));
+      await page.keyboard.press('Escape');
+      await dialogClosed(page);
+    }
+    for (const payload of opened) {
+      assert.ok(payload.includes(`SettingName: ${SECRET}`), `an audit row names the setting: ${payload.slice(0, 200)}`);
+      assert.ok(payload.includes('*****'), 'and reads the mask where its value was');
+      assert.ok(!payload.includes(HERE_MARKER) && !payload.includes(THERE_MARKER), 'and carries neither value');
+    }
+    const auditText = await bodyText();
+    assert.ok(!auditText.includes(HERE_MARKER) && !auditText.includes(THERE_MARKER), 'no part of the audit screen does either');
+  } finally {
+    await context.close();
+    drop();
+  }
+});
+
+// Mutation (Rule 19): put back the `Value '= ""` test in `InteropPort.DefaultSettingViolations` (a server change) -> the add answers a
+// generic failure, no value sentence shows and this goes red.
+test('New default setting with no value for an integer setting is refused under the value and stores nothing', async () => {
+  drop();
+  arrange(HELD, '3');
+  const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
+  try {
+    await openList(page);
+    await openPrimary(page);
+    await fill(page, field('Production'), PRODUCTION);
+    await fill(page, field('Setting'), 'PoolSize');
+    await page.click('[data-interop-default-setting-confirm]');
+    await page.waitForSelector('[data-interop-default-setting-violation="Value"]', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('[data-interop-default-setting-violation="Value"]', (node) => node.textContent.trim()), STRINGS.interopDefaultSettingRefusalValue, 'the value is refused with the published sentence');
+    assert.equal(await settled('PoolSize', true), '<absent>', 'and nothing is stored');
   } finally {
     await context.close();
     drop();

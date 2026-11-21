@@ -222,6 +222,21 @@ Every mutation was reverted byte-identical (file digest compared) and the compil
 
 Shared surfaces the full ObjectScript sweep reddened and this pass updated (each red, then green after its row): `ToolEmit.TestEveryLiveToolRequiresItsScreensPairs` (the three tools join the partner and lookup branch), `CompositeMintSweep.TestTheRosterIsEveryCompositeIdMint` (a row for `InteropDefaultSettingMint`), `InteropMessageDescriptor.TestThePortDeclaresEachScreensPairs` (`SEARCHENDPOINTS` gains `DefaultSettingsDiff`), `ToolWrite.TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster` (the other-port count 149 to 152) and `ToolDispatch.TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled` (the remove ships disabled).
 
+### QA
+
+Batch 1 QA (2026-11-21, `ocupilot-b-ci`); every mutation reverted with its file digest compared.
+
+- The review's three hardening legs:
+  - mutation: `InteropPort.PerformDefaultSetting` answers a refused set's refusal only after it has saved -> `InteropDefaultSettingRefusals.TestTheGateRefusesEachPrincipalBeforeAnyVendorCall` red on `OcuP2415Restricted: the refused set left the held setting as arranged`.
+  - mutation: `InteropPort.ListDefaultSettingDiff` names the target for a route side over the cap, with HSCUSTOM holding three settings -> `InteropDefaultSettingDiff.TestASideOverTheCapIsRefusedNamingItsNamespace` red on `the refused side is the first over the cap, read from HSCUSTOM's 3 settings`. Green on the unmutated code with the same three settings, so the expectation follows the count it reads; the stock instance holds none in HSCUSTOM, where that leg and the first name the same side.
+  - mutation: none possible for the `ScreenGate` reset in `OnAfterOneTest`: with the call removed the class stayed green (8 of 8), because only the seam classes read a held pair, and the two tests that arm one (`TestACallerHoldingTheAllRoleWritesWhereARestrictedOneIsRefused`, `TestASourceControlledNamespaceRefusesEveryWrite`) hold every pair they need first and no later test arms a seam. The call is hygiene.
+- Found and fixed: an empty value for `PoolSize` answered 500 `INTERNAL` from the port, the Save, Edit and the mint (the vendor refuses it at `%Save`, and the port skipped its own check on an empty value), and an add that left the value out did too. `DefaultSettingViolations` now judges an empty value, and an add's absent one, as it judges any value: 422 `INTEROP.DEFAULTSETTING.VALUE`. The review's rejected finding is reopened by this measurement (reopen_if met).
+- Added `InteropDefaultSettingEdges` (armed; roster line added) and three browser legs in `interop-default-settings.browser-spec.mjs`:
+  - mutation: `DefaultSettingViolations` back to its `Value '= ""` test -> `TestAnEmptyValueForAnIntegerSettingIsRefusedAsAValue` red on every empty value leg and the browser's empty-value add red; dropping only the absent-value arm -> red on the two legs that leave the value out.
+  - mutation: `OcuPilot.Screen.Read` no longer calls `MaskVendorSecrets` -> `TestTheVendorRowsOfASecretNamedSettingReadMaskedOnTheLogsAuditScreen` red (screen and tool) and the browser secret leg red on `reads the mask where its value was`.
+  - mutation: `InteropPort.DefaultSettingRow` keeps a secret-named value -> the browser secret leg red on the list row; `ListDefaultSettingDiff` stops hiding it -> red on `showing neither value`.
+  - mutation: `ListDefaultSettingDiff` drops the only-there change -> the browser Compare leg (three change kinds, the identical setting absent) red.
+
 ## Auto Run Result
 
 Status: done
