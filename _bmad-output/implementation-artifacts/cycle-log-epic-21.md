@@ -908,3 +908,4 @@
 2026-11-21T17:25:11Z	Story 21.37	spec_validated	integration_ac=present adr_constrained_acs=AD-10,AD-44,AD-64,AD-22,AD-29,AD-51,AD-59 owned_ledger=none escalated=plural_replaces_line;person_write_audit_gap(AD-15) adjusted=AC1,AC2,AC3,AC4,AC5,AC10,AC11 model=claude-opus-5-5
 2026-11-21T17:26:35Z	Story 21.37	ruling	question=plural_line+AD-15+AC4 via=orchestrator choice=plural_capped_at_5(veto=U-134);AD-15_option_b(spine_2fd24558e;AC13);AC4_any_declared_page;rest_approved
 2026-11-21T17:26:35Z	Story 21.37	ad_amended	ad=AD-15 marker=[AMENDED_2026-11-21,Story_21.37_spec_gate,Rule_20] commit=2fd24558e lint_spine=ok(pre-existing_{id}) memlog=appended
+2026-11-21T17:26:54Z	Story 21.37	stage_spawned	stage=implement scope=batches1-3 spawn_at=2026-11-21T17:26:54Z model=sonnet agent_name=21-37-implement cycle_iteration=1 prior_lines_ended=verified(a4ac85185)
