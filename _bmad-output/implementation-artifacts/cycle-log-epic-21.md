@@ -914,3 +914,4 @@
 2026-11-21T21:12:28Z	Story 21.37	integrated_forward	feature=4cd1a974c(24.14+spine) merge=9e79177c4 conflicts=2(ReadTool_568_from_base_564+3+1;sprint-status_timestamp) verified=screen-mirror(261/112),test:tools_2388,check-objectscript_0,LOADERRORS=0,ReadTool,ToolWrite,Descriptor,Navigation,GovernanceBaseline,Prohibited,SurfaceCoverage,DraftRegistry_green
 2026-11-21T21:12:28Z	Story 21.37	code_head_pushed	sha=9e79177c4 run=44950309360 missing=none
 2026-11-21T21:13:00Z	Story 21.37	stage_spawned	stage=code-review spawn_at=2026-11-21T21:13:00Z model=opus agent_name=21-37-code-review cycle_iteration=1 prior_lines_ended=verified(aef137fb2)
+2026-11-21T21:13:23Z	Story 21.37	ruling	question=same-resource_assign+deviations via=orchestrator choice=refuse(veto=U-136;mint_nothing;test+mutation);PORT.ACCESSDENIED_accepted(I/O_row_amended);dry_run_on_blur_with_Enter/Save_guard(component_test);ToolWrite_148;AC10_mutation_names_PageResourceRead

@@ -61,7 +61,7 @@ deferred:
 | Unknown resource | Not in `Security.Resources` | 422 `ACCESS.RESOURCE.UNKNOWN` on `Resource` (reused) | Before any vendor write |
 | Clear with none | Page holds no custom resource | 409 `ACCESS.PAGE.NOTASSIGNED` (a precondition code) | No vendor write |
 | Stale confirm | Stored R1 changed before the confirm | Refused as target-changed; nothing written | AD-51 fingerprint |
-| No pair | Caller lacks `%Admin_Secure:USE` or `%DB_IRISSYS:READ` | 403 `AUTH.NOPRIVILEGE` naming the first lacking pair | Before any vendor call |
+| No pair | Caller lacks `%Admin_Secure:USE` or `%DB_IRISSYS:READ` | 403 `PORT.ACCESSDENIED` with `detail.failedPair` naming the first lacking pair (orchestrator ruling 2026-11-21, as `ResourceTransferPort`) | Before any vendor call |
 
 </intent-contract>
 
@@ -163,6 +163,7 @@ deferred:
   - AD-15, option (b), done here: the spine carries the add-only named case (`2fd24558e`); a page custom-resource assign or clear records OcuPilot's own `OcuPilot/Security/SecurityChange` from either caller (AC13). Confirm the installer already registers the event triple; register no second one.
   - AC4 reads AD-10 as written: a clear or change is destructive on any page an OcuPilot screen declares, Home's included.
   - The rest is approved as planned: the `AccessError` codes, the port's two checks, the pairs, three batches, add-only on the contended files.
+- 2026-11-21, orchestrator rulings at the build (authoritative): an agent assign naming the resource a page already holds is refused through the mint's existing no-change path with "This page already requires that resource, so there is nothing to assign." (veto item, U-128 family), minting and storing nothing, pinned by a test and a mutation line, and removed from `deferred:`; the gate refusal is `PORT.ACCESSDENIED` with `detail.failedPair` (I/O row amended); the dialog's dry run runs on blur, timer-free, and a keyboard user who presses Enter or Save without leaving the field still gets the review before the write (Save runs the dry run first for an unreviewed value, or stays disabled until it has run), pinned by a component test; `ToolWrite` stays 148; the AC10 mutation names `PageResourceRead`.
 
 ## Review Triage Log
 
@@ -315,7 +316,7 @@ Every test added or changed passes on a fresh environment, in either order.
 - AC7: `Gate.ClassicResource` reads a process-cached copy -> the gate-after-clear test red.
 - AC8: remove `Snippet`'s clear branch -> `DraftRegistry` red, naming the tool.
 - AC9: remove one key from `Baseline.cls` -> `GovernanceBaseline` red.
-- AC10: drop `%DB_IRISSYS:READ` from `PAIRS` -> `PortGate` and the gate test red.
+- AC10: drop `%DB_IRISSYS:READ` from `PAIRS` -> `PageResourceRead`'s gate leg red (`PortGate` only checks that the parameter parses; orchestrator ruling 2026-11-21).
 - AC11: delete the `SurfaceCoverage` screen row -> `SurfaceCoverage` red alone.
 - AC12: remove the `clear` row action from the descriptor -> the browser spec red, against a rebuilt and redeployed bundle.
 - AC13: skip the `SecurityChange` record on the person's path, then on the agent's path -> the audit test red each time; record an event on the refused clear -> red.
