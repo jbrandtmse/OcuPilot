@@ -18,6 +18,9 @@ Parameter CHANGEACTION = "deleted";
 
 Parameter SCREENACTIONS = "clear";
 
+/// <p>The one field the card's removal row names.</p>
+Parameter REMOVALROWS = "Resource";
+
 ClassMethod SettableFields() As %List
 {
     Quit ""
@@ -41,7 +44,7 @@ ClassMethod ReadBackGone(pAfter As %DynamicObject, pPayload As %DynamicObject) A
 ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
-    Set pRows = ..RemovalRows(pFresh, 0, $ListBuild("Resource"))
+    Set pRows = ..RemovalRows(pFresh)
     Set tScreens = ..ScreenRows(pFresh).%GetIterator()
     While tScreens.%GetNext(.tKey, .tRow) {
         Do pRows.%Push(tRow)

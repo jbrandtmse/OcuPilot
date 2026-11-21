@@ -2,7 +2,7 @@
 title: 'Story 21.37: Page resources'
 type: 'feature'
 created: '2026-11-21'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '317781c4e3a192147dd5a1da0ef3dcffeeb7ff88'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -151,7 +151,7 @@ deferred: []
 
 ### Review Findings
 
-- [ ] [Review][HIGH] CI run 44950309360 (on `9e79177c4`): four roster tests the new screen and tools broke. (1) `OcuPilot.Test.RemovalRowsSweep.TestEachToolPassesItsOwnNamesAndSkip`: "control: the roster names exactly the tools whose own StateDiff passes RemovalRows a names list". (2) `OcuPilot.Test.StageTwoTools.TestTheRosterAndElsewhereAreEveryRegisteredScreen`: "PageResourceList is registered, so it takes a roster row (a screen Epic 18 added) or an Elsewhere row (any other)". (3) `OcuPilot.Test.ToolEmit.TestEveryLiveToolRequiresItsScreensPairs`: `permissions.pageresources.assign` and `.clear` do not require exactly their screen's pairs plus their own write permission. (4) `OcuPilot.Test.ToolRoundTrip.TestEveryToolConformsToItsResultSchemaOrAnswersACode`: both tools answer `TOOL.ARGUMENTS: argument 'Page' is missing (required)`, so they need a round-trip fixture row (the class's argument roster) like their siblings. For each, read the assertion and the change, update the roster with names read from the instance (or fix the product if the test caught a real defect, and say which), keep each test's intent, and write a `mutation:` line per changed assertion. Run the four as full classes, then every `*Sweep`, `*Coverage` and `ToolRound*` class and `PageResource*`, one per call. [src/OcuPilot/Test/RemovalRowsSweep.cls, StageTwoTools.cls, ToolEmit.cls, ToolRoundTrip.cls]
+- [x] [Review][HIGH] (closed in rework 1: three roster rows and one product call-shape change, all four classes green on `ocupilot-ci`) CI run 44950309360 (on `9e79177c4`): four roster tests the new screen and tools broke. (1) `OcuPilot.Test.RemovalRowsSweep.TestEachToolPassesItsOwnNamesAndSkip`: "control: the roster names exactly the tools whose own StateDiff passes RemovalRows a names list". (2) `OcuPilot.Test.StageTwoTools.TestTheRosterAndElsewhereAreEveryRegisteredScreen`: "PageResourceList is registered, so it takes a roster row (a screen Epic 18 added) or an Elsewhere row (any other)". (3) `OcuPilot.Test.ToolEmit.TestEveryLiveToolRequiresItsScreensPairs`: `permissions.pageresources.assign` and `.clear` do not require exactly their screen's pairs plus their own write permission. (4) `OcuPilot.Test.ToolRoundTrip.TestEveryToolConformsToItsResultSchemaOrAnswersACode`: both tools answer `TOOL.ARGUMENTS: argument 'Page' is missing (required)`, so they need a round-trip fixture row (the class's argument roster) like their siblings. For each, read the assertion and the change, update the roster with names read from the instance (or fix the product if the test caught a real defect, and say which), keep each test's intent, and write a `mutation:` line per changed assertion. Run the four as full classes, then every `*Sweep`, `*Coverage` and `ToolRound*` class and `PageResource*`, one per call. [src/OcuPilot/Test/RemovalRowsSweep.cls, StageTwoTools.cls, ToolEmit.cls, ToolRoundTrip.cls]
 
 Code review 2026-11-21, `317781c4e..30157fa88`; layers blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor (full-opus). Patches uncommitted.
 
@@ -205,6 +205,15 @@ Rejected:
   - `[low]` `[reject]` The Page resources screen is not protected as one of its own screens — the AD-10 arm covers Home and Agent as the intent states.
   - `[low]` `[reject]` The server review reports the changed consequence for an assign of the held resource — the dialog states it only where the resource differs, and that is pinned.
   - `[medium]` `[defer]` An agent assign of the held resource mints with no changed row (Task 0 (b)) — the refusal wording is the owner's to rule; nothing is written or recorded meanwhile.
+
+### 2026-11-21 — Review pass, rework 1 (roster reds)
+
+- verdicts: 4 findings — high 0, medium 0, low 2, false 2, maybe-false 0
+- findings:
+  - `[low]` `[reject]` `PageResourceClear.REMOVALROWS` is pinned only through the card row lookup, not a row count — behavior-neutral change; a second row would need a deliberate parameter edit.
+  - `[false]` `[reject]` The `RemovalRowsSweep` fix edits the product, not the roster — the sweep's `Sites` roster has no kind for a fixed `REMOVALROWS`, and the parameter form is the sweep's own convention for a fixed field; the rows built are identical.
+  - `[false]` `[reject]` The names and codes in the roster edits are not shown to be read from the instance — the registry and the tools' own answers were read; each entry reddens its test when removed.
+  - `[low]` `[reject]` One `mutation:` line covers four changed rosters — each is a named mutation with its own red test in the one line.
 
 ## Design Notes
 
@@ -371,6 +380,7 @@ Mutations run, Batch 3 (`ocupilot-ci`; each reverted with Edit, md5 equal; a cli
 
 - mutation: Review pass, AC4, the assign tool's card diff drops the `Screen` row -> `PageResourceProhibited` red; the dialog's no-change guard removed -> `page-resources-dialog.spec.ts` red; AC2, the composed read's `NOTASSIGNED` check disabled -> `PageResourceProhibited` red. Each reverted byte-identical and reloaded.
 - mutation: Code review, ruling (1), `PageResourceAssign.MergeUpdate` sets no problem -> `PageResourceProhibited.TestAnAssignOfTheHeldResourceIsRefusedAtTheMint` red alone. Ruling (2), `submit()` skips the review check -> the dialog spec's Enter-or-Save case red alone. AC4, `DryRunReview` answers no `Current` -> `PageResourceWrite`'s gate test red at its dry-run leg; the dialog's held value ignores the review -> the dialog spec's Assign-held case red alone. Each reverted (md5 equal), source reloaded.
+- mutation: CI roster rework, `PageResourceClear.StateDiff` passes a names list to `RemovalRows` again -> `RemovalRowsSweep.TestEachToolPassesItsOwnNamesAndSkip` red alone; the `StageTwoTools` `Elsewhere` row `PageResourceList` removed -> `TestTheRosterAndElsewhereAreEveryRegisteredScreen` red alone; `ToolEmit`'s `permissions.pageresources.` branch removed -> `TestEveryLiveToolRequiresItsScreensPairs` red on both tools; the two `ToolRoundTrip.REFUSEEMPTY` entries removed -> `TestEveryToolConformsToItsResultSchemaOrAnswersACode` red on both tools. Each reverted (md5 equal), source reloaded.
 
 ## Auto Run Result
 
@@ -384,3 +394,9 @@ Review: 15 findings, 3 medium and 12 low; 3 patched (card `Screen` row, probe-pa
 Verification, all on `ocupilot-ci`: reload `LOADERRORS=0`; every ObjectScript class the stage names green (`PageResourceRead` 9, `PageResourceWrite` 7, `PageResourceProhibited` 3, `DraftRegistry`, `ToolWrite`, `ReadTool`, `SurfaceCoverage`, `EndpointCoverage`, `PortGate`, `Descriptor`, `ScreenGrounding`, `ClassicPageGate`, `GovernanceBaseline`, `Navigation`, `WireSecurityRead`, `PermissionsLists`, `Prohibited`, `ClaimReach`, `ScreenAccessGate`); `test:tools` 2387 pass; `test:components` 3768 (the one red in that run was the dialog mutation, reverted); `page-resources` and `screen-permissions` browser specs green; `check-objectscript` 0 problems; the page store reads 0 rows. The full ObjectScript sweep and full browser suite are the runner's and CI's.
 
 Residual risks: the held-resource agent assign (deferred above); the card summaries for assign and change live in the tool and in `strings.ts` without a pinning test.
+
+### Rework 1 (CI roster reds)
+
+Changed: `PageResourceClear` declares `Parameter REMOVALROWS = "Resource"` and calls `RemovalRows(pFresh)` (the sweep caught a names-list call outside its roster; rows are identical, so this is a convention fix, not a defect); `StageTwoTools` `Elsewhere` gains `PageResourceList`; `ToolEmit` expects the screen's pairs alone for `permissions.pageresources.*`; `ToolRoundTrip.REFUSEEMPTY` gains the two tools' `TOOL.ARGUMENTS` rows. Review: 4 findings, none patched, 4 rejected (triage log). Follow-up review recommended: false (no high patched).
+
+Verified on `ocupilot-ci`, `LOADERRORS=0`, one class per call, all green: `RemovalRowsSweep` 7, `StageTwoTools` 4, `ToolEmit` 11, `ToolRoundTrip` 2, then `CompositeMintSweep`, `EndpointCoverage`, `FormReadCoverage`, `InteropResendSweep`, `ProposalFixtureSweep`, `SaveHoldCoverage`, `SurfaceCoverage`, `ViolationSentenceCoverage`, `PageResourceProhibited`, `PageResourceRead`, `PageResourceWrite`; page store 0 rows. Mutations in `## Verification`.
