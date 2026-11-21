@@ -2,7 +2,7 @@
 title: 'Story 24.14: PMML model tester and dashboard viewer (Batch 4: Export a PMML test''s results to a cube)'
 type: 'feature'
 created: '2026-11-20'
-status: 'done'
+status: 'ready-for-dev'
 baseline_revision: 'a40b3789e08a4dea700910680b5b9f002c214c49'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -212,6 +212,7 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24`, at HEAD `8524d
 
 - 2026-11-21, spec gate (runner, veto item U-132): every recommended veto item kept as proposed: the key ships true, Decided 1-6, the stricter refusals, the proposed strings and README clause, and the proposed AD-7/AD-65 wording (spine unedited).
 - 2026-11-21, re-open (runner, intent gap resolved toward the spine): Decided 3 is reversed, because AD-59 binds every write tool and its registry test fails a tool with no script form. `TOCUBE` gets a script form: `AnalyticsPort.SnippetForm` answers a form for `TOCUBE`, and `Snippet` renders an ObjectScript draft that mirrors every branch `Invoke` takes for the export (its own test, the two class saves and compiles, the copy, and the delete on a later failure) from the stored proposal's arguments, as the cube Build's draft does, and runs no write. The draft carries no secret. `TestTheExportHasNoScriptForm` is replaced by a test that pins the rendered draft. AD-59 is unchanged.
+- 2026-11-21, re-open (runner, orchestrator rulings on the review's two deferrals): DW-2819 (a): after the result class compiles and before any extent kill, the write reads the compiled storage's data, index and stream locations (never `^<class>D` guessed from the name) and refuses with `ANALYTICS.PMML.DATAHELD` when any holds data, through the existing delete-everything-saved path. The script form makes the same check in the same order. DW-2818 (b): the script gains the comment "This script needs SQL SELECT and DELETE privileges on %DeepSee_PMML_Utils.TempResult." Orchestrator-approved strings: the DATAHELD reason "This namespace already holds data stored under this class name. Choose another name.", the DW-2818 comment, the script's no-bound comment, and the tool's `StateDiff` problem sentence.
 
 ## Review Triage Log
 

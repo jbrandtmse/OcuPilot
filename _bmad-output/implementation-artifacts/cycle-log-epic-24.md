@@ -647,3 +647,6 @@
 2026-11-21T12:29:52Z	Story 24.14	stage_spawned	stage=code-review spawn_at=2026-11-21T12:29:52Z model=opus agent_name=24-14-review-batch4 cycle_iteration=5 scope=batch4 range=8f5ead53b..354796f5d(code)
 2026-11-21T13:13:40Z	Story 24.14	stage_completed	stage=code-review scope=batch4 commit=c7e20150a findings=25(med8:6_patched,low17:5_patched) deferred=2 rejected=12 checklist_A-F=pass(B:no-bound_comment_and_agent_StateDiff_sentence_unruled)
 2026-11-21T13:13:40Z	Story 24.14	ledger_adjudicated	scope=batch4 new=DW-2818(decision-pending,script_dynamic_SQL),DW-2819(decision-pending,extent_kill_over_unrelated_global),DW-2820(resolved,DataLeft_29-char_limit) push=held_for_ruling_on_DW-2819
+2026-11-21T13:14:29Z	Story 24.14	ruling	source=orchestrator scope=batch4 DW-2819=a(refuse_free_name_whose_compiled_storage_data/index/stream_globals_hold_data;check_after_compile_before_kill;script_same) DW-2818=b(exact_comment_sentence) flagged_strings=approved(no_ids) DW-2820=accepted new_sentence=proposed_to_orchestrator(ANALYTICS.PMML.DATAHELD)
+2026-11-21T13:14:46Z	Story 24.14	string_approved	source=orchestrator code=ANALYTICS.PMML.DATAHELD
+2026-11-21T13:14:46Z	Story 24.14	stage_spawned	stage=implement-rework spawn_at=2026-11-21T13:14:46Z model=sonnet agent_name=24-14-rework-batch4-r1 cycle_iteration=5 scope=batch4_DW-2819_DW-2818
