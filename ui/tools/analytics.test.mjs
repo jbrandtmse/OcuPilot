@@ -7,9 +7,9 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -193,6 +193,50 @@ test('Story 20.33 (QA): the code that runs an MDX statement names nothing the st
       assert.ok(!word.test(codeOf(source, keepStrings)), `${file} holds no ${what}`);
     }
   }
+});
+
+/** Every ObjectScript source under `src/OcuPilot` outside `Test/`, as paths relative to `src/OcuPilot` with `/` separators. */
+function productSources(directory = join(REPO_ROOT, 'src', 'OcuPilot')) {
+  const found = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    const name = relative(join(REPO_ROOT, 'src', 'OcuPilot'), path).split(sep).join('/');
+    if (entry.isDirectory()) {
+      if (name !== 'Test') found.push(...productSources(path));
+    } else if (/\.(cls|mac|inc)$/.test(entry.name)) {
+      found.push(name);
+    }
+  }
+  return found;
+}
+
+test('Story 24.14 Batch 2b: product code calls Terminate( only in the process port and, once, in the PMML test supervisor to end the child it spawned', () => {
+  // Mutation (Rule 19): add a `Terminate(` to AnalyticsPort.cls, or a second one to PmmlTest.cls, or one to PmmlTest.CancelJob -> this goes red naming the file, the count or the method.
+  const hits = new Map();
+  for (const name of productSources()) {
+    const count = [...codeOf(readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', ...name.split('/')), 'utf8'), false).matchAll(/\bTerminate\s*\(/gi)].length;
+    if (count > 0) hits.set(name, count);
+  }
+  assert.deepEqual([...hits.keys()].sort(), ['Area/Analytics/PmmlTest.cls', 'Port/ProcessPort.cls'], 'the two classes that end a process');
+  assert.equal(hits.get('Area/Analytics/PmmlTest.cls'), 1, 'the PMML test run ends a process in one place');
+  const pmml = codeOf(readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Area', 'Analytics', 'PmmlTest.cls'), 'utf8'), false);
+  assert.ok(pmml.includes('$SYSTEM.Process.Terminate(pChild)'), 'and it is the supervisor\'s child, the process it spawned');
+  assert.ok(pmml.includes('SpawnChild(pKey, pUser, pNamespace, pRequest, pClass, .tChild)') && pmml.includes('Reap(pKey, tChild,'), 'whose process id is the one SpawnChild answered, never one read from storage');
+  const cancelAt = pmml.indexOf('ClassMethod CancelJob(');
+  const cancelBody = pmml.slice(cancelAt, pmml.indexOf('\n}\n', cancelAt));
+  assert.ok(cancelAt >= 0 && cancelBody.length > 0, 'the cancel hook is found');
+  assert.ok(!/terminate/i.test(cancelBody), 'and the cancel ends no process: it signals the supervisor');
+});
+
+test('Story 24.14 Batch 2b: the background run holds two JOB commands, Spawn\'s and SpawnChild\'s, and only the PMML test supervisor calls SpawnChild', () => {
+  // Mutation (Rule 19): add a third `Job` to BackgroundRun.cls, or a call of `SpawnChild(` to any other product class -> this goes red naming the count or the class.
+  const shell = codeOf(readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Shell', 'BackgroundRun.cls'), 'utf8'), false);
+  assert.equal([...shell.matchAll(/^\s+Job\s/gim)].length, 2, 'two JOB commands in the background run');
+  const spawnChildAt = shell.indexOf('ClassMethod SpawnChild(');
+  assert.ok(spawnChildAt >= 0 && /^\s+Job\s/im.test(shell.slice(spawnChildAt, shell.indexOf('\n}\n', spawnChildAt))), 'one of them in SpawnChild');
+  const callers = productSources().filter((name) => name !== 'Kernel/Shell/BackgroundRun.cls'
+    && /\bSpawnChild\s*\(/.test(codeOf(readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', ...name.split('/')), 'utf8'), false)));
+  assert.deepEqual(callers, ['Area/Analytics/PmmlTest.cls'], 'and the PMML test supervisor is its one caller');
 });
 
 /** The five refusals of the cube manager's updates (Story 20.34), each pinned to its `strings.ts` key. */

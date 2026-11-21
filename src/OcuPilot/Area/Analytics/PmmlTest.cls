@@ -11,10 +11,16 @@
 /// declared one, SQL query's own classification and self-protection check (<method>OcuPilot.Area.Explorer.SqlConsole.Check</method>), which must type it a query, 422
 /// <code>ANALYTICS.PMML.QUERYONLY</code> otherwise. An SQL the instance would not prepare is answered at once, <code>{outcome: error, ...}</code>, as SQL query answers it. Nothing is reserved or spawned for a
 /// refusal or an immediate answer.</p>
-/// <p><b>The job</b> (<method>Work</method>) runs <method>OcuPilot.Port.AnalyticsPort.PmmlRun</method> under the bound <method>BoundSeconds</method>, which reads the answer and drops the test's result rows
-/// on every path. The run ends <code>canceled</code> on its owner's cancel and <code>stopped</code> at the bound. The SQL text is handed to the job as one <code>JOB</code> argument and is stored nowhere.</p>
-/// <p>Seams a fixture subclass overrides: <method>BoundSeconds</method>, <method>MaxRunning</method>, <method>LimitsClass</method>, <method>PortClass</method>, <method>Spawn</method>, <method>Work</method>
-/// and the <code>CANCEL*</code> parameters. Production overrides none.</p>
+/// <p><b>The job</b> (<method>Work</method>) is a supervisor, the background run's own job, which holds the run's lock. It spawns the run's child (<method>Child</method>, through
+/// <method>OcuPilot.Kernel.Shell.BackgroundRun.SpawnChild</method>) and waits on the run's event (<method>EventName</method>). The child runs <method>ChildWork</method>:
+/// <method>OcuPilot.Port.AnalyticsPort.PmmlRun</method> under the bound <method>BoundSeconds</method>, which reads the answer and drops the test's result rows on every path it ends itself. The run ends
+/// <code>canceled</code> on its owner's cancel and <code>stopped</code> at the bound. The SQL text is handed to each job as one <code>JOB</code> argument and is stored nowhere.</p>
+/// <p><b>The cancel</b> (<method>CancelJob</method>) ends no process: the stop flag is already set (<method>OcuPilot.Kernel.Shell.BackgroundRun.Cancel</method>), and it signals the run's event and waits for the run to leave <code>running</code>. The supervisor, the
+/// child's direct parent, wakes on a signal; it ignores a wake unless the owner's stop flag is set, then ends the child it spawned (never a process id read from storage), drops the result rows of the test id
+/// the child recorded (<method>RecordTest</method>) when the record names that child, removes the record, deletes the event, and only then ends the run <code>canceled</code>. The same cleanup follows the
+/// bound plus <parameter>GRACESECONDS</parameter> (the run ends <code>stopped</code>) and a child that ends on its own (a run still <code>running</code> ends <code>failed</code>).</p>
+/// <p>Seams a fixture subclass overrides: <method>BoundSeconds</method>, <method>MaxRunning</method>, <method>LimitsClass</method>, <method>PortClass</method>, <method>Spawn</method>, <method>ChildWork</method>,
+/// <method>EndChild</method> and the <parameter>ENDSECONDS</parameter> and <parameter>GRACESECONDS</parameter> parameters. Production overrides none.</p>
 Class OcuPilot.Area.Analytics.PmmlTest Extends OcuPilot.Kernel.Shell.BackgroundRun
 {
 
@@ -134,9 +140,69 @@ ClassMethod Body(pBody As %DynamicObject, Output pModel As %String, Output pSour
     Quit (tDataSourceType = "unassigned") && (tSQLType = "unassigned")
 }
 
-/// <p>The job's work, after the shared checks (see the class): the same checks again in its own process, then the run, ending the run <code>ended</code> with its answer, <code>canceled</code> when its owner
-/// asked, or <code>failed</code> with a refusal. The SQL is never logged.</p>
+/// <p>The supervisor, the job <method>OcuPilot.Kernel.Shell.BackgroundRun.Run</method> spawned, which holds the run's lock for its life and runs after that method's checks (see the class). It creates the
+/// run's event (<method>EventName</method>) and asks the stop flag once more, since a cancel made before the event existed found nothing to signal. It then spawns the child
+/// (<method>OcuPilot.Kernel.Shell.BackgroundRun.SpawnChild</method>) and waits (<method>Await</method>) until the owner cancels, the child ends, or the bound plus
+/// <parameter>GRACESECONDS</parameter> passes. Whatever ends the wait, it ends the child it spawned and no other process, drops that child's rows and removes the record (<method>Reap</method>), deletes the
+/// event, and only then ends the run: <code>canceled</code> on a cancel (the owner's flag is set), <code>ended</code> with <code>{outcome: stopped, seconds}</code> past the bound, and <code>failed</code> for a
+/// child that ended without ending the run, a child that would not start and a fault here. A run a child already ended is left as it is.</p>
+/// <p><b>Terminating the child.</b> The supervisor holds the run's lock, which no one takes from it. The child holds no lock across a wait: the vendor's save of a result row, the store's save of the run's
+/// end and the drop's <code>DELETE</code> each lock rows and open a transaction for that one statement or save, and a process that is ended inside one rolls it back and releases its locks as it ends. A result
+/// row whose save is cut can therefore stay under the test id, and the supervisor's drop by id, made once the child is gone, removes every row whose index entry was written; the store's save that is cut
+/// leaves the run <code>running</code>, and the supervisor's own end then writes the state.</p>
 ClassMethod Work(pKey As %String, pUser As %String, pNamespace As %String, pRequest As %List, pClass As %String)
+{
+    Set tEvent = ..EventName(pKey)
+    Set tChild = ""
+    Set tOutcome = "failed"
+    Try {
+        If '..EnsureEvent(tEvent) Do ..Log("a PMML test's event could not be created", $$$ERROR($$$GeneralError, "the event resource was not created; the wait creates it again"))
+        If ..StopRequested(pKey) {
+            Set tOutcome = "cancel"
+        } ElseIf '..SpawnChild(pKey, pUser, pNamespace, pRequest, pClass, .tChild) {
+            Do ..Log("a PMML test's child could not be started", $$$ERROR($$$GeneralError, "the spawn was not accepted within " _ ..#SPAWNTIMEOUT _ " seconds"))
+        } Else {
+            Set tOutcome = ..Await(pKey, tEvent, tChild, ..BoundSeconds() + ..#GRACESECONDS)
+        }
+    } Catch ex {
+        Do ..Log("a PMML test's supervisor failed", ex.AsStatus())
+        Set tOutcome = "failed"
+    }
+    Set tState = $Parameter(..#STORECLASS, "STATEFAILED")
+    Set tAnswer = ""
+    Try {
+        Set tGone = ..Reap(pKey, tChild, tOutcome '= "exited")
+        If (tOutcome = "cancel") Set tState = $Parameter(..#STORECLASS, "STATEENDED")
+        If (tOutcome = "bound") && tGone {
+            Set tState = $Parameter(..#STORECLASS, "STATEENDED")
+            Set tAnswer = {"outcome": "stopped", "seconds": (..BoundSeconds())}.%ToJSON()
+        }
+    } Catch ex {
+        Do ..Log("a PMML test's child could not be cleaned up", ex.AsStatus())
+    }
+    Do ..DropEvent(tEvent)
+    Do ..Finish(pKey, tState, tAnswer)
+}
+
+/// <p>The child's entry point (<method>OcuPilot.Kernel.Shell.BackgroundRun.SpawnChild</method>): <method>ChildWork</method>, a fault in it ending the run <code>failed</code> with no answer, then a wake for the supervisor.</p>
+ClassMethod Child(pKey As %String, pUser As %String, pNamespace As %String, pRequest As %List, pClass As %String)
+{
+    Try {
+        Do $ClassMethod(pClass, "ChildWork", pKey, pUser, pNamespace, pRequest, pClass)
+    } Catch ex {
+        Do ..Log("a PMML test's job failed", $$$ERROR($$$GeneralError, ex.Name))
+        Do ..Finish(pKey, $Parameter(..#STORECLASS, "STATEFAILED"), "")
+    }
+    Try {
+        Do $System.Event.Signal(..EventName(pKey))
+    } Catch {
+        ; The event is gone, so the supervisor is gone or is re-creating it; it also reads the child's end on its next slice.
+    }
+}
+
+/// <p>The child's work: the same checks again in its own process, then the run, ending the run <code>ended</code> with its answer, <code>canceled</code> when its owner
+/// asked, or <code>failed</code> with a refusal. The SQL is never logged.</p>
+ClassMethod ChildWork(pKey As %String, pUser As %String, pNamespace As %String, pRequest As %List, pClass As %String)
 {
     Set tModel = $ListGet(pRequest, 1)
     Set tSource = $ListGet(pRequest, 2)
@@ -157,7 +223,14 @@ ClassMethod Work(pKey As %String, pUser As %String, pNamespace As %String, pRequ
         Do ..Finish(pKey, $Parameter(..#STORECLASS, "STATEFAILED"), "")
         Quit
     }
-    Set tSC = $ClassMethod(tPort, "PmmlRun", pNamespace, tClassName, tName, tSource, tDataSource, tSQL, ..BoundSeconds(), $ClassName(), pKey, .tResult, .tStopped)
+    Set tCaught = ""
+    Try {
+        Set tSC = $ClassMethod(tPort, "PmmlRun", pNamespace, tClassName, tName, tSource, tDataSource, tSQL, ..BoundSeconds(), $ClassName(), pKey, .tResult, .tStopped)
+    } Catch tException {
+        Set tCaught = tException
+    }
+    Do ..ForgetRecord(pKey)
+    If $IsObject(tCaught) Throw tCaught
     If $$$ISERR(tSC) {
         Do ..FinishRefused(pKey, tSC, "")
         Quit
@@ -169,33 +242,174 @@ ClassMethod Work(pKey As %String, pUser As %String, pNamespace As %String, pRequ
     Do ..Finish(pKey, tEnded, tResult.%ToJSON())
 }
 
-/// <p>The seconds <code>$SYSTEM.SQL.CancelQuery</code> is given to stop the job's statement, how many times, with a pause between, a cancel is sent again while the job is not inside a statement,
-/// and the seconds in all a cancel request spends on it.</p>
-Parameter CANCELSECONDS As %Integer = 3;
+/// <p>The seconds a cancel waits for its run to leave <code>running</code>.</p>
+Parameter ENDSECONDS As %Integer = 2;
 
-Parameter CANCELTRIES As %Integer = 100;
+/// <p>The seconds past <method>BoundSeconds</method> after which the supervisor ends a child that has not ended.</p>
+Parameter GRACESECONDS As %Integer = 5;
 
-Parameter CANCELPAUSE = 0.1;
+/// <p>The seconds the supervisor waits for a child it has ended to leave the process table, before it drops nothing and logs it.</p>
+Parameter CHILDSECONDS As %Integer = 1;
 
-Parameter CANCELBUDGET As %Integer = 10;
+/// <p>The seconds one wait on the run's event lasts; the child's end and the deadline are read at each wake or timeout.</p>
+Parameter WAKESECONDS = 0.5;
 
-/// <p>What a cancel sends to the job: <code>$SYSTEM.SQL.CancelQuery</code>, which reaches the statement the job runs, the data source's or the custom one, whose rows the vendor reads one at a time and
-/// runs the model on between reads. An interrupt is accepted only while the job is inside a statement, so the cancel is given <parameter>CANCELSECONDS</parameter> seconds to meet it and is sent up to
-/// <parameter>CANCELTRIES</parameter> times in all; it is not sent again once <parameter>CANCELBUDGET</parameter> seconds have passed, so a request returns within that budget plus one send's
-/// <parameter>CANCELSECONDS</parameter>, and a run that never enters a statement goes on to the vendor's end. Once the statement ends the vendor's loop ends and the job, which reads its owner's flag then,
-/// ends the run <code>canceled</code>.</p>
+/// <p>The seconds the supervisor pauses after a wake it does not act on, so that a flood of signals or deletes costs at most one read of the stop flag per pause.</p>
+Parameter WAKEFLOOR = 0.05;
+
+/// <p>Record, in IRISTEMP under the run's key, the calling process and the test id the run's rows carry: <code>$ListBuild($Job, pTestId)</code>. The stop class's hook that
+/// <method>OcuPilot.Port.AnalyticsPort.PmmlRun</method> calls before the vendor writes a row. <method>ChildWork</method> removes the record when the run returns, on every path
+/// (<method>ForgetRecord</method>); the supervisor removes it when the child did not.</p>
+ClassMethod RecordTest(pKey As %String, pTestId As %Integer)
+{
+    Set ^IRIS.Temp.OcuPilotPmmlRun(pKey) = $ListBuild($Job, pTestId)
+}
+
+/// <p>Remove run <var>pKey</var>'s record (<method>RecordTest</method>).</p>
+ClassMethod ForgetRecord(pKey As %String)
+{
+    Kill ^IRIS.Temp.OcuPilotPmmlRun(pKey)
+}
+
+/// <p>The name of run <var>pKey</var>'s event resource, which the supervisor waits on and a cancel signals. The resource is unguarded: any process may signal or delete it, so the supervisor
+/// acts on a wake only when the owner's stop flag is set, and re-creates a deleted resource.</p>
+ClassMethod EventName(pKey As %String) As %String
+{
+    Quit $Name(^IRIS.Temp.OcuPilotPmmlCancel(pKey))
+}
+
+/// <p>Whether the event resource <var>pEvent</var> exists after this call: it is created, or already there.</p>
+ClassMethod EnsureEvent(pEvent As %String) As %Boolean [ Private ]
+{
+    Set tHeld = 0
+    Try {
+        Set tHeld = ($System.Event.Create(pEvent) = 1) || ($System.Event.Defined(pEvent) > 0)
+    } Catch {
+        Set tHeld = 0
+    }
+    Quit tHeld
+}
+
+/// <p>Delete the event resource <var>pEvent</var>; a resource that is already gone, or a delete that throws, is not a failure.</p>
+ClassMethod DropEvent(pEvent As %String) [ Private ]
+{
+    Try {
+        Do $System.Event.Delete(pEvent)
+    } Catch {
+        ; Nothing is waiting on it any more.
+    }
+}
+
+/// <p>Wait on run <var>pKey</var>'s event <var>pEvent</var> until one of three things, answered as its name: <code>exited</code> when child <var>pChild</var> has left the process table;
+/// <code>cancel</code> on a wake while the owner's stop flag is set; <code>bound</code> after <var>pSeconds</var>. A wake with the flag clear is ignored, and the next wait comes no sooner than
+/// <parameter>WAKEFLOOR</parameter> seconds later. A deleted event (the wait answers -1, or throws because the resource is not there) is re-created, and the flag is read again, because a cancel's signal
+/// may have found no event; an event that cannot be re-created is logged once and tried again after <parameter>WAKESECONDS</parameter>, so no process but the owner's cancel, the child's end or the deadline ends
+/// the wait.</p>
+ClassMethod Await(pKey As %String, pEvent As %String, pChild As %Integer, pSeconds As %Numeric) As %String [ Private ]
+{
+    Set tDeadline = $ZHorolog + pSeconds
+    Set tOutcome = ""
+    Set tLogged = 0
+    For {
+        Set tWoke = 0
+        Try {
+            Set tWoke = $System.Event.Wait(pEvent, ..#WAKESECONDS)
+        } Catch {
+            Set tWoke = -1
+        }
+        If (tWoke = -1) && '..EnsureEvent(pEvent) {
+            If 'tLogged Do ..Log("a PMML test's event could not be created again", $$$ERROR($$$GeneralError, "the event resource was deleted and not created"))
+            Set tLogged = 1
+            Hang ..#WAKESECONDS
+        }
+        If '$Data(^$JOB(pChild)) {
+            Set tOutcome = "exited"
+        } ElseIf (tWoke '= 0) && ..StopRequested(pKey) {
+            Set tOutcome = "cancel"
+        } ElseIf $ZHorolog > tDeadline {
+            Set tOutcome = "bound"
+        } ElseIf tWoke '= 0 {
+            Hang ..#WAKEFLOOR
+        }
+        If tOutcome '= "" Quit
+    }
+    Quit tOutcome
+}
+
+/// <p>Clean up after child <var>pChild</var> of run <var>pKey</var>. When <var>pEnd</var> is set and the child is in the process table, end it (<method>EndChild</method>), the supervisor being its direct
+/// parent, and wait up to <parameter>CHILDSECONDS</parameter> for it to leave; a child still there is logged and waited for up to <method>BoundSeconds</method> plus <parameter>GRACESECONDS</parameter> more.
+/// Then drop the rows of the test id the record holds when the record names that child (<method>OcuPilot.Port.AnalyticsPort.PmmlDrop</method>), whatever process it names otherwise, and remove the record, so
+/// the run's end that follows never finds them. Answers whether the child is gone. A child that outlasts both waits and goes on writing drops its own rows when its run returns.</p>
+ClassMethod Reap(pKey As %String, pChild As %Integer, pEnd As %Boolean) As %Boolean [ Private ]
+{
+    Set tGone = 1
+    If pEnd && (pChild '= "") && $Data(^$JOB(pChild)) {
+        Try {
+            Set tEnded = ..EndChild(pChild)
+            If tEnded '= 1 Do ..Log("a PMML test's child could not be ended", $$$ERROR($$$GeneralError, "Terminate answered " _ tEnded))
+        } Catch ex {
+            Do ..Log("a PMML test's child could not be ended", ex.AsStatus())
+        }
+        Set tGone = ..AwaitGone(pChild, ..#CHILDSECONDS)
+        If 'tGone {
+            Do ..Log("a PMML test's child did not end", $$$ERROR($$$GeneralError, "the process was still in the process table after " _ ..#CHILDSECONDS _ " seconds"))
+            Try {
+                Do ..EndChild(pChild)
+            } Catch {
+                ; Already logged once; the wait below decides.
+            }
+            Set tGone = ..AwaitGone(pChild, ..BoundSeconds() + ..#GRACESECONDS)
+        }
+    }
+    Set tRecord = $Get(^IRIS.Temp.OcuPilotPmmlRun(pKey))
+    If '$ListValid(tRecord) Set tRecord = ""
+    Do ..ForgetRecord(pKey)
+    Set tTestId = $ListGet(tRecord, 2)
+    If (pChild '= "") && ($ListGet(tRecord, 1) = pChild) && (tTestId '= "") Do $ClassMethod(..PortClass(), "PmmlDrop", tTestId)
+    Quit tGone
+}
+
+/// <p>End child <var>pChild</var>, the process <method>OcuPilot.Kernel.Shell.BackgroundRun.SpawnChild</method> answered, with the person's own rights; <code>$SYSTEM.Process.Terminate</code>'s answer, 1 when the
+/// end was sent. A seam: a fixture overrides it.</p>
+ClassMethod EndChild(pChild As %Integer) As %Integer [ Private ]
+{
+    Quit $SYSTEM.Process.Terminate(pChild)
+}
+
+/// <p>Wait up to <var>pSeconds</var> for process <var>pChild</var> to leave the process table; whether it has.</p>
+ClassMethod AwaitGone(pChild As %Integer, pSeconds As %Numeric) As %Boolean [ Private ]
+{
+    Set tEnd = $ZHorolog + pSeconds
+    While $Data(^$JOB(pChild)) && ($ZHorolog < tEnd) {
+        Hang 0.005
+    }
+    Quit '$Data(^$JOB(pChild))
+}
+
+/// <p>What a cancel does to run <var>pId</var>, whose owner's stop flag is set: it signals the run's event (<method>EventName</method>) and waits up to <parameter>ENDSECONDS</parameter> for the run to
+/// leave <code>running</code> as its owner reads it. It acts only when <var>pLive</var> says the process that holds the run's lock is live, and it ends no process: the supervisor, the child's direct parent,
+/// ends the child (<method>Work</method>), so the cancel lands from any process of the owner. A signal that finds no event, because the supervisor has not created it yet or has just deleted it, is not a fault:
+/// the supervisor reads the flag after it creates the event. A run whose rows take longer than the wait to drop reads <code>running</code> in the cancel's own answer, and <code>canceled</code> once the
+/// supervisor has dropped them.</p>
 ClassMethod CancelJob(pId As %String, pUser As %String, pJobId As %String, pLive As %Boolean) As %Status
 {
     Set tSC = $$$OK
-    Set tJobId = pJobId
-    Set tLive = pLive
-    Set tEnd = $ZHorolog + ..#CANCELBUDGET
-    For tTry = 1:1:..#CANCELTRIES {
-        If 'tLive || (tJobId = "") || ($ZHorolog >= tEnd) Quit
-        If $$$ISOK($SYSTEM.SQL.CancelQuery(tJobId, , ..#CANCELSECONDS)) Quit
-        Hang ..#CANCELPAUSE
-        Set tSC = $ClassMethod(..#STORECLASS, "GuardedCancel", pId, pUser, .tStill, .tJobId, .tLive, ..#RUNKIND)
-        If $$$ISERR(tSC) Quit
+    Try {
+        If 'pLive || (pJobId = "") Quit
+        Try {
+            Do $System.Event.Signal(..EventName(pId))
+        } Catch tSignal {
+            If tSignal.Name '= "<UNDEFINED>" Do ..Log("a PMML test's cancel could not be signaled", tSignal.AsStatus())
+        }
+        Set tEnd = $ZHorolog + ..#ENDSECONDS
+        For {
+            Set tView = ""
+            Set tViewSC = ..View(pId, pUser, .tFound, .tView)
+            If $$$ISERR(tViewSC) || '$Get(tFound) || (tView.%Get("status") '= ..#STATUSRUNNING) || ($ZHorolog > tEnd) Quit
+            Hang 0.005
+        }
+    } Catch ex {
+        Do ..Log("a PMML test's cancel failed", ex.AsStatus())
     }
     Quit tSC
 }

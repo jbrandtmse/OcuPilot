@@ -2636,10 +2636,20 @@ ClassMethod PmmlStopAsked(pStopClass As %String, pStopKey As %String) As %Boolea
     Quit ''$ClassMethod(pStopClass, "StopRequested", pStopKey)
 }
 
+/// <p>Hand test id <var>pTestId</var> to the stop class's hook, <code>RecordTest(pStopKey, pTestId)</code>, so a supervisor that ends the run's job knows whose rows to drop: run unswitched (AD-16);
+/// nothing for an empty <var>pStopClass</var>.</p>
+ClassMethod PmmlRecordTest(pStopClass As %String, pStopKey As %String, pTestId As %Integer) [ Private ]
+{
+    If pStopClass = "" Quit
+    Do $ClassMethod(pStopClass, "RecordTest", pStopKey, pTestId)
+}
+
 /// <p>Run the PMML test of the model <var>pModel</var> of the definition class <var>pClass</var> in <var>pNamespace</var> (Story 24.14, AD-7, AD-41, AD-42): the one seam that names the vendor's three
-/// run calls. The caller has made <method>PmmlResolve</method>'s checks and the SQL check. The run allocates its test id, runs the vendor's <code>%RunModel</code> (<var>pDataSource</var>),
+/// run calls. The caller has made <method>PmmlResolve</method>'s checks and the SQL check. The run allocates its test id, before any namespace switch, and records it with the stop class
+/// (<method>PmmlRecordTest</method>) before the vendor writes a row; it runs the vendor's <code>%RunModel</code> (<var>pDataSource</var>),
 /// <code>%RunModelFromPMMLRows</code> or <code>%RunModelFromSQL</code> (<var>pSQL</var>) with tracking off, under an alarm of <var>pBound</var> seconds, reads its answer, and then
-/// <b>drops the id's rows on every path</b>: answered, error, stopped, canceled or fault (<method>PmmlDrop</method>). The stop hook, <code>StopRequested(pStopKey)</code> of
+/// <b>drops the id's rows on every path it ends itself</b>: answered, error, stopped, canceled or fault (<method>PmmlDrop</method>). A supervisor that ends the job before it gets there drops them
+/// by the recorded id. The stop hook, <code>StopRequested(pStopKey)</code> of
 /// <var>pStopClass</var>, is asked before the start and once the vendor returns, unswitched.</p>
 /// <p><var>pAnswer</var> is <code>{outcome: "ran", mode, records, values, rows, truncated, ...}</code> (<method>PmmlAnswer</method>); the vendor's error answer (<method>ErrorAnswer</method>); or
 /// <code>{outcome: "stopped", seconds}</code> with <var>pStopped</var> <code>bound</code> or <code>request</code>. Otherwise <var>pStopped</var> is <code>""</code>. A fault is rethrown after the drop.
@@ -2657,7 +2667,9 @@ ClassMethod PmmlRun(pNamespace As %String, pClass As %String, pModel As %String,
             Quit
         }
         Set tStart = $ZHorolog
-        Do ..PmmlVendor(pNamespace, pClass, pModel, pSource, pDataSource, pSQL, pBound, .tId, .tMode, .tVendorSC)
+        Set tId = ##class(%DeepSee.PMML.Utils.TempResult).GetNewTestId()
+        Do ..PmmlRecordTest(pStopClass, pStopKey, tId)
+        Do ..PmmlVendor(pNamespace, pClass, pModel, pSource, pDataSource, pSQL, pBound, tId, .tMode, .tVendorSC)
         Set tElapsed = $ZHorolog - tStart
         If ..Alarmed(tVendorSC) || ($$$ISOK(tVendorSC) && (tElapsed >= pBound)) {
             Set tSC = ..StoppedAnswer("bound", tElapsed, pBound, .pAnswer, .pStopped)
@@ -2676,12 +2688,12 @@ ClassMethod PmmlRun(pNamespace As %String, pClass As %String, pModel As %String,
     Quit tSC
 }
 
-/// <p>The vendor half of <method>PmmlRun</method>, in <var>pNamespace</var> by explicit save and restore (AD-16): the target's operational type as <var>pMode</var>, the new test id as
-/// <var>pId</var> (set before the vendor runs, so that a fault still names its rows), and the vendor's status, or an exception's, as <var>pStatus</var>, with the alarm cleared. A seam: a
-/// fixture overrides it.</p>
-ClassMethod PmmlVendor(pNamespace As %String, pClass As %String, pModel As %String, pSource As %String, pDataSource As %String, pSQL As %String, pBound As %Numeric, Output pId As %Integer, Output pMode As %String, Output pStatus As %Status)
+/// <p>The vendor half of <method>PmmlRun</method>, in <var>pNamespace</var> by explicit save and restore (AD-16): the target's operational type as <var>pMode</var>, and the vendor's status,
+/// or an exception's, as <var>pStatus</var>, with the alarm cleared. The vendor writes its rows under the test id <var>pId</var>, which the caller allocated and recorded. A seam: a fixture
+/// overrides it.</p>
+ClassMethod PmmlVendor(pNamespace As %String, pClass As %String, pModel As %String, pSource As %String, pDataSource As %String, pSQL As %String, pBound As %Numeric, pId As %Integer, Output pMode As %String, Output pStatus As %Status)
 {
-    Set pId = ""
+    Set tId = pId
     Set pMode = ""
     Set pStatus = $$$OK
     Set tOrigNS = $NAMESPACE
@@ -2691,15 +2703,14 @@ ClassMethod PmmlVendor(pNamespace As %String, pClass As %String, pModel As %Stri
         Set tName = pModel
         Set tModelClass = $ClassMethod(pClass, "%GetModelClassName", .tName)
         If tModelClass '= "" Do $ClassMethod(tModelClass, "%GetPredictedFieldInfo", .tField, .tDataType, .pMode)
-        Set pId = ##class(%DeepSee.PMML.Utils.TempResult).GetNewTestId()
         Do $System.Alarm.Set(..AlarmSeconds(pBound))
         Set tAlarmed = 1
         If pSource = ..#PMMLSOURCEVERIFICATION {
-            Set pStatus = ##class(%DeepSee.PMML.Utils).%RunModelFromPMMLRows(.pId, pClass, pModel, , 0)
+            Set pStatus = ##class(%DeepSee.PMML.Utils).%RunModelFromPMMLRows(.tId, pClass, pModel, , 0)
         } ElseIf pSource = ..#PMMLSOURCECUSTOM {
-            Set pStatus = ##class(%DeepSee.PMML.Utils).%RunModelFromSQL(.pId, pClass, pModel, pSQL, , , , 0)
+            Set pStatus = ##class(%DeepSee.PMML.Utils).%RunModelFromSQL(.tId, pClass, pModel, pSQL, , , , 0)
         } Else {
-            Set pStatus = ##class(%DeepSee.PMML.Utils).%RunModel(.pId, pClass, pModel, pDataSource, , 0)
+            Set pStatus = ##class(%DeepSee.PMML.Utils).%RunModel(.tId, pClass, pModel, pDataSource, , 0)
         }
         Do $System.Alarm.Clear()
         Set tAlarmed = 0
