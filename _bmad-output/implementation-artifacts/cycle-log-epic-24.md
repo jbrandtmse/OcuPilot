@@ -652,3 +652,5 @@
 2026-11-21T13:14:46Z	Story 24.14	stage_spawned	stage=implement-rework spawn_at=2026-11-21T13:14:46Z model=sonnet agent_name=24-14-rework-batch4-r1 cycle_iteration=5 scope=batch4_DW-2819_DW-2818
 2026-11-21T14:07:06Z	Story 24.14	stage_completed	stage=implement-rework scope=batch4 commit=fc429a890 DATAHELD=compiled_storage_data/index/stream_check(4_cases:short,hashed45,index-only,stream-only) script_same SQL-privilege_comment approved_strings_recorded review=16(med2_patched,low3_rows_patched,11_rejected) followup_review_recommended=true(accepted_without:catch-unplant_path_unexercised,low)
 2026-11-21T14:07:06Z	Story 24.14	ledger_adjudicated	scope=batch4 resolved=DW-2818,DW-2819
+2026-11-21T14:12:10Z	Story 24.14	integrated_feature	scope=batch4 feature=5c0cdcd5e(21.36) merge=03169939f conflicts=5(ReadTool565,ToolWrite149,ToolRoundTrip/ClassicPageGate/MappingDescriptor_unions) mirror_regenerated test_tools=2364 check_objectscript=0
+2026-11-21T14:12:10Z	Story 24.14	fresh_check_started	scope=batch4 tree=03169939f gates=full_sweep+client+browser+smoke
