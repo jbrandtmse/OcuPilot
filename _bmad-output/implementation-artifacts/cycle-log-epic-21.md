@@ -877,3 +877,5 @@
 2026-11-21T07:48:59Z	Story 21.36	smoke	container=ocupilot-ci executed=50 passed=50 failed=0
 2026-11-21T07:48:59Z	Story 21.36	ledger	resolved=DW-2811 wontfix=DW-2810(theoretical),DW-2812..2815(accepted)
 2026-11-21T07:48:59Z	Story 21.36	story_complete	head=acde202a0 run=44869943560 ci=success fresh=pass sweep=20/20 smoke=50/50 baseline_key=tasks.mail.password(enabled) veto=U-131 spine=fbc419892(AD-21)
+2026-11-21T07:49:20Z	Story 21.23	story_started	base=a9cc0784c doctrine=3d11cec9 policy=b9ff703e hold=none must_fix=DW-1822,DW-2600,DW-2720,DW-2787,DW-2535
+2026-11-21T07:49:20Z	Story 21.23	stage_spawned	stage=plan spawn_at=2026-11-21T07:49:20Z model=opus agent_name=21-23-plan cycle_iteration=1 prior_lines_ended=verified(a29f23234)
