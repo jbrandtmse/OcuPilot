@@ -982,3 +982,4 @@
 2026-11-22T13:32:28Z	Story 21.39	code_head_pushed	sha=00a3e27d3 run= missing=none
 2026-11-22T13:33:04Z	Story 21.39	code_head_pushed	sha=00a3e27d3 run=45027868412 missing=none note=CI_status_said_unavailable(skip-token_heuristic_saw_feature's_[skip_ci]_record_commit_in_the_push);gh_run_list_shows_the_run_in_progress
 2026-11-22T13:33:27Z	Story 21.39	stage_spawned	stage=code_review spawn_at=2026-11-22T13:33:27Z model=opus agent_name=21-39-cr prior_lines_ended=verified(a458aa944)
+2026-11-22T14:10:36Z	Story 21.39	ci_resolved	sha=00a3e27d3 run=45027868412 result=success
