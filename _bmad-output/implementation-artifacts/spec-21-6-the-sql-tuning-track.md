@@ -164,6 +164,11 @@ deferred:
 
 ## Spec Change Log
 
+- 2026-11-22, orchestrator ruling on the implement stage's strings outside the ruled list (code review applies it):
+  - Accepted as written: the two empty-state invitation fragments "freeze a statement's plan" and "purge cached queries" (EXPERIENCE.md Fixed-strings row, add-only), the 400's reuse of the generic field-shape sentence, and the eight tool DESCRIPTIONs with their id-shape messages. Each description's factual claims are checked against the instance or source (freeze holds the plan across index and statistics changes until unfrozen; clear statistics leaves the plan unchanged; clean removes only statements no class or routine still holds; `%sqlcq.USER.cls12` is the form the read's CachedQuery column reports); a claim that measures false is corrected in its own sentence.
+  - The 404 for an absent id gets its own sentences, not the table sentence: a statement hash "This namespace holds no SQL statement with that hash that this account can see." (the "that this account can see" clause only if the read filters statements by visibility; dropped if not), and a cached-query class "This namespace holds no cached query by that name." Both join EXPERIENCE.md beside the table sentence, add-only.
+  - Page actions only on a selected row are accepted (the backup task list's precedent); the agent still offers all three without one.
+
 ## Review Triage Log
 
 ### 2026-11-22 — Review pass

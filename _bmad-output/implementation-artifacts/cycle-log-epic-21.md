@@ -1005,3 +1005,4 @@
 2026-11-22T19:42:41Z	Story 21.6	code_head_pushed	sha=010f0f951 run=45062235807 missing=none
 2026-11-22T19:42:41Z	Story 21.6	ledger_routed	id=DW-2843 owner=burndown source=deferred(all-namespace_purge)
 2026-11-22T19:43:36Z	Story 21.6	stage_spawned	stage=code_review spawn_at=2026-11-22T19:43:36Z model=opus agent_name=21-6-cr prior_lines_ended=verified(af5fdb796) strings=pending_orchestrator_ruling
+2026-11-22T19:44:03Z	Story 21.6	ruling	question=strings_outside_U-83 via=orchestrator choice=items1,3_accepted;404_new_sentences(hash,cached_query);400_reuse_ok;veto=U-143
