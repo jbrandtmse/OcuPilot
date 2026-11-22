@@ -1011,3 +1011,7 @@
 2026-11-22T20:36:07Z	Story 21.6	code_head_pushed	sha=71884f36a run=45067284861 missing=none scope=review_patches
 2026-11-22T20:37:27Z	Story 21.6	rework_opened	iteration=1 cause=orchestrator_ruling_DW-2844(in-story;veto_U-144)
 2026-11-22T20:37:27Z	Story 21.6	stage_spawned	stage=implement(rework1) spawn_at=2026-11-22T20:37:27Z model=sonnet agent_name=21-6-rework1 prior_lines_ended=verified(a8d18616b)
+2026-11-22T21:09:35Z	Story 21.6	stage_complete	stage=implement(rework1) agent=a455605c6 result=done commit=47363d553 pin=planted_plan_flag(no_real_parallel_plan_on_throwaway) mutations=3 bashedits=none lines_ended=verified
+2026-11-22T21:09:35Z	Story 21.6	code_head_pushed	sha=47363d553 run=45070444672 missing=none scope=rework1(supersedes_45067284861)
+2026-11-22T21:09:35Z	Story 21.6	ledger_closed	resolved-by=DW-2844,DW-2842 wontfix=DW-2845 routed_out=DW-2843(burndown) remaining_owned=0
+2026-11-22T21:09:35Z	Story 21.6	gate_step	step=fresh_check+full_sweep+smoke head=47363d553 started=2026-11-22T21:09:35Z dir=e21u/21-6/gate

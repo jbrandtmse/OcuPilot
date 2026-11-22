@@ -14506,6 +14506,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-6-the-sql-tuning-track.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-11-22: a frozen statement with no location survived Clean(); the classic dialog disables Freeze for Unfrozen/Parallel (SQLStatementDetails.cls:111).
 - 2026-11-22T20:28:24Z status=decision-pending owner=burndown by=cr note=human=string ruling; proposed: 'This statement's plan uses parallel processing and cannot be frozen.' and a Clean sentence naming frozen plans
+- 2026-11-22T21:09:35Z status=resolved-by:21-6-the-sql-tuning-track by=lead note=rework 1 47363d553 (orchestrator ruling, veto U-144): Freeze refuses an Unfrozen/Parallel plan with its own sentence and code SQL.STATEMENT.PARALLEL (classic dialog disables it, SQLStatementDetails.cls:111); Freeze's description and Clean's consequence carry the ruled text; pinned on a planted plan-state flag through both callers (the throwaway makes no parallel plan)
 
 ### DW-2845: SqlPort's tuning-track error paths are pinned at the port only: no test feeds a failed purge (500) or a vendor-refused statement write through the screen action or the agent's confirm
 - source: spec-21-6-the-sql-tuning-track.md | severity: low | fix-risk: med | footprint: in-story
