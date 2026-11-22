@@ -714,3 +714,4 @@
 2026-11-22T10:17:49Z	Story 24.15	fresh_check_started	scope=batch2
 2026-11-22T10:31:02Z	Story 24.15	fresh_check_passed	scope=batch2 tree=874b3bd99(code=2e84d18d9+feature_timings) classes=21cls_217tests_first_run reverse=3cls_18tests browser=credentials+default-settings+partners+a11y_24/24 smoke=PASSED(1_skipped:agentswitches)
 2026-11-22T10:31:02Z	Story 24.15	code_head_pushed	scope=batch2 sha=2e84d18d9 run=45012764267
+2026-11-22T10:31:19Z	Story 24.15	stage_spawned	stage=plan spawn_at=2026-11-22T10:31:19Z model=opus agent_name=24-15-plan-batch3 cycle_iteration=4 scope=batch3_schedules
