@@ -146,7 +146,7 @@ test('Credentials lists the probe credentials under the published headers, shows
     );
     const row = await rowOf(page, HELD);
     assert.deepEqual(row.slice(0, 3), [HELD, 'held', PARTNER], 'the credential reads its name, user name and partner');
-    assert.match(row[PASSWORD_CELL], /^stored$/i, 'and that a password is stored');
+    assert.equal(row[PASSWORD_CELL], STRINGS.analyticsColumnStored, 'and that a password is stored');
     assert.equal(await page.$eval('.ocu-command-bar button.ocu-command-bar-primary', (node) => node.textContent.trim()), STRINGS.interopCredentialAddAction, 'the command bar offers New credential');
     assert.ok(!(await page.content()).includes(PASSWORD), 'the page shows no password');
     assert.ok(bodies.length > 0 && bodies.every((text) => !text.includes(PASSWORD)), 'and no answer of the server carries one');
@@ -204,7 +204,7 @@ test('AC5: New credential adds a credential with a password, Edit changes its us
     await rowPresent(page, NEW);
     assert.deepEqual(Object.keys(adds.at(-1)).sort(), ['BusinessPartner', 'Name', 'Password', 'Username'], 'the Save carries the name, the user name, the partner and the password');
     assert.equal(stored(NEW), `browser|${PARTNER}|1`, 'the credential is stored with what was typed, and a password');
-    assert.match((await rowOf(page, NEW))[PASSWORD_CELL], /^stored$/i, 'and the list says a password is stored');
+    assert.equal((await rowOf(page, NEW))[PASSWORD_CELL], STRINGS.analyticsColumnStored, 'and the list says a password is stored');
 
     await rowAction(page, NEW, STRINGS.agentPanelSecretWarningEdit);
     await page.waitForSelector(field('Username'), { visible: true, timeout: config.navigationTimeoutMs });
@@ -232,7 +232,7 @@ test('AC5: New credential adds a credential with a password, Edit changes its us
     await dialogClosed(page);
     assert.deepEqual(actions.at(-1), { action: 'password', id: HELD, values: { Password: SECOND_PASSWORD } }, 'the password is sent alone, once');
     assert.equal(await settled(HELD, false), 'held||1', 'the credential then holds a password and the rest is as it was');
-    await waitForCell(page, HELD, PASSWORD_CELL, 'stored');
+    await waitForCell(page, HELD, PASSWORD_CELL, STRINGS.analyticsColumnStored);
     assert.ok(!(await page.content()).includes(SECOND_PASSWORD), 'and the page shows no password');
 
     await rowAction(page, NEW, STRINGS.actionRemove);

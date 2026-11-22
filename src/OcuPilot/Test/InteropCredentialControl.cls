@@ -5,7 +5,7 @@
 /// <code>ConfigChange</code> is the record, naming the namespace, the credential and the field names; a credential changed out of band after the mint
 /// closes the confirm target-changed. <b>No password value appears in an answer, an audit row, a read or a script.</b></p>
 /// <p>It borrows the transport helpers of <class>OcuPilot.Test.InteropItemControl</class>. <b>What it needs from the environment:</b> an
-/// interoperability-enabled <code>USER</code> namespace, the HTTP test account and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>. It
+/// interoperability-enabled <code>USER</code> namespace and an <code>HSCUSTOM</code> one to confirm from, the HTTP test account and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>. It
 /// starts no production and removes every credential, password node and partner it creates.</p>
 Class OcuPilot.Test.InteropCredentialControl Extends %UnitTest.TestCase
 {
@@ -382,6 +382,26 @@ Method TestTheAgentsUpdatePasswordAndRemoveConfirmOverHttp()
     For tTurn = $Get(tUpdateTurn), $Get(tPasswordTurn), $Get(tRemoveTurn) {
         If tTurn '= "" Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
     }
+}
+
+/// <p>AC1 (AD-52): the agent's add, minted in <code>USER</code> naming a business partner only <code>USER</code> holds and confirmed from
+/// <code>HSCUSTOM</code>, judges its fields where the proposal read and creates the credential there.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.InteropCredentialAction.MintClass</method> answer the kernel's own mint -- the confirm
+/// judges the partner in <code>HSCUSTOM</code>, is refused, and this goes red.</p>
+Method TestAnAddConfirmedFromAnotherNamespaceIsJudgedWhereItRead()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "PutPartner"), "a probe partner is arranged in USER alone")
+    Set tPartner = $Parameter(..#FIXTURE, "PARTNER")
+    Set tSC = ..Mint("InteropCredentialAdd", ..ArgsFor(..#NAME, {"Username": "agent", "BusinessPartner": (tPartner)}), .tProposal, .tFault, .tTurn)
+    Do $$$AssertStatusOK(tSC, "the add mints in USER: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+    If '$IsObject($Get(tProposal)) Quit
+    Kill tExtra
+    Set tUrl = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/proposal/" _ tProposal.proposalId _ "/confirm?ns=HSCUSTOM"
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tUrl, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders, {"Password": (..#PASSWORD)}.%ToJSON(), "application/json", .tExtra, 180)
+    Do $$$AssertEquals(tStatus, 200, "a confirm sent from HSCUSTOM answers: " _ $Extract($Get(tRaw), 1, 300))
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "CredentialText", ..#NAME), "agent|" _ tPartner _ "|1", "the credential is created in USER, where the proposal read")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "CredentialText", ..#NAME, "HSCUSTOM"), "<absent>", "and not in HSCUSTOM")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tTurn))
 }
 
 /// <p>AC3: no password appears in what a person or the agent reads: the list, the single-credential read and the agent's read tool say only

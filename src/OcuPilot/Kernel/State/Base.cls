@@ -1670,9 +1670,10 @@ ClassMethod GuardedIdsWhere(pSql As %String, pParam As %String, Output pIds) As 
             Set tSC = $$$ERROR($$$GeneralError, "GuardedIdsWhere failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
             Quit
         }
-        While tRS.%Next() {
+        While tRS.%Next(.tNextSC) {
             Set pIds($Increment(pIds)) = tRS.%GetData(1)
         }
+        If $$$ISERR($Get(tNextSC, $$$OK)) Set tSC = tNextSC
     } Catch ex {
         Set tSC = ex.AsStatus()
     }

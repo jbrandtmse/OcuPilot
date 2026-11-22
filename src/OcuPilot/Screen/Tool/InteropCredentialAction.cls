@@ -34,6 +34,12 @@ ClassMethod Endpoint() As %String
     Quit ##class(OcuPilot.Port.InteropPort).#ENDPOINTCREDENTIALS
 }
 
+/// <p>The mint that stores the namespace in an add's or an edit's arguments, so a confirm judges their fields where the proposal read.</p>
+ClassMethod MintClass() As %String
+{
+    Quit "OcuPilot.Screen.Tool.InteropCredentialMint"
+}
+
 /// <p>The credential's name, which the card titles it by: the fresh read's <code>Name</code>, else the agent's own.</p>
 ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
 {

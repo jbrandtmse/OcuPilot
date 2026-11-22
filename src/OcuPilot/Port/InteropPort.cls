@@ -8609,7 +8609,11 @@ ClassMethod CredentialFactsHere(pName As %String, ByRef pFacts) [ Private ]
     Set tResult = ""
     If 'pFacts("exists") Quit
     Set tObject = ##class(Ens.Config.Credentials).%OpenId(pName)
-    If $IsObject(tObject) Set pFacts("line") = ..CredentialLine(pName, tObject.Username, tObject.BusinessPartner)
+    If $IsObject(tObject) {
+        Set pFacts("line") = ..CredentialLine(pName, tObject.Username, tObject.BusinessPartner)
+    } Else {
+        Set pFacts("exists") = 0
+    }
     Set tObject = ""
 }
 
@@ -8627,6 +8631,20 @@ ClassMethod CredentialFacts(pNamespace As %String, pName As %String, Output pFac
         Set $NAMESPACE = tOrigNS
         Set pCaught = ex
     }
+}
+
+/// <p>An edit's body <var>pBody</var> without the user name or business partner the credential <var>pName</var> in <var>pNamespace</var> already
+/// holds, so the edit's rules judge only what it changes: a partner removed since it was set, or one stored as free text elsewhere, does not
+/// refuse an edit of the user name (Story 24.15). A credential that cannot be read leaves the body whole; the write then answers for it.</p>
+ClassMethod CredentialMoves(pNamespace As %String, pName As %String, pBody As %DynamicObject) As %DynamicObject [ Private ]
+{
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit pBody
+    Do ..CredentialFacts(pNamespace, pName, .tFacts, .tCaught)
+    If $IsObject(tCaught) || ($Get(tFacts("line")) = "") Quit pBody
+    Set tMoves = ##class(%DynamicAbstractObject).%FromJSON(pBody.%ToJSON())
+    If (tMoves.%GetTypeOf("Username") = "string") && (tMoves.%Get("Username") = $List(tFacts("line"), 2)) Do tMoves.%Remove("Username")
+    If (tMoves.%GetTypeOf("BusinessPartner") = "string") && (tMoves.%Get("BusinessPartner") = $List(tFacts("line"), 3)) Do tMoves.%Remove("BusinessPartner")
+    Quit tMoves
 }
 
 /// <p>Whether <var>pNamespace</var> holds a business partner named exactly <var>pPartner</var>. A failed read answers 0, so a partner the
@@ -8792,7 +8810,8 @@ ClassMethod PerformCredential(pNamespace As %String, pType As %String, pName As 
         }
     } Else {
         If (pType = ..#TYPESETCREDENTIAL) && '..CredentialNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
-        Set tSC = ..CredentialViolations(pNamespace, pName, pBody, .tViolations, (pType = ..#TYPEADDCREDENTIAL))
+        Set tJudged = $Select(pType = ..#TYPESETCREDENTIAL: ..CredentialMoves(pNamespace, pName, pBody), 1: pBody)
+        Set tSC = ..CredentialViolations(pNamespace, pName, tJudged, .tViolations, (pType = ..#TYPEADDCREDENTIAL))
         If $$$ISERR(tSC) Quit tSC
         If tViolations Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
     }
@@ -8824,7 +8843,7 @@ ClassMethod PerformCredential(pNamespace As %String, pType As %String, pName As 
                     Set tVendorSC = tObject.PasswordSet(tPassword)
                     If $$$ISOK(tVendorSC) Set tVendorSC = tObject.%Save()
                 } Else {
-                    Set tHeld = tFacts("line")
+                    Set tHeld = ..CredentialLine(pName, tObject.Username, tObject.BusinessPartner)
                     If (pBody.%GetTypeOf("Username") = "string") && (pBody.%Get("Username") '= $List(tHeld, 2)) {
                         Set tObject.Username = pBody.%Get("Username")
                         Set tChanged = tChanged _ $ListBuild("Username")

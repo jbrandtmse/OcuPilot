@@ -367,3 +367,12 @@ test('Story 21.14: an NLS default\u2019s source reads as its words, and any othe
   assert.equal(model.wordedValue(nls, 'Source', true), true);
   assert.equal(model.wordedValue(nls, 'Source', 'constructor'), 'constructor');
 });
+
+// Mutation (Rule 19): drop the Credentials list's entry from `VALUE_WORDS` -> this goes red on both words.
+test('Story 24.15: the Password cell of a credential reads "Stored" or "Not stored", and the read keeps its own value', () => {
+  const credentials = 'OcuPilot.Screen.Descriptor.InteropCredentialList';
+  assert.equal(model.wordedValue(credentials, 'Password', 'stored'), 'Stored');
+  assert.equal(model.wordedValue(credentials, 'Password', 'not stored'), 'Not stored');
+  assert.equal(model.wordedValue(credentials, 'Password', 'other'), 'other');
+  assert.equal(model.wordedValue(credentials, 'Username', 'stored'), 'stored');
+});

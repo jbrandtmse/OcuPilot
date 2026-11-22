@@ -166,8 +166,10 @@ Method TestANameTheVendorCannotStoreIsRefusedBeforeAnythingIsStored()
 }
 
 /// <p>AC2: a business partner that is not empty and not one of the namespace's is <code>INTEROP.CREDENTIAL.PARTNER</code> (422) from the Save, the
-/// mint and the port, on an add and on an edit, and an empty partner and a held one are accepted; nothing is written.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.CredentialPartnerHeld</method> answer 1 -- the unknown-partner legs go red.</p>
+/// mint and the port, on an add and on an edit, and an empty partner and a held one are accepted; nothing is written. An edit of the user name of a
+/// credential whose partner the namespace does not hold proceeds and keeps the partner, from the port and the person's Edit.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.CredentialPartnerHeld</method> answer 1 -- the unknown-partner legs go red. Make
+/// <method>OcuPilot.Port.InteropPort.CredentialMoves</method> answer the body whole -- the kept-partner legs go red.</p>
 Method TestAPartnerTheNamespaceDoesNotHoldIsRefused()
 {
     Set tFixture = ..#FIXTURE
@@ -186,6 +188,12 @@ Method TestAPartnerTheNamespaceDoesNotHoldIsRefused()
     Do $$$AssertEquals($ClassMethod(tFixture, "CredentialText", ..#NAME), "held||0", "and the credential is as it was")
     Do $$$AssertEquals(..Verdict("SETCREDENTIAL", ..#NAME, {"BusinessPartner": (tHeld)}), "200 ", "a held partner is accepted")
     Do $$$AssertEquals(..Verdict("SETCREDENTIAL", ..#NAME, {"BusinessPartner": ""}), "200 ", "and so is an empty one")
+    ; A partner the credential already holds is not judged again, so an edit of its user name alone proceeds.
+    Set tStale = ..#NAME _ "S"
+    Do $$$AssertStatusOK($ClassMethod(tFixture, "PutCredential", tStale, "held", "NoSuchPartner2415"), "a credential naming a partner the namespace does not hold is arranged")
+    Do $$$AssertEquals(..Verdict("SETCREDENTIAL", tStale, {"Username": "moved", "BusinessPartner": "NoSuchPartner2415"}), "200 ", "the port edits its user name beside the partner it holds")
+    Do $$$AssertEquals($ClassMethod(..#CONTROL, "Act", "edit", tStale, {"Username": "again"}, .tAnswer), "200 ", "and so does the person's Edit")
+    Do $$$AssertEquals($ClassMethod(tFixture, "CredentialText", tStale), "again|NoSuchPartner2415|0", "and the partner is kept")
 }
 
 /// <p>AC2: the gate, as real principals in a child process, refuses before any vendor call and writes nothing: a caller without
