@@ -1018,3 +1018,6 @@
 2026-11-22T22:01:59Z	Story 21.6	ci_resolved	sha=47363d553 run=45070444672 result=success
 2026-11-22T22:01:59Z	Story 21.6	fresh_check	env=recipe(ci-throwaway_rebuild) tests=22_classes+2_specs result=pass order=forward,reverse head=47363d553
 2026-11-22T22:03:55Z	Story 21.25	ruling	question=strings+types+keys via=orchestrator choice=accept_as_written(veto_U-146);4_clauses_measure_first;batch3=21.31;types=sql-table,sql-index,sql-schema(+consumer_list,upgrade_pin);keys=collect_true,rest_false
+2026-11-22T23:43:55Z	Story 21.6	sweep	shards=20/20_green head=47363d553
+2026-11-22T23:43:55Z	Story 21.6	smoke	container=ocupilot-ci executed=50 passed=50 failed=0 skipped=0
+2026-11-22T23:43:55Z	Story 21.6	story_complete	head=47363d553(gates,contains_feature_c655a65bd;no_M_needed) run=45070444672 fresh=pass sweep=20/20 smoke=50/50 vetoes=U-83,U-143,U-144 ledger_owned=0
