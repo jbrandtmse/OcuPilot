@@ -495,6 +495,36 @@ Parameter CREDENTIALCHANGE = "INTEROP.CREDENTIAL.CHANGE";
 
 Parameter REASONCREDENTIALCHANGE = "Anything that signs in with this credential uses the change from its next connection.";
 
+/// <p>The schedule specs' refusals, violations and consequences (Story 24.15). <code>TAKEN</code> and <code>SOURCECONTROL</code> are 409 on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, and <code>NAME</code>, <code>SPEC</code> and <code>DESCRIPTION</code> are 422.</p>
+Parameter SCHEDULETAKEN = "INTEROP.SCHEDULE.TAKEN";
+
+Parameter REASONSCHEDULETAKEN = "This namespace already has a schedule spec with that name, in some letter case.";
+
+Parameter SCHEDULENAME = "INTEROP.SCHEDULE.NAME";
+
+Parameter REASONSCHEDULENAME = "A schedule spec name is 1 to 50 characters and holds no control characters.";
+
+Parameter SCHEDULESPEC = "INTEROP.SCHEDULE.SPEC";
+
+Parameter REASONSCHEDULESPEC = "This schedule is not valid. Each part is START or STOP, a colon and a date and time.";
+
+Parameter SCHEDULEDESCRIPTION = "INTEROP.SCHEDULE.DESCRIPTION";
+
+Parameter REASONSCHEDULEDESCRIPTION = "A description is at most 256 characters.";
+
+Parameter SCHEDULESOURCECONTROL = "INTEROP.SCHEDULE.SOURCECONTROL";
+
+Parameter REASONSCHEDULESOURCECONTROL = "This namespace uses source control, so change schedule specs in the classic Schedule Specs page.";
+
+Parameter SCHEDULEREMOVE = "INTEROP.SCHEDULE.REMOVE";
+
+Parameter REASONSCHEDULEREMOVE = "Items that name this schedule spec keep running until the production is next updated, and are then disabled and stopped until the schedule spec is added again. It cannot be restored from OcuPilot.";
+
+Parameter SCHEDULECHANGE = "INTEROP.SCHEDULE.CHANGE";
+
+Parameter REASONSCHEDULECHANGE = "A running production that uses this schedule spec follows a changed spec at once.";
+
 /// <p>The startup settings' refusals, violations and consequences (Story 24.3): the auto-start production and a production's shutdown
 /// group. <code>SAME</code> is 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, <code>ALLNAMESPACES</code> is 403,
 /// <code>READONLY</code> is 409, and <code>PRIORITY</code>, <code>GROUP</code> and <code>NOPRIORITY</code> are 422.</p>
@@ -666,13 +696,13 @@ Parameter OUTCOMEFAILED = "not resent";
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..StartupCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..ScheduleCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..StartupCodes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -772,6 +802,20 @@ ClassMethod CredentialCodes() As %List
 ClassMethod CredentialPreconditionCodes() As %List
 {
     Quit $ListBuild(..#CREDENTIALTAKEN)
+}
+
+/// <p>The schedule spec codes (Story 24.15), as a <class>%List</class>: the refusals of a name the namespace holds in some letter case and of a
+/// namespace under source control, and the three violations. The two consequence codes are <method>ConsequenceCodes</method>'s.</p>
+ClassMethod ScheduleCodes() As %List
+{
+    Quit $ListBuild(..#SCHEDULETAKEN, ..#SCHEDULENAME, ..#SCHEDULESPEC, ..#SCHEDULEDESCRIPTION, ..#SCHEDULESOURCECONTROL)
+}
+
+/// <p>The schedule spec refusals a schedule tool's fresh read answers when the action does not fit the namespace or the schedule spec, as a
+/// <class>%List</class>; the three violations, which the write alone judges, are not among them.</p>
+ClassMethod SchedulePreconditionCodes() As %List
+{
+    Quit $ListBuild(..#SCHEDULETAKEN, ..#SCHEDULESOURCECONTROL)
 }
 
 /// <p>The startup codes (Story 24.3), as a <class>%List</class>: the three violations, the refusal of a value the production
@@ -950,6 +994,13 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#CREDENTIALVALUE Quit ..#REASONCREDENTIALVALUE
     If pCode = ..#CREDENTIALREMOVE Quit ..#REASONCREDENTIALREMOVE
     If pCode = ..#CREDENTIALCHANGE Quit ..#REASONCREDENTIALCHANGE
+    If pCode = ..#SCHEDULETAKEN Quit ..#REASONSCHEDULETAKEN
+    If pCode = ..#SCHEDULENAME Quit ..#REASONSCHEDULENAME
+    If pCode = ..#SCHEDULESPEC Quit ..#REASONSCHEDULESPEC
+    If pCode = ..#SCHEDULEDESCRIPTION Quit ..#REASONSCHEDULEDESCRIPTION
+    If pCode = ..#SCHEDULESOURCECONTROL Quit ..#REASONSCHEDULESOURCECONTROL
+    If pCode = ..#SCHEDULEREMOVE Quit ..#REASONSCHEDULEREMOVE
+    If pCode = ..#SCHEDULECHANGE Quit ..#REASONSCHEDULECHANGE
     If pCode = ..#STARTUPSAME Quit ..#REASONSTARTUPSAME
     If pCode = ..#STARTUPPRIORITY Quit ..#REASONSTARTUPPRIORITY
     If pCode = ..#STARTUPGROUP Quit ..#REASONSTARTUPGROUP

@@ -150,6 +150,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropDefaultSettingList',
   // Story 24.15: Credentials, whose Remove types the credential's name and whose New credential, Edit and Set password its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropCredentialList',
+  // Story 24.15: Schedule specs, whose Remove types the schedule spec's name and whose New schedule spec and Edit its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropScheduleList',
   // Story 20.23: Queues, whose Abort all types the queue's name; Queue messages and an item's Queue tab, whose Abort types the
   // message id; and Jobs and an item's Jobs tab, whose Abort message types the job's process id and whose Suspend message and
   // Stop job warn first.
@@ -629,6 +631,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropDefaultSettingList': ['edit'],
   // Credentials' page registers Edit and Set password itself, whose dialogs send the user name and business partner and the password (Story 24.15).
   'OcuPilot.Screen.Descriptor.InteropCredentialList': ['edit', 'password'],
+  // Schedule specs' page registers Edit itself, whose dialog sends the schedule, the description and the flag (Story 24.15).
+  'OcuPilot.Screen.Descriptor.InteropScheduleList': ['edit'],
   // An item's Test tab's page registers Send test itself, whose dialog sends the request class and its fields (Story 20.6).
   'OcuPilot.Screen.Descriptor.InteropItemTestTab': ['test'],
   // Data transformations' page registers Test itself, whose dialog sends the pasted message (Story 20.27).
@@ -831,6 +835,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.InteropDefaultSettingList': { remove: STRINGS.interopDefaultSettingRemoveConsequence },
   // Story 24.15: a credential's Remove makes anything that names it unable to use it.
   'OcuPilot.Screen.Descriptor.InteropCredentialList': { remove: STRINGS.x509DeleteConsequence },
+  // Story 24.15: a schedule spec's Remove leaves the items that name it running until the production is next updated.
+  'OcuPilot.Screen.Descriptor.InteropScheduleList': { remove: STRINGS.interopScheduleRemoveConsequence },
   // Story 20.23: an abort never delivers the messages it takes: all of a queue's, one waiting message, or the message a job keeps retrying.
   [INTEROP_QUEUE_LIST]: { abort: STRINGS.interopQueueAbortConsequence },
   [INTEROP_QUEUE_MESSAGE_LIST]: { abort: STRINGS.interopMessageAbortConsequence },
@@ -950,6 +956,8 @@ const TYPED_NAME_ROWS: Readonly<
   'OcuPilot.Screen.Descriptor.InteropDefaultSettingList': { name: 'Setting', field: '', equals: '', advisory: '' },
   // Story 24.15: a credential is keyed by its name, which its Remove types.
   'OcuPilot.Screen.Descriptor.InteropCredentialList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.15: a schedule spec is keyed by its name, which its Remove types.
+  'OcuPilot.Screen.Descriptor.InteropScheduleList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 20.23: an abort types the queue's name, the message's id or the job's process id, which each list's name column shows.
   [INTEROP_QUEUE_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   [INTEROP_QUEUE_MESSAGE_LIST]: { name: 'MessageId', field: '', equals: '', advisory: '' },

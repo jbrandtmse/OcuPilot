@@ -56,6 +56,9 @@ Parameter INTEROPDEFAULTSETTINGDISABLED = "interop.defaultsettings.remove";
 /// <p>The credential remove (Story 24.15): the one credential write that ships disabled.</p>
 Parameter INTEROPCREDENTIALDISABLED = "interop.credentials.remove";
 
+/// <p>The schedule spec remove (Story 24.15): the one schedule spec write that ships disabled.</p>
+Parameter INTEROPSCHEDULEDISABLED = "interop.schedules.remove";
+
 /// <p>Story 20.31's message resend and edit and resend, which ship disabled (AD-22): a delivered copy cannot be recalled.</p>
 Parameter INTEROPMESSAGEDISABLED = "interop.messages.resend,interop.messageheader.editresend";
 
@@ -232,6 +235,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If $ListFind($ListFromString(..#INTEROPPARTNERDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPDEFAULTSETTINGDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPCREDENTIALDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPSCHEDULEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPMESSAGEDISABLED), tKey) Set tExpected = "0|baseline"
         If tKey = ..#CUBEDISABLED Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#BACKUPDISABLED), tKey) Set tExpected = "0|baseline"

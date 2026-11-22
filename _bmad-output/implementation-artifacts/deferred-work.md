@@ -14404,6 +14404,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Story 24.15 spec gate, veto item U-135, orchestrator condition | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Kernel/Secret/Ladder.cls: the wallet rung reads a %Wallet.KeyValue secret from the IRIS wallet for the provider key (doc lines 14-17, WALLETKEYVALUETYPE); Screen/Tool ships WalletSecretDelete and WalletSecretUpdate
 - 2026-11-21T18:36:21Z status=routed owner=burndown by=epic-24-runner note=Epic 24 burn-down; do not widen 24.15 Batch 2 to cover it (orchestrator)
+- 2026-11-22T10:32:37Z by=orchestrator note=routed together with DW-2837 as one self-protection parity item (burndown, medium)
 
 ### DW-2827: Wrong-namespace remove: InteropPartnerRemove, InteropLookupEntryRemove and InteropLookupTableDelete do not store the proposal's namespace, so a remove proposed in one namespace and confirmed from another deletes the same-named row in the confirming namespace (the defect Story 24.15 Batch 1 review fixed for the default-setting remove)
 - source: spec-24-15-credentials-default-settings-and-schedules.md (review fc4a22869) | severity: high | fix-risk: low | footprint: out-of-footprint
@@ -14412,6 +14413,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-22T00:58:36Z status=routed owner=24-15-credentials-default-settings-and-schedules by=epic-24-runner note=orchestrator ruling: data loss in shipped code; scheduled as 24.15 Batch 1b after Batch 1 merges and before Batch 2; sweep the whole registered write-tool set first and report the roster before any change outside InteropPort
 - 2026-11-22T01:25:51Z by=epic-24-runner note=evidence: the sweep (24.15 Batch 1b plan) found 3 of 335 write tools lose the namespace, exactly these three; for interop.lookuptables.delete the wrong delete itself was not reproducible (without the fix a cross-namespace confirm answers 409 target-changed, because the table's millisecond change stamp differs; inference: a table copied together with its global would be deleted), so its leg pins 409 -> success
 - 2026-11-22T04:33:22Z by=epic-24-runner note=correction of the earlier evidence line: the implement stage (86f4d75d8) measured that without the fix the lookup-table delete's cross-namespace confirm answers 200 and deletes HSCUSTOM's table; it is not a 409, so the wrong delete was reproduced for tables too
+- 2026-11-22T10:44:53Z status=resolved-by:24-15-credentials-default-settings-and-schedules by=epic-24-runner note=24.15 Batch 1b (86f4d75d8, review ec4287322, merged in feature 658744ffb): the three Interop tools store Namespace; ConfirmNamespaceRoster guards every write tool
 
 ### DW-2828: Kernel: Confirm ignores the mint namespace that every namespace-scoped proposal already records in its target reference, so a tool whose stored payload omits its namespace confirms in the request's namespace (the DW-2827 defect class)
 - source: Story 24.15 Batch 1b plan sweep; orchestrator ruling | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -14432,6 +14434,27 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 21.38 plan counted them while measuring DW-2499
 - 2026-11-22T03:30:13Z status=routed owner=burndown by=lead note=candidate for a shared static gate on ScreenSaveRules
 
+### DW-2837: Self-protection gap: the agent can propose the generic globals delete or replace tools on ^Ens.SecondaryData.Password or ^Ens.Conf.CredentialsD, removing or overwriting the credential an enabled agent definition reads its provider key from, which Story 24.15 Batch 2 refuses through the credential tools
+- source: spec-24-15-credentials-default-settings-and-schedules-2.md (review 2e84d18d9) | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: 24.15 Batch 2 review layer; mitigated: the globals delete/replace tools ship off and a person confirms; same class as DW-2822 (wallet secret)
+- 2026-11-22T10:17:30Z status=decision-pending owner=burndown by=epic-24-runner note=needs a ruling: extend PROHIBITED.PROVIDERCREDENTIAL to the globals tools' targets, or accept as a named limit
+- 2026-11-22T10:32:37Z status=routed owner=burndown by=orchestrator note=one self-protection parity item with DW-2822, medium. Fix shape: refuse a generic globals delete, replace or kill whose target reaches ^Ens.SecondaryData.Password or ^Ens.Conf.CredentialsD at the provider credential's own subscript (not the whole global), and the wallet secret's key-value node likewise; measure how the generic tools name their targets first. Meanwhile the tools shipping off plus a person's confirm is acceptable
+
+### DW-2838: A refused New credential clears the typed password, so a corrected second Save creates the credential with no password and no warning
+- source: spec-24-15-credentials-default-settings-and-schedules-2.md (review 2e84d18d9) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: 24.15 Batch 2 review layer; keeping the password weakens the rule that a secret outlives no submit; a warning needs a new string
+- 2026-11-22T10:17:30Z status=decision-pending owner=burndown by=epic-24-runner note=product call
+- 2026-11-22T10:32:37Z status=routed owner=24-15-credentials-default-settings-and-schedules by=orchestrator note=fix now as the first commit of 24.15 Batch 3: keep the typed password on a refused save, clear only on an accepted Save (precedent ldap-editor.store.ts, ssl-form.store.ts); no new string; component test refused-then-corrected save sends the password
+
+### DW-2840: Schedule specs: the source-control refusal is tested only through the port seam; no test drives a tool's mint or the save/remove routes in a source-controlled namespace
+- source: spec-24-15-credentials-default-settings-and-schedules-4.md (implement review 05fd00c24) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: 24.15 Batch 3 implement-stage review, deferred low
+- 2026-11-22T15:07:16Z status=routed owner=burndown by=epic-24-runner note=add a mint and a route leg under a source-controlled seam namespace
+
+### DW-2841: At confirm, every Interop write tool takes its globals-database WRITE pair check from the confirming request's namespace, not the proposal's; no write lands (the port refuses 403 afterwards), but the gate answer can differ from the proposal's namespace
+- source: spec-24-15-credentials-default-settings-and-schedules-4.md (review 76c6b6f06) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: 24.15 Batch 3 review layer; family-wide, predates the batch
+- 2026-11-22T15:43:28Z status=routed owner=burndown by=epic-24-runner note=ask the pair in the proposal's stored namespace
 ### DW-2832: The source-control question dialog holds its answered state in the card alone, can stack across two cards, drops an open question when the person leaves the list, and shows a lead with no text for an action 1 or 6 with an empty target
 - source: spec-21-38-shared-rules-helpers-the-source-control-follow-up-and-escala.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Code review 21.38: proposal-card.ts questionsFinished is component-local while TurnStore keeps questions; code-list.page.ts has no destroy hand-off; sourceControlQuestionsOf keeps an empty target (inference: no remount observed)

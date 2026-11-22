@@ -707,3 +707,36 @@
 2026-11-22T05:48:43Z	Story 24.15	merged_to_feature	scope=batch1b feature=658744ffb
 2026-11-22T09:27:10Z	Story 24.15	stage_completed	stage=implement scope=batch2 commit=9ec1cc617 task0=vendor_no_audit(ConfigChange),name50,case_distinct,stored=$Length($Get(node))>0,provider_exact_name_own_ns review=13(2_patched) sweep=17/17 browser=7/7_both_orders,a11y13/13 test_tools=2388 components=320/3820 unrun_mutations=control-char,partner,gate,page_password guard_relaxed=self-protection.test.mjs(agent_definition_phrase) role_unconfirmed=InteropFloor_Operator
 2026-11-22T09:27:10Z	Story 24.15	stage_spawned	stage=qa+code-review(4_layers) spawn_at=2026-11-22T09:27:10Z model=opus agent_name=24-15-review-batch2 cycle_iteration=2
+2026-11-22T09:28:16Z	Story 24.15	coordinator_conditions_relayed	scope=batch2 to=review conditions=no_intent-to-add_leftovers(git_status_clean_at_lead_check),file_set_belongs,self-protection_exact_phrase+test,x509DeleteConsequence_truth_or_halt,InteropFloor_by_instance_role,run_4_mutations
+2026-11-22T10:17:39Z	Story 24.15	stage_completed	stage=qa+code-review scope=batch2 commit=2e84d18d9 findings=28(med4:3_patched[cross-ns_confirm_partner/user,stale_partner_edit,Stored_word],1_deferred;low23:8_patched,1_deferred,14_rejected) self-protection=7/7_pass mutations=4_prescribed_red+provider_legs+new_tests footprint_ext=Kernel/State/Base.cls(GuardedIdsWhere_error,uncontended) operator_role=%EnsRole_Operator_holds_R(placement_correct)
+2026-11-22T10:17:39Z	Story 24.15	ledger_adjudicated	scope=batch2 new=DW-2837(med,decision-pending,globals_tools_on_provider_credential),DW-2838(low,decision-pending,password_cleared_after_refusal)
+2026-11-22T10:17:49Z	Story 24.15	integrated_feature	scope=batch2 feature=658744ffb(bookkeeping+timings) conflicts=0
+2026-11-22T10:17:49Z	Story 24.15	fresh_check_started	scope=batch2
+2026-11-22T10:31:02Z	Story 24.15	fresh_check_passed	scope=batch2 tree=874b3bd99(code=2e84d18d9+feature_timings) classes=21cls_217tests_first_run reverse=3cls_18tests browser=credentials+default-settings+partners+a11y_24/24 smoke=PASSED(1_skipped:agentswitches)
+2026-11-22T10:31:02Z	Story 24.15	code_head_pushed	scope=batch2 sha=2e84d18d9 run=45012764267
+2026-11-22T10:31:19Z	Story 24.15	stage_spawned	stage=plan spawn_at=2026-11-22T10:31:19Z model=opus agent_name=24-15-plan-batch3 cycle_iteration=4 scope=batch3_schedules
+2026-11-22T10:32:37Z	Story 24.15	ruling	source=orchestrator DW-2837=routed_with_DW-2822(burndown,med) DW-2838=batch3_first_commit(relayed_to_plan;precedent_clear_only_on_accepted_save)
+2026-11-22T10:44:53Z	Story 24.15	story_created	spawn_at=2026-11-22T10:33:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-15-credentials-default-settings-and-schedules-4.md build_status=ready-for-dev scope=batch3_schedules+DW-2838_first
+2026-11-22T10:44:53Z	Story 24.15	ruling	question=batch3_veto_set+README choice=keep category=veto inbox=U-140 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-22T10:44:53Z	Story 24.15	spec_validated	scope=batch3 owned_ledger=DW-2838 resolved=DW-2827
+2026-11-22T10:44:53Z	Story 24.15	stage_spawned	stage=implement spawn_at=2026-11-22T10:44:53Z model=sonnet agent_name=24-15-implement-batch3 cycle_iteration=4 story_base=e6db2ed9f
+2026-11-22T10:45:51Z	Story 24.15	ruling	source=orchestrator README=mine_add-only(word-diff_in_merge_note) spine_lines=cleared(AD-62_item18,AD-35,AD-10,AD-15,AD-22;story_end_one_commit;tag_U-135/U-137/U-140) ValidateScheduleSpec_signature_pin=relayed
+2026-11-22T10:57:57Z	Story 24.15	stage_completed	stage=task1 scope=batch3 commit=fab07a395 DW-2838_fixed(component_test+mutation)
+2026-11-22T10:57:57Z	Story 24.15	stage_blocked	stage=implement scope=batch3 condition=intent_gap(Task0_f:remove_disables_and_stops_items_at_next_production_update;REMOVE_consequence_untrue) task0=a_no_audit,b_own_db_write,c_case_distinct(SQL_exact),d_50/256,e_confirmed,g_ValidateScheduleSpec_ok(signature:ClassMethod_Internal_&pScheduleSpec,&pScheduleErrors,*pLength->%Status)
+2026-11-22T10:58:37Z	Story 24.15	ruling	source=orchestrator scope=batch3 option=A REMOVE_sentence_replaced_in_place inbox=U-141 DW-2838_accepted
+2026-11-22T10:58:37Z	Story 24.15	stage_spawned	stage=implement spawn_at=2026-11-22T10:58:37Z model=sonnet agent_name=24-15-implement-batch3-r2 cycle_iteration=4 story_base=432dac98e
+2026-11-22T11:05:00Z	Story 24.15	ci_green	scope=batch2 sha=2e84d18d9 run=45012764267
+2026-11-22T11:09:22Z	Story 24.15	merged_to_feature	scope=batch2 feature=ccb170485 integrate_before_b3_push=yes
+2026-11-22T12:47:40Z	Story 24.15	note	feature=3e511e16c(21.38) integrate_target_for_b3=3e511e16c rosters_rederive_on_merged_tree
+2026-11-22T12:47:50Z	Story 24.15	note	correction:ConfirmNamespaceRoster_unchanged_ccb170485..3e511e16c(only_GovernanceBaseline,ToolRoundTrip_tests_changed)
+2026-11-22T15:07:16Z	Story 24.15	stage_completed	stage=implement scope=batch3 commit=05fd00c24 README=Eighty-two->Eighty-five(+3;pre-existing_gap:baseline_94_disabled_vs_README_85) consumers_run=6 sweep=17/17 test_tools=2391 components=3845 a11y=13/13 review=14(3_patched,1_deferred=DW-2840,10_rejected) protocol=subagent_sed_-i_once(.bak_deleted)
+2026-11-22T15:07:16Z	Story 24.15	stage_spawned	stage=qa+code-review(4_layers) spawn_at=2026-11-22T15:07:16Z model=opus agent_name=24-15-review-batch3 cycle_iteration=4
+2026-11-22T15:08:08Z	Story 24.15	ruling	source=orchestrator README_count=true_number_on_merged_tree(one-word;evidence:1.0.18_said_82_baseline_91) DW-2840=fix_in_batch_if_real_path_unguarded push=one_code_head_containing_3e511e16c
+2026-11-22T15:43:28Z	Story 24.15	stage_completed	stage=qa+code-review scope=batch3 commit=76c6b6f06 findings=16(high1_patched:AD-59_add_script_free-name_gate_case-folded(schedule+credential);med3_patched;low...) DW-2840=real_paths_guarded+InteropScheduleSourceControl_test README=85_correct(agent_actions;94_false_minus_9_people-only) sed_hunk=strings.ts:2281_citation_OK deferred=DW-2841 fresh_check_owed=InteropScheduleSourceControl
+2026-11-22T15:50:06Z	Story 24.15	integrated_feature	scope=batch3 feature=3e511e16c(21.38) merge=740a904a4 conflicts=5(ReadTool584,ToolWrite161,ToolRoundTrip/GovernanceBaseline/ci-throwaway_unions) mirror_regenerated test_tools=2395 README=85_agent_actions(96_false-11_people-only_incl_21.38_answers)
+2026-11-22T15:50:06Z	Story 24.15	fresh_check_started	scope=batch3 tree=740a904a4
+2026-11-22T16:04:30Z	Story 24.15	fresh_check_passed	scope=batch3 tree=740a904a4 classes=17cls_164tests_first_run reverse=4cls_19tests browser=schedules+credentials+default-settings+explorer-source-control+a11y_23/23 smoke=PASSED README_crosscheck=instance_346_keys_96_false
+2026-11-22T16:04:30Z	Story 24.15	code_head_pushed	scope=batch3 sha=740a904a4 run=45041714141
+2026-11-22T16:06:19Z	Story 24.15	spine_amended	commit=94a8ddc2d AD-62_item18+AD-35+AD-10+AD-15+AD-22 add-only(+9/-0) push=after_batch3_merge
+2026-11-22T16:40:52Z	Story 24.15	ci_green	scope=batch3 sha=740a904a4 run=45041714141
+2026-11-22T16:40:52Z	Story 24.15	story_done	batches=1,1b,2,3 tracker=done spine=94a8ddc2d

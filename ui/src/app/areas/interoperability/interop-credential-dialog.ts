@@ -308,11 +308,13 @@ export class InteropCredentialDialog {
     }
     const name = this.store.value('Name');
     const added = await this.store.add(this.namespace(), typed);
+    // A refused add keeps the typed password, so the corrected Save sends it again.
+    if (!added) return;
     this.clearPassword();
-    if (added) this.added.emit(name);
+    this.added.emit(name);
   }
 
-  /** Empty the password field, so what was typed outlives neither a submit nor the dialog. */
+  /** Empty the password field after an accepted add, a Set password or a close, so what was typed never outlives the dialog. */
   private clearPassword(): void {
     const input = this.passwordInput()?.nativeElement;
     if (input !== undefined) input.value = '';

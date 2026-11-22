@@ -298,6 +298,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/interop/business-partners" Method="POST" Call="InteropPartnerCreate"/>
   <Route Url="/interop/default-settings" Method="POST" Call="InteropDefaultSettingCreate"/>
   <Route Url="/interop/credentials" Method="POST" Call="InteropCredentialCreate"/>
+  <Route Url="/interop/schedules" Method="POST" Call="InteropScheduleCreate"/>
   <Route Url="/config/ddl-mappings" Method="POST" Call="DdlMappingCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
   <Route Url="/allowed-directories" Method="POST" Call="AllowedDirectorySave"/>
@@ -2125,6 +2126,13 @@ ClassMethod InteropDefaultSettingCreate() As %Status
 ClassMethod InteropCredentialCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Interop.CredentialSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/schedules</code> (Story 24.15): Schedule specs' New schedule spec, resolved through the one
+/// tool the agent's confirm uses (AD-55).</p>
+ClassMethod InteropScheduleCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.ScheduleSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /config/ddl-mappings</code> (Story 21.13): User DDL mappings' New mapping, resolved

@@ -183,6 +183,7 @@ ClassMethod Clear() As %Status
     }
     Set tSC = $$$ADDSC(tSC, ..DropPartners(..#PARTNERPREFIX))
     Set tSC = $$$ADDSC(tSC, ..DropCredentials(..#CREDENTIALPREFIX))
+    Set tSC = $$$ADDSC(tSC, ##class(OcuPilot.Test.InteropScheduleFixture).DropSchedules())
     Quit $$$ADDSC(tSC, ..DropDefaults(..#DEFAULTPREFIX))
 }
 
