@@ -422,13 +422,13 @@ ClassMethod ArgsFor(pName As %String) As %DynamicObject
 }
 
 /// <p>Confirm proposal <var>pProposalId</var> over the wire as the HTTP test account, scoped to
-/// <parameter>NAMESPACE</parameter>: the status, the raw body and the parsed answer (<code>""</code> when
-/// the body is not one JSON document).</p>
-ClassMethod ConfirmHttp(pProposalId As %String, Output pStatus As %Integer, Output pRaw As %String, Output pAnswer) As %Status
+/// <parameter>NAMESPACE</parameter>, or to <var>pNamespace</var> when it is not empty: the status, the raw body and the parsed
+/// answer (<code>""</code> when the body is not one JSON document).</p>
+ClassMethod ConfirmHttp(pProposalId As %String, Output pStatus As %Integer, Output pRaw As %String, Output pAnswer, pNamespace As %String = "") As %Status
 {
     Set pAnswer = ""
     Kill tExtra
-    Set tUrl = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/proposal/" _ pProposalId _ "/confirm?ns=" _ ..#NAMESPACE
+    Set tUrl = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/proposal/" _ pProposalId _ "/confirm?ns=" _ $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tUrl, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .pRaw, .tHeaders, "", "application/json", .tExtra, 180)
     Try { Set pAnswer = ##class(%DynamicObject).%FromJSON(pRaw) } Catch { Set pAnswer = "" }
     Quit tSC

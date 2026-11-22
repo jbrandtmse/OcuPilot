@@ -2,13 +2,21 @@
 title: 'Story 24.15: Credentials, default settings and schedules (Batch 1b: a confirmed write acts in its proposal''s namespace)'
 type: 'bugfix'
 created: '2026-11-21'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '63062b501be5db1c7f1e67ea15c1e64a916562f3'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-15-credentials-default-settings-and-schedules.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      No test mints the three creates with a mint-supplied namespace (explorer.classes.create, explorer.routines.create, webapp.restapis.create) and confirms them from another namespace.
+    evidence: |-
+      ConfirmNamespaceRoster supplies Namespace in those creates' arguments itself (MINTARGUMENT), as ExplorerCreateMint and RestServiceCreateMint do; ExplorerCreateFlow confirms in the minting namespace only. A mint-level cross-namespace confirm test would settle it.
+    location: >-
+      src/OcuPilot/Test/ConfirmNamespaceRoster.cls
+    severity: low
 ---
 
 <intent-contract>
@@ -60,15 +68,33 @@ deferred: []
 - `src/OcuPilot/Test/InteropLookupFixture.cls` -- add a trailing optional `pNamespace` (empty means `NAMESPACE`) to `Put`, `Drop`, `Exists`, `Entries`, `PutPartner`, `PartnerText` and `DropPartners`, as `PutDefault` already does; leave `Clear` as it is.
 - `src/OcuPilot/Test/InteropConfirmNamespace.cls` (new, `ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS"`) -- one method per Matrix row 1-3. Mint through `InteropPartnerControl.Mint` or `InteropLookupControl.Mint` (scoped to `USER`), turn on the tool's governance key, and confirm through `ConfirmHttp(..., "HSCUSTOM")`. `OnBeforeOneTest` and `OnAfterOneTest` call `Clear()`, then `Drop` the probe table and `DropPartners` the probe partner in `HSCUSTOM`. Each method deletes its turn's ledger rows and restores the policy.
 - `scripts/ci-throwaway.sh` -- add a comment and a `# classes: InteropConfirmNamespace` line under the `OCUPILOT_ALLOW_PRINCIPALS` block, after the default-setting lines. Add-only.
+- `src/OcuPilot/Test/ConfirmNamespaceRoster.cls` (new; a second class by port group if one passes about 500 lines; arm it only if `ui/tools/ci.test.mjs` or the sweep requires it) -- the permanent form of the Roster sweep (orchestrator order, in scope). For every write tool `OcuPilot.Screen.Tool.Registry.ListTools` returns: set the request scope (`OcuPilot.Kernel.Scope`) to sentinel A and build the payload the mint stores (the tool's `MergeUpdate` over a read answering every `READANSWERS` field, narrowed by `FingerprintSubject`; or `ComposeCreate`, with the arguments its mint builds where the mint puts `Namespace` into them); set the scope to sentinel B; build the confirm's port query with `Operation.Query`; assert the query names A. Restore the scope in every path. Exempt only namespace-free and person-only tools, from a declared roster with one reason per entry (a port class, or a tool name for the person-only and the one-off cases), and assert each roster entry matches a registered write tool and that an exempt tool declares instance scope or is person-only. Floor assertions: the write tools walked, and the tools checked, are each above 0; pin the exemption roster's size. Counts in Design Notes are scratch measurements; the class measures its own on the instance.
 
 **Acceptance Criteria:**
 
 - Given a partner, an entry or a table held identically in `USER` and `HSCUSTOM`, when the agent's remove or delete is minted in `USER` and confirmed by a request scoped to `HSCUSTOM`, then the confirm answers 200, `USER`'s row is gone and `HSCUSTOM`'s row is unchanged (Matrix rows 1-3, one test each).
+- Given every registered write tool outside the declared exemption roster, when the roster test builds a proposal's stored payload in one namespace and the confirm's port query in another, then the query names the first namespace; the new roster test passes on its first run on a fresh instance, forward and reverse.
 - Given the three tools, when `InteropLookupDescriptor`, `InteropLookupControl`, `InteropPartnerControl` and the full ObjectScript sweep run, then each is green and the cards show the same rows as before.
 
 ## Spec Change Log
 
+- 2026-11-21, implement: the orchestrator ordered the roster guard test added to this pass (Task `ConfirmNamespaceRoster`, one acceptance bullet, a fourth mutation). Because the test reads every tool's declared namespace field, the inference in Design Notes › Roster ("carries" assumes each read answers its declared field) is retired for the tools it covers.
+
 ## Review Triage Log
+
+### 2026-11-21 — Review pass
+
+- verdicts: 9 findings — high 0, medium 1, low 2, false 6, maybe-false 0
+- findings:
+  - `[low]` `[defer]` The roster test puts `Namespace` into the arguments of three creates itself, so a mint that stopped doing so would not redden it — the real mints (`ExplorerCreateMint`, `RestServiceCreateMint`) set the argument and no test confirms those creates from another namespace; a pre-existing coverage gap the roster does not widen, deferred with a mint-level test as its settle.
+  - `[medium]` `[patch]` The roster's own guards (an exemption on a namespace-scoped tool, a person exemption with no gate, a dropped or needless `MINTARGUMENT` entry) had no observed mutation — four mutations observed on `ocupilot-b-ci` and recorded under Mutations; no code changed, every revert byte-identical (md5).
+  - `[false]` `[reject]` The partner remove's subject has no source-text pin — covered behaviourally: the partner mutation reds `InteropConfirmNamespace` alone (run 41).
+  - `[false]` `[reject]` The doc sentence on the three subjects ("the confirm and the script form act where the proposal read") is untested — it is the sentence `InteropDefaultSettingRemove` carries, the golden example the spec names; no claim of its own.
+  - `[false]` `[reject]` The roster walk reads and restores `^||OcuPilotScope` directly — `Scope.Current` falls back to `$Namespace`, so only the global tells an unset scope from a set one, and the walk must put back exactly what it found.
+  - `[false]` `[reject]` The roster class has no arming variable — it writes nothing: it composes payloads and builds queries, and sets and restores the request scope; it ran green on the throwaway.
+  - `[low]` `[reject]` The copy-out draft is not asserted — the intent names it as part of what `PortQuery` sends, not as a new behavior; the fix is the one the default-setting tool already carries, and a test of it would be a new surface for no new risk.
+  - `[false]` `[reject]` The table leg does not assert the two tables' `Modified` stamps match — the stamp is read in `USER` and the fixed confirm acts in `USER`; `HSCUSTOM`'s stamp plays no part, and the leg's assertions are the rows.
+  - `[false]` `[reject]` The roster test reaches other ports' tools — it only reads them and edits none; ordered by the orchestrator and recorded in the Spec Change Log.
 
 ## Design Notes
 
@@ -88,7 +114,7 @@ Method: a scratch class (`OcuScratch.NsRoster`, deleted afterwards) listed `OcuP
 
 **Why per tool, not the kernel.** All 111 tools that carry the namespace do it the per-tool way, through `PortQuery` (AD-52, AD-62 item 3). The kernel already records the mint's namespace in a namespace-scoped proposal's `targetRef` (`EntityRef.ScopeFor`), and `Confirm.FingerprintMatches` parses it but ignores it. A kernel switch would cover future tools as well (inference). That option is left to the orchestrator.
 
-**Table delete.** `Modified` is the vendor's millisecond stamp, so the vendor's own calls cannot make `HSCUSTOM`'s table identical. Without the fix, that leg therefore reds as 409 `PROPOSAL.TARGETCHANGED`, not as a deletion. A table copied with its global keeps its stamp and would be deleted (inference).
+**Table delete.** Without the fix, the table leg's confirm answers 200 and deletes `HSCUSTOM`'s table, as the other two legs do (measured on `ocupilot-b-ci`, 2026-11-21).
 
 **Decided in-stage:** a new test class, because the sibling classes are at 357-490 lines; probe names under the prefixes the siblings already clean (`OcuProbe205`, `OcuProbe226`); cleanup of `HSCUSTOM` stays in the new class, so `Clear`, which 15 classes share, is unchanged; `ConfirmHttp` and the fixture are extended rather than copied (Rule 2).
 
@@ -100,7 +126,7 @@ Method: a scratch class (`OcuScratch.NsRoster`, deleted afterwards) listed `OcuP
 
 **Commands:**
 
-- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.InteropConfirmNamespace`, one call each, then `InteropLookupDescriptor`, `InteropLookupControl`, `InteropPartnerControl`, `InteropLookupEdges` and `InteropDefaultSettingEdges`. Expected: green; the new class is green on its first run.
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.InteropConfirmNamespace`, one call each, then `ConfirmNamespaceRoster`, `InteropLookupDescriptor`, `InteropLookupControl`, `InteropLookupEdges`, `InteropLookupRefusals`, `InteropPartnerControl`, `InteropPartnerRefusals`, `InteropPartnerGate`, `InteropLookupGate`, `InteropDefaultSettingEdges` and `DraftRegistry`. Expected: green; each new class is green on its first run.
 - `(loop)` `cd ui && node --test tools/ci.test.mjs` and `uv run scripts/check-objectscript.py`. Expected: green.
 - `(once)` The full ObjectScript sweep, `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --shard k/17` for k = 1 to 17, one call each. Expected: green. The browser suite is left to CI, and no client code changes.
 
@@ -108,11 +134,34 @@ Method: a scratch class (`OcuScratch.NsRoster`, deleted afterwards) listed `OcuP
 
 **Mutations** (`mutation: <change> -> <test>`, filled in at implement):
 
-- mutation: take `Namespace` out of `InteropPartnerRemove.FINGERPRINTSUBJECT` -> the partner leg reds: `HSCUSTOM`'s partner is removed and `USER`'s is left.
-- mutation: take `Namespace` out of `InteropLookupEntryRemove.FINGERPRINTSUBJECT` -> the entry leg reds: `HSCUSTOM`'s `k` is removed.
-- mutation: take `Namespace` out of `InteropLookupTableDelete.FINGERPRINTSUBJECT` -> the table leg reds: 409 target-changed, and `USER`'s table is still there.
+- mutation: take `Namespace` out of `InteropPartnerRemove.FINGERPRINTSUBJECT` -> observed on `ocupilot-b-ci` (run 41): the partner leg reds alone (1 of 3); the confirm answers 200, `USER`'s partner is left and `HSCUSTOM`'s is removed. Reverted byte-identical (md5), green on run 46.
+- mutation: take `Namespace` out of `InteropLookupEntryRemove.FINGERPRINTSUBJECT` -> observed (run 44): the entry leg reds alone; `USER`'s `k` is left and `HSCUSTOM`'s is removed. Reverted byte-identical (md5), green on run 46.
+- mutation: take `Namespace` out of `InteropLookupTableDelete.FINGERPRINTSUBJECT` -> observed (run 45): the table leg reds alone; the confirm still answers 200 (the status assertion stays green), `USER`'s table is left and `HSCUSTOM`'s is deleted. Reverted byte-identical (md5), green on run 46.
+- mutation: take `Namespace` out of `InteropPartnerRemove.FINGERPRINTSUBJECT` again, load, none of the three tools has a subclass -> observed (run 43): `ConfirmNamespaceRoster` reds alone in `TestEveryWriteToolAsksItsPortInTheNamespaceItsProposalRead`, and the failed assertion's description names `interop.businesspartners.remove (OcuPilot.Screen.Tool.InteropPartnerRemove)`. Reverted byte-identical (md5), green on run 47.
+- mutation: add the entry `port|OcuPilot.Port.NoSuchPort` to the roster's `Exemptions` -> observed (run 49): `TestEveryExemptionNamesARegisteredWriteTool` and `TestTheWalkIsNotEmptyAndTheRosterHasItsSize` red, the third stays green. Reverted byte-identical (md5), green on run 50.
+- mutation: exempt a namespace-scoped tool (`tool|interop.businesspartners.remove|mutation` in `Exemptions`) -> observed on the rebuilt throwaway (run 16): `TestEveryWriteToolAsksItsPortInTheNamespaceItsProposalRead` reds, naming the tool as exempt as instance-scoped while its descriptor declares namespace; the size test reds with it.
+- mutation: exempt a tool as a person's alone with no person's gate (`person|interop.businesspartners.remove|mutation`) -> observed (run 17): the same test reds, "declares no person's gate".
+- mutation: drop `RestServiceCreate` from `MINTARGUMENT` -> observed (run 18): the same test reds alone, naming `webapp.restapis.create`.
+- mutation: add `AnalyticsListingAdd` to `MINTARGUMENT` -> observed (run 19): `TestEveryExemptionNamesARegisteredWriteTool` reds alone, naming `analytics.listinggrouplistings.add`. Each reverted byte-identical (md5), green on run 20.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** `interop.businesspartners.remove`, `interop.lookupentries.remove` and `interop.lookuptables.delete` keep `Namespace` in their `FINGERPRINTSUBJECT`, so a confirm sent from another namespace asks the port in the namespace the proposal read (DW-2827). Without the fix the table leg's confirm answers 200 and deletes `HSCUSTOM`'s table, as the other two legs do.
+
+**Files.**
+
+- `src/OcuPilot/Screen/Tool/InteropPartnerRemove.cls`, `InteropLookupEntryRemove.cls`, `InteropLookupTableDelete.cls`: `Namespace` appended to the subject, with the doc sentence.
+- `src/OcuPilot/Test/InteropLookupDescriptor.cls`: the two subjects in `TOOLS`.
+- `src/OcuPilot/Test/InteropItemControl.cls`, `InteropLookupFixture.cls`: optional trailing `pNamespace`.
+- `src/OcuPilot/Test/InteropConfirmNamespace.cls` (new): Matrix rows 1-3, one HTTP leg each.
+- `src/OcuPilot/Test/ConfirmNamespaceRoster.cls` (new, orchestrator order): every registered write tool outside a 42-entry declared exemption roster asks its port in the minting namespace; 335 write tools walked, 220 exempt, 115 asked.
+- `scripts/ci-throwaway.sh`: add-only `# classes: InteropConfirmNamespace` line.
+
+**Review.** 9 findings: 1 medium patched (four roster-guard mutations observed, no code change), 1 low deferred (mint-level cross-namespace test for three creates), 1 low and 6 false rejected, reasons in the Triage Log. Follow-up review recommended: false.
+
+**Verification.** On the rebuilt `ocupilot-b-ci`: both new classes green on their first run (runs 1 and 2), then forward and reverse; `InteropLookupDescriptor`, `InteropLookupControl`, `InteropLookupEdges`, `InteropLookupRefusals`, `InteropLookupGate`, `InteropPartnerControl`, `InteropPartnerRefusals`, `InteropPartnerGate`, `InteropDefaultSettingEdges` and `DraftRegistry` green; the Rule 29 sweep, shards 1-17 of 17, 0 failed, no flake; `check-objectscript.py` 0 problems; `npm run test:tools` 2385 passed; `lint-docs.sh` 0 problems. Nine mutations observed, each reverted byte-identical.
+
+**Residual risks.** The exemption reasons for the 37 ports rest on the planning grep that found only 8 ports reading the request scope, and the test checks only that each exempt tool declares instance scope. `ci-timings.json` is not refreshed here; the merge gate does it.

@@ -28,12 +28,13 @@ Parameter DEFAULTPREFIX = "OcuProbe2415";
 /// <p>The second namespace a comparison of default settings reads.</p>
 Parameter OTHERNAMESPACE = "HSCUSTOM";
 
-/// <p>Store <var>pValue</var> for <var>pKey</var> of <var>pTable</var>, creating the table, as the vendor does.</p>
-ClassMethod Put(pTable As %String, pKey As %String, pValue As %String) As %Status
+/// <p>Store <var>pValue</var> for <var>pKey</var> of <var>pTable</var> in <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when
+/// empty), creating the table, as the vendor does.</p>
+ClassMethod Put(pTable As %String, pKey As %String, pValue As %String, pNamespace As %String = "") As %Status
 {
     Set tOrigNS = $NAMESPACE
     Try {
-        Set $NAMESPACE = ..#NAMESPACE
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
         Set tSC = ##class(Ens.Util.LookupTable).%UpdateValue(pTable, pKey, pValue, 1)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
@@ -58,14 +59,14 @@ ClassMethod Remove(pTable As %String, pKey As %String) As %Status
     Quit tSC
 }
 
-/// <p>Remove table <var>pTable</var>, exactly as named, and every entry it holds, as the vendor's own table delete does; no other
-/// table is touched.</p>
-ClassMethod Drop(pTable As %String) As %Status
+/// <p>Remove table <var>pTable</var>, exactly as named, and every entry it holds, from <var>pNamespace</var>
+/// (<parameter>NAMESPACE</parameter> when empty), as the vendor's own table delete does; no other table is touched.</p>
+ClassMethod Drop(pTable As %String, pNamespace As %String = "") As %Status
 {
     Set tOrigNS = $NAMESPACE
     Set tSC = $$$OK
     Try {
-        Set $NAMESPACE = ..#NAMESPACE
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
         Do ##class(Ens.Util.LookupTable).%ClearTable(pTable)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
@@ -75,13 +76,14 @@ ClassMethod Drop(pTable As %String) As %Status
     Quit tSC
 }
 
-/// <p>Whether table <var>pTable</var> exists under exactly that name.</p>
-ClassMethod Exists(pTable As %String) As %Boolean
+/// <p>Whether table <var>pTable</var> exists under exactly that name in <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when
+/// empty).</p>
+ClassMethod Exists(pTable As %String, pNamespace As %String = "") As %Boolean
 {
     Set tOrigNS = $NAMESPACE
     Set tExists = 0
     Try {
-        Set $NAMESPACE = ..#NAMESPACE
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
         Set tExists = ##class(Ens.Util.LookupTable).%ExistsTable(pTable)
         Set $NAMESPACE = tOrigNS
     } Catch {
@@ -90,14 +92,14 @@ ClassMethod Exists(pTable As %String) As %Boolean
     Quit ''tExists
 }
 
-/// <p>The entries of <var>pTable</var> as <code>key=value</code> joined by <code>;</code>, in the vendor's order; <code>""</code>
-/// for a table that is absent or empty.</p>
-ClassMethod Entries(pTable As %String) As %String
+/// <p>The entries of <var>pTable</var> in <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty) as <code>key=value</code>
+/// joined by <code>;</code>, in the vendor's order; <code>""</code> for a table that is absent or empty.</p>
+ClassMethod Entries(pTable As %String, pNamespace As %String = "") As %String
 {
     Set tOrigNS = $NAMESPACE
     Set tText = ""
     Try {
-        Set $NAMESPACE = ..#NAMESPACE
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
         Set tKey = ""
         For {
             Set tKey = $Order(^Ens.LookupTable(pTable, tKey))
@@ -315,13 +317,13 @@ ClassMethod DropDefaults(pPrefix As %String) As %Status
 }
 
 /// <p>Remove every business partner whose name begins with <var>pPrefix</var>, in any letter case, as the vendor's own delete does
-/// (Story 20.26); no other partner is touched.</p>
-ClassMethod DropPartners(pPrefix As %String) As %Status
+/// (Story 20.26), from <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty); no other partner is touched.</p>
+ClassMethod DropPartners(pPrefix As %String, pNamespace As %String = "") As %Status
 {
     Set tOrigNS = $NAMESPACE
     Set tSC = $$$OK
     Try {
-        Set $NAMESPACE = ..#NAMESPACE
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
         Kill tNames
         Set tName = ""
         For {
@@ -346,13 +348,13 @@ ClassMethod DropPartners(pPrefix As %String) As %Status
 /// <p>Create the probe partner <var>pName</var> (<parameter>PARTNER</parameter> when empty) with both contacts. Each member of
 /// <var>pFields</var>, when it is an object, replaces the field of that name (<code>Description</code>, <code>PrimaryContact</code>,
 /// <code>PrimaryPhone</code> and so on, as <class>OcuPilot.Port.InteropPort</class>'s <parameter>PARTNERFIELDS</parameter> names
-/// them).</p>
-ClassMethod PutPartner(pName As %String = "", pFields As %DynamicObject = "") As %Status
+/// them). It is created in <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty).</p>
+ClassMethod PutPartner(pName As %String = "", pFields As %DynamicObject = "", pNamespace As %String = "") As %Status
 {
     Set tOrigNS = $NAMESPACE
     If pName = "" Set pName = ..#PARTNER
     Try {
-        Set $NAMESPACE = ..#NAMESPACE
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
         Set tPartner = ##class(Ens.Config.BusinessPartner).%New()
         Set tPartner.PartnerName = pName
         Set tPartner.Description = "Probe partner description"
@@ -393,13 +395,13 @@ ClassMethod PutPartner(pName As %String = "", pFields As %DynamicObject = "") As
 }
 
 /// <p>The probe partner <var>pName</var> as <code>description|primary contact|primary phone|alternative notes</code>, or
-/// <code>&lt;absent&gt;</code> when the namespace does not hold it (Story 20.26).</p>
-ClassMethod PartnerText(pName As %String) As %String
+/// <code>&lt;absent&gt;</code> when <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty) does not hold it (Story 20.26).</p>
+ClassMethod PartnerText(pName As %String, pNamespace As %String = "") As %String
 {
     Set tOrigNS = $NAMESPACE
     Set tText = "<absent>"
     Try {
-        Set $NAMESPACE = ..#NAMESPACE
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
         Set tPartner = ##class(Ens.Config.BusinessPartner).%OpenId(pName)
         If $IsObject(tPartner) {
             Set tPrimary = tPartner.PrimaryContact
