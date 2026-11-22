@@ -14383,3 +14383,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Story 24.15 Batch 1b plan sweep; orchestrator ruling | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: 24.15 Batch 1b roster: 335 write tools, 3 lost the namespace (fixed per tool); the new confirm-namespace roster test over every registered write tool is the mitigation
 - 2026-11-22T01:25:51Z status=decision-pending owner=burndown by=epic-24-runner note=a decision in the burn-down, not a fix now: per-tool fingerprint fields (today) or confirm reading the target reference's namespace
+
+### DW-2831: No cross-namespace confirm test for the three namespace-in-mint creates (explorer.classes.create, explorer.routines.create, webapp.restapis.create): ConfirmNamespaceRoster supplies Namespace to them itself, as their mints do, so a mint that stopped adding it would not be caught
+- source: spec-24-15-credentials-default-settings-and-schedules-3.md (implement review 86f4d75d8) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: 24.15 Batch 1b implement-stage review, deferred low; orchestrator accepted it as a burn-down DW
+- 2026-11-22T04:34:03Z status=routed owner=burndown by=epic-24-runner note=add a mint-in-USER, confirm-from-HSCUSTOM leg per create

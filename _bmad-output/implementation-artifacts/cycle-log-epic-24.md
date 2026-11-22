@@ -695,3 +695,6 @@
 2026-11-22T04:22:05Z	Story 24.15	note	feature=1d3cc3a3b(21.37) integrate_target_for_1b=1d3cc3a3b rosters_rederive_from_base
 2026-11-22T04:33:22Z	Story 24.15	stage_completed	stage=implement scope=batch1b commit=86f4d75d8 fix=Namespace_in_FINGERPRINTSUBJECT(3_tools) tests=InteropConfirmNamespace(3_legs)+ConfirmNamespaceRoster(335_writes:220_exempt,115_asked;42-entry_roster) mutations=3_legs_alone+partner_reds_roster_alone+4_roster_guards sweep=17/17_green review=9(1_med_patched,1_low_deferred,7_rejected) table_leg=200_deletes_HSCUSTOM_without_fix(plan_inference_corrected)
 2026-11-22T04:33:22Z	Story 24.15	stage_spawned	stage=qa+code-review(combined,small_batch) spawn_at=2026-11-22T04:33:22Z model=opus agent_name=24-15-review-batch1b cycle_iteration=3
+2026-11-22T04:34:03Z	Story 24.15	ruling	source=orchestrator scope=batch1b roster_count_reconciliation=relayed_to_review deferred_low=DW-2831(burndown)
+2026-11-22T04:54:15Z	Story 24.15	stage_completed	stage=qa+code-review scope=batch1b commit=ec4287322 findings=12(med2_patched:exemption_scope_read+ns_key,low3_patched,7_rejected) qa_additions=none_needed moved_tool=security.auditing.copy(not_logs.applicationerrors.delete)
+2026-11-22T04:54:15Z	Story 24.15	ledger_adjudicated	scope=batch1b new=DW-2831(low,burndown)
