@@ -963,3 +963,5 @@
 2026-11-22T09:11:48Z	Story 21.38	ledger_closed	resolved-by=DW-2369,2405,2442,2474,2499,2823 remaining_owned=0
 2026-11-22T09:11:48Z	Story 21.38	gate_step	step=fresh_check+full_sweep+smoke head=26828c057 started=2026-11-22T09:11:48Z dir=e21u/21-38/gate
 2026-11-22T09:13:13Z	Story 21.38	ledger_note	id=DW-2834 evidence=screens.generated.ts_gated_green_263/263 status_stands=wontfix-accepted(skew_only)
+2026-11-22T10:07:47Z	Story 21.38	ci_resolved	sha=26828c057 run=45006300417 result=success
+2026-11-22T10:07:47Z	Story 21.38	fresh_check	env=recipe(ci-throwaway_rebuild) tests=22_classes+6_specs result=pass order=forward,reverse(specs) head=26828c057
