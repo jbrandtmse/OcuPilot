@@ -14389,3 +14389,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Story 24.15 spec gate, veto item U-135, orchestrator condition | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Kernel/Secret/Ladder.cls: the wallet rung reads a %Wallet.KeyValue secret from the IRIS wallet for the provider key (doc lines 14-17, WALLETKEYVALUETYPE); Screen/Tool ships WalletSecretDelete and WalletSecretUpdate
 - 2026-11-21T18:36:21Z status=routed owner=burndown by=epic-24-runner note=Epic 24 burn-down; do not widen 24.15 Batch 2 to cover it (orchestrator)
+
+### DW-2829: The Screen/Tool rule classes keep their own copies of the violation loop (14, plus nine interoperability one-liners), outside DW-2499's Area scope
+- source: spec-21-38-shared-rules-helpers-the-source-control-follow-up-and-escala.md | severity: low | fix-risk: low | footprint: cross-story
+- evidence: Story 21.38 plan measured the copies; DW-2499 names only the Area screen-editor Rules classes
+- 2026-11-22T03:30:13Z status=routed owner=burndown by=lead note=adopt ScreenSaveRules.ViolationsSentence once 21.38 lands
+
+### DW-2830: 23 identical Gate methods across the Area Rules classes, a shape DW-2499 does not name
+- source: spec-21-38-shared-rules-helpers-the-source-control-follow-up-and-escala.md | severity: low | fix-risk: low | footprint: cross-story
+- evidence: Story 21.38 plan counted them while measuring DW-2499
+- 2026-11-22T03:30:13Z status=routed owner=burndown by=lead note=candidate for a shared static gate on ScreenSaveRules

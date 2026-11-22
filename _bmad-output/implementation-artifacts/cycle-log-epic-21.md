@@ -932,3 +932,6 @@
 2026-11-22T03:10:52Z	Story 21.37	story_complete	head=e70e535d7(gates)+M=ca78cffc5 run=44966266106(+44979425183) fresh=pass sweep=20/20 smoke=49/49+1_skip vetoes=U-128,U-134,U-136 spine=2fd24558e(AD-15)
 2026-11-22T03:11:08Z	Story 21.38	story_started	base=M_ca78cffc5 doctrine=3d11cec9 policy=b9ff703e hold=none inbox=DW-2499,2405,2369,2442,2474,2823
 2026-11-22T03:11:08Z	Story 21.38	stage_spawned	stage=plan spawn_at=2026-11-22T03:11:08Z model=opus agent_name=21-38-plan cycle_iteration=1 prior_lines_ended=verified(a72633f43)
+2026-11-22T03:30:13Z	Story 21.38	stage_complete	stage=plan agent=a068311fa result=ready-for-dev batches=10 escalated=S1-S20,E1-E4 ad39_ninth_exception=proposed(add-only) protocol=subagents_backgrounded(polled),one_git_fetch_from_main_checkout(remote_refs_only) bashedits=none lines_ended=verified
+2026-11-22T03:30:13Z	Story 21.38	ledger_routed	ids=DW-2829,DW-2830 owner=burndown source=plan(DW-2499_scope_remainder)
+2026-11-22T03:30:13Z	Story 21.38	escalation_sent	to=orchestrator items=S1-S20,E1-E4,AD-39_ninth at=2026-11-22T03:30:13Z
