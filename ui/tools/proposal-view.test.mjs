@@ -109,6 +109,8 @@ const {
   CONSEQUENCE_SYSTEMSECURITYSET,
   CONSEQUENCE_PHONEPROVIDERDELETE,
   CONSEQUENCE_AUDITENCRYPTIONCHANGE,
+  CONSEQUENCE_INTEROPSCHEDULEREMOVE,
+  CONSEQUENCE_INTEROPSCHEDULECHANGE,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
   CONFIRMED_TIME_PLACEHOLDER,
@@ -345,6 +347,21 @@ test("the system-global mapping's and the mapping copy's consequence codes resol
   assert.equal(CONSEQUENCE_COPYMAPPINGS, 'NAMESPACE.COPYMAPPINGS');
   assert.equal(consequenceSentence(CONSEQUENCE_SYSTEMGLOBAL), STRINGS.mappingSystemGlobalConsequence);
   assert.equal(consequenceSentence(CONSEQUENCE_COPYMAPPINGS), STRINGS.namespaceCopyMappingsConsequence);
+});
+
+// Story 24.15: a schedule spec's remove and change carry the codes the server mints, and each resolves to the
+// sentence its own screen shows, published once.
+//
+// Mutation (Rule 19): drop either schedule branch from `consequenceSentence` -> its leg goes red.
+test("a schedule spec's remove and change consequence codes resolve to their published sentences", () => {
+  const errors = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Api', 'InteropError.cls'), 'utf8');
+  const remove = /^Parameter SCHEDULEREMOVE = "([^"]+)";/m.exec(errors);
+  const change = /^Parameter SCHEDULECHANGE = "([^"]+)";/m.exec(errors);
+  assert.ok(remove && change, 'InteropError.cls declares both schedule consequence codes');
+  assert.equal(CONSEQUENCE_INTEROPSCHEDULEREMOVE, remove[1]);
+  assert.equal(CONSEQUENCE_INTEROPSCHEDULECHANGE, change[1]);
+  assert.equal(consequenceSentence(CONSEQUENCE_INTEROPSCHEDULEREMOVE), STRINGS.interopScheduleRemoveConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_INTEROPSCHEDULECHANGE), STRINGS.interopScheduleChangeConsequence);
 });
 
 // Story 20.18, AD-64: an agent change to a screen's permissions that drops a pair is destructive with the

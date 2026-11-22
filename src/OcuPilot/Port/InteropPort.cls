@@ -125,7 +125,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -194,6 +194,10 @@ Parameter ENDPOINTDEFAULTSETTINGSDIFF = "DefaultSettingsDiff";
 /// <p>The namespace's credentials (Story 24.15): <code>LIST</code>, one credential (<code>CREDENTIAL</code>) and the four writes, over
 /// <code>Ens.Config.Credentials</code>. The password is never read: a row says only whether one is stored.</p>
 Parameter ENDPOINTCREDENTIALS = "Credentials";
+
+/// <p>The namespace's schedule specs (Story 24.15): <code>LIST</code>, one schedule spec (<code>SCHEDULE</code>) and the three writes, over
+/// <code>Ens.Util.Schedule</code>. A spec is shown as text and never run.</p>
+Parameter ENDPOINTSCHEDULES = "Schedules";
 
 /// <p>An item's host test (Story 20.6): <code>LIST</code> for the item <parameter>ITEMKEY</parameter> names (one row for each
 /// settable field of each request class it takes), <code>TESTTARGET</code> (the composed fresh read of the test about to be
@@ -296,6 +300,15 @@ Parameter CREDENTIALPAIRS = "%Ens_Portal:USE,%Ens_Credentials:READ";
 
 /// <p>The pair a credential write adds: the classic page's own edit resource, which the vendor's password calls check themselves.</p>
 Parameter CREDENTIALWRITEPAIR = "%Ens_Credentials:WRITE";
+
+/// <p>The pairs the Schedules endpoint requires (Story 24.15): the classic Interoperability menu's <code>%Ens_Portal:USE</code> and
+/// <code>EnsPortal.ScheduleEditor</code>'s own resource. The vendor's reads check no privilege of their own beyond the database
+/// (measured).</p>
+Parameter SCHEDULEPAIRS = "%Ens_Portal:USE,%Ens_ProductionConfig:READ";
+
+/// <p>The pair a schedule spec write adds, the remove included: the classic page's own edit resource. The vendor's <code>%Save</code> and
+/// <code>%DeleteId</code> need WRITE on the namespace's globals database and no other pair (measured).</p>
+Parameter SCHEDULEWRITEPAIR = "%Ens_ProductionConfig:WRITE";
 
 /// <p>The pairs the ItemTest endpoint requires: the classic Interoperability menu's <code>%Ens_Portal:USE</code> and
 /// <code>EnsPortal.TestingService</code>'s own resource (Story 20.6). The vendor's <code>SendTestRequest</code> checks no
@@ -543,6 +556,21 @@ Parameter TYPEPASSWORDCREDENTIAL = "PASSWORDCREDENTIAL";
 
 /// <p>Remove a credential, and its password with it.</p>
 Parameter TYPEREMOVECREDENTIAL = "REMOVECREDENTIAL";
+
+/// <p>One schedule spec (Story 24.15): <code>{Name, Description, ScheduleSpec, Deployable, Namespace}</code>, the schedule tools' fresh read. The
+/// id is the schedule spec's name, kept exactly. With <parameter>ACTIONKEY</parameter> in the query it refuses what that action would be refused
+/// (<method>ReadSchedule</method>).</p>
+Parameter TYPESCHEDULE = "SCHEDULE";
+
+/// <p>Add a schedule spec. The body names <code>ScheduleSpec</code> and, optionally, <code>Description</code> and <code>Deployable</code>; the name
+/// is the id.</p>
+Parameter TYPEADDSCHEDULE = "ADDSCHEDULE";
+
+/// <p>Store a new spec, description or deployable flag for a schedule spec the namespace holds. The name cannot change.</p>
+Parameter TYPESETSCHEDULE = "SETSCHEDULE";
+
+/// <p>Remove a schedule spec.</p>
+Parameter TYPEREMOVESCHEDULE = "REMOVESCHEDULE";
 
 /// <p>The query key naming the table an entries list reads: its one criterion.</p>
 Parameter TABLEKEY = "table";
@@ -808,6 +836,30 @@ Parameter CREDENTIALNOTSTORED = "not stored";
 
 /// <p>The entity type the audit row of a credential write names.</p>
 Parameter ENTITYCREDENTIAL = "interop-credential";
+
+/// <p>What every schedule spec refusal code begins with (<class>OcuPilot.Api.InteropError</class>).</p>
+Parameter SCHEDULECODEPREFIX = "INTEROP.SCHEDULE.";
+
+/// <p>The fields a schedule spec row carries, in order (Story 24.15).</p>
+Parameter SCHEDULEFIELDS = "Name,Description,ScheduleSpec,Deployable";
+
+/// <p>The most characters the vendor stores for a schedule spec's name (measured: the default string length, 50) and for its description
+/// (measured: 256).</p>
+Parameter SCHEDULENAMEMAX = 50;
+
+Parameter SCHEDULEDESCRIPTIONMAX = 256;
+
+/// <p>The entity type the audit row of a schedule spec write names.</p>
+Parameter ENTITYSCHEDULE = "interop-schedule";
+
+/// <p>The vendor's judge of a schedule spec, which the port calls (Story 24.15): <code>Ens.ScheduleHandler:ValidateScheduleSpec</code>, a class
+/// method marked <code>Internal</code> with the formal spec and return type below, which a test reads from the instance. <code>ParseScheduleSpec</code>
+/// is never called, because it logs a bad spec and answers OK.</p>
+Parameter SCHEDULEVALIDATOR = "ValidateScheduleSpec";
+
+Parameter SCHEDULEVALIDATORFORMAL = "&pScheduleSpec,&pScheduleErrors,*pLength";
+
+Parameter SCHEDULEVALIDATORRETURN = "%Library.Status";
 
 /// <p>The entity types and verbs the audit row of a lookup write names (<method>AuditRuntime</method>, Story 20.5).</p>
 Parameter ENTITYLOOKUPTABLE = "lookup-table";
@@ -1119,6 +1171,13 @@ ClassMethod IsCredentialWrite(pType As %String) As %Boolean
     Quit (pType = ..#TYPEADDCREDENTIAL) || (pType = ..#TYPESETCREDENTIAL) || (pType = ..#TYPEPASSWORDCREDENTIAL) || (pType = ..#TYPEREMOVECREDENTIAL)
 }
 
+/// <p>Whether <var>pType</var> is one of the schedule spec writes this port carries (Story 24.15): a create, a merge or a delete over the
+/// <code>SCHEDULE</code> read, needing WRITE on the namespace's globals database and no routines database.</p>
+ClassMethod IsScheduleWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADDSCHEDULE) || (pType = ..#TYPESETSCHEDULE) || (pType = ..#TYPEREMOVESCHEDULE)
+}
+
 /// <p>Whether <var>pType</var> is one of the Productions endpoint's two startup writes (Story 24.3): a merge over the
 /// <code>STARTUP</code> read, needing WRITE on the namespace's globals database and no routines database.</p>
 ClassMethod IsStartupWrite(pType As %String) As %Boolean
@@ -1129,7 +1188,7 @@ ClassMethod IsStartupWrite(pType As %String) As %Boolean
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
 ClassMethod IsAnyWrite(pType As %String) As %Boolean
 {
-    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
+    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
 }
 
 /// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads, Story 20.30's session trace and Story 24.4's three session reads. Each serves
@@ -1167,6 +1226,8 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
         Set tSpec = ..#DEFAULTSETTINGPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTCREDENTIALS {
         Set tSpec = ..#CREDENTIALPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTSCHEDULES {
+        Set tSpec = ..#SCHEDULEPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
         Set tSpec = ..#TESTPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTITEMCLASSES {
@@ -1206,6 +1267,7 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     If ..IsPartnerWrite(pType) Set tSpec = tSpec _ "," _ ..#PARTNERWRITEPAIR
     If ..IsDefaultSettingWrite(pType) Set tSpec = tSpec _ "," _ ..#DEFAULTSETTINGWRITEPAIR
     If ..IsCredentialWrite(pType) Set tSpec = tSpec _ "," _ ..#CREDENTIALWRITEPAIR
+    If ..IsScheduleWrite(pType) Set tSpec = tSpec _ "," _ ..#SCHEDULEWRITEPAIR
     If pType = ..#TYPEAUTOSTART Set tSpec = tSpec _ "," _ ..#AUTOSTARTPAIR
     If pType = ..#TYPESHUTDOWNGROUP Set tSpec = tSpec _ "," _ ..#GROUPPAIR
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && ((pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)) Set tSpec = tSpec _ "," _ ..#DTLTESTPAIR
@@ -1235,6 +1297,7 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTDEFAULTSETTINGS Quit (pType = ..#TYPEDEFAULTSETTING) || ..IsDefaultSettingWrite(pType)
     If pEndpoint = ..#ENDPOINTDEFAULTSETTINGSDIFF Quit 0
     If pEndpoint = ..#ENDPOINTCREDENTIALS Quit (pType = ..#TYPECREDENTIAL) || ..IsCredentialWrite(pType)
+    If pEndpoint = ..#ENDPOINTSCHEDULES Quit (pType = ..#TYPESCHEDULE) || ..IsScheduleWrite(pType)
     If pEndpoint = ..#ENDPOINTITEMTEST Quit (pType = ..#TYPETESTTARGET) || (pType = ..#TYPESENDTEST)
     If pEndpoint = ..#ENDPOINTTRANSFORMS Quit (pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)
     If pEndpoint = ..#ENDPOINTMESSAGES Quit ..IsMessageType(pType)
@@ -1393,6 +1456,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If pEndpoint = ..#ENDPOINTCREDENTIALS {
             Set tSC = ..InvokeCredential(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTSCHEDULES {
+            Set tSC = ..InvokeSchedule(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
         }
 
@@ -6365,6 +6432,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTBUSINESSPARTNERS) && ..IsPartnerWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTDEFAULTSETTINGS) && ..IsDefaultSettingWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTCREDENTIALS) && ..IsCredentialWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTSCHEDULES) && ..IsScheduleWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTITEMTEST) && ..IsTestWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && (pType = ..#TYPETRANSFORMTEST) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ..IsMessageWrite(pType) Quit "objectscript"
@@ -6398,6 +6466,8 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tText = tText _ ..DefaultSettingSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf pEndpoint = ..#ENDPOINTCREDENTIALS {
         Set tText = tText _ ..CredentialSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+    } ElseIf pEndpoint = ..#ENDPOINTSCHEDULES {
+        Set tText = tText _ ..ScheduleSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
         Set tText = tText _ ..TestSnippet($Get(pQuery(..#IDKEY)), .pQuery)
     } ElseIf pEndpoint = ..#ENDPOINTTRANSFORMS {
@@ -8930,6 +9000,391 @@ ClassMethod CredentialSnippet(pType As %String, pName As %String, pBody As %Dyna
         Set tText = tText _ tNL _ " Set tSC = tCredential.PasswordSet(""<Password>"")"
     }
     Quit tText _ tNL _ " Set tSC = tCredential.%Save()" _ tNL _ " Set tCredential = """""
+}
+
+/// <p>The statement the schedule spec list reads: every schedule spec's name, description, spec and deployable flag, in name order (Story 24.15).</p>
+Parameter SCHEDULESQL = "SELECT TOP ? Name, Description, ScheduleSpec, Deployable FROM Ens_Util.Schedule ORDER BY Name";
+
+/// <p>Whether <var>pName</var> is a name this port writes for a schedule spec (Story 24.15): 1 to <parameter>SCHEDULENAMEMAX</parameter>
+/// characters with no control character. Pure.</p>
+ClassMethod ScheduleNameOK(pName As %String) As %Boolean
+{
+    Quit (pName '= "") && ($Length(pName) <= ..#SCHEDULENAMEMAX) && ($ZStrip(pName, "*C") = pName)
+}
+
+/// <p>The schedule spec as the four values <parameter>SCHEDULEFIELDS</parameter> names, in that order, the last 1 or 0. Pure.</p>
+ClassMethod ScheduleLine(pName As %String, pDescription As %String, pSpec As %String, pDeployable As %Boolean) As %List [ Private ]
+{
+    If pDescription = $Char(0) Set pDescription = ""
+    If pSpec = $Char(0) Set pSpec = ""
+    Quit $ListBuild(pName, pDescription, pSpec, ''pDeployable)
+}
+
+/// <p>The row a schedule spec list and read answer, from the four values <var>pLine</var> (<method>ScheduleLine</method>):
+/// <code>{Name, Description, ScheduleSpec, Deployable}</code>, and with <var>pNamespace</var> <code>Namespace</code> too. The spec is text and is
+/// never run.</p>
+ClassMethod ScheduleRow(pLine As %List, pNamespace As %String = "") As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("Name", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("Description", $List(pLine, 2) _ "", "string")
+    Do tRow.%Set("ScheduleSpec", $List(pLine, 3) _ "", "string")
+    Do tRow.%Set("Deployable", ''$List(pLine, 4), "boolean")
+    If pNamespace '= "" Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The namespace's schedule specs, one row per schedule spec, at most <var>pMax</var> when it is above zero (Story 24.15):
+/// <method>ScheduleRow</method>'s fields, in name order. Read with <code>%ExecDirectNoPriv</code> after the gate (<method>SqlRows</method>);
+/// nothing is written.</p>
+ClassMethod ListSchedules(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..SqlRows(pNamespace, ..#SCHEDULESQL, .tFound, .tCaught, $Select(pMax > 0: pMax, 1: ..#SQLMAX))
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the schedule spec list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tLine = tFound(tI)
+        Do pRows.%Push(..ScheduleRow(..ScheduleLine($List(tLine, 1), $List(tLine, 2), $List(tLine, 3), $List(tLine, 4))))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The facts about the schedule spec <var>pName</var>, read in the current namespace, which the caller has already switched, and kept in
+/// <var>pFacts</var>: <code>exists</code> (held under exactly that name), <code>folded</code> (how many schedule specs hold that name in any letter
+/// case) and, when it exists, <code>line</code> (<method>ScheduleLine</method>). A name this port does not write is not held. Nothing is
+/// written.</p>
+ClassMethod ScheduleFactsHere(pName As %String, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("exists") = 0
+    Set pFacts("folded") = 0
+    Set pFacts("line") = ""
+    If '..ScheduleNameOK(pName) Quit
+    Set pFacts("exists") = ''##class(Ens.Util.Schedule).%ExistsId(pName)
+    Set tStatement = ##class(%SQL.Statement).%New()
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, "SELECT COUNT(*) FROM Ens_Util.Schedule WHERE LOWER(Name) = ?", $ZConvert(pName, "L"))
+    If '$IsObject(tResult) Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "the statement answered no result"))
+    If tResult.%SQLCODE < 0 Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message))
+    If tResult.%Next() Set pFacts("folded") = +tResult.%GetData(1)
+    Set tResult = ""
+    If 'pFacts("exists") Quit
+    Set tObject = ##class(Ens.Util.Schedule).%OpenId(pName)
+    If $IsObject(tObject) {
+        Set pFacts("line") = ..ScheduleLine(pName, tObject.Description, tObject.ScheduleSpec, tObject.Deployable)
+    } Else {
+        Set pFacts("exists") = 0
+    }
+    Set tObject = ""
+}
+
+/// <p><method>ScheduleFactsHere</method> in <var>pNamespace</var>; a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod ScheduleFacts(pNamespace As %String, pName As %String, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..ScheduleFactsHere(pName, .pFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The vendor's status <var>pStatus</var> without any text it carries: an error status naming only the vendor's error codes, which is what
+/// reaches the log, because the vendor's text echoes the spec, the name or the description (Story 24.15). A lock the vendor could not take and a
+/// privilege refusal are kept as they came, so <method>Statused</method> still answers them as they are answered everywhere. Pure.</p>
+ClassMethod ScheduleVendorStatus(pStatus As %Status) As %Status
+{
+    If ..HasCode(pStatus, ..#CODERUNTIMELOCK) || ..HasCode(pStatus, ..#CODEPRIVILEGE) Quit pStatus
+    Set tCodes = ""
+    Set tProtect = 0
+    Try {
+        Set tCodes = $System.Status.GetErrorCodes(pStatus)
+        Set tProtect = ($System.Status.GetErrorText(pStatus) [ "<PROTECT>")
+    } Catch {
+        Set tCodes = ""
+    }
+    If tProtect Quit pStatus
+    Quit $$$ERROR($$$GeneralError, "the vendor refused the schedule spec write with error code " _ tCodes)
+}
+
+/// <p>Whether the vendor accepts <var>pSpec</var> as a schedule spec (Story 24.15): the vendor's own <code>ValidateScheduleSpec</code>, the
+/// check the classic page makes, which is pure and writes nothing; <code>ParseScheduleSpec</code> is never called, because it logs a bad spec. The
+/// empty spec is refused, since the vendor reads one as always on. The vendor's segment errors echo the spec, so only their error codes reach the
+/// log, and the spec reaches no line (<method>ScheduleVendorStatus</method>).</p>
+ClassMethod ScheduleSpecAccepted(pSpec As %String) As %Boolean
+{
+    If pSpec = "" Quit 0
+    Set tVendorSC = $$$OK
+    Try {
+        Set tSpec = pSpec
+        Kill tErrors
+        Set tVendorSC = $ClassMethod("Ens.ScheduleHandler", ..#SCHEDULEVALIDATOR, .tSpec, .tErrors, .tLength)
+    } Catch ex {
+        Set tVendorSC = ex.AsStatus()
+    }
+    If $$$ISERR(tVendorSC) Do ..LogFault("a schedule spec did not pass the vendor's validation", ..ScheduleVendorStatus(tVendorSC))
+    Quit $$$ISOK(tVendorSC)
+}
+
+/// <p>The 422 violations of a schedule spec's name and fields, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field, code)</code>
+/// with the count in <code>pViolations</code> (Story 24.15): a name <method>ScheduleNameOK</method> refuses is <code>NAME</code> (judged only when
+/// <var>pJudgeName</var>, which an add passes); a field of the wrong type is <code>PORT.FIELD.SHAPE</code>; a description past
+/// <parameter>SCHEDULEDESCRIPTIONMAX</parameter> characters is <code>DESCRIPTION</code>; and, with <var>pJudgeSpec</var> and nothing else wrong, a
+/// spec the vendor refuses is <code>SPEC</code>. An add with no spec (<var>pRequireSpec</var>) is <code>SPEC</code> too. A caller that has not yet
+/// passed the port's gate passes <var>pJudgeSpec</var> 0, so no vendor call runs before it. <var>pFields</var> is the body: <code>ScheduleSpec</code>
+/// and <code>Description</code> strings and <code>Deployable</code> a boolean.</p>
+ClassMethod ScheduleViolations(pName As %String, pFields As %DynamicObject, Output pViolations, pJudgeName As %Boolean = 1, pJudgeSpec As %Boolean = 1, pRequireSpec As %Boolean = 0) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    If pJudgeName && '..ScheduleNameOK(pName) Set pViolations($Increment(pViolations)) = $ListBuild("Name", ##class(OcuPilot.Api.InteropError).#SCHEDULENAME)
+    If '$IsObject(pFields) || 'pFields.%IsA("%Library.DynamicObject") Set pFields = {}
+    For tField = "ScheduleSpec", "Description" {
+        Set tType = pFields.%GetTypeOf(tField)
+        If (tType '= "string") && (tType '= "unassigned") Set pViolations($Increment(pViolations)) = $ListBuild(tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+    }
+    Set tType = pFields.%GetTypeOf("Deployable")
+    If (tType '= "boolean") && (tType '= "unassigned") Set pViolations($Increment(pViolations)) = $ListBuild("Deployable", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+    If (pFields.%GetTypeOf("Description") = "string") && ($Length(pFields.%Get("Description")) > ..#SCHEDULEDESCRIPTIONMAX) Set pViolations($Increment(pViolations)) = $ListBuild("Description", ##class(OcuPilot.Api.InteropError).#SCHEDULEDESCRIPTION)
+    If pViolations || 'pJudgeSpec Quit $$$OK
+    Set tSpecType = pFields.%GetTypeOf("ScheduleSpec")
+    If ((tSpecType = "string") || pRequireSpec) && '..ScheduleSpecAccepted($Select(tSpecType = "string": pFields.%Get("ScheduleSpec"), 1: "")) {
+        Set pViolations($Increment(pViolations)) = $ListBuild("ScheduleSpec", ##class(OcuPilot.Api.InteropError).#SCHEDULESPEC)
+    }
+    Quit $$$OK
+}
+
+/// <p>The decision a schedule spec write <var>pType</var> is refused with, as the last segment of its code (<code>TAKEN</code>) or
+/// <code>ABSENT</code> for a target that is not there, else <code>""</code> (Story 24.15): an add of a name the namespace holds in any letter case is
+/// <code>TAKEN</code> (the vendor notifies a running production by a name compared ignoring case); any other write of a name it does not hold
+/// exactly is <code>ABSENT</code>. <var>pExists</var> is whether the schedule spec is held under exactly that name and <var>pFolded</var> how many
+/// hold it in any letter case. Pure.</p>
+ClassMethod ScheduleWriteToken(pType As %String, pExists As %Boolean, pFolded As %Integer) As %String
+{
+    If pType = ..#TYPEADDSCHEDULE Quit $Select(pExists || (pFolded > 0): "TAKEN", 1: "")
+    Quit $Select(pExists: "", 1: "ABSENT")
+}
+
+/// <p>409 <code>INTEROP.SCHEDULE.SOURCECONTROL</code> when <var>pNamespace</var> is under source control, which refuses every schedule spec write,
+/// else <code>$$$OK</code> (Story 24.15).</p>
+ClassMethod ScheduleWriteRefusal(pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#SCHEDULESOURCECONTROL, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>One schedule spec, fresh (Story 24.15): <method>ScheduleRow</method>'s fields and <code>Namespace</code>. A schedule spec not held under exactly
+/// that name, or a name this port does not write, is 404 <code>PORT.NOTFOUND</code>, unlogged. With <var>pAction</var> it refuses what that write
+/// would be refused (<method>ScheduleWriteRefusal</method>); then an add (AD-54, which inverts the read) is <code>TAKEN</code> when the name is held
+/// in any letter case and otherwise the 404 a create expects.</p>
+ClassMethod ReadSchedule(pNamespace As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If '..ScheduleNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+    If pAction '= "" {
+        Set tSC = ..ScheduleWriteRefusal(pNamespace, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Do ..ScheduleFacts(pNamespace, pName, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the schedule spec read failed", .pHttpStatus, .pFault)
+    If pAction = ..#TYPEADDSCHEDULE {
+        If ..ScheduleWriteToken(pAction, tFacts("exists"), tFacts("folded")) '= "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#SCHEDULETAKEN, .pHttpStatus, .pFault)
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    Set pRow = ..ScheduleRow(tFacts("line"), pNamespace)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the Schedules endpoint's <code>LIST</code> and typed types after <method>Invoke</method>'s gate (Story 24.15): the
+/// <code>SCHEDULE</code> read and the three writes, the schedule spec named under <parameter>IDKEY</parameter> by its name, kept exactly (AD-13).
+/// An <parameter>ACTIONKEY</parameter> names the write the read is composed for.</p>
+ClassMethod InvokeSchedule(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListSchedules(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tName = $Get(pQuery(..#IDKEY))
+        If tName = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsScheduleWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsScheduleWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsScheduleWrite(pType) {
+            Set tSC = ..PerformSchedule(pNamespace, pType, tName, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadSchedule(pNamespace, tName, tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the schedule spec call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Run schedule spec write <var>pType</var> on the schedule spec <var>pName</var> in <var>pNamespace</var> and answer what it leaves (Story 24.15).
+/// The sequence:</p>
+/// <ol>
+/// <li>A namespace under source control refuses every write (<method>ScheduleWriteRefusal</method>), before anything is judged or read.</li>
+/// <li>An add's or edit's fields are judged by <method>ScheduleViolations</method> (422); a name this port does not write is 404 for any write
+/// but an add.</li>
+/// <li>In the namespace the schedule spec is read again and judged by <method>ScheduleWriteToken</method>, so a state that moved since the review is
+/// refused by its own code with no vendor call; then the vendor's <code>%Save</code> of a new schedule spec, <code>%Save</code> of the opened
+/// schedule spec (concurrency 4, the reference dropped right after) with each field that differs, or <code>%DeleteId</code>. An edit that moves no
+/// field calls nothing. A schedule spec another process holds locked is 503.</li>
+/// <li>The namespace is restored, then OcuPilot's own audit row is recorded (<method>AuditRuntime</method>), because the vendor records none. It
+/// carries the namespace and the names of the fields written, never a value.</li>
+/// </ol>
+/// <p>The vendor notifies a running production of an edit that changes the spec, in the confirming request; nothing is started, stopped or updated
+/// here. A vendor refusal reaches the log as its error codes alone (<method>ScheduleVendorStatus</method>). The answer is the schedule spec's row read
+/// again (<method>ReadSchedule</method>); after a remove <code>{Name, Namespace}</code>.</p>
+ClassMethod PerformSchedule(pNamespace As %String, pType As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..ScheduleWriteRefusal(pNamespace, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    If pType = ..#TYPEREMOVESCHEDULE {
+        If '..ScheduleNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+    } Else {
+        If (pType = ..#TYPESETSCHEDULE) && '..ScheduleNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+        Set tSC = ..ScheduleViolations(pName, pBody, .tViolations, (pType = ..#TYPEADDSCHEDULE), 1, (pType = ..#TYPEADDSCHEDULE))
+        If $$$ISERR(tSC) Quit tSC
+        If tViolations Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tBusy = 0
+    Set tChanged = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..ScheduleFactsHere(pName, .tFacts)
+        Set tToken = ..ScheduleWriteToken(pType, tFacts("exists"), tFacts("folded"))
+        If tToken = "" {
+            If pType = ..#TYPEADDSCHEDULE {
+                Set tObject = ##class(Ens.Util.Schedule).%New()
+                Set tObject.Name = pName
+                If pBody.%GetTypeOf("ScheduleSpec") = "string" Set tObject.ScheduleSpec = pBody.%Get("ScheduleSpec")
+                If pBody.%GetTypeOf("Description") = "string" Set tObject.Description = pBody.%Get("Description")
+                If pBody.%GetTypeOf("Deployable") = "boolean" Set tObject.Deployable = pBody.%Get("Deployable")
+                Set tVendorSC = tObject.%Save()
+            } ElseIf pType = ..#TYPEREMOVESCHEDULE {
+                Set tVendorSC = ##class(Ens.Util.Schedule).%DeleteId(pName)
+            } Else {
+                Set tObject = ##class(Ens.Util.Schedule).%OpenId(pName, 4)
+                If '$IsObject(tObject) {
+                    Set tBusy = 1
+                } Else {
+                    Set tHeld = ..ScheduleLine(pName, tObject.Description, tObject.ScheduleSpec, tObject.Deployable)
+                    If (pBody.%GetTypeOf("ScheduleSpec") = "string") && (pBody.%Get("ScheduleSpec") '= $List(tHeld, 3)) {
+                        Set tObject.ScheduleSpec = pBody.%Get("ScheduleSpec")
+                        Set tChanged = tChanged _ $ListBuild("ScheduleSpec")
+                    }
+                    If (pBody.%GetTypeOf("Description") = "string") && (pBody.%Get("Description") '= $List(tHeld, 2)) {
+                        Set tObject.Description = pBody.%Get("Description")
+                        Set tChanged = tChanged _ $ListBuild("Description")
+                    }
+                    If (pBody.%GetTypeOf("Deployable") = "boolean") && (''pBody.%Get("Deployable") '= $List(tHeld, 4)) {
+                        Set tObject.Deployable = pBody.%Get("Deployable")
+                        Set tChanged = tChanged _ $ListBuild("Deployable")
+                    }
+                    If tChanged '= "" Set tVendorSC = tObject.%Save()
+                }
+            }
+        }
+        ; The schedule spec's lock is released in the namespace it was taken in.
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Try {
+            Set $NAMESPACE = pNamespace
+        } Catch {
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the schedule spec write failed", .pHttpStatus, .pFault)
+    If tBusy Quit ..Unavailable(.pHttpStatus, .pFault)
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken '= "" Quit ..Conflict(..#SCHEDULECODEPREFIX _ tToken, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(..ScheduleVendorStatus(tVendorSC), "the schedule spec write failed", .pHttpStatus, .pFault)
+    If (pType '= ..#TYPESETSCHEDULE) || (tChanged '= "") {
+        If pType = ..#TYPEADDSCHEDULE {
+            Set tChanged = $ListBuild("ScheduleSpec")
+            If (pBody.%GetTypeOf("Description") = "string") && (pBody.%Get("Description") '= "") Set tChanged = tChanged _ $ListBuild("Description")
+            If (pBody.%GetTypeOf("Deployable") = "boolean") && pBody.%Get("Deployable") Set tChanged = tChanged _ $ListBuild("Deployable")
+        }
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        If pType '= ..#TYPEREMOVESCHEDULE Do tEffects.%Set("fields", $ListToString(tChanged, ","), "string")
+        Do ..AuditRuntime($Case(pType, ..#TYPEADDSCHEDULE: ..#VERBADD, ..#TYPEREMOVESCHEDULE: ..#VERBREMOVE, : ..#VERBSET), ..#ENTITYSCHEDULE, pName, tEffects)
+    }
+    If pType = ..#TYPEREMOVESCHEDULE {
+        Set pResult = {}
+        Do pResult.%Set("Name", pName, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tReadSC = ..ReadSchedule(pNamespace, pName, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Name", pName, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the schedule spec write <var>pType</var> of the schedule spec named <var>pName</var> (Story 24.15):
+/// the vendor's <code>%Save</code> of a new schedule spec, of the schedule spec opened at concurrency 4 with the fields <var>pBody</var> carries, or
+/// <code>%DeleteId</code>. Names and values are string literals.</p>
+ClassMethod ScheduleSnippet(pType As %String, pName As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tName = ..Literal(pName)
+    If pType = ..#TYPEREMOVESCHEDULE Quit tNL _ " Set tSC = ##class(Ens.Util.Schedule).%DeleteId(" _ tName _ ")"
+    If pType = ..#TYPEADDSCHEDULE {
+        Set tText = tNL _ " Set tSchedule = ##class(Ens.Util.Schedule).%New()" _ tNL _ " Set tSchedule.Name = " _ tName
+    } Else {
+        Set tText = tNL _ " Set tSchedule = ##class(Ens.Util.Schedule).%OpenId(" _ tName _ ", 4)"
+    }
+    For tField = "ScheduleSpec", "Description", "Deployable" {
+        Set tType = $Select($IsObject(pBody): pBody.%GetTypeOf(tField), 1: "unassigned")
+        If tType = "string" {
+            Set tText = tText _ tNL _ " Set tSchedule." _ tField _ " = " _ ..Literal(pBody.%Get(tField))
+        } ElseIf tType = "boolean" {
+            Set tText = tText _ tNL _ " Set tSchedule." _ tField _ " = " _ (''pBody.%Get(tField))
+        }
+    }
+    Quit tText _ tNL _ " Set tSC = tSchedule.%Save()" _ tNL _ " Set tSchedule = """""
 }
 
 /// <p>The code prefix of a startup refusal: <code>INTEROP.STARTUP.</code> and the token <method>StartupRefusal</method> answers.</p>

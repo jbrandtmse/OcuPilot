@@ -358,7 +358,7 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             Set tWritePair = $ListBuild(tGlobalResource, "WRITE")
             If '$ListFind(tExpected, tRunPair) Set tExpected = tExpected _ $ListBuild(tRunPair)
             If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
-        } ElseIf ($ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropAction") && ($Parameter(tTool.class, "DESCRIPTORCLASS") [ "OcuPilot.Screen.Descriptor.InteropLookup")) || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropPartnerAction") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropDefaultSettingAction") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropCredentialAction") {
+        } ElseIf ($ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropAction") && ($Parameter(tTool.class, "DESCRIPTORCLASS") [ "OcuPilot.Screen.Descriptor.InteropLookup")) || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropPartnerAction") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropDefaultSettingAction") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropCredentialAction") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropScheduleAction") {
             ; Story 20.26: the business partner writes declare %Ens_ProductionConfig:WRITE and WRITE on the globals database and no routines
             ; database, as the lookup writes below declare their own resource and the database. Story 24.15: the system default setting
             ; writes declare %Ens_SystemDefaultConfig:WRITE and the same database pair.

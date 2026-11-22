@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -593,7 +593,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "system-alerts",
   "page-resource",
   "default-setting",
-  "interop-credential"
+  "interop-credential",
+  "interop-schedule"
 ];
 
 /**
@@ -23074,6 +23075,156 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "interop.rules",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropScheduleList",
+    "route": "interoperability/schedules",
+    "area": "interoperability",
+    "labelKey": "interopSchedulesLabel",
+    "sideBarPosition": 15,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "interop-schedule",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "edit",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Description",
+        "ScheduleSpec",
+        "Deployable"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopSchedulesEmpty",
+    "commandAliases": [
+      "schedules",
+      "schedule specs"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopSchedulesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopSchedulesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopSchedulesPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.ScheduleEditor",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "schedule spec",
+      "source": {
+        "port": "interop",
+        "endpoint": "Schedules",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Description",
+        "ScheduleSpec",
+        "Deployable"
+      ],
+      "filter": [
+        "Name",
+        "Description",
+        "ScheduleSpec"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Description",
+          "ScheduleSpec"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        },
+        {
+          "field": "ScheduleSpec",
+          "labelKey": "taskDetailsSchedule",
+          "kind": "text"
+        },
+        {
+          "field": "Deployable",
+          "labelKey": "interopDefaultSettingColumnDeployable",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopSchedulesEmptyAgent"
+    },
+    "toolIdentifier": "interop.schedules",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,

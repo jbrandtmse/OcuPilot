@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:667 */
+  /** EXPERIENCE.md:668 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -9434,6 +9434,40 @@ export const STRINGS = {
   /** EXPERIENCE.md:625 */
   credentialRefusalProvider:
     'An enabled agent definition reads its provider key from this credential, so only a person can remove it or change its password, on the Credentials screen.',
+  /** EXPERIENCE.md:626 */
+  interopSchedulesLabel: 'Schedule specs',
+  /** EXPERIENCE.md:626 */
+  interopScheduleAddAction: 'New schedule spec',
+  /** EXPERIENCE.md:626 */
+  interopScheduleHelp:
+    'A schedule spec starts and stops the production items whose schedule names it, as @ and its name. Each part is START or STOP, a colon and a date and time, for example START:*-*-*T08:00:00,STOP:*-*-*T17:00:00, where * matches any.',
+  /** EXPERIENCE.md:626 */
+  interopScheduleDeployableHelp: 'Deployable schedule specs are included when schedule specs are exported to a deployment package.',
+  /** EXPERIENCE.md:626 */
+  interopScheduleChangeConsequence: 'A running production that uses this schedule spec follows a changed spec at once.',
+  /** EXPERIENCE.md:626 */
+  interopScheduleRemoveConsequence:
+    'Items that name this schedule spec keep running until the production is next updated, and are then disabled and stopped until the schedule spec is added again. It cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:626 */
+  interopScheduleRefusalTaken: 'This namespace already has a schedule spec with that name, in some letter case.',
+  /** EXPERIENCE.md:626 */
+  interopScheduleRefusalName: 'A schedule spec name is 1 to 50 characters and holds no control characters.',
+  /** EXPERIENCE.md:626 */
+  interopScheduleRefusalSpec: 'This schedule is not valid. Each part is START or STOP, a colon and a date and time.',
+  /** EXPERIENCE.md:626 */
+  interopScheduleRefusalDescription: 'A description is at most 256 characters.',
+  /** EXPERIENCE.md:626 */
+  interopScheduleRefusalSourceControl: 'This namespace uses source control, so change schedule specs in the classic Schedule Specs page.',
+  /** EXPERIENCE.md:626 */
+  interopSchedulesEmpty: 'This namespace has no schedule specs.',
+  /** EXPERIENCE.md:626 */
+  interopSchedulesEmptyAgent: 'add a schedule spec',
+  /** EXPERIENCE.md:626 */
+  interopSchedulesPrompt1: 'Explain when this schedule spec starts and stops items.',
+  /** EXPERIENCE.md:626 */
+  interopSchedulesPrompt2: 'Which schedule specs are deployable?',
+  /** EXPERIENCE.md:626 */
+  interopSchedulesPrompt3: 'Add a schedule spec that runs on weekdays from 8 to 5.',
 } as const;
 
 /**

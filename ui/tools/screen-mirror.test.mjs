@@ -2849,6 +2849,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
       'OcuPilot.Screen.Descriptor.InteropRuleEditor',
       'OcuPilot.Screen.Descriptor.InteropRuleList',
+      // Story 24.15: Schedule specs own %Ens_ProductionConfig:READ.
+      'OcuPilot.Screen.Descriptor.InteropScheduleList',
       'OcuPilot.Screen.Descriptor.InteropSchemaViewer',
       'OcuPilot.Screen.Descriptor.InteropTransformEditor',
       'OcuPilot.Screen.Descriptor.InteropTransformList',

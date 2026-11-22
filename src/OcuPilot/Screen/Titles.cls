@@ -151,6 +151,7 @@ XData Titles
 "interopQueuesLabel": "Queues",
 "interopRuleEditorTitle": "Rule editor",
 "interopRulesLabel": "Business rules",
+"interopSchedulesLabel": "Schedule specs",
 "interopSchemaViewerTitle": "Schema viewer",
 "interopTransformsLabel": "Data transformations",
 "interopUsageImpactLabel": "Database impact",

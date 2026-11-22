@@ -573,6 +573,10 @@ services:
       # meets every refusal and signs in as probe principals each missing one pair a write requires, and the provider class creates
       # probe agent definitions that name a credential and meets the agent's refusal of the provider's own.
       # classes: InteropCredentialControl, InteropCredentialProvider, InteropCredentialRefusals
+      # The schedule spec classes write probe schedule specs in USER and HSCUSTOM and remove them (Story 24.15): the control class drives the
+      # add, edit and remove from both callers and reads OcuPilot's own audit rows, the refusals class meets every refusal and signs in as probe
+      # principals each missing one pair a write requires, and the elsewhere class confirms the agent's three writes from another namespace.
+      # classes: InteropScheduleControl, InteropScheduleElsewhere, InteropScheduleRefusals
       # The host test classes compile and run the same probe production in USER, with a request class of their own and an
       # operation that echoes it (Story 20.6): the test class reads an item's Test tab and sends a request from both callers,
       # the refusals class meets every refusal and violation, a production started without testing and a disabled item, and

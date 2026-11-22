@@ -2,15 +2,22 @@
 title: 'Story 24.15: Credentials, default settings and schedules (Batch 3: schedules)'
 type: 'feature'
 created: '2026-11-22'
-status: 'ready-for-dev'
-baseline_revision: 'fab07a3951807de4ceadd4bc5d427251f9bb29a9'
+status: 'done'
+baseline_revision: 'bfbc076671388496731be723590e659488ce8dd8'
 review_loop_iteration: 0
 followup_review_recommended: false
 owned_ledger: 'DW-2838'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-15-credentials-default-settings-and-schedules-2.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A source-controlled namespace is refused only through the port seam; no test drives a tool's mint, the Save route or the Edit route against it.
+    evidence: |-
+      Setting READASKSACTION to 0 on InteropScheduleUpdate leaves every schedule test green; the confirm's PerformSchedule still refuses with the same code, so the harm is a regression with no red test, not a wrong answer today.
+    location: >-
+      src/OcuPilot/Test/InteropScheduleRefusals.cls (TestASourceControlledNamespaceRefusesEveryWrite)
+    severity: medium
 ---
 
 <intent-contract>
@@ -81,14 +88,14 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `e6db2ed9f`).
 
 **Execution:**
 
-- [ ] **Task 1, its own commit (DW-2838):** `interop-credential-dialog.ts` clears the password only when `store.add` answers accepted, with its doc comments made true; `interop-credential-dialog.spec.ts` gains "a refused New credential keeps the typed password, and the corrected Save sends it".
-- [ ] **Task 0** (`ocupilot-b-ci`, USER and HSCUSTOM; every probe row, item, production, role and user removed after; record under Design Notes › Measured): (a) with auditing on, the vendor records no audit row for an add, an edit and a remove; (b) a principal holding `%Ens_Portal:USE`, `%Ens_ProductionConfig:READ` and the database's READ lists and opens rows; name the pair `%Save` and `%DeleteId` need and the database `^Ens.Util.ScheduleD` maps to; (c) whether two names differing only in case both save, and whether `%OpenId` resolves another case; (d) a 51-character name and a 257-character description fail `%Save`, a control character in a name saves; (e) with the probe production running an item whose schedule is `@OcuProbe2415SR`, a spec edit through the port as the (b) write principal is followed by an `Ens.ScheduleHandler` log row (as `InteropJobEnd.cls:75` reads) and an add is not; (f) after that schedule's remove, the item is no longer started or stopped by it; (g) `ValidateScheduleSpec` refuses each matrix spec and writes no log row or global. HALT if a read writes, if (a) finds a vendor row, or if (e) or (f) measures otherwise.
-- [ ] `InteropPort.cls`, `InteropError.cls`: endpoint, gate, read, three writes, snippets, codes.
-- [ ] The three tools, `ScheduleSave.cls`, the route, descriptor, entity type, baseline keys, `Prohibited.cls` terms, `InteropCredentialMint` doc sentence.
-- [ ] Client page, dialog, store, maps, strings, regenerated mirror and titles, EXPERIENCE.md row.
-- [ ] Tests: the matrix in the three new classes and the fixture, the browser spec, component specs, every roster.
-- [ ] **Task 2, signature pin (orchestrator relay, same rules as AD-61's `findmappings^%R` pin):** a test reads `Ens.ScheduleHandler.ValidateScheduleSpec`'s compiled formal spec and return type from the instance and asserts they match what the port calls; a vendor change turns it red. It carries a `mutation:` line (for example, the port's call with one argument more or less, or the asserted return type changed -> that test red). Model it on the existing AD-61 pin (grep `findmappings` under `src/OcuPilot/Test`).
-- [ ] **Task 3, README (the story's LAST task, after everything else is green):** read the Interoperability paragraph (README.md around :212) and the switched-off list first, keep their own sentence form (semicolon-separated items stay semicolon-separated), and add only the ruled clauses from Design Notes › README. The edit is add-only: `git diff --word-diff=porcelain <baseline> -- README.md` shows no removed words, except a stated count that the new items change, which shows as a one-word replacement; re-derive any count the README states over those lists and name it in the Auto Run Result, with the removed lines of that word-diff.
+- [x] **Task 1, its own commit (DW-2838):** `interop-credential-dialog.ts` clears the password only when `store.add` answers accepted, with its doc comments made true; `interop-credential-dialog.spec.ts` gains "a refused New credential keeps the typed password, and the corrected Save sends it".
+- [x] **Task 0** (`ocupilot-b-ci`, USER and HSCUSTOM; every probe row, item, production, role and user removed after; record under Design Notes › Measured): (a) with auditing on, the vendor records no audit row for an add, an edit and a remove; (b) a principal holding `%Ens_Portal:USE`, `%Ens_ProductionConfig:READ` and the database's READ lists and opens rows; name the pair `%Save` and `%DeleteId` need and the database `^Ens.Util.ScheduleD` maps to; (c) whether two names differing only in case both save, and whether `%OpenId` resolves another case; (d) a 51-character name and a 257-character description fail `%Save`, a control character in a name saves; (e) with the probe production running an item whose schedule is `@OcuProbe2415SR`, a spec edit through the port as the (b) write principal is followed by an `Ens.ScheduleHandler` log row (as `InteropJobEnd.cls:75` reads) and an add is not; (f) after that schedule's remove, the item is no longer started or stopped by it; (g) `ValidateScheduleSpec` refuses each matrix spec and writes no log row or global. HALT if a read writes, if (a) finds a vendor row, or if (e) or (f) measures otherwise.
+- [x] `InteropPort.cls`, `InteropError.cls`: endpoint, gate, read, three writes, snippets, codes.
+- [x] The three tools, `ScheduleSave.cls`, the route, descriptor, entity type, baseline keys, `Prohibited.cls` terms, `InteropCredentialMint` doc sentence.
+- [x] Client page, dialog, store, maps, strings, regenerated mirror and titles, EXPERIENCE.md row.
+- [x] Tests: the matrix in the three new classes and the fixture, the browser spec, component specs, every roster.
+- [x] **Task 2, signature pin (orchestrator relay, same rules as AD-61's `findmappings^%R` pin):** a test reads `Ens.ScheduleHandler.ValidateScheduleSpec`'s compiled formal spec and return type from the instance and asserts they match what the port calls; a vendor change turns it red. It carries a `mutation:` line (for example, the port's call with one argument more or less, or the asserted return type changed -> that test red). Model it on the existing AD-61 pin (grep `findmappings` under `src/OcuPilot/Test`).
+- [x] **Task 3, README (the story's LAST task, after everything else is green):** read the Interoperability paragraph (README.md around :212) and the switched-off list first, keep their own sentence form (semicolon-separated items stay semicolon-separated), and add only the ruled clauses from Design Notes › README. The edit is add-only: `git diff --word-diff=porcelain <baseline> -- README.md` shows no removed words, except a stated count that the new items change, which shows as a one-word replacement; re-derive any count the README states over those lists and name it in the Auto Run Result, with the removed lines of that word-diff.
 
 **Acceptance Criteria:**
 
@@ -106,6 +113,25 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `e6db2ed9f`).
 - 2026-11-22, spec gate (runner, veto item U-140): Design Notes 1 to 6 kept as recommended. The README line is in scope as this batch's last task: the Interoperability paragraph and switched-off list gain the proposed clauses, add-only, and any count the README states over those lists is re-derived. The story-end spine lines stay proposed for the orchestrator.
 
 ## Review Triage Log
+
+### 2026-11-22 - Review pass
+
+- verdicts: 14 findings - high 0, medium 2, low 5, false 6, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` The AD-15 audit row of a remove, of the agent's update and of a description-only edit is unpinned - `InteropScheduleControl` now asserts `ConfigChange` counts and field names after each (2, 3, 4 on the person's leg; 1, 2 on the agent's leg); mutation recorded under Verification.
+  - `[low]` `[patch]` The client's `consequenceSentence` branches for the schedule codes have no test - added to `ui/tools/proposal-view.test.mjs` (codes tied to `InteropError.cls`, sentences to `STRINGS`), mutation recorded.
+  - `[medium]` `[defer]` Source control is refused only through the port seam, never through a tool's mint, the Save route or the Edit route (`READASKSACTION` 0 on the update does not redden) - the confirm still refuses with the same code; needs a tool-level port seam; see `deferred:`.
+  - `[low]` `[reject]` The 503 lock path (`%OpenId` at concurrency 4 returning nothing) has no test - a partial-failure path hard to arrange, matches the sibling families; not worth a guard.
+  - `[low]` `[reject]` The signature pin compares the vendor to constants the call does not use - the vendor-drift half works and behavioural legs catch a call that breaks outright; the fix adds indirection.
+  - `[low]` `[patch]` Two doc comments in `InteropScheduleElsewhere` name a `MintClass` mutation that the recorded run left green - corrected at their origin to the mutations that redden (`ComposeCreate`, `PortQuery`).
+  - `[low]` `[reject]` No positive control on the vendor-audit-zero assertion - Task 0 (a) measured the zero with a positive control; a per-test control adds a second writer to the audit for no new guarantee.
+  - `[false]` `[reject]` Gate ordering is proved at the port only - the Save route and the screen actions are gated by the descriptor's declared pairs before `Violations` runs, as Batch 2's credential save; the port leg proves no vendor call before the gate.
+  - `[false]` `[reject]` Refusal precedence (an edit of an absent name with a bad spec answers 422, not 404) - the intent states no precedence; every matrix row is pinned with otherwise valid inputs.
+  - `[false]` `[reject]` 422 NAME applies to the add only (an invalid name on an edit or remove is 404) - a name this port cannot write cannot be held, so absent is true; the matrix's NAME row is an add.
+  - `[false]` `[reject]` `Prohibited.cls` gains two logic arms beyond appended terms - the Code Map lists exactly these arms (create arm, `ReviewedFewOnly`) and they mirror Batch 2's.
+  - `[false]` `[reject]` The README edit is not add-only - the ruled clauses sit mid-sentence by the spec's own form, and the only removed word is the stated count (`Eighty-two` to `Eighty-five`), named in the Auto Run Result.
+  - `[maybe-false]` `[reject]` DW-2838 is outside the diff and cannot be checked - it is committed as `fab07a395` before the baseline; its test ran green in `test:components`.
+  - `[false]` `[reject]` The Edit label reuses an agent-panel string - `agentPanelSecretWarningEdit` is the existing "Edit" key every sibling screen maps its Edit to; the spec lists "Edit" as reused.
 
 ## Design Notes
 
@@ -154,7 +180,7 @@ Each line takes the spine's `[AMENDED <its date>, Story 24.15, Rule 20]` tag whe
 - (c) `OcuProbe2415SC` and `ocuprobe2415sc` both saved as two ids; `%OpenId` and `%DeleteId` of another case fail (#5809, #5810); SQL `Name=` equality is exact-case here. The Design Note 3 inference that the vendor's SQL lookup folds case is refuted; only `%OnAfterSave`'s item match folds case (`$zconvert(...,"U")`).
 - (d) A 50-character name and a 256-character description save; 51 and 257 fail (#7201, MAXLEN); an empty name fails (#5659); a name holding `$c(9)` or `$c(1)` saves.
 - (e) With a running item whose schedule is `@OcuProbe2415SR`: an add and an edit with the same spec wrote no `Ens.ScheduleHandler` row; an edit that changed the spec wrote `updating...`, `Stopping job`, `stopped in job`, `updated.` rows (and the item restarted on the edit back).
-- (f) **Measured otherwise than the spec expects.** A `%DeleteId` of that schedule wrote no log row and the item kept running. At the next production update the vendor logged `ErrInvalidScheduleEventSpec: '@OCUPROBE2415SR' ... is invalid` (`Ens.ScheduleHandler`), then `ConfigItem 'OcuPilotProbeOp' is disabled because its schedule string is invalid.`, and stopped the item's job; the item stayed stopped (Job 0) until the schedule was re-added and a production update ran. So a removed schedule does not leave its items "no longer started and stopped by it": they are stopped and disabled at the next production update.
+- (f) **Measured otherwise than first expected; ruled, option A.** On the probe production, a `%DeleteId` of `OcuProbe2415SR` wrote no log row and its item `OcuPilotProbeOp` kept running; at the next production update the vendor logged `ErrInvalidScheduleEventSpec: '@OCUPROBE2415SR' ... is invalid` (`Ens.ScheduleHandler`), then `ConfigItem 'OcuPilotProbeOp' is disabled because its schedule string is invalid.`, stopped the item's job, and left it stopped (Job 0) until the schedule was re-added and a production update ran. The REMOVE consequence is the ruled sentence in Design Notes 6.
 - (g) `ValidateScheduleSpec` refused `START:*-*-*T25:00:00` (segment 1), `FOO:*-*-*T08:00:00` and the empty spec, each `ErrInvalidScheduleEventSpec`, and accepted `START:*-*-*T08:00:00,STOP:*-*-*T17:00:00`; it wrote no `Ens_Util.Log` row, no audit row and no global; its text echoes the spec. Compiled signature: `ClassMethod`, `Internal`, `FormalSpec` `&pScheduleSpec,&pScheduleErrors,*pLength`, `ReturnType` `%Library.Status`.
 
 **Governing ADs (Rule 6):** AD-3, AD-4, AD-5, AD-6, AD-8, AD-10 (the covered type and its reviewed-few arms; no new prohibited effect), AD-13, AD-14, AD-15, AD-16, AD-21, AD-22, AD-29, AD-34, AD-36, AD-44, AD-51, AD-52, AD-53, AD-54, AD-55, AD-58, AD-59, AD-60, AD-62. Not engaged: AD-23, AD-35 (no secret), AD-63, AD-65, AD-66.
@@ -179,17 +205,34 @@ Each line takes the spine's `[AMENDED <its date>, Story 24.15, Rule 20]` tag whe
 
 **Mutations** (each AC's pinning test shown red, reverted byte-identical, recorded as `mutation: <change> -> <test>`; the planned ones):
 
-- mutation: AC1, `PerformSchedule` drops `Deployable` on a set -> `InteropScheduleControl` round-trip test red.
-- mutation: AC2, the spec check answers valid -> `InteropScheduleRefusals` spec test red.
-- mutation: AC2 log, the spec refusal logs the validator's text -> `InteropScheduleRefusals` no-spec-in-a-log leg red.
-- mutation: AC3, `InteropScheduleAction.MintClass` answers the kernel's mint -> `InteropScheduleElsewhere` add leg red; the remove's `FINGERPRINTSUBJECT` without `Namespace` -> its remove leg red.
-- mutation: AC4, `onConfirm` clears the password before the add answers -> the new `interop-credential-dialog.spec.ts` test red.
-- mutation: AC5, the page's Edit sends no `ScheduleSpec` (bundle rebuilt and redeployed) -> browser spec red.
-- mutation: AC6, `InteropScheduleFixture.DropSchedules` removes nothing -> `InteropScheduleControl` red on its `none survives` leg.
+- mutation: AC1, `PerformSchedule` drops the `Deployable` assignment on a set -> `InteropScheduleControl.TestThePersonsEditAndRemoveChangeOnlyWhatTheyCarry` red.
+- mutation: AC2, `ScheduleSpecAccepted` answers 1 -> `InteropScheduleRefusals.TestASpecTheVendorRefusesIsRefusedAndNoLineCarriesIt` red (and the gate and signature tests).
+- mutation: AC2 log, `ScheduleSpecAccepted` logs the validator's status instead of `ScheduleVendorStatus` -> `InteropScheduleRefusals.TestASpecTheVendorRefusesIsRefusedAndNoLineCarriesIt` red on its no-spec-in-a-line legs.
+- mutation: AC3, `InteropScheduleAdd.ComposeCreate` drops the `Namespace` it stamps -> `InteropScheduleElsewhere.TestAnAddConfirmedFromAnotherNamespaceIsJudgedWhereItRead` red; the remove's `FINGERPRINTSUBJECT` without `Namespace` -> `TestARemoveConfirmedFromAnotherNamespaceActsWhereItRead` red; `InteropScheduleAction.PortQuery` without `Do ##super` -> all three legs red (PROPOSAL.TARGETCHANGED). `InteropScheduleAction.MintClass` answering the kernel's mint was applied and left all three legs green: the schedule rules are namespace-independent and the payload already carries the namespace, so the mint's stamp is belt and braces, not the pin.
+- mutation: AC4, `onConfirm` clears the password before the add answers -> `interop-credential-dialog.spec.ts` "keeps the typed password after a refused add, and sends it again with the corrected Save" red.
+- mutation: AC5, the page's Edit skips `ScheduleSpec` (bundle rebuilt and redeployed) -> `interop-schedules.browser-spec.mjs` AC5 test red (TimeoutError waiting for the changed cell); bundle rebuilt and redeployed after the revert, both specs green.
+- mutation: AC6, `InteropScheduleFixture.DropSchedules` removes nothing -> `InteropScheduleControl` red on its `none survives` leg in all seven tests; probe state cleared and counted 0 in both namespaces after the revert.
+- mutation: AD-15 audit of a remove, `PerformSchedule` skips `AuditRuntime` for `REMOVESCHEDULE` -> `InteropScheduleControl.TestThePersonsEditAndRemoveChangeOnlyWhatTheyCarry` and `TestTheAgentsUpdateAndRemoveConfirmOverHttp` red (reverted, `InteropPort.cls` diff byte-identical).
+- mutation: the REMOVE consequence's client branch, `consequenceSentence` drops the `INTEROP.SCHEDULE.REMOVE` branch -> `ui/tools/proposal-view.test.mjs` "a schedule spec's remove and change consequence codes resolve to their published sentences" red (reverted).
+- mutation: Task 2, `SCHEDULEVALIDATORFORMAL` with one more argument -> `InteropScheduleRefusals.TestTheValidatorsSignatureIsWhatThePortCalls` red on its formal-spec assertion.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: Task 0 (f) measured otherwise than the spec expects. After a schedule's remove, a running production's items that name it are not simply "no longer started and stopped by it": at the next production update the vendor logs an invalid-schedule error, disables each such item ("disabled because its schedule string is invalid") and stops its job, and the item stays stopped until the schedule is re-added and a production update runs (measured on `ocupilot-b-ci`, see Design Notes > Measured (f)). The ruled consequence string for `REMOVE` ("Items that name this schedule spec are no longer started and stopped by it, and it cannot be restored from OcuPilot.") is therefore not true, and the true wording is a new string: intent gap: new string <text of the REMOVE consequence that says the items are stopped and disabled at the next production update>. Also for the owner: the spec's inference that the vendor's name lookup folds case is refuted (Measured (c)); the TAKEN check ignoring case stays the stricter guard and needs no change. No product code was written for the schedules work; Task 1 (DW-2838) is committed as fab07a3951807de4ceadd4bc5d427251f9bb29a9. Tasks 2 (signature pin; formal spec measured in (g)) and 3 (README) are ready to run once (f) is ruled.
+Status: done
+Blocking condition: none
+
+**Summary.** Batch 3's schedules work is implemented on top of Task 1 (DW-2838, `fab07a395`). Interoperability gains Schedule specs: `InteropPort` `Schedules` (list, read, add, edit, remove over `Ens.Util.Schedule`, switched, the vendor's `ValidateScheduleSpec` as the only spec judge), the three tools `interop.schedules.add|update|remove` (remove ships off), the `POST /interop/schedules` Save route, the descriptor and entity type, the client page, dialog and store, OcuPilot's own `ConfigChange` audit from either caller, and every write's proposal carrying its namespace with confirm judging there. The REMOVE consequence is the ruled sentence (option A). Task 2's signature pin and Task 3's README clauses are in.
+
+**Files changed.** Server: `Port/InteropPort.cls` (schedule family), `Api/InteropError.cls` (codes and consequences), `Api/Router.cls` (route), `Area/Interop/ScheduleSave.cls`, `Screen/Descriptor/InteropScheduleList.cls`, `Screen/Tool/InteropSchedule{Action,Add,Update,Remove}.cls`, `Screen/Tool/InteropCredentialMint.cls` (doc sentence), `Kernel/EntityType.cls`, `Kernel/Governance/Baseline.cls` (three keys), `Kernel/Proposal/Prohibited.cls` (appended terms and arms), `Screen/Titles.cls`. Client: `areas/interoperability/interop-schedule-{list.page,dialog,store}.ts` and specs, the action, consequence and handler maps, `strings.ts`, `screens.generated.ts`. Tests: `InteropSchedule{Control,Refusals,Elsewhere,Fixture,Seam}.cls`, `ui/browser/interop-schedules.browser-spec.mjs`, the rosters (`ConfirmNamespaceRoster` `CHECKEDFLOOR` 118, `Prohibited`, `GovernanceBaseline`, `Governance`, `ToolDispatch`, `ToolEmit`, `ToolRoundTrip`, `ToolWrite`, `ReadTool`, `Navigation`, `Descriptor`, `EndpointCoverage`, `SaveHoldCoverage`, `StageTwoTools`, `SurfaceCoverage`, `InteropFloor`, `InteropDescriptor`, `InteropHostDescriptor`, `InteropLookupFixture.Clear`, `ui/tools` navigation, screen-mirror, interop and proposal-view tests, `scripts/ci-throwaway.sh` roster lines). EXPERIENCE.md one row; README clauses.
+
+**Review.** Two layers (verification-gap, intent-alignment); 14 findings; patches applied 3 (audit of a remove and of the agent's update, medium; the agent card's schedule consequence mapping, low; two stale mutation claims in `InteropScheduleElsewhere` comments, low), deferred 1, rejected 10 with reasons in the Review Triage Log. Follow-up review recommended: false.
+
+**README.** Word-diff removed lines: `-Eighty-two` only (replaced by `+Eighty-five`). The stated count is the switched-off agent actions; this story adds three (`interop.defaultsettings.remove`, `interop.credentials.remove`, `interop.schedules.remove`) and the README list names all three, so 82 becomes 85. Pre-existing and left: at the 1.0.18 cut the baseline had 91 disabled keys and the README said 82, so the README count runs 9 below the baseline (now 94); for the planner.
+
+**REMOVE key consumers (grep over `ui/browser`, `ui/tools`, `ui/src`, `src/OcuPilot/Test`, EXPERIENCE.md), each run.** `ui/browser/interop-schedules.browser-spec.mjs` (green, forward and reverse), `ui/tools/interop.test.mjs` and `ui/tools/proposal-view.test.mjs` (`npm run test:tools`, 2391 green), `ui/src/app/core/{strings,proposal-view}.ts` and `shell/screen-action-handler.ts` with `interop-schedule-list.page.spec.ts` (`npm run test:components`, 3845 green), `Test/InteropDescriptor.cls` and `Test/InteropScheduleControl.cls` (green in the full sweep), EXPERIENCE.md row (read by `interop.test.mjs`).
+
+**Verification.** Fresh throwaway rebuilt (`down`, `up`, readiness installed). New classes green on first run, forward (Control, Refusals, Elsewhere) and reverse. `(once)` ObjectScript sweep `--shard 1/17` to `17/17` all green (no flakes, 0 probe leftovers); a11y browser spec 13 of 13; `interop-schedules` and `interop-credentials` browser specs green in both orders after `npm run build` and `docker cp`; `uv run scripts/check-objectscript.py` 0 problems; `bash scripts/lint-docs.sh` 0 issues. Mutations: see `## Verification`; the spec's planned `MintClass` mutation does not redden (recorded there).
+
+**Residual risks.** The schedule rules do not depend on the namespace, so AC3's pin is the payload's `Namespace` and the tools' read query, not the mint's stamp; source control is refused through the port seam only (deferred); the 503 lock path has no test.
 
 **Plan.** Batch 3 of three, the story's last: DW-2838 first, as its own commit (orchestrator ruling relayed by the lead), then Schedule specs (list, add, edit, remove) through `InteropPort`, with every write's proposal keeping its namespace and every confirm judging there. Veto items: Design Notes 1 to 6. The story-end spine block and the README line are under Design Notes. Epic context reused as committed (dispatch instruction); AD-15, AD-22, AD-35, AD-59 and AD-62 read at HEAD. Read-only probes on `ocupilot-b-ci` (52777, identity checked, by a research subagent): `Ens.Util.Schedule` compiled (`Name` 50, `Description` 256, spec unlimited), no rows and no source-control class in USER or HSCUSTOM; `ValidateScheduleSpec` refuses an hour of 25, an unknown action and the empty spec, and accepts a lower-case valid spec; `ParseScheduleSpec` reads the matrix's spec as START until 17:00. Nothing was written to the instance; no scratch class or row was left.
