@@ -177,12 +177,7 @@ ClassMethod ArgumentViolations(pEventName As %String, pArgs As %DynamicObject, p
 /// a tool's <code>ArgumentProblem</code> answers.</p>
 ClassMethod ProblemText(ByRef pViolations) As %String
 {
-    Set tProblem = ""
-    For tI = 1:1:$Get(pViolations) {
-        Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation($List(pViolations(tI), 2))
-        Set tProblem = tProblem _ $Select(tProblem = "": "", 1: " ") _ "'" _ $List(pViolations(tI), 1) _ "': " _ tReason
-    }
-    Quit tProblem
+    Quit ##class(OcuPilot.Kernel.AgentRules).ViolationsSentence(.pViolations)
 }
 
 /// <p>Answer <code>GET /audit-events/form</code>: with no <code>event</code>,

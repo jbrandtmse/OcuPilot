@@ -504,12 +504,7 @@ ClassMethod KerberosIn(pAutheEnabled) As %Boolean
 /// or <code>""</code> for none: what the tool's <code>ArgumentProblem</code> answers.</p>
 ClassMethod Problem(ByRef pViolations) As %String
 {
-    Set tProblem = ""
-    For tI = 1:1:$Get(pViolations) {
-        Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation($List(pViolations(tI), 2))
-        Set tProblem = tProblem _ $Select(tProblem = "": "", 1: " ") _ "'" _ $List(pViolations(tI), 1) _ "': " _ tReason
-    }
-    Quit tProblem
+    Quit ##class(OcuPilot.Kernel.AgentRules).ViolationsSentence(.pViolations)
 }
 
 /// <p>Answer <code>GET /ldap/form?name=&lt;n&gt;</code>: <code>{ldap, kerberos}</code>, the change
