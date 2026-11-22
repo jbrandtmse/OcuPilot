@@ -1015,3 +1015,5 @@
 2026-11-22T21:09:35Z	Story 21.6	code_head_pushed	sha=47363d553 run=45070444672 missing=none scope=rework1(supersedes_45067284861)
 2026-11-22T21:09:35Z	Story 21.6	ledger_closed	resolved-by=DW-2844,DW-2842 wontfix=DW-2845 routed_out=DW-2843(burndown) remaining_owned=0
 2026-11-22T21:09:35Z	Story 21.6	gate_step	step=fresh_check+full_sweep+smoke head=47363d553 started=2026-11-22T21:09:35Z dir=e21u/21-6/gate
+2026-11-22T22:01:59Z	Story 21.6	ci_resolved	sha=47363d553 run=45070444672 result=success
+2026-11-22T22:01:59Z	Story 21.6	fresh_check	env=recipe(ci-throwaway_rebuild) tests=22_classes+2_specs result=pass order=forward,reverse head=47363d553
