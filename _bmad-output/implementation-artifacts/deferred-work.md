@@ -14364,3 +14364,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 44891215456 (21.23 B1 head 346d580fe) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Outside 21.23's footprint (the spec imports nothing B1-B5 changed; 21.23 CR); green in run 44899945083 and twice locally; inferred cause: the local-file option clicked before the dialog's picker drew; the 21.23 review added the missing wait add-only (inference, not reproduced)
 - 2026-11-21T14:00:51Z status=routed owner=burndown by=runner note=resolve or wontfix at burn-down
+
+### DW-2822: Self-protection parity: the agent can delete or update the IRIS wallet secret its own AI provider reads its key from (WalletSecretDelete, WalletSecretUpdate), the same self-disable path Story 24.15 Batch 2 refuses for the provider's credential
+- source: Story 24.15 spec gate, veto item U-135, orchestrator condition | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Kernel/Secret/Ladder.cls: the wallet rung reads a %Wallet.KeyValue secret from the IRIS wallet for the provider key (doc lines 14-17, WALLETKEYVALUETYPE); Screen/Tool ships WalletSecretDelete and WalletSecretUpdate
+- 2026-11-21T18:36:21Z status=routed owner=burndown by=epic-24-runner note=Epic 24 burn-down; do not widen 24.15 Batch 2 to cover it (orchestrator)

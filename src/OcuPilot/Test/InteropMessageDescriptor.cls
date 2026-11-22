@@ -198,7 +198,7 @@ Method TestThePortDeclaresEachScreensPairs()
         Do $$$AssertEquals(+$ClassMethod(..#PORT, "Serves", tEndpoint, "SENDTEST"), 0, tEndpoint _ " serves nothing else")
         Do $$$AssertEquals(##class(OcuPilot.Test.InteropHostDescriptor).PairText($ClassMethod(..#PORT, "Pairs", tEndpoint, "LIST")), $Piece(tRow, "|", 15), tEndpoint _ ": the port's pairs are the screen's")
     }
-    Do $$$AssertEquals($Parameter(..#PORT, "SEARCHENDPOINTS"), "Messages", "the Messages endpoint alone takes search criteria of its own")
+    Do $$$AssertEquals($Parameter(..#PORT, "SEARCHENDPOINTS"), "Messages,DefaultSettingsDiff", "the Messages and DefaultSettingsDiff endpoints alone take search criteria of their own")
 }
 
 /// <p>A Queue messages row's message id opens that message's Header tab: the list declares the <code>rowTarget</code> on

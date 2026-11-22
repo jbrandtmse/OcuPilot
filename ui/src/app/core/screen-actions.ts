@@ -300,6 +300,13 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     edit: STRINGS.agentPanelSecretWarningEdit,
     remove: STRINGS.actionRemove,
   },
+  // Story 24.15: System default settings' New default setting opens the dialog that adds one, its Edit opens the dialog that changes one and its
+  // Remove deletes one.
+  'OcuPilot.Screen.Descriptor.InteropDefaultSettingList': {
+    add: STRINGS.interopDefaultSettingAddAction,
+    edit: STRINGS.agentPanelSecretWarningEdit,
+    remove: STRINGS.actionRemove,
+  },
   // Story 8.5: the X.509 list's Create imports a credential rather than typing one in.
   'OcuPilot.Screen.Descriptor.X509CredentialList': { create: STRINGS.actionImport },
   'OcuPilot.Screen.Descriptor.AgentSwitches': {

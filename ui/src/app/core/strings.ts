@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:665 */
+  /** EXPERIENCE.md:666 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -9287,6 +9287,64 @@ export const STRINGS = {
   taskOutputPrompt3: 'Summarize this task\'s output.',
   /** EXPERIENCE.md:613 */
   taskMailPasswordAction: 'Set mail password',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsLabel: 'System default settings',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsDiffLabel: 'Compare default settings',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingColumnDeployable: 'Deployable',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingColumnValueHere: 'Value here',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingColumnValueThere: 'Value there',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingAddAction: 'New default setting',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingEditTitle: 'Edit <setting>',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingHelp:
+    'A system default setting gives a setting its value in every production, item and host class it matches, unless the production sets its own value. Use * to match any.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingDeployableHelp: 'Deployable settings are exported with a production\'s deployment package.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingRemoveConsequence:
+    'Items that took this value use their own setting or the class default again, and it cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingPendingConsequence: 'A running production uses the new value once it is updated.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingRefusalTaken: 'This namespace already has a default setting for that production, item, host class and setting.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingRefusalSecret:
+    'This setting names a credential, so OcuPilot neither shows nor sets its value. Set it in the classic System Default Settings page.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingRefusalKey:
+    'Production, item, host class and setting are each 1 to 255 characters, may be * for any, and may not contain two vertical bars.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingRefusalValue: 'This value is not valid for that setting.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingRefusalRestricted: 'You may not change the default for this setting.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingRefusalSourceControl: 'This namespace uses source control, so change default settings in the classic System Default Settings page.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingRefusalTooMany: 'One of these namespaces has more default settings than one comparison covers.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsEmpty: 'This namespace has no system default settings.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsEmptyAgent: 'add a default setting',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsDiffEmpty: 'These two namespaces have the same default settings.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsPrompt1: 'Which default settings apply to this production?',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsPrompt2: 'Explain what this default setting changes.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsPrompt3: 'Add a default setting for an item\'s pool size.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsDiffPrompt1: 'Summarize how these namespaces\' default settings differ.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsDiffPrompt2: 'Which differing settings would change how a production runs?',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsDiffPrompt3: 'Which settings exist in only one namespace?',
 } as const;
 
 /**

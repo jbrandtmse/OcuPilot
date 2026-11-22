@@ -125,7 +125,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -182,6 +182,15 @@ Parameter ENDPOINTLOOKUPENTRIES = "LookupEntries";
 /// <p>The namespace's business partners (Story 20.5): <code>LIST</code> only.</p>
 Parameter ENDPOINTBUSINESSPARTNERS = "BusinessPartners";
 
+/// <p>The namespace's system default settings (Story 24.15): <code>LIST</code>, one setting (<code>DEFAULTSETTING</code>) and the three
+/// writes, over <code>Ens.Config.DefaultSettings</code>.</p>
+Parameter ENDPOINTDEFAULTSETTINGS = "DefaultSettings";
+
+/// <p>The system default settings that differ between the route's namespace and the one the <parameter>DIFFTARGETKEY</parameter>
+/// criterion names (Story 24.15): <code>LIST</code> only, read in each namespace through the same read as
+/// <parameter>ENDPOINTDEFAULTSETTINGS</parameter>' list.</p>
+Parameter ENDPOINTDEFAULTSETTINGSDIFF = "DefaultSettingsDiff";
+
 /// <p>An item's host test (Story 20.6): <code>LIST</code> for the item <parameter>ITEMKEY</parameter> names (one row for each
 /// settable field of each request class it takes), <code>TESTTARGET</code> (the composed fresh read of the test about to be
 /// sent) and the write <code>SENDTEST</code>.</p>
@@ -222,7 +231,7 @@ Parameter ENDPOINTSESSIONMESSAGES = "SessionMessages";
 /// <p>The endpoints whose <code>LIST</code> declares search criteria of its own (Story 20.9). A declared read names criteria on
 /// the interoperability port only as its parent's route id, except on these; <file>ui/tools/screen-mirror.mjs</file> reads this
 /// list as it reads <parameter>ENDPOINTS</parameter>.</p>
-Parameter SEARCHENDPOINTS = "Messages";
+Parameter SEARCHENDPOINTS = "Messages,DefaultSettingsDiff";
 
 /// <p>The query key naming the message header a header or contents read is about: its one criterion, the header's id kept exactly
 /// (AD-13).</p>
@@ -259,6 +268,23 @@ Parameter LOOKUPWRITEPAIR = "%Ens_LookupTables:WRITE";
 /// <p>The pair a business partner write adds (Story 20.26): the resource the classic page reads with and every other
 /// interoperability configuration write holds at WRITE. The classic page declares no edit resource, so it admits a holder of READ.</p>
 Parameter PARTNERWRITEPAIR = "%Ens_ProductionConfig:WRITE";
+
+/// <p>The pairs the DefaultSettings and DefaultSettingsDiff endpoints require (Story 24.15): the classic Interoperability menu's
+/// <code>%Ens_Portal:USE</code> and <code>EnsPortal.DefaultSettings</code>' own resource. The vendor's calls check no privilege of their
+/// own beyond the database (measured), so these are the whole gate for a read.</p>
+Parameter DEFAULTSETTINGPAIRS = "%Ens_Portal:USE,%Ens_SystemDefaultConfig:READ";
+
+/// <p>The pair a default setting write adds: the classic page's own edit resource.</p>
+Parameter DEFAULTSETTINGWRITEPAIR = "%Ens_SystemDefaultConfig:WRITE";
+
+/// <p>The resource whose holder, without the <code>%All</code> role, writes only the settings the classic page's
+/// <code>canEditSettingName</code> admits (<method>DefaultSettingRestricted</method>), and the prefix of the resource each setting adds.</p>
+Parameter DEFAULTSETTINGRESTRICTEDPAIR = "%Ens_RestrictedUI_SystemDefaultSettings:USE";
+
+Parameter DEFAULTSETTINGRESOURCEPREFIX = "%Ens_SystemDefaultSettings_";
+
+/// <p>The setting whose write also needs <parameter>ITEMRUNPAIR</parameter>, as the classic page asks.</p>
+Parameter DEFAULTSETTINGENABLED = "Enabled";
 
 /// <p>The pairs the ItemTest endpoint requires: the classic Interoperability menu's <code>%Ens_Portal:USE</code> and
 /// <code>EnsPortal.TestingService</code>'s own resource (Story 20.6). The vendor's <code>SendTestRequest</code> checks no
@@ -475,6 +501,21 @@ Parameter TYPESETPARTNER = "SETPARTNER";
 /// <p>Remove a partner, with its description and both contacts.</p>
 Parameter TYPEREMOVEPARTNER = "REMOVEPARTNER";
 
+/// <p>One system default setting (Story 24.15): <code>{Production, Item, HostClass, Setting, Value, Description, Deployable, Secret,
+/// Namespace}</code>, the default setting tools' fresh read. The id is the composite <code>[Production, Item, HostClass, Setting]</code>,
+/// each part kept exactly. With <parameter>ACTIONKEY</parameter> in the query it refuses what that action would be refused
+/// (<method>ReadDefaultSetting</method>).</p>
+Parameter TYPEDEFAULTSETTING = "DEFAULTSETTING";
+
+/// <p>Add a default setting. The body names <code>Value</code>, <code>Description</code> and <code>Deployable</code>; the key is the id.</p>
+Parameter TYPEADDDEFAULT = "ADDDEFAULT";
+
+/// <p>Store new values for the fields of a default setting the namespace holds. The key cannot change.</p>
+Parameter TYPESETDEFAULT = "SETDEFAULT";
+
+/// <p>Remove a default setting.</p>
+Parameter TYPEREMOVEDEFAULT = "REMOVEDEFAULT";
+
 /// <p>The query key naming the table an entries list reads: its one criterion.</p>
 Parameter TABLEKEY = "table";
 
@@ -688,6 +729,35 @@ Parameter PARTNERNAMEMAX = 255;
 
 /// <p>The entity type the audit row of a partner write names.</p>
 Parameter ENTITYPARTNER = "business-partner";
+
+/// <p>What every system default setting refusal code begins with (<class>OcuPilot.Api.InteropError</class>).</p>
+Parameter DEFAULTSETTINGCODEPREFIX = "INTEROP.DEFAULTSETTING.";
+
+/// <p>The default setting fields in the order a row carries them (Story 24.15); <parameter>DEFAULTSETTINGSETFIELDS</parameter> is the
+/// three a write may set.</p>
+Parameter DEFAULTSETTINGFIELDS = "Production,Item,HostClass,Setting,Value,Description,Deployable";
+
+Parameter DEFAULTSETTINGSETFIELDS = "Value,Description,Deployable";
+
+/// <p>The most characters the vendor stores for each part of a default setting's key (measured: <code>MAXLEN</code> 255), and for a
+/// value and a description (2,000).</p>
+Parameter DEFAULTSETTINGKEYMAX = 255;
+
+Parameter DEFAULTSETTINGTEXTMAX = 2000;
+
+/// <p>The most default settings one namespace may hold for a comparison to cover it: past it
+/// <code>INTEROP.DEFAULTSETTING.TOOMANY</code> names the namespace.</p>
+Parameter DEFAULTSETTINGSIDEMAX = 5000;
+
+/// <p>The query key naming the other namespace a comparison reads: its one criterion.</p>
+Parameter DIFFTARGETKEY = "target";
+
+/// <p>The words a comparison row's <code>Change</code> takes.</p>
+Parameter DIFFONLYHERE = "only here";
+
+Parameter DIFFONLYTHERE = "only there";
+
+Parameter DIFFDIFFERS = "differs";
 
 /// <p>The entity types and verbs the audit row of a lookup write names (<method>AuditRuntime</method>, Story 20.5).</p>
 Parameter ENTITYLOOKUPTABLE = "lookup-table";
@@ -985,6 +1055,13 @@ ClassMethod IsPartnerWrite(pType As %String) As %Boolean
     Quit (pType = ..#TYPEADDPARTNER) || (pType = ..#TYPESETPARTNER) || (pType = ..#TYPEREMOVEPARTNER)
 }
 
+/// <p>Whether <var>pType</var> is one of the system default setting writes this port carries (Story 24.15): a create, a merge or a
+/// delete over the <code>DEFAULTSETTING</code> read, needing WRITE on the namespace's globals database and no routines database.</p>
+ClassMethod IsDefaultSettingWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADDDEFAULT) || (pType = ..#TYPESETDEFAULT) || (pType = ..#TYPEREMOVEDEFAULT)
+}
+
 /// <p>Whether <var>pType</var> is one of the Productions endpoint's two startup writes (Story 24.3): a merge over the
 /// <code>STARTUP</code> read, needing WRITE on the namespace's globals database and no routines database.</p>
 ClassMethod IsStartupWrite(pType As %String) As %Boolean
@@ -995,7 +1072,7 @@ ClassMethod IsStartupWrite(pType As %String) As %Boolean
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
 ClassMethod IsAnyWrite(pType As %String) As %Boolean
 {
-    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
+    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
 }
 
 /// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads, Story 20.30's session trace and Story 24.4's three session reads. Each serves
@@ -1029,6 +1106,8 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
         Set tSpec = ..#PRODUCTIONPAIRS
     } ElseIf (pEndpoint = ..#ENDPOINTLOOKUPTABLES) || (pEndpoint = ..#ENDPOINTLOOKUPENTRIES) {
         Set tSpec = ..#LOOKUPPAIRS
+    } ElseIf (pEndpoint = ..#ENDPOINTDEFAULTSETTINGS) || (pEndpoint = ..#ENDPOINTDEFAULTSETTINGSDIFF) {
+        Set tSpec = ..#DEFAULTSETTINGPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
         Set tSpec = ..#TESTPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTITEMCLASSES {
@@ -1066,6 +1145,7 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     If pType = ..#TYPESUSPENDJOB Set tSpec = tSpec _ "," _ ..#SUSPENDPAIR
     If ..IsLookupWrite(pType) Set tSpec = tSpec _ "," _ ..#LOOKUPWRITEPAIR
     If ..IsPartnerWrite(pType) Set tSpec = tSpec _ "," _ ..#PARTNERWRITEPAIR
+    If ..IsDefaultSettingWrite(pType) Set tSpec = tSpec _ "," _ ..#DEFAULTSETTINGWRITEPAIR
     If pType = ..#TYPEAUTOSTART Set tSpec = tSpec _ "," _ ..#AUTOSTARTPAIR
     If pType = ..#TYPESHUTDOWNGROUP Set tSpec = tSpec _ "," _ ..#GROUPPAIR
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && ((pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)) Set tSpec = tSpec _ "," _ ..#DTLTESTPAIR
@@ -1092,6 +1172,8 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTLOOKUPTABLES Quit (pType = ..#TYPELOOKUPTABLE) || (pType = ..#TYPEDELETETABLE) || (pType = ..#TYPEIMPORTTABLE) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPEEXPORT)
     If pEndpoint = ..#ENDPOINTLOOKUPENTRIES Quit (pType = ..#TYPELOOKUPENTRY) || (pType = ..#TYPEADDENTRY) || (pType = ..#TYPESETENTRY) || (pType = ..#TYPEREMOVEENTRY)
     If pEndpoint = ..#ENDPOINTBUSINESSPARTNERS Quit (pType = ..#TYPEPARTNER) || ..IsPartnerWrite(pType)
+    If pEndpoint = ..#ENDPOINTDEFAULTSETTINGS Quit (pType = ..#TYPEDEFAULTSETTING) || ..IsDefaultSettingWrite(pType)
+    If pEndpoint = ..#ENDPOINTDEFAULTSETTINGSDIFF Quit 0
     If pEndpoint = ..#ENDPOINTITEMTEST Quit (pType = ..#TYPETESTTARGET) || (pType = ..#TYPESENDTEST)
     If pEndpoint = ..#ENDPOINTTRANSFORMS Quit (pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)
     If pEndpoint = ..#ENDPOINTMESSAGES Quit ..IsMessageType(pType)
@@ -1242,6 +1324,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If (pEndpoint = ..#ENDPOINTBUSINESSPARTNERS) && (pType '= ..#TYPELIST) {
             Set tSC = ..InvokePartner(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pEndpoint = ..#ENDPOINTDEFAULTSETTINGS) || (pEndpoint = ..#ENDPOINTDEFAULTSETTINGSDIFF) {
+            Set tSC = ..InvokeDefaultSetting(tNamespace, pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
         }
 
@@ -6212,6 +6298,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If ..IsRuntimeWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If (..IsLookupWrite(pType) || (pType = ..#TYPEEXPORT)) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTBUSINESSPARTNERS) && ..IsPartnerWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTDEFAULTSETTINGS) && ..IsDefaultSettingWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTITEMTEST) && ..IsTestWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && (pType = ..#TYPETRANSFORMTEST) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ..IsMessageWrite(pType) Quit "objectscript"
@@ -6241,6 +6328,8 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tText = tText _ ..SettingSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf pEndpoint = ..#ENDPOINTBUSINESSPARTNERS {
         Set tText = tText _ ..PartnerSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+    } ElseIf pEndpoint = ..#ENDPOINTDEFAULTSETTINGS {
+        Set tText = tText _ ..DefaultSettingSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
         Set tText = tText _ ..TestSnippet($Get(pQuery(..#IDKEY)), .pQuery)
     } ElseIf pEndpoint = ..#ENDPOINTTRANSFORMS {
@@ -7774,6 +7863,580 @@ ClassMethod PerformPartner(pNamespace As %String, pType As %String, pName As %St
     Set pHttpStatus = 200
     Set pFault = ""
     Quit $$$OK
+}
+
+/// <p>The statement the default setting list and the comparison read: every row of <code>Ens.Config.DefaultSettings</code> as its key,
+/// value, description and deployable flag, in key order (Story 24.15).</p>
+Parameter DEFAULTSETTINGSQL = "SELECT TOP ? ProductionName, ItemName, HostClassName, SettingName, SettingValue, Description, Deployable FROM Ens_Config.DefaultSettings ORDER BY ProductionName, ItemName, HostClassName, SettingName";
+
+/// <p>Whether the caller holds the <code>%All</code> role, as the vendor's own macro asks it (<code>$$$IOwnAllRole</code>): the roles
+/// list begins with it. A test seam overrides it (<class>OcuPilot.Test.InteropDefaultSettingRoleSeam</class>).</p>
+ClassMethod HoldsAllRole() As %Boolean
+{
+    Quit ($Extract($Roles, 1, 4) = "%All")
+}
+
+/// <p>Whether the caller holds <var>pPermission</var> on <var>pResource</var>, asked through the gate class at the time of the call
+/// (Story 24.15).</p>
+ClassMethod DefaultSettingHolds(pResource As %String, pPermission As %String) As %Boolean [ Private ]
+{
+    Quit ''$ClassMethod(..GateClass(), "EvaluateRequired", $ListBuild($ListBuild(pResource, pPermission)), .tFailedPair)
+}
+
+/// <p>Whether the caller may not write the default setting named <var>pSetting</var>, by the classic page's own per-setting rules
+/// (<code>EnsPortal.DefaultSettings</code>' <code>canEditSettingName</code>), restated here because its checks cache in the web session and
+/// these are asked at every call (Story 24.15, AD-8): the setting <code>Enabled</code> needs <parameter>ITEMRUNPAIR</parameter>; then a
+/// holder of the <code>%All</code> role may write any; a caller without <parameter>DEFAULTSETTINGRESTRICTEDPAIR</parameter> may write any;
+/// and a restricted caller never writes <code>*</code> and writes a setting <code>N</code> only with <code>%Ens_SystemDefaultSettings_N:USE</code>.</p>
+ClassMethod DefaultSettingRestricted(pSetting As %String) As %Boolean
+{
+    If (pSetting = ..#DEFAULTSETTINGENABLED) && '..DefaultSettingHolds($Piece(..#ITEMRUNPAIR, ":", 1), $Piece(..#ITEMRUNPAIR, ":", 2)) Quit 1
+    If ..HoldsAllRole() Quit 0
+    If '..DefaultSettingHolds($Piece(..#DEFAULTSETTINGRESTRICTEDPAIR, ":", 1), $Piece(..#DEFAULTSETTINGRESTRICTEDPAIR, ":", 2)) Quit 0
+    If pSetting = "*" Quit 1
+    Quit '..DefaultSettingHolds(..#DEFAULTSETTINGRESOURCEPREFIX _ pSetting, "USE")
+}
+
+/// <p>The vendor's id of the default setting whose four key parts <var>pParts</var> holds: the parts joined by <code>||</code>.</p>
+ClassMethod DefaultSettingId(pParts As %List) As %String [ Private ]
+{
+    Quit $ListToString(pParts, "||")
+}
+
+/// <p>Whether <var>pPart</var> is a valid part of a default setting's key: 1 to <parameter>DEFAULTSETTINGKEYMAX</parameter> characters
+/// with no control character, no <code>||</code>, and no <code>|</code> at either end, since the vendor's id joins the parts with
+/// <code>||</code> and a bar at a part's edge would split that id at another place. Pure.</p>
+ClassMethod DefaultSettingPartOK(pPart As %String) As %Boolean
+{
+    Quit (pPart '= "") && ($Length(pPart) <= ..#DEFAULTSETTINGKEYMAX) && ($ZStrip(pPart, "*C") = pPart) && (pPart '[ "||") && ($Extract(pPart) '= "|") && ($Extract(pPart, *) '= "|")
+}
+
+/// <p>Whether the instance can address <code>^Ens.Config.DefaultSettingsD</code> by the four parts <var>pParts</var>: a key whose encoded
+/// form is past the instance's subscript limit raises <code>&lt;SUBSCRIPT&gt;</code> in the vendor's own calls, so no setting holds it.
+/// The test reads a process-private global whose name is as long as the vendor's, which nothing writes. Names no other class, so it runs
+/// while a namespace is switched.</p>
+ClassMethod DefaultSettingFits(pParts As %List) As %Boolean
+{
+    Set tFits = 1
+    Try {
+        Set tProbe = $Data(^||Ens.Config.DefaultSettingsD($List(pParts, 1), $List(pParts, 2), $List(pParts, 3), $List(pParts, 4)))
+    } Catch {
+        Set tFits = 0
+    }
+    Quit tFits
+}
+
+/// <p>Whether <var>pParts</var> is four valid key parts the instance can address (<method>DefaultSettingPartOK</method>,
+/// <method>DefaultSettingFits</method>). Pure.</p>
+ClassMethod DefaultSettingKeyOK(pParts As %List) As %Boolean
+{
+    If '$ListValid(pParts) || ($ListLength(pParts) '= 4) Quit 0
+    Set tValid = 1
+    For tI = 1:1:4 {
+        If '..DefaultSettingPartOK($List(pParts, tI)) Set tValid = 0
+    }
+    If 'tValid Quit 0
+    Quit ..DefaultSettingFits(pParts)
+}
+
+/// <p>Whether the vendor accepts <var>pValue</var> for the setting the key parts name, in <var>pNamespace</var>: a transient
+/// <code>Ens.Config.DefaultSettings</code> is validated, never saved, so the vendor's own <code>%OnValidateObject</code> judges the value as
+/// its classic page does. The vendor's text is logged and never shown (Story 24.15).</p>
+ClassMethod DefaultSettingAccepts(pNamespace As %String, pParts As %List, pValue As %String) As %Boolean
+{
+    Set tVendorSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tObject = ##class(Ens.Config.DefaultSettings).%New()
+        Set tObject.ProductionName = $List(pParts, 1)
+        Set tObject.ItemName = $List(pParts, 2)
+        Set tObject.HostClassName = $List(pParts, 3)
+        Set tObject.SettingName = $List(pParts, 4)
+        Set tObject.SettingValue = pValue
+        Set tVendorSC = tObject.%ValidateObject()
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tVendorSC = ex.AsStatus()
+    }
+    If $$$ISERR(tVendorSC) Do ..LogFault("a default setting value did not pass the vendor's validation", tVendorSC)
+    Quit $$$ISOK(tVendorSC)
+}
+
+/// <p>The 422 violations of a default setting's key and fields, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field,
+/// code)</code> with the count in <code>pViolations</code> (Story 24.15): a key part that <method>DefaultSettingPartOK</method> refuses, or
+/// a key the instance cannot address, is <code>KEY</code> on that part (judged only when <var>pJudgeKey</var>, which an add passes); a value
+/// or description past <parameter>DEFAULTSETTINGTEXTMAX</parameter> is <code>VALUE</code>; a field of the wrong type is
+/// <code>PORT.FIELD.SHAPE</code>; and, with <var>pJudgeValue</var>, when nothing else is wrong and a value is given, or an add names none
+/// (the empty value), a value the vendor refuses (<method>DefaultSettingAccepts</method>) is <code>VALUE</code>. The vendor is never asked
+/// about a setting whose name the credential pattern matches, which every write refuses by its name. A caller that has not yet passed the
+/// port's gate and refusals passes <var>pJudgeValue</var> 0, so no vendor call runs before them. <var>pFields</var> is the body:
+/// <code>Value</code> and <code>Description</code> strings and <code>Deployable</code> a boolean.</p>
+ClassMethod DefaultSettingViolations(pNamespace As %String, pProduction As %String, pItem As %String, pHostClass As %String, pSetting As %String, pFields As %DynamicObject, Output pViolations, pJudgeKey As %Boolean = 1, pJudgeValue As %Boolean = 1) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tParts = $ListBuild(pProduction, pItem, pHostClass, pSetting)
+    Set tNames = $ListBuild("Production", "Item", "HostClass", "Setting")
+    If pJudgeKey {
+        For tI = 1:1:4 {
+            If '..DefaultSettingPartOK($List(tParts, tI)) Set pViolations($Increment(pViolations)) = $ListBuild($List(tNames, tI), ##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGKEY)
+        }
+        If 'pViolations && '..DefaultSettingFits(tParts) Set pViolations($Increment(pViolations)) = $ListBuild("Setting", ##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGKEY)
+    }
+    If '$IsObject(pFields) || 'pFields.%IsA("%Library.DynamicObject") Set pFields = {}
+    For tField = "Value", "Description" {
+        Set tType = pFields.%GetTypeOf(tField)
+        If tType = "string" {
+            If $Length(pFields.%Get(tField)) > ..#DEFAULTSETTINGTEXTMAX Set pViolations($Increment(pViolations)) = $ListBuild(tField, ##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGVALUE)
+        } ElseIf tType '= "unassigned" {
+            Set pViolations($Increment(pViolations)) = $ListBuild(tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        }
+    }
+    Set tType = pFields.%GetTypeOf("Deployable")
+    If (tType '= "boolean") && (tType '= "unassigned") Set pViolations($Increment(pViolations)) = $ListBuild("Deployable", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+    If pViolations || 'pJudgeValue || ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(pSetting) Quit $$$OK
+    If ((pFields.%GetTypeOf("Value") = "string") || (pJudgeKey && (pFields.%GetTypeOf("Value") = "unassigned"))) && '..DefaultSettingAccepts(pNamespace, tParts, pFields.%Get("Value")) {
+        Set pViolations($Increment(pViolations)) = $ListBuild("Value", ##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGVALUE)
+    }
+    Quit $$$OK
+}
+
+/// <p>The decision a default setting write <var>pType</var> is refused with, as the last segment of its code (<code>TAKEN</code>) or
+/// <code>ABSENT</code> for a target that is not there, else <code>""</code> (Story 24.15): an add of a key the namespace holds is
+/// <code>TAKEN</code>; a set or a remove of a key it does not hold is <code>ABSENT</code>. <var>pExists</var> is whether the setting is held
+/// under exactly that key. Pure.</p>
+ClassMethod DefaultSettingWriteToken(pType As %String, pExists As %Boolean) As %String
+{
+    If pType = ..#TYPEADDDEFAULT Quit $Select(pExists: "TAKEN", 1: "")
+    Quit $Select(pExists: "", 1: "ABSENT")
+}
+
+/// <p>The setting <var>pObject</var> as the seven values <parameter>DEFAULTSETTINGFIELDS</parameter> names, in that order. Runs while the
+/// setting's namespace is switched.</p>
+ClassMethod DefaultSettingLine(pObject As %RegisteredObject) As %List [ Private ]
+{
+    Set tValue = pObject.SettingValue
+    If tValue = $Char(0) Set tValue = ""
+    Set tDescription = pObject.Description
+    If tDescription = $Char(0) Set tDescription = ""
+    Quit $ListBuild(pObject.ProductionName, pObject.ItemName, pObject.HostClassName, pObject.SettingName, tValue, tDescription, ''pObject.Deployable)
+}
+
+/// <p>The row a default setting list and read answer, from the seven values <var>pLine</var> (<method>DefaultSettingLine</method>):
+/// <code>{Production, Item, HostClass, Setting, Value, Description, Deployable, Secret}</code>, and with <var>pNamespace</var>
+/// <code>Namespace</code> too. A setting whose name the credential pattern matches
+/// (<method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method>) answers an empty <code>Value</code> and <code>Secret</code> true: the value
+/// is dropped here, in the install namespace, and reaches nothing that renders the row (AD-35, Story 24.15).</p>
+ClassMethod DefaultSettingRow(pLine As %List, pNamespace As %String = "") As %DynamicObject [ Private ]
+{
+    Set tSecret = ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName($List(pLine, 4))
+    Set tRow = {}
+    Do tRow.%Set("Production", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("Item", $List(pLine, 2) _ "", "string")
+    Do tRow.%Set("HostClass", $List(pLine, 3) _ "", "string")
+    Do tRow.%Set("Setting", $List(pLine, 4) _ "", "string")
+    Do tRow.%Set("Value", $Select(tSecret: "", 1: $List(pLine, 5) _ ""), "string")
+    Do tRow.%Set("Description", $List(pLine, 6) _ "", "string")
+    Do tRow.%Set("Deployable", ''$List(pLine, 7), "boolean")
+    Do tRow.%Set("Secret", ''tSecret, "boolean")
+    If pNamespace '= "" Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The namespace's system default settings, one row per setting, at most <var>pMax</var> when it is above zero (Story 24.15):
+/// <method>DefaultSettingRow</method>'s fields, in key order. Read with <code>%ExecDirectNoPriv</code> after the gate (<method>SqlRows</method>);
+/// nothing is written.</p>
+ClassMethod ListDefaultSettings(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..SqlRows(pNamespace, ..#DEFAULTSETTINGSQL, .tFound, .tCaught, $Select(pMax > 0: pMax, 1: ..#SQLMAX))
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the system default setting list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Do pRows.%Push(..DefaultSettingRow(tFound(tI)))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The facts about the default setting the key parts <var>pParts</var> name, read in the current namespace, which the caller has already
+/// switched, and kept in <var>pFacts</var>: <code>exists</code> (the namespace holds it under exactly that key) and, when it does,
+/// <code>line</code> (<method>DefaultSettingLine</method>). A key the instance cannot address is not held. Nothing is written.</p>
+ClassMethod DefaultSettingFactsHere(pParts As %List, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("exists") = 0
+    Set pFacts("line") = ""
+    If '..DefaultSettingFits(pParts) Quit
+    Set tId = ..DefaultSettingId(pParts)
+    If '##class(Ens.Config.DefaultSettings).%ExistsId(tId) Quit
+    Set tObject = ##class(Ens.Config.DefaultSettings).%OpenId(tId)
+    If $IsObject(tObject) {
+        Set pFacts("exists") = 1
+        Set pFacts("line") = ..DefaultSettingLine(tObject)
+    }
+    Set tObject = ""
+}
+
+/// <p><method>DefaultSettingFactsHere</method> in <var>pNamespace</var>; a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod DefaultSettingFacts(pNamespace As %String, pParts As %List, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..DefaultSettingFactsHere(pParts, .pFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>403 <code>INTEROP.DEFAULTSETTING.RESTRICTED</code>: the classic page would not let the caller change this setting's default.</p>
+ClassMethod DefaultSettingRestrictedRefusal(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tCode = ##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGRESTRICTED
+    Quit ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, tCode, ##class(OcuPilot.Api.InteropError).ReasonFor(tCode), .pHttpStatus, .pFault)
+}
+
+/// <p>The refusals every default setting write is judged on before its namespace is read, as an error status with
+/// <var>pHttpStatus</var> and <var>pFault</var> set, or <code>$$$OK</code> (Story 24.15): <code>RESTRICTED</code> by the classic page's
+/// per-setting rules (<method>DefaultSettingRestricted</method>), <code>SOURCECONTROL</code> for a namespace under source control, then
+/// <code>SECRET</code> for a setting whose name the credential pattern matches.</p>
+ClassMethod DefaultSettingWriteRefusal(pNamespace As %String, pSetting As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    If ..DefaultSettingRestricted(pSetting) Quit ..DefaultSettingRestrictedRefusal(.pHttpStatus, .pFault)
+    If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGSOURCECONTROL, .pHttpStatus, .pFault)
+    If ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(pSetting) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGSECRET, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>One system default setting, fresh (Story 24.15): <method>DefaultSettingRow</method>'s fields and <code>Namespace</code>. A setting
+/// not held under exactly that key, or a key that is not four valid parts, is 404 <code>PORT.NOTFOUND</code>, unlogged. With
+/// <var>pAction</var> it refuses what that write would be refused, in this order (<method>DefaultSettingWriteRefusal</method>):
+/// <code>RESTRICTED</code>, <code>SOURCECONTROL</code>, <code>SECRET</code>; then, for an add (AD-54, which inverts the read),
+/// <code>TAKEN</code> when the key is held and otherwise the 404 a create expects.</p>
+ClassMethod ReadDefaultSetting(pNamespace As %String, pParts As %List, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If '..DefaultSettingKeyOK(pParts) Quit ..Absent(.pHttpStatus, .pFault)
+    If pAction '= "" {
+        Set tSC = ..DefaultSettingWriteRefusal(pNamespace, $List(pParts, 4), .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Do ..DefaultSettingFacts(pNamespace, pParts, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the system default setting read failed", .pHttpStatus, .pFault)
+    If pAction = ..#TYPEADDDEFAULT {
+        If ..DefaultSettingWriteToken(pAction, tFacts("exists")) '= "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGTAKEN, .pHttpStatus, .pFault)
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    Set pRow = ..DefaultSettingRow(tFacts("line"), pNamespace)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the DefaultSettings endpoint's <code>LIST</code> and typed types, and the DefaultSettingsDiff endpoint's <code>LIST</code>, after
+/// <method>Invoke</method>'s gate (Story 24.15). A typed call names the setting under <parameter>IDKEY</parameter> by the composite
+/// <code>[Production, Item, HostClass, Setting]</code>, each part kept exactly (AD-13); an id that is not four parts is 404. An
+/// <parameter>ACTIONKEY</parameter> names the write the read is composed for.</p>
+ClassMethod InvokeDefaultSetting(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pEndpoint = ..#ENDPOINTDEFAULTSETTINGSDIFF {
+                Set tSC = ..ListDefaultSettingDiff(pNamespace, $Get(pQuery(..#DIFFTARGETKEY)), +tMaxText, .pResult, .pHttpStatus, .pFault)
+            } Else {
+                Set tSC = ..ListDefaultSettings(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            }
+            Quit
+        }
+        Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite($Get(pQuery(..#IDKEY)))
+        Set tAction = $Select(..IsDefaultSettingWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsDefaultSettingWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsDefaultSettingWrite(pType) {
+            Set tSC = ..PerformDefaultSetting(pNamespace, pType, tParts, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadDefaultSetting(pNamespace, tParts, tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the system default setting call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Run default setting write <var>pType</var> on the setting the key parts <var>pParts</var> name in <var>pNamespace</var> and answer
+/// what it leaves (Story 24.15). The sequence:</p>
+/// <ol>
+/// <li>The refusals of <method>DefaultSettingWriteRefusal</method>, before anything is read.</li>
+/// <li>An add's or set's key and fields are judged by <method>DefaultSettingViolations</method> (422); a remove of a key that is not four
+/// valid parts is 404.</li>
+/// <li>In the namespace the setting is read again and judged by <method>DefaultSettingWriteToken</method>, so a state that moved since the
+/// review is refused by its own code with no vendor call; then the vendor's <code>%Save</code> of a new setting, <code>%Save</code> of the
+/// opened setting (concurrency 4, the reference dropped right after) with each field that differs, or <code>%DeleteId</code> runs. A set that
+/// moves no field calls nothing. A setting another process holds locked is 503.</li>
+/// </ol>
+/// <p>The vendor records its own audit row for each insert, update and delete (measured), so the port records none. The answer is the
+/// setting's row read again (<method>ReadDefaultSetting</method>); after a remove <code>{Production, Item, HostClass, Setting, Namespace}</code>.</p>
+ClassMethod PerformDefaultSetting(pNamespace As %String, pType As %String, pParts As %List, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If '$ListValid(pParts) || ($ListLength(pParts) '= 4) Quit ..Absent(.pHttpStatus, .pFault)
+    Set tSC = ..DefaultSettingWriteRefusal(pNamespace, $List(pParts, 4), .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    If pType = ..#TYPEREMOVEDEFAULT {
+        If '..DefaultSettingKeyOK(pParts) Quit ..Absent(.pHttpStatus, .pFault)
+    } Else {
+        Set tSC = ..DefaultSettingViolations(pNamespace, $List(pParts, 1), $List(pParts, 2), $List(pParts, 3), $List(pParts, 4), pBody, .tViolations, (pType = ..#TYPEADDDEFAULT))
+        If $$$ISERR(tSC) Quit tSC
+        If tViolations Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+        If '..DefaultSettingKeyOK(pParts) Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tBusy = 0
+    Set tChanged = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..DefaultSettingFactsHere(pParts, .tFacts)
+        Set tToken = ..DefaultSettingWriteToken(pType, tFacts("exists"))
+        If tToken = "" {
+            Set tId = ..DefaultSettingId(pParts)
+            If pType = ..#TYPEADDDEFAULT {
+                Set tObject = ##class(Ens.Config.DefaultSettings).%New()
+                Set tObject.ProductionName = $List(pParts, 1)
+                Set tObject.ItemName = $List(pParts, 2)
+                Set tObject.HostClassName = $List(pParts, 3)
+                Set tObject.SettingName = $List(pParts, 4)
+                If pBody.%GetTypeOf("Value") = "string" Set tObject.SettingValue = pBody.%Get("Value")
+                If pBody.%GetTypeOf("Description") = "string" Set tObject.Description = pBody.%Get("Description")
+                If pBody.%GetTypeOf("Deployable") = "boolean" Set tObject.Deployable = pBody.%Get("Deployable")
+                Set tVendorSC = tObject.%Save()
+            } ElseIf pType = ..#TYPESETDEFAULT {
+                Set tObject = ##class(Ens.Config.DefaultSettings).%OpenId(tId, 4)
+                If '$IsObject(tObject) {
+                    Set tBusy = 1
+                } Else {
+                    Set tHeld = ..DefaultSettingLine(tObject)
+                    If (pBody.%GetTypeOf("Value") = "string") && (pBody.%Get("Value") '= $List(tHeld, 5)) {
+                        Set tObject.SettingValue = pBody.%Get("Value")
+                        Set tChanged = tChanged _ $ListBuild("Value")
+                    }
+                    If (pBody.%GetTypeOf("Description") = "string") && (pBody.%Get("Description") '= $List(tHeld, 6)) {
+                        Set tObject.Description = pBody.%Get("Description")
+                        Set tChanged = tChanged _ $ListBuild("Description")
+                    }
+                    If (pBody.%GetTypeOf("Deployable") = "boolean") && (''pBody.%Get("Deployable") '= $List(tHeld, 7)) {
+                        Set tObject.Deployable = pBody.%Get("Deployable")
+                        Set tChanged = tChanged _ $ListBuild("Deployable")
+                    }
+                    If tChanged '= "" Set tVendorSC = tObject.%Save()
+                }
+            } Else {
+                Set tVendorSC = ##class(Ens.Config.DefaultSettings).%DeleteId(tId)
+            }
+        }
+        ; The setting's lock is released in the namespace it was taken in.
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Try {
+            Set $NAMESPACE = pNamespace
+        } Catch {
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the system default setting write failed", .pHttpStatus, .pFault)
+    If tBusy Quit ..Unavailable(.pHttpStatus, .pFault)
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken '= "" Quit ..Conflict(..#DEFAULTSETTINGCODEPREFIX _ tToken, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the system default setting write failed", .pHttpStatus, .pFault)
+    If pType = ..#TYPEREMOVEDEFAULT {
+        Set pResult = {}
+        Set tNames = $ListFromString(..#DEFAULTSETTINGFIELDS)
+        For tI = 1:1:4 {
+            Do pResult.%Set($List(tNames, tI), $List(pParts, tI), "string")
+        }
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tReadSC = ..ReadDefaultSetting(pNamespace, pParts, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Setting", $List(pParts, 4), "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The default settings of <var>pNamespace</var>, as <method>SqlRows</method> reads them, kept in <var>pSide</var> by key
+/// (<code>pSide("k" _ production, "k" _ item, "k" _ host class, "k" _ setting) = $ListBuild(value, description, deployable)</code>, so no
+/// subscript is empty or reads as a number) with the count in <var>pCount</var>. A side with more than
+/// <parameter>DEFAULTSETTINGSIDEMAX</parameter> rows is <var>pTooMany</var> and keeps none. A fault is <var>pCaught</var>.</p>
+ClassMethod DefaultSettingSide(pNamespace As %String, Output pSide, Output pCount As %Integer, Output pTooMany As %Boolean, Output pCaught) [ Private ]
+{
+    Kill pSide
+    Set pCount = 0
+    Set pTooMany = 0
+    Set tSC = ..SqlRows(pNamespace, ..#DEFAULTSETTINGSQL, .tFound, .pCaught, ..#DEFAULTSETTINGSIDEMAX + 1)
+    If $IsObject(pCaught) Quit
+    If tFound > ..#DEFAULTSETTINGSIDEMAX {
+        Set pTooMany = 1
+        Quit
+    }
+    For tI = 1:1:tFound {
+        Set tLine = tFound(tI)
+        Set pSide("k" _ $List(tLine, 1), "k" _ $List(tLine, 2), "k" _ $List(tLine, 3), "k" _ $List(tLine, 4)) = $ListBuild($List(tLine, 5), $List(tLine, 6), ''$List(tLine, 7))
+    }
+    Set pCount = tFound
+}
+
+/// <p>The system default settings that differ between <var>pNamespace</var> and the namespace <var>pTarget</var> names (Story 24.15,
+/// DW-2636), one row per setting, at most <var>pMax</var> when it is above zero, in key order:
+/// <code>{Production, Item, HostClass, Setting, Change, Value, OtherValue, Secret, Namespace, OtherNamespace}</code>. The settings are keyed
+/// by the exact composite key; <code>Change</code> is <parameter>DIFFONLYHERE</parameter>, <parameter>DIFFONLYTHERE</parameter> or
+/// <parameter>DIFFDIFFERS</parameter> (a different value, description or deployable flag); identical settings are not listed. A setting whose
+/// name the credential pattern matches shows neither value and still compares.</p>
+/// <p>Refused before any read: a <var>pTarget</var> that is empty or the route's namespace (400); the target not admitted as the route's
+/// namespace is (<method>Admit</method>: a malformed namespace name 400, a missing pair 403, a namespace that does not report interoperability,
+/// an unknown one included, 409 <code>INTEROP.NAMESPACE</code> naming it); a side over <parameter>DEFAULTSETTINGSIDEMAX</parameter> (409
+/// <code>INTEROP.DEFAULTSETTING.TOOMANY</code> naming it).</p>
+ClassMethod ListDefaultSettingDiff(pNamespace As %String, pTarget As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    If (pTarget = "") || ($ZConvert(pTarget, "U") = $ZConvert(pNamespace, "U")) Quit ..RefuseCriterion(..#DIFFTARGETKEY, .pHttpStatus, .pFault)
+    Set tSC = ..Admit(..#ENDPOINTDEFAULTSETTINGSDIFF, ..#TYPELIST, pTarget, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) {
+        If pHttpStatus = 409 Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.InteropError).#NAMESPACE, ##class(OcuPilot.Api.InteropError).#REASONNAMESPACE, .pHttpStatus, .pFault, {"namespace": (pTarget)})
+        Quit tSC
+    }
+    Do ..DefaultSettingSide(pNamespace, .tHere, .tHereCount, .tHereMany, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the system default settings could not be read", .pHttpStatus, .pFault)
+    If tHereMany Quit ..DefaultSettingTooMany(pNamespace, .pHttpStatus, .pFault)
+    Do ..DefaultSettingSide(pTarget, .tThere, .tThereCount, .tThereMany, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the system default settings could not be read", .pHttpStatus, .pFault)
+    If tThereMany Quit ..DefaultSettingTooMany(pTarget, .pHttpStatus, .pFault)
+    ; The union of both sides' keys, walked in order.
+    Merge tAll = tHere
+    Merge tAll = tThere
+    Set pRows = []
+    Set tCount = 0
+    Set tP = ""
+    For {
+        Set tP = $Order(tAll(tP))
+        If tP = "" Quit
+        Set tI = ""
+        For {
+            Set tI = $Order(tAll(tP, tI))
+            If tI = "" Quit
+            Set tC = ""
+            For {
+                Set tC = $Order(tAll(tP, tI, tC))
+                If tC = "" Quit
+                Set tS = ""
+                For {
+                    Set tS = $Order(tAll(tP, tI, tC, tS))
+                    If tS = "" Quit
+                    If (pMax > 0) && (tCount >= pMax) Quit
+                    Set tChange = ""
+                    Set tHeldHere = $Data(tHere(tP, tI, tC, tS), tLineHere)
+                    Set tHeldThere = $Data(tThere(tP, tI, tC, tS), tLineThere)
+                    If tHeldHere && 'tHeldThere {
+                        Set tChange = ..#DIFFONLYHERE
+                    } ElseIf 'tHeldHere && tHeldThere {
+                        Set tChange = ..#DIFFONLYTHERE
+                    } ElseIf tLineHere '= tLineThere {
+                        Set tChange = ..#DIFFDIFFERS
+                    }
+                    If tChange = "" Continue
+                    Set tSetting = $Extract(tS, 2, *)
+                    Set tSecret = ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(tSetting)
+                    Set tRow = {}
+                    Do tRow.%Set("Production", $Extract(tP, 2, *), "string")
+                    Do tRow.%Set("Item", $Extract(tI, 2, *), "string")
+                    Do tRow.%Set("HostClass", $Extract(tC, 2, *), "string")
+                    Do tRow.%Set("Setting", tSetting, "string")
+                    Do tRow.%Set("Change", tChange, "string")
+                    Do tRow.%Set("Value", $Select(tSecret || 'tHeldHere: "", 1: $List(tLineHere, 1) _ ""), "string")
+                    Do tRow.%Set("OtherValue", $Select(tSecret || 'tHeldThere: "", 1: $List(tLineThere, 1) _ ""), "string")
+                    Do tRow.%Set("Secret", ''tSecret, "boolean")
+                    Do tRow.%Set("Namespace", pNamespace, "string")
+                    Do tRow.%Set("OtherNamespace", pTarget, "string")
+                    Do pRows.%Push(tRow)
+                    Set tCount = tCount + 1
+                }
+            }
+        }
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>409 <code>INTEROP.DEFAULTSETTING.TOOMANY</code> naming <var>pNamespace</var> in <code>detail.namespace</code>.</p>
+ClassMethod DefaultSettingTooMany(pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tCode = ##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGTOOMANY
+    Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, tCode, ##class(OcuPilot.Api.InteropError).ReasonFor(tCode), .pHttpStatus, .pFault, {"namespace": (pNamespace)})
+}
+
+/// <p>The lines <method>Snippet</method> adds for the default setting write <var>pType</var> of the setting the composite id
+/// <var>pId</var> names (Story 24.15): the vendor's <code>%Save</code> of a new setting with each field the body <var>pBody</var> carries,
+/// a <code>%Save</code> of the setting opened at concurrency 4 with the fields it carries, or <code>%DeleteId</code>. Keys and values are
+/// string literals; the value of a setting whose name the credential pattern matches is rendered as <code>&lt;Value&gt;</code>, never as
+/// sent (AD-35).</p>
+ClassMethod DefaultSettingSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
+    Set tId = ..Literal($ListToString(tParts, "||"))
+    If pType = ..#TYPEREMOVEDEFAULT Quit tNL _ " Set tSC = ##class(Ens.Config.DefaultSettings).%DeleteId(" _ tId _ ")"
+    If pType = ..#TYPEADDDEFAULT {
+        Set tText = tNL _ " Set tSetting = ##class(Ens.Config.DefaultSettings).%New()"
+        Set tNames = $ListBuild("ProductionName", "ItemName", "HostClassName", "SettingName")
+        For tI = 1:1:4 {
+            Set tText = tText _ tNL _ " Set tSetting." _ $List(tNames, tI) _ " = " _ ..Literal($ListGet(tParts, tI))
+        }
+    } Else {
+        Set tText = tNL _ " Set tSetting = ##class(Ens.Config.DefaultSettings).%OpenId(" _ tId _ ", 4)"
+    }
+    For tField = "Value", "Description", "Deployable" {
+        Set tProperty = $Case(tField, "Value": "SettingValue", : tField)
+        Set tType = $Select($IsObject(pBody): pBody.%GetTypeOf(tField), 1: "unassigned")
+        If tType = "string" {
+            Set tValue = $Select((tField = "Value") && ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName($ListGet(tParts, 4)): "<Value>", 1: pBody.%Get(tField))
+            Set tText = tText _ tNL _ " Set tSetting." _ tProperty _ " = " _ ..Literal(tValue)
+        } ElseIf tType = "boolean" {
+            Set tText = tText _ tNL _ " Set tSetting." _ tProperty _ " = " _ (''pBody.%Get(tField))
+        }
+    }
+    Quit tText _ tNL _ " Set tSC = tSetting.%Save()" _ tNL _ " Set tSetting = """""
 }
 
 /// <p>The code prefix of a startup refusal: <code>INTEROP.STARTUP.</code> and the token <method>StartupRefusal</method> answers.</p>

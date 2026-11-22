@@ -124,6 +124,8 @@ XData Titles
 "headerNamespaceLabel": "Namespace",
 "interopBplEditorTitle": "BPL editor",
 "interopBusinessPartnersLabel": "Business partners",
+"interopDefaultSettingsDiffLabel": "Compare default settings",
+"interopDefaultSettingsLabel": "System default settings",
 "interopDtlEditorTitle": "DTL editor",
 "interopItemClassesLabel": "Host classes",
 "interopItemJobsLabel": "Item jobs",
