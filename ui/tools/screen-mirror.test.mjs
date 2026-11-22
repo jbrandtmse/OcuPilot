@@ -1623,6 +1623,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.ExplorerUnitTestRun',
       'OcuPilot.Screen.Descriptor.ExplorerUnitTests',
       'OcuPilot.Screen.Descriptor.GlobalMappingList',
+      // Story 24.15: Compare default settings, whose one criterion is the other namespace.
+      'OcuPilot.Screen.Descriptor.InteropDefaultSettingDiff',
       'OcuPilot.Screen.Descriptor.InteropItemClassTab',
       'OcuPilot.Screen.Descriptor.InteropItemJobTab',
       'OcuPilot.Screen.Descriptor.InteropItemList',
@@ -1854,6 +1856,12 @@ const CREDENTIAL_FLAG_FIELDS = new Set([
   'AnalyticsTermListEntryList.cls context.fields: Key',
   'UserList.cls read.fields: ChangePassword',
   'UserList.cls context.fields: ChangePassword',
+  // The system default settings list and its comparison (Story 24.15) carry the same `Secret` flag, set for a setting whose name matches the
+  // pattern, with an empty value on both sides; the flag holds no credential.
+  'InteropDefaultSettingList.cls read.fields: Secret',
+  'InteropDefaultSettingList.cls context.fields: Secret',
+  'InteropDefaultSettingDiff.cls read.fields: Secret',
+  'InteropDefaultSettingDiff.cls context.fields: Secret',
 ]);
 
 test('AD-35: no production descriptor names a read, filter, sort, column or context field matching the credential pattern', () => {
@@ -2806,6 +2814,9 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm',
       'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
       'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList',
+      // Story 24.15: System default settings and Compare default settings own %Ens_SystemDefaultConfig:READ.
+      'OcuPilot.Screen.Descriptor.InteropDefaultSettingDiff',
+      'OcuPilot.Screen.Descriptor.InteropDefaultSettingList',
       'OcuPilot.Screen.Descriptor.InteropItemClassTab',
       'OcuPilot.Screen.Descriptor.InteropItemJobTab',
       'OcuPilot.Screen.Descriptor.InteropItemList',

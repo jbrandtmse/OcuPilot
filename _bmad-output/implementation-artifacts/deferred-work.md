@@ -14385,3 +14385,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-37-page-resources.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Story 21.37 extended two existing rows of the contended EXPERIENCE.md instead of adding an inventory row and a microcopy row
 - 2026-11-21T21:37:13Z status=wontfix-accepted owner=21-37-page-resources by=cr note=reopen_if=strings.test.mjs or a later story needs the Page resources inventory row on its own line
+### DW-2822: Self-protection parity: the agent can delete or update the IRIS wallet secret its own AI provider reads its key from (WalletSecretDelete, WalletSecretUpdate), the same self-disable path Story 24.15 Batch 2 refuses for the provider's credential
+- source: Story 24.15 spec gate, veto item U-135, orchestrator condition | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Kernel/Secret/Ladder.cls: the wallet rung reads a %Wallet.KeyValue secret from the IRIS wallet for the provider key (doc lines 14-17, WALLETKEYVALUETYPE); Screen/Tool ships WalletSecretDelete and WalletSecretUpdate
+- 2026-11-21T18:36:21Z status=routed owner=burndown by=epic-24-runner note=Epic 24 burn-down; do not widen 24.15 Batch 2 to cover it (orchestrator)

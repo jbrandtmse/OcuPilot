@@ -232,6 +232,8 @@ XData Elsewhere
 <screen name="ExplorerUnitTests"/>
 <screen name="Home"/>
 <screen name="InteropBusinessPartnerList"/>
+<screen name="InteropDefaultSettingList"/>
+<screen name="InteropDefaultSettingDiff"/>
 <screen name="InteropItemClassTab"/>
 <screen name="InteropItemJobTab"/>
 <screen name="InteropItemList"/>

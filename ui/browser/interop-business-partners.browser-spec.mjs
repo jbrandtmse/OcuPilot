@@ -28,10 +28,10 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
-import { waitForMapAnswered } from './namespace-features.mjs';
-import { settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
-import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
+import { interopListHelpers } from './interop-list-spec.mjs';
+import { clickRowCentre } from './list-spec.mjs';
+import { signedInAt } from './panel-spec.mjs';
+import { VIEWPORTS, assertThrowaway } from './structural-walk.mjs';
 import { markerValue, runIris } from './turnprobe-spec.mjs';
 
 const config = browserConfig();
@@ -46,7 +46,6 @@ const PARTNERS_URL = '/ocupilot/interoperability/business-partners?ns=USER';
 const PARTNERS_ROUTE = 'interoperability/business-partners';
 const ACTION_PATH = '/api/ocupilot/screens/interop.businesspartners/action';
 const ADD_PATH = '/api/ocupilot/interop/business-partners';
-const NAME_TEXT = '.ocu-data-table-link, .ocu-data-table-text';
 
 let browser = null;
 let created = false;
@@ -89,132 +88,12 @@ function arrange(name, fields = '""') {
   assert.equal(made.value, '1', `the probe partner ${name} is arranged: ${made.output}`);
 }
 
-/** Two rendered frames, so a resize or a theme flip has landed before anything is measured. */
-function frames(page) {
-  return page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-}
-
-/** The DW-1337 walk of `route` at 1280 light, 720 light and 1280 dark, answering every entry the baseline does not hold. */
-async function structural(page, route) {
-  const found = [];
-  const passes = [
-    { viewport: VIEWPORTS.wide, theme: 'light', checks: INVARIANTS },
-    { viewport: VIEWPORTS.narrow, theme: 'light', checks: ['name', 'min-width', 'overflow'] },
-    { viewport: VIEWPORTS.wide, theme: 'dark', checks: ['contrast'] },
-  ];
-  const minimums = componentMinimums();
-  const surfaces = {};
-  for (const { viewport, theme, checks } of passes) {
-    await settleViewport(page, viewport);
-    await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
-    await frames(page);
-    await transitionsSettled(page, config.navigationTimeoutMs);
-    surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-    const { entries: measured } = await detectScreen(page, { route, checks, viewport: viewport.width, theme, minimums });
-    found.push(...measured);
-  }
-  await page.evaluate(() => document.documentElement.classList.remove('ocu-theme-dark'));
-  await page.setViewport(VIEWPORTS.wide);
-  await frames(page);
-  assert.notEqual(surfaces.dark, surfaces.light, 'the dark pass measured the dark theme, not the light one');
-  return compare(collapse(found), readBaseline()?.entries ?? []).fresh.map((entry) => `${entry.key}: ${entry.measured}`);
-}
-
-/** The cells of the row whose first cell reads `name`, or `null`. */
-function rowOf(page, name) {
-  return page.evaluate(
-    (rowSelector, wanted, textSelector) => {
-      const row = Array.from(document.querySelectorAll(rowSelector)).find((node) => {
-        const cell = node.querySelector('[role="gridcell"]');
-        return ((cell?.querySelector(textSelector) ?? cell)?.textContent ?? '').trim() === wanted;
-      });
-      return row === undefined ? null : Array.from(row.querySelectorAll('[role="gridcell"]')).map((cell) => cell.textContent.trim());
-    },
-    ROW_SELECTOR,
-    name,
-    NAME_TEXT
-  );
-}
-
-/** Wait until the list holds a row named `name`, or, with `present` false, none. */
-function rowPresent(page, name, present = true) {
-  return page.waitForFunction(
-    (rowSelector, wanted, textSelector, want) =>
-      Array.from(document.querySelectorAll(rowSelector)).some((row) => {
-        const cell = row.querySelector('[role="gridcell"]');
-        return ((cell?.querySelector(textSelector) ?? cell)?.textContent ?? '').trim() === wanted;
-      }) === want,
-    { timeout: config.navigationTimeoutMs },
-    ROW_SELECTOR,
-    name,
-    NAME_TEXT,
-    present
-  );
-}
-
-/** Wait until the row named `name` reads `text` in its cell number `cell`. */
-function waitForCell(page, name, cell, text) {
-  return page.waitForFunction(
-    (rowSelector, wanted, textSelector, at, expected) => {
-      const row = Array.from(document.querySelectorAll(rowSelector)).find((node) => {
-        const first = node.querySelector('[role="gridcell"]');
-        return ((first?.querySelector(textSelector) ?? first)?.textContent ?? '').trim() === wanted;
-      });
-      const cells = row === undefined ? [] : Array.from(row.querySelectorAll('[role="gridcell"]'));
-      return cells[at]?.textContent.trim() === expected;
-    },
-    { timeout: config.navigationTimeoutMs },
-    ROW_SELECTOR,
-    name,
-    NAME_TEXT,
-    cell,
-    text
-  );
-}
-
-/** Narrow the list to `name`, select its row, open its menu and choose the entry labeled `label`. */
-async function rowAction(page, name, label) {
-  await waitForRows(page, config.navigationTimeoutMs);
-  await page.click(FILTER_SELECTOR, { clickCount: 3 });
-  await page.keyboard.press('Backspace');
-  await page.type(FILTER_SELECTOR, name);
-  await rowPresent(page, name);
-  // The filter leaves the one row; its second cell is not the name.
-  await clickRowCentre(page, { index: 0, cell: 1 });
-  await (await page.waitForSelector('[role="row"][aria-selected="true"] .ocu-data-table-trigger', { visible: true, timeout: config.navigationTimeoutMs })).click();
-  await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: config.navigationTimeoutMs });
-  await page.evaluate((wanted) => {
-    Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]'))
-      .find((item) => item.querySelector('.ocu-data-table-menu-label')?.textContent.trim() === wanted)
-      .click();
-  }, label);
-}
-
-/** Wait until the dialog closes. */
-function dialogClosed(page) {
-  return page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
-}
-
-/** Replace the text of the dialog field `selector` with `value`. */
-async function fill(page, selector, value) {
-  await page.click(selector, { clickCount: 3 });
-  await page.keyboard.press('Backspace');
-  if (value !== '') await page.type(selector, value);
-}
+const { structural, rowOf, rowPresent, waitForCell, rowAction, dialogClosed, fill, openList, openPrimary: openPrimaryWhenReady } = interopListHelpers(config);
 
 const field = (name) => `[data-interop-partner-field="${name}"]`;
 
-/** Open the Business partners list for the probe namespace and wait for its rows and the namespace features. */
-async function openList(page) {
-  await waitForRows(page, config.navigationTimeoutMs);
-  await waitForMapAnswered(page, config.navigationTimeoutMs);
-}
-
 /** Open the primary action's dialog on the current list. */
-async function openPrimary(page) {
-  await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
-  await page.waitForSelector(field('Name'), { visible: true, timeout: config.navigationTimeoutMs });
-}
+const openPrimary = (page) => openPrimaryWhenReady(page, field('Name'));
 
 before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec runs commands inside the container, so it never runs against the live one');

@@ -296,6 +296,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/analytics/runtime-variables" Method="POST" Call="AnalyticsRuntimeVariableCreate"/>
   <Route Url="/analytics/user-icons" Method="POST" Call="AnalyticsUserIconCreate"/>
   <Route Url="/interop/business-partners" Method="POST" Call="InteropPartnerCreate"/>
+  <Route Url="/interop/default-settings" Method="POST" Call="InteropDefaultSettingCreate"/>
   <Route Url="/config/ddl-mappings" Method="POST" Call="DdlMappingCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
   <Route Url="/allowed-directories" Method="POST" Call="AllowedDirectorySave"/>
@@ -2109,6 +2110,13 @@ ClassMethod AnalyticsUserIconCreate() As %Status
 ClassMethod InteropPartnerCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Interop.PartnerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/default-settings</code> (Story 24.15): System default settings' New default
+/// setting, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod InteropDefaultSettingCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.DefaultSettingSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /config/ddl-mappings</code> (Story 21.13): User DDL mappings' New mapping, resolved

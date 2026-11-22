@@ -664,3 +664,13 @@
 2026-11-21T18:23:27Z	Story 24.14	story_done	batches=1,2,2b,3,4 tracker=done
 2026-11-21T18:23:48Z	Story 24.15	stage_spawned	stage=plan spawn_at=2026-11-21T18:23:48Z model=opus agent_name=24-15-plan cycle_iteration=1 owned_ledger=DW-2636
 2026-11-21T18:28:59Z	Story 24.14	spine_amended	commit=b1d934735 AD-7+AD-65_add-only(U-132/U-133,as_shipped) on=feature_94fca2375 patch_2b=deleted
+2026-11-21T18:29:32Z	Story 24.14	merged_to_feature	spine_amendments feature=4cd1a974c
+2026-11-21T18:35:21Z	Story 24.15	story_created	spawn_at=2026-11-21T18:24:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-15-credentials-default-settings-and-schedules.md build_status=ready-for-dev scope=batch1_default_settings+compare(DW-2636)
+2026-11-21T18:35:21Z	Story 24.15	ruling	question=batches,compare_shape,provider_credential,audit_masking,strings choice=keep(Q3=stricter) category=veto inbox=U-135 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-21T18:35:21Z	Story 24.15	spec_validated	scope=batch1 owned_ledger=DW-2636(folded_AC4)
+2026-11-21T18:35:21Z	Story 24.15	stage_spawned	stage=implement spawn_at=2026-11-21T18:35:21Z model=sonnet agent_name=24-15-implement-batch1 cycle_iteration=1 story_base=928133ddf
+2026-11-21T18:36:21Z	Story 24.15	ruling	source=orchestrator U-135_Q3=strict_approved conditions_for_batch2=live_provider_config_read_at_proposal(all_enabled_definitions),refuse_at_proposal(no_card),append-only_Prohibited_term,refusal_sentence_to_orchestrator_with_plan_strings,scope=agent_remove+password_change_only,5_tests_with_mutations wallet_parity=DW-2822(burndown)
+2026-11-21T23:27:34Z	Story 24.15	stage_completed	stage=implement scope=batch1 commit=26d996850 status=done task0=vendor_audits_with_plaintext_value(masked_via_AuditPort.MaskVendorSecrets,no_ConfigChange) review=19(11_patched,8_rejected) sweep=17/17_green(5_roster_classes_fixed_add-only) test_tools=2385 components=315/3769 browser=default-settings+partner+a11y followup_review_recommended=true(3_hardening_legs_no_mutation)
+2026-11-21T23:27:34Z	Story 24.15	stage_spawned	stage=qa spawn_at=2026-11-21T23:27:34Z model=sonnet agent_name=24-15-qa-batch1 cycle_iteration=1
+2026-11-21T23:53:53Z	Story 24.15	stage_completed	stage=qa scope=batch1 commit=8df352529 product_fix=empty/absent_value_now_422_INTEROP.DEFAULTSETTING.VALUE(InteropPort.DefaultSettingViolations) tests=InteropDefaultSettingEdges(2)+3_browser_legs mutations=2_hardening_legs+reason_for_1 fresh=first_run_green
+2026-11-21T23:53:53Z	Story 24.15	stage_spawned	stage=code-review spawn_at=2026-11-21T23:53:53Z model=opus agent_name=24-15-review-batch1 cycle_iteration=1 range=3dca9873a..8df352529

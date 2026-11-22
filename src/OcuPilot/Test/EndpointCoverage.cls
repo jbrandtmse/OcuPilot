@@ -310,6 +310,7 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/analytics/runtime-variables" path="/api/ocupilot/analytics/runtime-variables" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/analytics/user-icons" path="/api/ocupilot/analytics/user-icons" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/interop/business-partners" path="/api/ocupilot/interop/business-partners" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/interop/default-settings" path="/api/ocupilot/interop/default-settings" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/config/ddl-mappings" path="/api/ocupilot/config/ddl-mappings" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/rest-service" path="/api/ocupilot/rest-service" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/allowed-directories" path="/api/ocupilot/allowed-directories" disposition="envelope" refusal="1"/>

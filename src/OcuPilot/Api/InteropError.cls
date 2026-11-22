@@ -430,6 +430,45 @@ Parameter PARTNERREMOVE = "INTEROP.PARTNER.REMOVE";
 
 Parameter REASONPARTNERREMOVE = "Removing this business partner deletes its description and both contacts, and it cannot be restored from OcuPilot.";
 
+/// <p>The system default settings' refusals, violations and consequences (Story 24.15). <code>TAKEN</code>, <code>SECRET</code> and
+/// <code>SOURCECONTROL</code> are 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, <code>RESTRICTED</code> is 403, and
+/// <code>KEY</code> and <code>VALUE</code> are 422. <code>TOOMANY</code> is 409 on the comparison.</p>
+Parameter DEFAULTSETTINGTAKEN = "INTEROP.DEFAULTSETTING.TAKEN";
+
+Parameter REASONDEFAULTSETTINGTAKEN = "This namespace already has a default setting for that production, item, host class and setting.";
+
+Parameter DEFAULTSETTINGSECRET = "INTEROP.DEFAULTSETTING.SECRET";
+
+Parameter REASONDEFAULTSETTINGSECRET = "This setting names a credential, so OcuPilot neither shows nor sets its value. Set it in the classic System Default Settings page.";
+
+Parameter DEFAULTSETTINGKEY = "INTEROP.DEFAULTSETTING.KEY";
+
+Parameter REASONDEFAULTSETTINGKEY = "Production, item, host class and setting are each 1 to 255 characters, may be * for any, and may not contain two vertical bars.";
+
+Parameter DEFAULTSETTINGVALUE = "INTEROP.DEFAULTSETTING.VALUE";
+
+Parameter REASONDEFAULTSETTINGVALUE = "This value is not valid for that setting.";
+
+Parameter DEFAULTSETTINGRESTRICTED = "INTEROP.DEFAULTSETTING.RESTRICTED";
+
+Parameter REASONDEFAULTSETTINGRESTRICTED = "You may not change the default for this setting.";
+
+Parameter DEFAULTSETTINGSOURCECONTROL = "INTEROP.DEFAULTSETTING.SOURCECONTROL";
+
+Parameter REASONDEFAULTSETTINGSOURCECONTROL = "This namespace uses source control, so change default settings in the classic System Default Settings page.";
+
+Parameter DEFAULTSETTINGTOOMANY = "INTEROP.DEFAULTSETTING.TOOMANY";
+
+Parameter REASONDEFAULTSETTINGTOOMANY = "One of these namespaces has more default settings than one comparison covers.";
+
+Parameter DEFAULTSETTINGREMOVE = "INTEROP.DEFAULTSETTING.REMOVE";
+
+Parameter REASONDEFAULTSETTINGREMOVE = "Items that took this value use their own setting or the class default again, and it cannot be restored from OcuPilot.";
+
+Parameter DEFAULTSETTINGPENDING = "INTEROP.DEFAULTSETTING.PENDING";
+
+Parameter REASONDEFAULTSETTINGPENDING = "A running production uses the new value once it is updated.";
+
 /// <p>The startup settings' refusals, violations and consequences (Story 24.3): the auto-start production and a production's shutdown
 /// group. <code>SAME</code> is 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, <code>ALLNAMESPACES</code> is 403,
 /// <code>READONLY</code> is 409, and <code>PRIORITY</code>, <code>GROUP</code> and <code>NOPRIORITY</code> are 422.</p>
@@ -601,13 +640,13 @@ Parameter OUTCOMEFAILED = "not resent";
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..StartupCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..StartupCodes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -677,6 +716,22 @@ ClassMethod PartnerCodes() As %List
 ClassMethod PartnerPreconditionCodes() As %List
 {
     Quit $ListBuild(..#PARTNERTAKEN, ..#PARTNERNAMECASE, ..#PARTNERNAMED, ..#PARTNERSOURCECONTROL)
+}
+
+/// <p>The system default setting codes (Story 24.15), as a <class>%List</class>: the six refusals and violations a default setting read
+/// or write answers with, and the comparison's refusal of a namespace with too many settings. The two consequence codes are
+/// <method>ConsequenceCodes</method>'s.</p>
+ClassMethod DefaultSettingCodes() As %List
+{
+    Quit $ListBuild(..#DEFAULTSETTINGTAKEN, ..#DEFAULTSETTINGSECRET, ..#DEFAULTSETTINGKEY, ..#DEFAULTSETTINGVALUE, ..#DEFAULTSETTINGRESTRICTED, ..#DEFAULTSETTINGSOURCECONTROL, ..#DEFAULTSETTINGTOOMANY)
+}
+
+/// <p>The default setting refusals a default setting tool's fresh read answers when the action does not fit the setting, as a
+/// <class>%List</class>; the two violations, the restricted refusal and the comparison's refusal, which the write or the comparison
+/// alone judges, are not among them.</p>
+ClassMethod DefaultSettingPreconditionCodes() As %List
+{
+    Quit $ListBuild(..#DEFAULTSETTINGTAKEN, ..#DEFAULTSETTINGSECRET, ..#DEFAULTSETTINGSOURCECONTROL)
 }
 
 /// <p>The startup codes (Story 24.3), as a <class>%List</class>: the three violations, the refusal of a value the production
@@ -840,6 +895,15 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#PARTNERNAME Quit ..#REASONPARTNERNAME
     If pCode = ..#PARTNERLENGTH Quit ..#REASONPARTNERLENGTH
     If pCode = ..#PARTNERREMOVE Quit ..#REASONPARTNERREMOVE
+    If pCode = ..#DEFAULTSETTINGTAKEN Quit ..#REASONDEFAULTSETTINGTAKEN
+    If pCode = ..#DEFAULTSETTINGSECRET Quit ..#REASONDEFAULTSETTINGSECRET
+    If pCode = ..#DEFAULTSETTINGKEY Quit ..#REASONDEFAULTSETTINGKEY
+    If pCode = ..#DEFAULTSETTINGVALUE Quit ..#REASONDEFAULTSETTINGVALUE
+    If pCode = ..#DEFAULTSETTINGRESTRICTED Quit ..#REASONDEFAULTSETTINGRESTRICTED
+    If pCode = ..#DEFAULTSETTINGSOURCECONTROL Quit ..#REASONDEFAULTSETTINGSOURCECONTROL
+    If pCode = ..#DEFAULTSETTINGTOOMANY Quit ..#REASONDEFAULTSETTINGTOOMANY
+    If pCode = ..#DEFAULTSETTINGREMOVE Quit ..#REASONDEFAULTSETTINGREMOVE
+    If pCode = ..#DEFAULTSETTINGPENDING Quit ..#REASONDEFAULTSETTINGPENDING
     If pCode = ..#STARTUPSAME Quit ..#REASONSTARTUPSAME
     If pCode = ..#STARTUPPRIORITY Quit ..#REASONSTARTUPPRIORITY
     If pCode = ..#STARTUPGROUP Quit ..#REASONSTARTUPGROUP

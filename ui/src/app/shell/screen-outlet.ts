@@ -277,6 +277,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': () => import('../areas/interoperability/interop-lookup-entry-list.page').then((m) => m.InteropLookupEntryListPage),
   // Story 20.26: Business partners, the list with its New business partner and Edit dialog.
   'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': () => import('../areas/interoperability/interop-business-partner-list.page').then((m) => m.InteropBusinessPartnerListPage),
+  // Story 24.15: System default settings, the list with its New default setting and Edit dialog.
+  'OcuPilot.Screen.Descriptor.InteropDefaultSettingList': () => import('../areas/interoperability/interop-default-setting-list.page').then((m) => m.InteropDefaultSettingListPage),
   // Story 20.27: Data transformations, the list with its Test dialog.
   'OcuPilot.Screen.Descriptor.InteropTransformList': () => import('../areas/interoperability/interop-transform-list.page').then((m) => m.InteropTransformListPage),
   // Story 20.7: the rule, BPL and DTL editor screens, the vendor's editor in a frame at <list>/document/<class>.cls.
