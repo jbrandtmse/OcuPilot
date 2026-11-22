@@ -158,7 +158,8 @@ test('waitForReplies is not satisfied while Send reads Stop, or while a reply is
   assert.equal((await waitWith({ replies: 1, send: 'Send' })).result, false, 'turn ended, second reply not drawn');
 });
 
-test('the journal tool test\'s second page asks for the context cap, not the first page\'s twenty rows', () => {
+// Mutation (Rule 19): set `tSecondAsk` to 20 in the journal tool test -> the second assertion goes red.
+test('the journal tool test\'s second page asks for the context cap, and its first page for more than the cap', () => {
   const source = readFileSync(new URL('../../src/OcuPilot/Test/JournalRecords.cls', import.meta.url), 'utf8');
   const start = source.indexOf('Method TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap()');
   assert.ok(start !== -1, 'the test method exists');
@@ -167,9 +168,13 @@ test('the journal tool test\'s second page asks for the context cap, not the fir
   assert.equal(views.length, 2, 'two View calls: the first page and the next');
   const between = body.slice(views[0].index + views[0][0].length, views[1].index);
   const cap = Number(views[1][1]);
-  const sent = [...between.matchAll(/tArgs\.%Set\("maxRows", (\d+), "number"\)/g)].map((match) => Number(match[1]));
-  assert.deepEqual(sent, [cap], `the second page sends maxRows ${cap}, the cap, before its View call`);
-  assert.equal(Number(/"maxRows": (\d+)\}/.exec(body)?.[1]), 20, 'the first page still reads twenty, so the cap is what truncates it');
+  const second = Number(/Set tSecondAsk = (\d+)/.exec(body)?.[1]);
+  const sent = [...between.matchAll(/tArgs\.%Set\("maxRows", (\w+), "number"\)/g)].map((match) => match[1]);
+  assert.deepEqual(sent, ['tSecondAsk'], 'the second page sends its own ask before its View call');
+  assert.equal(second, cap, `the second page asks ${cap}, the cap`);
+  const first = Number(/Set tFirstAsk = (\d+)/.exec(body)?.[1]);
+  assert.ok(first > cap, `the first page asks ${first}, more than the cap, so the cap is what truncates it`);
+  assert.match(body.slice(0, views[0].index), /"direction": "desc"\}\n\s+Do tArgs\.%Set\("maxRows", tFirstAsk, "number"\)/, 'and sends that ask');
 });
 
 test('cardViolations waits for the tool-call spinner to be gone before its first structural pass', () => {

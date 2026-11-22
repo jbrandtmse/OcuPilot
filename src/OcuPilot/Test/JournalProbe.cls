@@ -329,6 +329,33 @@ ClassMethod SeedProbeDatabase(pArmed As %Boolean, Output pFile As %String, pCoun
     Quit tSC
 }
 
+/// <p>How many rows the first bulk of <class>%SYS.Journal.Record</class>'s <code>List</code> holds
+/// (<var>pRows</var>), opened as the admin API's journal read opens it: the eight columns, the match
+/// <code>GlobalNode [ <var>pValue</var></code>, newest first when <var>pReverse</var>, from
+/// <var>pOffset</var> or, empty, from the file's end (or start). A read that needs more rows than the
+/// first bulk holds makes the vendor fill a second bulk, which scans on past this run's records.</p>
+ClassMethod FirstBulkRows(pFile As %String, pReverse As %Boolean, pValue As %String, Output pRows As %Integer, pOffset As %String = "") As %Status
+{
+    Set pRows = 0
+    Set tSC = $$$OK
+    Set tOpen = 0
+    Set tRecord = "%SYS.Journal.Record"
+    Try {
+        Set tColumns = "Address,TypeName,ExtTypeName,TimeStamp,InTransaction,ProcessID,GlobalNode,DatabaseName"
+        Set tOffsets = pOffset
+        Set tSC = $ClassMethod(tRecord, "ListExecute", .tHandle, pFile, .tColumns, .tOffsets, +pReverse, $ListBuild("GlobalNode", "[", pValue))
+        If $$$ISERR(tSC) Quit
+        Set tOpen = 1
+        Set tAtEnd = 0
+        Set tSC = $ClassMethod(tRecord, "FetchRows", .tHandle, 0, .tRowSet, .tAtEnd)
+        If $$$ISOK(tSC) Set pRows = +$Get(tHandle("RecordBufferCount"))
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If tOpen Do $ClassMethod(tRecord, "ListClose", .tHandle)
+    Quit tSC
+}
+
 /// <p>Set <parameter>READABLEGLOBAL</parameter><code>(1)</code> in the install namespace's routines
 /// database as one journaled record and sync the journal; <var>pNode</var> is the node as a record's
 /// <code>GlobalNode</code> reads it. <method>KillReadable</method> removes it.</p>
