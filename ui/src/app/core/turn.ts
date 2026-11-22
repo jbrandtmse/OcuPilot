@@ -41,6 +41,7 @@ import { parseCitations, type Citation } from './citations.ts';
 import { impactOf, type Impact } from './impact.ts';
 import { PRODUCTION_STATE_MOVED } from './proposal-view.ts';
 import { readBackOf, type ReadBack } from './read-back.ts';
+import { sourceControlQuestionsOf, type SourceControlQuestion } from './source-control-question.ts';
 import { sqlOutcomeLines } from './sql-answer.ts';
 import { testAnswerOf, testOutcomeLines } from './test-answer.ts';
 import { transformAnswerOf, transformOutcomeLines } from './test-answer.ts';
@@ -311,6 +312,11 @@ export interface TurnProposal {
    */
   readonly outputErrors?: boolean | null;
   /**
+   * What the namespace's source-control class asked after the confirmed create or delete (Story 21.38, AD-39's ninth exception), off the confirm's
+   * own `output.questions`. Held in memory only, for the card's dialog: it is never sent, stored or logged.
+   */
+  readonly questions?: readonly SourceControlQuestion[];
+  /**
    * The impact of the removal this proposal carries (AD-8), as the instance read it at the mint, or
    * `null` for a write with none. Optional so a literal built before it existed still compiles.
    */
@@ -481,6 +487,8 @@ export interface ProposalOutcome {
   readonly output?: readonly string[];
   /** Whether the confirmed compile reported errors (Story 20.17); `null` where the answer carried none. */
   readonly outputErrors?: boolean | null;
+  /** The source-control class's questions off the confirm's own `output.questions` (Story 21.38); `[]` on every other answer. */
+  readonly questions?: readonly SourceControlQuestion[];
 }
 
 /**
@@ -777,6 +785,7 @@ function mergeHeldProposals(held: readonly TurnProposal[], fresh: readonly TurnP
       ...(proposal.readBack == null && kept.readBack != null ? { readBack: kept.readBack } : {}),
       ...(kept.output === undefined ? {} : { output: kept.output }),
       ...(kept.outputErrors === undefined ? {} : { outputErrors: kept.outputErrors }),
+      ...(kept.questions === undefined ? {} : { questions: kept.questions }),
     };
   });
 }
@@ -1509,6 +1518,7 @@ export class TurnStore {
         readBack: readBackOf(result.body?.['readBack']),
         output: outputLinesOf(result.body?.['output']),
         outputErrors: outputErrorsOf(result.body?.['output']),
+        questions: sourceControlQuestionsOf(result.body?.['output']),
       };
       const target = this.targetOf(id);
       this.recordProposalState(id, outcome);
@@ -1603,6 +1613,7 @@ export class TurnStore {
                   ...(outcome.readBack === null ? {} : { readBack: outcome.readBack }),
                   ...((outcome.output ?? []).length === 0 ? {} : { output: outcome.output }),
                   ...((outcome.outputErrors ?? null) === null ? {} : { outputErrors: outcome.outputErrors }),
+                  ...((outcome.questions ?? []).length === 0 ? {} : { questions: outcome.questions }),
                 }
               : proposal
           )

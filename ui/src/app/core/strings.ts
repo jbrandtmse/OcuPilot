@@ -4705,6 +4705,16 @@ export const STRINGS = {
   explorerRoutineDeleteConsequence: 'The routine\'s source and compiled code are removed and cannot be restored from OcuPilot.',
   /** EXPERIENCE.md:592 */
   explorerRoutineDeleteSetConsequence: 'Deletes <n> documents. Each one\'s source and compiled code are removed and cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:592 */
+  explorerSourceControlTitle: 'Source control asks about <document>',
+  /** EXPERIENCE.md:592 */
+  explorerSourceControlQuestionLead: 'This namespace\'s source-control class asks:',
+  /** EXPERIENCE.md:592 */
+  explorerSourceControlAlertLead: 'This namespace\'s source-control class says:',
+  /** EXPERIENCE.md:592 */
+  explorerSourceControlAnswerRefused: 'The source-control class reported an error for this answer, so its step may not have finished.',
+  /** EXPERIENCE.md:592 */
+  explorerSourceControlUnsupported: 'This namespace\'s source-control class asked for a step OcuPilot cannot show for <document>. Open the document in an editor that supports server-side source control to finish it.',
   /** EXPERIENCE.md:593 */
   explorerEditSource: 'Edit source',
   /** EXPERIENCE.md:593 */

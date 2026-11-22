@@ -674,6 +674,8 @@ const ATELIER_REFUSALS = [
   ['DELETELOCKED', 'explorerDeleteLocked'],
   ['DELETEABSENT', 'explorerDeleteAbsent'],
   ['DELETEFAILED', 'explorerDeleteFailed'],
+  // Story 21.38: a source-control class's error on a person's answer.
+  ['REASONSOURCECONTROLANSWER', 'explorerSourceControlAnswerRefused'],
   // Story 19.6: SQL query's input, kind, password, read and value-count refusals.
   ['REASONSQLINPUT', 'explorerSqlInputReason'],
   ['REASONSQLSESSION', 'explorerSqlSessionReason'],

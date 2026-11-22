@@ -7912,6 +7912,14 @@ app-log-hub-page {
   margin: 0 0 var(--ocu-space-2);
 }
 
+// A source-control class's own question or alert (Story 21.38): plain text, its line breaks kept.
+.ocu-source-control-text {
+  margin: var(--ocu-space-2) 0;
+  color: var(--ocu-on-surface);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 // System Explorer's Search, Macros and Compare (Story 19.4). Search's results are a page-owned
 // table: the document, its location and the matched line, each cut to its track with an ellipsis.
 .ocu-code-search-row {

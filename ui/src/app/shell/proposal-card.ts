@@ -35,7 +35,9 @@ import { impactLine } from '../core/impact';
 import { estimateLines, isLong } from '../core/long-blocks';
 import { formatCount } from '../core/multi-select';
 import { type ReadBack, readBackLine } from '../core/read-back';
+import type { SourceControlQuestion } from '../core/source-control-question';
 import { STRINGS, stringFor } from '../core/strings';
+import { SourceControlQuestionDialog } from '../areas/system-explorer/source-control-question-dialog';
 import {
   type ProposalCardView,
   type ProposalDiffRow,
@@ -118,7 +120,7 @@ export interface ProposalConfirmRequest {
 @Component({
   selector: 'app-proposal-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CodeBlock, LongBlock, TextDiff],
+  imports: [CodeBlock, LongBlock, SourceControlQuestionDialog, TextDiff],
   template: `<article
     class="ocu-proposal-card"
     [class.ocu-proposal-card-destructive]="destructive"
@@ -460,6 +462,14 @@ export interface ProposalConfirmRequest {
         }
       </div>
     }
+    @if (questionsOpen) {
+      <app-source-control-question-dialog
+        [questions]="questions()"
+        [descriptor]="questionDescriptor()"
+        [scope]="questionScope()"
+        (finished)="onQuestionsFinished()"
+      />
+    }
   </article>`,
 })
 export class ProposalCard {
@@ -499,6 +509,18 @@ export class ProposalCard {
    * `null` where the answer carried none (Story 20.17). It feeds the summary line's second part.
    */
   readonly outputErrors = input<boolean | null>(null);
+
+  /**
+   * What the namespace's source-control class asked after the confirmed create or delete (Story 21.38, AD-39's ninth exception), in order. A
+   * confirmed card opens them in the question dialog; the text is shown as text and goes nowhere else.
+   */
+  readonly questions = input<readonly SourceControlQuestion[]>([]);
+
+  /** The descriptor class of the tool's own list screen, where each answer is sent. */
+  readonly questionDescriptor = input<string>('');
+
+  /** The namespace the write ran in, which each answer is pinned to. */
+  readonly questionScope = input<string>('');
 
   /**
    * The key prefix of this card's long blocks (`p:<proposal id>`), or `''` for the example card:
@@ -558,6 +580,9 @@ export class ProposalCard {
 
   /** Whether the outgoing buttons have been dropped, which happens after the status line has focus. */
   private readonly buttonsRetired = signal(false);
+
+  /** The questions were answered or dismissed, so a re-render of this card does not ask them again. */
+  private readonly questionsFinished = signal(false);
 
   /** Whether this card has ever been non-terminal, so a transition can be told from an arrival. */
   private everLive = false;
@@ -1121,6 +1146,15 @@ export class ProposalCard {
 
   protected get outputVisible(): boolean {
     return this.confirmed && this.output().length > 0;
+  }
+
+  /** Whether the source-control class's questions are on screen: a confirmed card whose write asked some, until they are answered or dismissed. */
+  protected get questionsOpen(): boolean {
+    return this.confirmed && this.questionsFinished() === false && this.questions().length > 0 && this.questionDescriptor() !== '';
+  }
+
+  protected onQuestionsFinished(): void {
+    this.questionsFinished.set(true);
   }
 
   /** The console lines as one output step, which the code block renders as text (AD-11). */

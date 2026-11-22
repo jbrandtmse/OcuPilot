@@ -1692,6 +1692,61 @@ test("a confirm's console lines reach its outcome and the proposal the card rend
   assert.equal(Object.hasOwn(event, 'output'), false, 'the change carries no console line');
 });
 
+test("a confirmed write's source-control questions reach its outcome and the card as text, and nothing else (Story 21.38)", async () => {
+  // AD-39's ninth exception: the class's question is the confirm's own `output.questions`, held in memory for the card's dialog; the change event
+  // and the console lines carry none, an unsupported step carries no text, and a step the port flagged shows none of its text.
+  //
+  // Mutation (Rule 19): drop the `questions` spread from `recordProposalState` -> the proposal leg goes red; read an unsupported entry's `target`
+  // in `sourceControlQuestionsOf` -> the unsupported leg goes red.
+  const bus = recordingBus();
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      ok({
+        proposalId: 'p1',
+        state: 'confirmed',
+        closedReason: '',
+        confirmedAt: '2026-11-22T10:01:02Z',
+        action: 'created',
+        output: {
+          questions: [
+            { document: 'A.cls', step: 1, action: 1, target: 'Add <b>A.cls</b>?' },
+            { document: 'A.cls', step: 7, action: 6, target: 'Added.' },
+            { document: 'A.cls', step: 7, action: 3, unsupported: true, target: 'leaked text' },
+            { document: 'A.cls', step: 7, action: 1, unsupported: true, target: 'leaked too' },
+            { document: '', step: 1, action: 1, target: 'no document' },
+            'not an entry',
+          ],
+        },
+      }),
+    ],
+  });
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' }),
+    navigationType: reloadedTab(),
+    now: () => NOW_MS,
+    bus,
+  });
+  await turn.restore();
+  const outcome = await turn.confirmProposal('p1');
+  const questions = [
+    { document: 'A.cls', step: 1, kind: 'question', text: 'Add <b>A.cls</b>?' },
+    { document: 'A.cls', step: 7, kind: 'alert', text: 'Added.' },
+    { document: 'A.cls', step: 7, kind: 'unsupported', text: '' },
+    { document: 'A.cls', step: 7, kind: 'unsupported', text: '' },
+  ];
+  assert.deepEqual(outcome.questions, questions, 'the outcome carries the questions in order');
+  assert.deepEqual(turn.entries()[0].proposals[0].questions, questions, 'and so does the proposal the card renders');
+  assert.deepEqual(outcome.output, [], 'a question is no console line');
+  const event = bus.events.find((candidate) => candidate.kind === 'changed');
+  assert.ok(event, 'the confirm publishes a change');
+  assert.equal(JSON.stringify(event).includes('Add'), false, 'the change carries no question text');
+  assert.equal(JSON.stringify(event).includes('leaked'), false, 'and no text of an unsupported step');
+});
+
 test("a confirmed data transformation test's output reaches its outcome and the card as text, and no compile outcome (Story 20.27)", async () => {
   // AD-39's seventh exception: the status sentence, the target's lines and the console are the confirm's own `output`, rendered on
   // the card; the change event carries none, and `errors` is the test's own, never a compile's.

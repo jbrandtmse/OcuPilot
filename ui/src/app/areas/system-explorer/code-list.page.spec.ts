@@ -12,6 +12,7 @@ import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { ScreenActions, TASK_IMPORT_ACTION_ID } from '../../core/screen-actions';
 import { ScreenArrivals } from '../../core/screen-arrival';
+import { assembleScreenContext } from '../../core/screen-context';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
@@ -432,6 +433,85 @@ describe('System Explorer compile and delete (Story 19.2)', () => {
     (host.querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
     await settle(fixture);
     expect(calls.map((call) => call.body)).toEqual([{ action: 'delete', id: 'A.mac' }]);
+  });
+
+  it('Story 21.38 AC5 and AC9: a delete whose output carries a source-control question opens it, and Yes sends the answer to this list as the person, in the namespace the delete ran in', async () => {
+    // Mutation (Rule 19): drop the `questions` read in `onDelete` -> the dialog never opens and this goes red.
+    const hostile = 'Remove <b>A.cls</b> from source control?\nThis cannot be undone.';
+    const { fixture, host, calls, store, actions, switchNamespace } = await mount(CLASSES, [row('A.cls')]);
+    store.setChecked(['A.cls']);
+    actions.run(CLASSES.descriptor, DELETE_ACTION);
+    await settle(fixture);
+    const field = host.querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    field.value = 'A.cls';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (host.querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(calls).toHaveLength(1);
+    calls[0].answer({
+      kind: 'ok',
+      status: 200,
+      body: {
+        action: 'deleted',
+        target: { type: 'class', scope: 'HSCUSTOM', id: 'A.cls' },
+        output: {
+          documents: [{ name: 'A.cls', deleted: true, reason: '' }],
+          questions: [{ document: 'A.cls', step: 2, action: 1, target: hostile }],
+        },
+      },
+    });
+    await settle(fixture);
+    expect(host.querySelector('app-source-control-question-dialog')).not.toBeNull();
+    expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe('Source control asks about A.cls');
+    const text = host.querySelector('[data-ocu-source-control="text"]') as HTMLElement;
+    expect(text.textContent).toBe(hostile);
+    expect(text.children).toHaveLength(0);
+    // The class's text is on the dialog alone: not in the output pane, the status line or the screen context.
+    expect(pane(host)).toBe('A.cls: deleted');
+    expect(status(host)).not.toContain('source control');
+    const context = assembleScreenContext({
+      descriptor: CLASSES,
+      rows: store.data(),
+      filter: '',
+      sort: '',
+      direction: '',
+      rowCap: 100,
+      namespace: 'HSCUSTOM',
+      entity: '',
+      share: true,
+    });
+    expect(JSON.stringify(context)).not.toContain('Remove');
+    switchNamespace('OTHER');
+    (host.querySelector('[data-ocu-source-control="yes"]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(calls).toHaveLength(2);
+    expect(calls[1].body).toEqual({ action: 'answer', id: 'A.cls', values: { step: '2', answer: '1' } });
+    expect(calls[1].scope).toBe('HSCUSTOM');
+    calls[1].answer({ kind: 'ok', status: 200, body: { action: 'updated', target: { type: 'class', scope: 'HSCUSTOM', id: 'A.cls' } } });
+    await settle(fixture);
+    expect(host.querySelector('app-source-control-question-dialog')).toBeNull();
+  });
+
+  it('Story 21.38: a delete that carries no question opens none', async () => {
+    const { fixture, host, calls, store, actions } = await mount(CLASSES, [row('A.cls')]);
+    store.setChecked(['A.cls']);
+    actions.run(CLASSES.descriptor, DELETE_ACTION);
+    await settle(fixture);
+    const field = host.querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    field.value = 'A.cls';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (host.querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
+    await settle(fixture);
+    calls[0].answer({
+      kind: 'ok',
+      status: 200,
+      body: { action: 'deleted', target: { type: 'class', scope: 'HSCUSTOM', id: 'A.cls' }, output: { documents: [{ name: 'A.cls', deleted: true, reason: '' }] } },
+    });
+    await settle(fixture);
+    expect(host.querySelector('app-source-control-question-dialog')).toBeNull();
+    expect(calls).toHaveLength(1);
   });
 
   it('no write opens with nothing checked', async () => {
