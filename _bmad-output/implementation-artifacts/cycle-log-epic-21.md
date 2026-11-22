@@ -987,3 +987,5 @@
 2026-11-22T14:22:02Z	Story 21.39	code_head_pushed	sha=caaa772b3 run=45032370635 missing=none scope=review_patches
 2026-11-22T14:22:02Z	Story 21.39	ledger_closed	resolved-by=DW-2517 remaining_owned=0 routed_out=DW-1822,DW-2600(burndown),DW-2839(burndown)
 2026-11-22T14:22:02Z	Story 21.39	gate_step	step=fresh_check+full_sweep+smoke head=caaa772b3 started=2026-11-22T14:22:02Z dir=e21u/21-39/gate
+2026-11-22T14:59:16Z	Story 21.39	ci_resolved	sha=caaa772b3 run=45032370635 result=success
+2026-11-22T14:59:16Z	Story 21.39	fresh_check	env=recipe(ci-throwaway_rebuild) tests=4_classes+2_specs(a11y,trace) result=pass order=forward,reverse head=caaa772b3
