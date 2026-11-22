@@ -14417,3 +14417,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-38-shared-rules-helpers-the-source-control-follow-up-and-escala.md | severity: low | fix-risk: low | footprint: cross-story
 - evidence: Story 21.38 plan counted them while measuring DW-2499
 - 2026-11-22T03:30:13Z status=routed owner=burndown by=lead note=candidate for a shared static gate on ScreenSaveRules
+
+### DW-2837: Self-protection gap: the agent can propose the generic globals delete or replace tools on ^Ens.SecondaryData.Password or ^Ens.Conf.CredentialsD, removing or overwriting the credential an enabled agent definition reads its provider key from, which Story 24.15 Batch 2 refuses through the credential tools
+- source: spec-24-15-credentials-default-settings-and-schedules-2.md (review 2e84d18d9) | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: 24.15 Batch 2 review layer; mitigated: the globals delete/replace tools ship off and a person confirms; same class as DW-2822 (wallet secret)
+- 2026-11-22T10:17:30Z status=decision-pending owner=burndown by=epic-24-runner note=needs a ruling: extend PROHIBITED.PROVIDERCREDENTIAL to the globals tools' targets, or accept as a named limit
+
+### DW-2838: A refused New credential clears the typed password, so a corrected second Save creates the credential with no password and no warning
+- source: spec-24-15-credentials-default-settings-and-schedules-2.md (review 2e84d18d9) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: 24.15 Batch 2 review layer; keeping the password weakens the rule that a secret outlives no submit; a warning needs a new string
+- 2026-11-22T10:17:30Z status=decision-pending owner=burndown by=epic-24-runner note=product call
