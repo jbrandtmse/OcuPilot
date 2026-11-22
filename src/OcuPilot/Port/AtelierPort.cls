@@ -386,6 +386,10 @@ Parameter TYPECREATE = "CREATE";
 /// delete (<method>AnswerSet</method>).</p>
 Parameter TYPEANSWER = "ANSWER";
 
+/// <p>The read before an answer: <method>Docs</method>, with <code>step</code> and <code>answer</code> answered
+/// <code>null</code> beside it. It reads no presence, so it answers 200 for a document that is gone.</p>
+Parameter TYPEANSWERDOCS = "ANSWERDOCS";
+
 /// <p>The one statement an answer sends to the <code>Query</code> route: the source-control class's
 /// <code>AfterUserAction</code>, run as the caller, with every value bound (AD-61 rules 3 and 7).</p>
 Parameter USERACTIONANSWERQUERY = "SELECT * FROM %Atelier_v1_Utils.Extension_AfterUserAction(?,?,?,?,?)";
@@ -845,7 +849,7 @@ ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}
     Set tImport = (pType = ..#TYPEIMPORTTARGET) || (pType = ..#TYPEPREVIEW) || (pType = ..#TYPEIMPORT)
     Set tExport = (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT)
     Set tSave = (pType = ..#TYPESAVEDOCS) || (pType = ..#TYPESAVE) || (pType = ..#TYPENEWDOC) || (pType = ..#TYPECREATE)
-    Set tRoutes = $Select(..IsCatalog(pEndpoint): $ListBuild("Query"), pEndpoint = ..#ENDPOINTSEARCH: $ListBuild("Search"), pEndpoint = ..#ENDPOINTMACRO: $ListBuild("GetDoc", "GetMacroDefinition", "GetMacroLocation"), (pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE): $ListBuild("Index", "GetDoc"), pType = ..#TYPEDOCS: $ListBuild("GetDocNames"), pType = ..#TYPECOMPILE: $ListBuild("GetDocNames", "Compile"), pType = ..#TYPEDELETE: $ListBuild("GetDocNames", "DeleteDocs"), tExport: $ListBuild("GetDocNames", "ExportToXMLFile"), tImport: $ListBuild("GetDocNames", "ListDocumentsInXMLFiles", "LoadXMLFiles", "PutDoc", "Compile"), tSave: $ListBuild("GetDocNames", "PutDoc", "Compile"), pType = ..#TYPEANSWER: $ListBuild("Query"), 1: $ListBuild("GetNamespace", "GetDocNames"))
+    Set tRoutes = $Select(..IsCatalog(pEndpoint): $ListBuild("Query"), pEndpoint = ..#ENDPOINTSEARCH: $ListBuild("Search"), pEndpoint = ..#ENDPOINTMACRO: $ListBuild("GetDoc", "GetMacroDefinition", "GetMacroLocation"), (pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE): $ListBuild("Index", "GetDoc"), (pType = ..#TYPEDOCS) || (pType = ..#TYPEANSWERDOCS): $ListBuild("GetDocNames"), pType = ..#TYPECOMPILE: $ListBuild("GetDocNames", "Compile"), pType = ..#TYPEDELETE: $ListBuild("GetDocNames", "DeleteDocs"), tExport: $ListBuild("GetDocNames", "ExportToXMLFile"), tImport: $ListBuild("GetDocNames", "ListDocumentsInXMLFiles", "LoadXMLFiles", "PutDoc", "Compile"), tSave: $ListBuild("GetDocNames", "PutDoc", "Compile"), pType = ..#TYPEANSWER: $ListBuild("Query"), 1: $ListBuild("GetNamespace", "GetDocNames"))
     Set tNeeded = 1
     For tI = 1:1:$ListLength(tRoutes) {
         Set tRoute = $List(tRoutes, tI)
@@ -927,7 +931,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
-        Set tSetType = (pType = ..#TYPEDOCS) || (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT) || (pType = ..#TYPESAVEDOCS) || (pType = ..#TYPESAVE) || (pType = ..#TYPENEWDOC) || (pType = ..#TYPECREATE) || (pType = ..#TYPEANSWER)
+        Set tSetType = (pType = ..#TYPEDOCS) || (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT) || (pType = ..#TYPESAVEDOCS) || (pType = ..#TYPESAVE) || (pType = ..#TYPENEWDOC) || (pType = ..#TYPECREATE) || (pType = ..#TYPEANSWER) || (pType = ..#TYPEANSWERDOCS)
         Set tImportType = (pType = ..#TYPEIMPORTTARGET) || (pType = ..#TYPEPREVIEW) || (pType = ..#TYPEIMPORT)
         Set tWrite = (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPESAVE) || (pType = ..#TYPECREATE) || (pType = ..#TYPEANSWER)
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
@@ -1024,6 +1028,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             }
             If pType = ..#TYPENEWDOC {
                 Set tSC = ..NewDocument(tVersion, tNamespace, pEndpoint, tNames, .pResult, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pType = ..#TYPEANSWERDOCS {
+                Set tSC = ..Docs(tVersion, tNamespace, pEndpoint, tNames, .pResult, .pHttpStatus, .pFault, $ListBuild(..#STEPKEY, ..#ANSWERKEY))
                 Quit
             }
             If pType = ..#TYPEANSWER {

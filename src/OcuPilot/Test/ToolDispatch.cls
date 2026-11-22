@@ -164,6 +164,7 @@ Method TestAGateDenialReachesNothingAndTheToolStaysAdvertised()
 /// and Story 24.15's system default setting remove (<parameter>OcuPilot.Test.Governance.INTEROPDEFAULTSETTINGDISABLED</parameter>),
 /// and Story 21.13's two DDL mapping deletes (<parameter>OcuPilot.Test.Governance.DDLMAPPINGDISABLED</parameter>),
 /// and Story 21.14's locale install and delete (<parameter>OcuPilot.Test.Governance.LOCALEDISABLED</parameter>), and Story 21.5's globals writes (<parameter>OcuPilot.Test.Governance.GLOBALDISABLED</parameter>),
+/// and Story 21.38's two source-control answers (<parameter>OcuPilot.Test.Governance.SOURCECONTROLDISABLED</parameter>),
 /// which their baseline lines disable (AD-10, AD-22). It reads the stored policy, so it first asserts that no policy is
 /// stored.</p>
 /// <p>Mutation: <method>OcuPilot.Kernel.Governance.Gate.Decide</method> answers 0 -> this goes red.</p>
@@ -205,6 +206,7 @@ Method TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled()
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "DDLMAPPINGDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "LOCALEDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "GLOBALDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "SOURCECONTROLDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If tTool.name = $Parameter("OcuPilot.Test.Governance", "RESOURCEDISABLED") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         Do $$$AssertEquals($Get(tDecision("allowed")) _ "|" _ $Get(tDecision("code")), tExpected, tTool.name _ ": " _ tExpected)
     }

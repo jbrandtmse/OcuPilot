@@ -7,7 +7,7 @@
 /// ledger rows, the audit and the message log never, while the confirm's own answer carries it.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over HTTP as
 /// <class>OcuPilot.Test.Http</class>'s account, a <code>USER</code> namespace that runs interoperability, and
-/// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because each test puts <code>USER</code> under
+/// <parameter>ARMINGVARIABLE</parameter> and <parameter>PRINCIPALVARIABLE</parameter> reading <code>1</code>, because each test puts <code>USER</code> under
 /// <class>OcuPilot.Test.SourceControlProbe</class>'s source-control class and takes it away again. It makes its probe documents
 /// before it enables the class, removes them after it disables it, asserts that <code>USER</code> then names no source-control
 /// class and that no probe document is left, and snapshots the stored governance policy before each test and puts it back
@@ -17,6 +17,10 @@ Class OcuPilot.Test.SourceControlFollowUp Extends %UnitTest.TestCase
 
 /// <p>The environment variable that arms this class, set by <file>scripts/ci-throwaway.sh</file> alone.</p>
 Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_NAMESPACE_CONFIG";
+
+/// <p>The variable that arms the account the answer's WRITE leg signs in as
+/// (<class>OcuPilot.Test.DeveloperFloorFixture</class>).</p>
+Parameter PRINCIPALVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
 
 Parameter NAMESPACE = "USER";
 
@@ -63,6 +67,9 @@ Method OnBeforeAllTests() As %Status
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.SourceControlFollowUp puts " _ ..#NAMESPACE _ " under a source-control class and takes it away again, and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was changed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
+    If $System.Util.GetEnviron(..#PRINCIPALVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.SourceControlFollowUp creates one IRIS account for its WRITE leg, and runs on a throwaway container only. " _ ..#PRINCIPALVARIABLE _ " does not read 1 here, so nothing was changed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
     Quit $$$OK
 }
 
@@ -97,6 +104,7 @@ Method OnAfterOneTest() As %Status
     }
     Do $$$AssertEquals(tLeft, "", "and each reads back absent")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the probe proposals and turns are removed")
+    Do $$$AssertEquals($ClassMethod("OcuPilot.Test.DeveloperFloorFixture", "RemovePrincipals"), "", "no probe account or role is left")
     Quit $$$OK
 }
 
@@ -372,6 +380,124 @@ Method TestThePersonsDeleteAnswersTheQuestionOnTheScreen()
         If (tEntry.hook = "UserAction") && ((tEntry.user '= ##class(OcuPilot.Test.Http).GetTestUsername()) || (tEntry.job = $Job)) Set tWrong = tWrong _ " " _ tEntry.%ToJSON()
     }
     Do $$$AssertEquals(tWrong, "", "and the class's UserAction ran as " _ ##class(OcuPilot.Test.Http).GetTestUsername() _ " in the web process, not this one")
+}
+
+/// <p>The two lists' answer tools are a person's alone (AD-53): unadvertised, bodyless and not destructive, served by the
+/// <code>answer</code> row action over the one declared step and answer, on the source-code port's <code>ANSWER</code> write
+/// and its <code>ANSWERDOCS</code> read, with their keys in the baseline and disabled.</p>
+/// <p>Mutation (Rule 19): <parameter>OcuPilot.Screen.Tool.ExplorerSourceControlAnswer.ADVERTISED</parameter> 1 -- the
+/// advertised leg goes red; <code>explorer.classes.answer</code> removed from <class>OcuPilot.Kernel.Governance.Baseline</class>
+/// -- its key leg goes red.</p>
+Method TestTheAnswerToolsArePersonOnlyAndShipDisabled()
+{
+    Set tPort = "OcuPilot.Port.AtelierPort"
+    For tCase = $ListBuild("OcuPilot.Screen.Tool.ExplorerClassAnswer", "explorer.classes.answer", "Classes", "ExplorerClassList"), $ListBuild("OcuPilot.Screen.Tool.ExplorerRoutineAnswer", "explorer.routines.answer", "Routines", "ExplorerRoutineList") {
+        Set tTool = $List(tCase, 1)
+        Set tName = $List(tCase, 2)
+        Do $$$AssertEquals($Parameter(tTool, "TOOLNAME") _ "|" _ $ClassMethod(tTool, "PortClass") _ "|" _ $ClassMethod(tTool, "Endpoint") _ "|" _ $Piece($Parameter(tTool, "DESCRIPTORCLASS"), ".", *), tName _ "|" _ tPort _ "|" _ $List(tCase, 3) _ "|" _ $List(tCase, 4), tName _ ": name, port, endpoint and screen")
+        Do $$$AssertEquals($ClassMethod(tTool, "Advertised") _ $ClassMethod(tTool, "Destructive") _ $ClassMethod(tTool, "SendsBody") _ "|" _ $ClassMethod(tTool, "WriteType") _ "|" _ $ClassMethod(tTool, "ReadType"), "000|ANSWER|ANSWERDOCS", tName _ ": unadvertised, not destructive, bodyless, and its write and read types")
+        Do $$$AssertEquals($ListToString($ClassMethod(tTool, "ScreenActionIds")) _ "|" _ $ListToString($ClassMethod(tTool, "ScreenActionValueNames", "answer")) _ "|" _ $ListToString($ClassMethod(tTool, "SettableFields")), "answer|step,answer|step,answer", tName _ ": the row action, its values and its arguments")
+        Do ##class(OcuPilot.Kernel.Governance.Baseline).Seed(tName, .tListed)
+        Set tSC = ##class(OcuPilot.Kernel.Governance.Policy).Resolve(tName, "write", .tEnabled, .tSource)
+        Do $$$AssertEquals(tListed _ " " _ ''$Get(tEnabled), "1 0", tName _ ": its key is in the baseline and ships disabled")
+    }
+}
+
+/// <p>AC5 and AC7: a person's answer over HTTP runs the class's <code>AfterUserAction</code> as that person and answers no
+/// output, although the tool's key ships disabled (a person's action asks none); a step or answer outside those the dialog
+/// sends is refused 400 with no hook run; and an answer on a list whose namespace's routines database the account cannot
+/// write is refused before the hook.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.ExplorerSourceControlAnswer</class>'s <code>ScreenActionDelta</code>
+/// accepts any step -- the bad-step leg goes red; its <code>WriteOutput</code> answers the write's result -- the no-output leg
+/// goes red.</p>
+Method TestAnAnswerThroughTheScreenRouteRunsTheClassAndRefusesABadValue()
+{
+    Set tName = ..#GONE _ ".cls"
+    Do ..Arm(1)
+    For tCase = $ListBuild("3", "1"), $ListBuild("7", "3"), $ListBuild("", "1"), $ListBuild("7", "") {
+        Do $ClassMethod(..#SC, "Clear", ..#NAMESPACE)
+        Do ..Answer(tName, $List(tCase, 1), $List(tCase, 2), .tStatus, .tBody)
+        Do $$$AssertEquals(tStatus, 400, "step '" _ $List(tCase, 1) _ "' with answer '" _ $List(tCase, 2) _ "' is refused: " _ ..Json(tBody))
+        Do $$$AssertTrue(..Json(tBody) [ "TOOL.ARGUMENTS", "by the tool's own values check, before the port: " _ ..Json(tBody))
+        Do $$$AssertEquals(..Extras($ClassMethod(..#SC, "Entries", ..#NAMESPACE), "AfterUserAction"), "", "and no hook runs")
+    }
+    Do $ClassMethod(..#SC, "Clear", ..#NAMESPACE)
+    Do ..Answer(tName, "2", "0", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "a deleted document's No is answered 200 although the tool's key ships disabled: " _ ..Json(tBody))
+    Do $$$AssertTrue($IsObject(tBody) && (tBody.%GetTypeOf("output") = "unassigned"), "with no output: " _ ..Json(tBody))
+    Set tEntries = $ClassMethod(..#SC, "Entries", ..#NAMESPACE)
+    Do $$$AssertEquals(..Extras(tEntries, "AfterUserAction"), "1|2|0", "and the class's AfterUserAction ran once at that step with that answer: " _ tEntries.%ToJSON())
+    Set tWrong = ""
+    Set tIterator = tEntries.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        If (tEntry.hook = "AfterUserAction") && ((tEntry.user '= ##class(OcuPilot.Test.Http).GetTestUsername()) || (tEntry.job = $Job)) Set tWrong = tWrong _ " " _ tEntry.%ToJSON()
+    }
+    Do $$$AssertEquals(tWrong, "", "as " _ ##class(OcuPilot.Test.Http).GetTestUsername() _ " in the web process, not this one")
+}
+
+/// <p>AC7: an account that holds <code>%Development:USE</code> and READ on the install namespace's routines database, and no
+/// WRITE there, is refused the answer on that namespace, naming that database's WRITE pair; the same account, which holds
+/// WRITE on <code>USER</code>'s, is accepted there and its hook runs under its own name.</p>
+/// <p>Mutation (Rule 19): the answer tools' <code>ArgumentPairs</code> answers no pair and
+/// <parameter>OcuPilot.Port.AtelierPort.TYPEANSWER</parameter> leaves <code>Invoke</code>'s write types together -- the refusal leg
+/// goes red. Either alone leaves it green, since the screen's gate and the port each refuse the same pair.</p>
+Method TestAnAnswerNeedsWriteOnTheNamespacesRoutinesDatabase()
+{
+    Set tFixture = "OcuPilot.Test.DeveloperFloorFixture"
+    Set tName = ..#GONE _ ".cls"
+    Set tPassword = $ClassMethod(tFixture, "NewPassword")
+    Do $$$AssertStatusOK($ClassMethod(tFixture, "EnsurePrincipal", tPassword, "", .tUser), "the account is created")
+    If tUser = "" Quit
+    Set tSC = $ClassMethod(tFixture, "Composed", tUser, .tComposed)
+    Set tCode = $ClassMethod(tFixture, "CodeResource")
+    Do $$$AssertTrue($$$ISOK(tSC) && $ClassMethod(tFixture, "Holds", tComposed, "%Development", "USE") && $ClassMethod(tFixture, "Holds", tComposed, tCode, "READ") && '$ClassMethod(tFixture, "Holds", tComposed, tCode, "WRITE"), "it holds %Development:USE and READ, and not WRITE, on " _ tCode)
+    Do $$$AssertTrue($ClassMethod(tFixture, "Holds", tComposed, "%DB_USER", "WRITE"), "and it holds WRITE on %DB_USER")
+    Do ..AnswerAs(tUser, tPassword, ##class(OcuPilot.Install.Installer).ResolveNamespace(), tName, "7", "1", .tStatus, .tText)
+    Do $$$AssertEquals(tStatus, 403, "an answer in the install namespace is refused: " _ $Extract(tText, 1, 300))
+    Do $$$AssertTrue((tText [ "AUTH.NOPRIVILEGE") && (tText [ (tCode _ ":WRITE")), "naming the routines database's WRITE pair: " _ $Extract(tText, 1, 300))
+    Do ..Arm(1)
+    Do ..AnswerAs(tUser, tPassword, ..#NAMESPACE, tName, "7", "1", .tStatus, .tText)
+    Do $$$AssertEquals(tStatus, 200, "and in " _ ..#NAMESPACE _ " it is accepted: " _ $Extract(tText, 1, 300))
+    Set tEntries = $ClassMethod(..#SC, "Entries", ..#NAMESPACE)
+    Do $$$AssertEquals(..Extras(tEntries, "AfterUserAction"), "1|7|1", "and the hook ran once: " _ tEntries.%ToJSON())
+    Set tWrong = ""
+    Set tIterator = tEntries.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        If (tEntry.hook = "AfterUserAction") && (tEntry.user '= tUser) Set tWrong = tWrong _ " " _ tEntry.%ToJSON()
+    }
+    Do $$$AssertEquals(tWrong, "", "under " _ tUser)
+}
+
+/// <p>The Classes list's <code>answer</code> action over HTTP as the suite's own account, <var>pStep</var> and
+/// <var>pAnswer</var> as the dialog sends them: the status and the parsed envelope.</p>
+ClassMethod Answer(pDocument As %String, pStep As %String, pAnswer As %String, Output pStatus As %Integer, Output pBody)
+{
+    Do ##class(OcuPilot.Test.Http).MakeRequest("POST", "/screens/explorer.classes/action?ns=" _ ..#NAMESPACE, .pStatus, .pBody, ..AnswerBody(pDocument, pStep, pAnswer))
+}
+
+/// <p>The same answer as <var>pUser</var> in <var>pNamespace</var>: the status and the response text.</p>
+ClassMethod AnswerAs(pUser As %String, pPassword As %String, pNamespace As %String, pDocument As %String, pStep As %String, pAnswer As %String, Output pStatus As %Integer, Output pText As %String)
+{
+    Do $ClassMethod("OcuPilot.Test.DeveloperFloorFixture", "Call", "POST", "/screens/explorer.classes/action?ns=" _ pNamespace, pUser, pPassword, .pStatus, .pText, .tHeaders, ..AnswerBody(pDocument, pStep, pAnswer))
+}
+
+/// <p>The request body of an answer.</p>
+ClassMethod AnswerBody(pDocument As %String, pStep As %String, pAnswer As %String) As %String
+{
+    Set tValues = {}
+    Do tValues.%Set("step", pStep, "string")
+    Do tValues.%Set("answer", pAnswer, "string")
+    Set tRequest = {}
+    Do tRequest.%Set("action", "answer", "string")
+    Do tRequest.%Set("id", pDocument, "string")
+    Do tRequest.%Set("values", tValues)
+    Quit tRequest.%ToJSON()
+}
+
+/// <p>A parsed envelope as text, for an assertion message.</p>
+ClassMethod Json(pBody) As %String
+{
+    Quit $Select($IsObject(pBody): $Extract(pBody.%ToJSON(), 1, 400), 1: "")
 }
 
 }
