@@ -1017,3 +1017,4 @@
 2026-11-22T21:09:35Z	Story 21.6	gate_step	step=fresh_check+full_sweep+smoke head=47363d553 started=2026-11-22T21:09:35Z dir=e21u/21-6/gate
 2026-11-22T22:01:59Z	Story 21.6	ci_resolved	sha=47363d553 run=45070444672 result=success
 2026-11-22T22:01:59Z	Story 21.6	fresh_check	env=recipe(ci-throwaway_rebuild) tests=22_classes+2_specs result=pass order=forward,reverse head=47363d553
+2026-11-22T22:03:55Z	Story 21.25	ruling	question=strings+types+keys via=orchestrator choice=accept_as_written(veto_U-146);4_clauses_measure_first;batch3=21.31;types=sql-table,sql-index,sql-schema(+consumer_list,upgrade_pin);keys=collect_true,rest_false

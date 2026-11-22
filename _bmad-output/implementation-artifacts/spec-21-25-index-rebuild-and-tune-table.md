@@ -128,6 +128,13 @@ The implement stage starts only once Story 21.6 is `done` and merged, since ever
 
 ## Spec Change Log
 
+- 2026-11-22, orchestrator ruling at the start of implement (veto U-146); authoritative over the Design Notes where they differ:
+  - **Scope after the split:** Batch 3 (fixed statistics) is Story 21.31's (split 2026-11-16); this story builds Batches 1, 2 and 4. Check which batch holds Clear fixed statistics: if it belonged to the old Batch 3, it moves to 21.31 with its precondition "This table has no fixed statistics." and its key; say which here.
+  - **Strings:** accepted as written (the 21.25 set under "Strings, escalated"; 21.31's set is ruled at its own plan). The AD-10 sentence stands as U-84 answered it.
+  - **Measure first (Task 0, `ocupilot-ci`), keep each clause only if it holds, otherwise correct it in its own sentence and report the corrected text verbatim:** (1) rebuild "The table is locked while it runs": name the lock flag the port passes to the vendor's index build and measure whether a second process's write waits; (2) rebuild "queries that use the index may miss rows until it ends" (expected false: the vendor marks an index being built as not selectable): measure with a query during a build on a probe table large enough to observe; (3) collect statistics "The table's cached queries are purged, so their plans may change": measure whether the vendor's gather purges them by default or only under the option the port passes; (4) "Keep class up to date": measure whether it marks the class out of date (needing a compile) or recompiles it, and if either, the consequence says so.
+  - **Entity types:** `sql-table`, `sql-index` and `sql-schema` (`sql-field` is 21.31's), add-only in EntityType TYPES and Prohibited COVEREDTYPES, checked item by item, plus the mirror. Before building, list every consumer of the Info, Indices and Schema tabs' primary type (navigation, screen-permission and screen-access rows, the agent's entity references, preferences, the mirror, browser specs). A stored row keyed on the old `class` type is named, its upgrade behavior stated, and pinned by a test.
+  - **Keys:** collect statistics `true`; rebuild index, rebuild all, clear fixed statistics (if it stays) and tune all tables `false`; add-only in Baseline.cls.
+
 ## Review Triage Log
 
 ## Design Notes
