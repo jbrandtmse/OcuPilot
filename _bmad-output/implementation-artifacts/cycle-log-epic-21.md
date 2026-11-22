@@ -996,3 +996,4 @@
 2026-11-22T17:13:51Z	Story 21.39	story_complete	head=caaa772b3(gates)+M=ffa2a92e7 run=45032370635(+45048213834) fresh=pass sweep=20/20 smoke=50/50 ledger_owned=0 routed_out=DW-1822,DW-2600,DW-2839(burndown)
 2026-11-22T17:14:13Z	Story 21.6	story_started	base=M_ffa2a92e7 doctrine=3d11cec9 policy=b9ff703e hold=none spec=ready-for-dev(planned_2026-11-16,revalidate_at_implement)
 2026-11-22T17:14:13Z	Story 21.6	stage_spawned	stage=implement spawn_at=2026-11-22T17:14:13Z model=sonnet agent_name=21-6-impl prior_lines_ended=verified(a9f7feaad)
+2026-11-22T17:48:26Z	Story 21.39	ci_red	run=45048213834 sha=ffa2a92e7 job=browser_shard_1/5 test=a11y-structural-invariants(whole-file) cause=DW-1822_recurrence_first_with_capture(renderer_deaf_to_all_CDP;no_profile) touched=21.39_capture_only_reports
