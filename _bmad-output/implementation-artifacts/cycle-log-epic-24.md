@@ -741,3 +741,4 @@
 2026-11-22T16:40:52Z	Story 24.15	ci_green	scope=batch3 sha=740a904a4 run=45041714141
 2026-11-22T16:40:52Z	Story 24.15	story_done	batches=1,1b,2,3 tracker=done spine=94a8ddc2d
 2026-11-22T16:41:09Z	Story 24.16	stage_spawned	stage=plan spawn_at=2026-11-22T16:41:09Z model=opus agent_name=24-16-plan cycle_iteration=1
+2026-11-22T16:44:50Z	Story 24.15	ledger_fix_forward	resolved=DW-2838(fab07a395),DW-2840(76c6b6f06) slice_24-15=empty feature=a4cf78378

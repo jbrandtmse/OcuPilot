@@ -14442,11 +14442,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 24.15 Batch 2 review layer; keeping the password weakens the rule that a secret outlives no submit; a warning needs a new string
 - 2026-11-22T10:17:30Z status=decision-pending owner=burndown by=epic-24-runner note=product call
 - 2026-11-22T10:32:37Z status=routed owner=24-15-credentials-default-settings-and-schedules by=orchestrator note=fix now as the first commit of 24.15 Batch 3: keep the typed password on a refused save, clear only on an accepted Save (precedent ldap-editor.store.ts, ssl-form.store.ts); no new string; component test refused-then-corrected save sends the password
+- 2026-11-22T16:44:50Z status=resolved-by:24-15-credentials-default-settings-and-schedules by=epic-24-runner note=fab07a395: interop-credential-dialog.ts clears the typed password only on an accepted add; its component test (a refused add, then a corrected add, sends the password) reddened under the mutation
 
 ### DW-2840: Schedule specs: the source-control refusal is tested only through the port seam; no test drives a tool's mint or the save/remove routes in a source-controlled namespace
 - source: spec-24-15-credentials-default-settings-and-schedules-4.md (implement review 05fd00c24) | severity: low | fix-risk: low | footprint: in-footprint
 - evidence: 24.15 Batch 3 implement-stage review, deferred low
 - 2026-11-22T15:07:16Z status=routed owner=burndown by=epic-24-runner note=add a mint and a route leg under a source-controlled seam namespace
+- 2026-11-22T16:44:50Z status=resolved-by:24-15-credentials-default-settings-and-schedules by=epic-24-runner note=76c6b6f06: InteropScheduleSourceControl puts USER under a real source-control class and drives the schedule Save, Edit and Remove routes, all three schedule mints and the confirms; the entry named schedule specs only
 
 ### DW-2841: At confirm, every Interop write tool takes its globals-database WRITE pair check from the confirming request's namespace, not the proposal's; no write lands (the port refuses 403 afterwards), but the gate answer can differ from the proposal's namespace
 - source: spec-24-15-credentials-default-settings-and-schedules-4.md (review 76c6b6f06) | severity: low | fix-risk: low | footprint: out-of-footprint
