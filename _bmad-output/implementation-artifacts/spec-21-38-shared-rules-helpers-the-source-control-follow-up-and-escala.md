@@ -2,7 +2,8 @@
 title: 'Story 21.38: Shared Rules helpers, the source-control follow-up and escalated wording'
 type: 'refactor'
 created: '2026-11-21'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: 'd76f1c5165459a203247353baa4288a88a0a1b87'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -259,6 +260,12 @@ Batches 7-10 (DW-2499). Each adopter's methods keep their names and signatures a
 - `DELETE docs` put one `ext` object on the item.
 - `action/query` with the `SELECT` and the `CALL` forms both answered 200. The probe log recorded `UserAction 1|1`, `1|7` and `1|2`, then `AfterUserAction 1|7|1`, `1|2|0` and `1|2|2`, all as the caller.
 - That the in-process port call behaves the same is (inference), as Story 20.10 recorded for the hooks.
+
+**Task 0, the AD-53 audit measurement** (`ocupilot-ci`, 2026-11-22, auditing on, probe enabled in `USER` with action 1): a new-document `PUT`, then `action/query` `AfterUserAction` (`1|1|OcuProbe2138.New.cls|1`), then the class's delete and the probe's removal. `%SYS.Audit` held 230,527 rows before and after, and a read of every row from the window's start returned none. No vendor event, so the answer adds no gap beyond ten and twelve. The probe, the class, the hooks class, the log and the setting were read back absent.
+
+**Batch records** (pass 1):
+
+- Batch 1 (DW-2474, DW-2442): S1-S5 in place, `arrowName` carries `label`. The `strings.ts` keys carry no other copy of the cube sentences. Mutations observed red and reverted: `arrowName` drops `label` -> `interop-message-trace.browser-spec.mjs` AC4 label-in-name; `analyticsCubeDimensionsEmpty` reverted -> `strings.test.mjs` (3 tests). Loop green: `strings.test.mjs`, interoperability component specs, browser `interop-message-trace` and `analytics`, `test:tools`, `test:components`.
 
 **AD-61, read as written:** the answer is a port-fixed statement through `Route("Query")` with bound values (rules 3 and 7), and a write the port carries takes routines-database WRITE (rule 1). Rule 6's "vendor text is logged and never sent" is read as the outcome's error text. So no AD-61 record is planned; see E2.
 

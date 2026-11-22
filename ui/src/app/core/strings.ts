@@ -7774,7 +7774,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopTraceViewMermaid: 'Mermaid text',
   /** EXPERIENCE.md:604 */
-  interopTraceArrow: 'Message <id>: <type> from <source> to <target>, <status>',
+  interopTraceArrow: 'Message <id> <label>: <type> from <source> to <target>, <status>',
   /** EXPERIENCE.md:604 */
   interopTraceNoBody: '(no body)',
   /** EXPERIENCE.md:604 */
@@ -7901,13 +7901,13 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   analyticsTermListCriterion: 'Term list',
   /** EXPERIENCE.md:604 */
-  analyticsCubesEmpty: 'No cube is defined in this namespace.',
+  analyticsCubesEmpty: 'No cube in this namespace is visible to you.',
   /** EXPERIENCE.md:604 */
-  analyticsCubeMeasuresEmpty: 'This cube no longer exists, or it has no measures.',
+  analyticsCubeMeasuresEmpty: 'This cube no longer exists, you cannot read it, or it has no measures.',
   /** EXPERIENCE.md:604 */
-  analyticsCubeDimensionsEmpty: 'This cube no longer exists, or it has no dimensions.',
+  analyticsCubeDimensionsEmpty: 'This cube no longer exists, you cannot read it, or it has no dimensions.',
   /** EXPERIENCE.md:604 */
-  analyticsCubeRelationshipsEmpty: 'This cube no longer exists, or it has no relationships.',
+  analyticsCubeRelationshipsEmpty: 'This cube no longer exists, you cannot read it, or it has no relationships.',
   /** EXPERIENCE.md:604 */
   analyticsTermListsEmpty: 'No term list is defined in this namespace.',
   /** EXPERIENCE.md:604 */
