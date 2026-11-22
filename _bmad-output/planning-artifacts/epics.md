@@ -9823,7 +9823,7 @@ So that a red CI run means a real defect again.
 
 - **Given** shard 1/5's spec order from run 44927449204 or 44986244257 on one throwaway
 - **When** the governance page stalls
-- **Then** its response and a CPU profile at the stall are captured, and the cause is fixed, with no deadline changed.
+- **Then** its response and a CPU profile at the stall are captured, and the cause is fixed, with no deadline changed. [AMENDED 2026-11-22, orchestrator ruling] When a real reproduction finds no stall, the capture ships instead: an abandoned visit's paused frames and governance answer size reach the stall line and its CPU profile is uploaded by CI, with no timing or outcome changed, and DW-1822 and DW-2600 stay open until a red carries a profile.
 - **Given** a journal the size CI's throwaway holds
 - **When** the agent's journal tool reads in reverse order
 - **Then** the read's measured cost explains the timeout, the cause is fixed, and the ERROR #9509 signal failure that preceded it in run 44979425183 is explained.
