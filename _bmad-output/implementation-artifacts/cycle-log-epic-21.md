@@ -965,3 +965,8 @@
 2026-11-22T09:13:13Z	Story 21.38	ledger_note	id=DW-2834 evidence=screens.generated.ts_gated_green_263/263 status_stands=wontfix-accepted(skew_only)
 2026-11-22T10:07:47Z	Story 21.38	ci_resolved	sha=26828c057 run=45006300417 result=success
 2026-11-22T10:07:47Z	Story 21.38	fresh_check	env=recipe(ci-throwaway_rebuild) tests=22_classes+6_specs result=pass order=forward,reverse(specs) head=26828c057
+2026-11-22T12:06:01Z	Story 21.38	sweep	shards=20/20_green head=26828c057
+2026-11-22T12:06:01Z	Story 21.38	smoke	container=ocupilot-ci executed=50 passed=50 failed=0 skipped=0
+2026-11-22T12:06:01Z	Story 21.38	integrated_forward	feature=ccb170485(24.15_B2) merge=M=b046a0a36 conflicts=4(GovernanceBaseline+ToolRoundTrip_list_unions;ReadTool_580;ToolWrite_158,counts_from_base) verified=screen-mirror(264/114),check-objectscript_0,test:tools_2394,LOADERRORS=0,16_roster_classes_green(incl_ConfirmNamespaceRoster)
+2026-11-22T12:06:01Z	Story 21.38	code_head_pushed	sha=b046a0a36 run=45020515239 missing=none note=integrate-only_M
+2026-11-22T12:06:01Z	Story 21.38	story_complete	head=26828c057(gates)+M=b046a0a36 run=45006300417(+45020515239) fresh=pass sweep=20/20 smoke=50/50 vetoes=U-138,U-139 spine=771a04cb3(AD-39_ninth,AD-61_case) ledger_owned=0
