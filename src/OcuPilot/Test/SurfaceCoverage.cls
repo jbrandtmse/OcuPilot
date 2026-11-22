@@ -185,6 +185,7 @@ XData Coverage
 <screen name="ExplorerSqlQuery" class="OcuPilot.Test.ExplorerDescriptor" method="TestSqlQueryKeysTheClassicSqlPage"/>
 <screen name="ExplorerSqlData" class="OcuPilot.Test.ExplorerDescriptor" method="TestDataBrowserKeysTheClassicOpenTablePage"/>
 <screen name="ExplorerSqlTableStatements" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTableTabsFormOneParentScopedGroup" corpus="the nine SQL table tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlStatementList" class="OcuPilot.Test.SqlStatementRead" method="TestTheScreenDeclaresItsShape"/>
 <screen name="ExplorerSqlView" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlViewFields" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlViewStatements" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
@@ -553,6 +554,14 @@ XData Coverage
 <tool name="explorer.classmethod.run" class="OcuPilot.Test.ConsoleGate" method="TestSwitchedOffRefusesBeforeTheHoldTheReadAndTheRun"/>
 <tool name="explorer.docdb.create" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsCreateConfirmsAndATakenNameIsRefused"/>
 <tool name="explorer.docdb.delete" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsDropIsGovernedThenConfirmed"/>
+<tool name="explorer.sqlstatements.freeze" class="OcuPilot.Test.SqlStatementWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the five statement writes are asserted together in one loop"/>
+<tool name="explorer.sqlstatements.unfreeze" class="OcuPilot.Test.SqlStatementWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the five statement writes are asserted together in one loop"/>
+<tool name="explorer.sqlstatements.clearstatistics" class="OcuPilot.Test.SqlStatementWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the five statement writes are asserted together in one loop"/>
+<tool name="explorer.sqlstatements.clearerror" class="OcuPilot.Test.SqlStatementWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the five statement writes are asserted together in one loop"/>
+<tool name="explorer.sqlstatements.clean" class="OcuPilot.Test.SqlStatementWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the five statement writes are asserted together in one loop"/>
+<tool name="explorer.sqlcachedqueries.purge" class="OcuPilot.Test.SqlCachedQueryPurge" method="TestThePurgeToolsDeclareTheirWritePath" corpus="the three cached-query purges are asserted together in one loop"/>
+<tool name="explorer.sqlcachedqueries.purgetable" class="OcuPilot.Test.SqlCachedQueryPurge" method="TestThePurgeToolsDeclareTheirWritePath" corpus="the three cached-query purges are asserted together in one loop"/>
+<tool name="explorer.sqlcachedqueries.purgenamespace" class="OcuPilot.Test.SqlCachedQueryPurge" method="TestThePurgeToolsDeclareTheirWritePath" corpus="the three cached-query purges are asserted together in one loop"/>
 <tool name="explorer.globals.delete" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
 <tool name="explorer.globalnodes.save" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
 <tool name="explorer.globalnodes.delete" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>

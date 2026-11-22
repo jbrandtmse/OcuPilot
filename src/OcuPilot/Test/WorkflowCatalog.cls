@@ -120,6 +120,40 @@ Method TestEveryNamedToolResolvesAsItsKind()
     Do $$$AssertEquals($ListLength($ClassMethod(..#WORKFLOW, "Writes", "nosuch")), 0, "an unknown id names none")
 }
 
+/// <p>AC6 (Story 21.6). The <code>slowquery</code> workflow reads the namespace's statement index among its steps' reads, names no write tool, and is
+/// still offered by the SQL query screen alone.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Kernel.Agent.Workflow</code>'s <code>slowquery</code> loses its <code>explorer.sqlstatements.read</code> step -> the
+/// read assertion goes red; the step gains a write -> the write assertion goes red.</p>
+Method TestTheSlowQueryWorkflowReadsTheStatementIndexAndWritesNothing()
+{
+    Set tEntry = $ClassMethod(..#WORKFLOW, "Lookup", "slowquery", .tFound)
+    Do $$$AssertTrue(tFound, "the catalog holds slowquery")
+    If 'tFound Quit
+    Set tReads = ""
+    Set tSteps = tEntry.%Get("steps").%GetIterator()
+    While tSteps.%GetNext(.tStepIndex, .tStep) {
+        If tStep.%GetTypeOf("reads") '= "array" Continue
+        Set tNames = tStep.%Get("reads").%GetIterator()
+        While tNames.%GetNext(.tNameIndex, .tName) {
+            Set tReads = tReads _ $Select(tReads = "": "", 1: ",") _ tName
+        }
+    }
+    Do $$$AssertTrue($ListFind($ListFromString(tReads), "explorer.sqlstatements.read") > 0, "its steps name the statement index read: " _ tReads)
+    Do $$$AssertEquals($ListLength($ClassMethod(..#WORKFLOW, "Writes", "slowquery")), 0, "and no write tool")
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
+    Set tOffering = ""
+    For tI = 1:1:$ListLength(tList) {
+        Set tClass = $List(tList, tI)
+        If $$$ISERR($ClassMethod(tClass, "DeclarationJson", .tDeclaration)) || '$IsObject($Get(tDeclaration)) Continue
+        If tDeclaration.%GetTypeOf("suggestedPrompts") '= "array" Continue
+        Set tPrompts = tDeclaration.%Get("suggestedPrompts").%GetIterator()
+        While tPrompts.%GetNext(.tIndex, .tPrompt) {
+            If tPrompt.%Get("workflow") = "slowquery" Set tOffering = tOffering _ $Select(tOffering = "": "", 1: ",") _ $Piece(tClass, ".", *)
+        }
+    }
+    Do $$$AssertEquals(tOffering, "ExplorerSqlQuery", "and it is still offered on the SQL query screen alone")
+}
+
 /// <p>Every workflow not marked <code>entry</code> is offered by the suggested prompt of at least one built screen,
 /// and every prompt's <code>workflow</code> names a catalog id. A workflow marked <code>entry</code> is offered by
 /// an entry control instead: no built screen's prompt names it, and it has no write.</p>

@@ -36,7 +36,7 @@ XData Groups
   "Logs": ["logs.messages", "logs.applicationerrors", "logs.alerts", "logs.systemmonitor", "logs.xdbc", "logs.sqldiagnostics", "logs.eventlog", "logs.analytics", "logs.hub", "logs.audit", "osmgmt.integritylog", "interop.messages"],
   "Processes": ["osmgmt.processes", "osmgmt.activeprocesses", "interop.processes", "interop.jobs"],
   "Audit": ["security.auditsystemevents", "security.audituserevents", "security.auditing"],
-  "SQL statements": ["osmgmt.sqlactivity", "explorer.sqltablestatements", "explorer.sqlviewstatements", "explorer.sqlprocedurestatements"],
+  "SQL statements": ["osmgmt.sqlactivity", "explorer.sqlstatements", "explorer.sqltablestatements", "explorer.sqlviewstatements", "explorer.sqlprocedurestatements"],
   "SQL schema objects": ["explorer.sqlschematables", "explorer.sqlschemaviews", "explorer.sqlschemaprocedures"],
   "Cubes": ["analytics.cubes", "analytics.cubemanager"],
   "Backup": ["osmgmt.backuptasks", "osmgmt.backuphistory", "osmgmt.backupdatabases"],
@@ -277,7 +277,7 @@ Method TestEveryConfusableToolCarriesItsLabel()
         Do $$$AssertTrue(tLabel '= "", tName _ " declares its label")
         If $Data(tReads(tName)) && (tLabel '= "") Do $$$AssertTrue($List(tReads(tName), 2) [ tLabel, tName _ ": its description carries its label")
     }
-    Do $$$AssertEquals(tCount, 58, "eleven groups name 58 distinct read tools")
+    Do $$$AssertEquals(tCount, 59, "eleven groups name 59 distinct read tools")
     Set tId = ""
     Set tNamed = 0
     For {

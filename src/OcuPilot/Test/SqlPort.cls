@@ -150,8 +150,9 @@ Method TestAPasswordStatementIsRefusedByItsText()
     Do $$$AssertEquals($Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code _ " " _ tFault.reason, 1: ""), "422 EXPLORER.SQL.PASSWORD " _ ##class(OcuPilot.Api.AtelierError).#REASONSQLPASSWORD, "the port refuses it with the published sentence")
 }
 
-/// <p>The port serves its one endpoint and two types, and its one id, refusing anything else before
-/// any call; with no statement its fresh read is the empty guard, every member present.</p>
+/// <p>The console's endpoint serves two types and one id, refusing anything else before any call; with no statement its fresh read is the empty
+/// guard, every member present. The tuning track's two endpoints answer through <method>OcuPilot.Port.SqlPort.TuningInvoke</method>, which
+/// <class>OcuPilot.Test.SqlStatementRead</class> pins.</p>
 Method TestInvokeServesOneEndpointTwoTypesAndOneId()
 {
     Set tPort = ..#PORT

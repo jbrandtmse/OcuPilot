@@ -994,3 +994,30 @@
 2026-11-22T17:13:51Z	Story 21.39	integrated_forward	feature=a4cf78378(24.15_B3+end) merge=M=ffa2a92e7 conflicts=1(sprint-status.yaml:last_updated;union_21-39_done+24-15_done) overlap_with_21.39_files=none(ci.yml,structural-walk,Journal*_untouched_by_24.15) counts=feature's_stand(21.39_adds_no_tool) verified=screen-mirror(265/115),check-objectscript_0,test:tools_2400,LOADERRORS=0,ConfirmNamespaceRoster,ReadTool,ToolWrite,JournalRecords,GovernanceBaseline_green
 2026-11-22T17:13:51Z	Story 21.39	code_head_pushed	sha=ffa2a92e7 run=45048213834 missing=none note=integrate-only_M
 2026-11-22T17:13:51Z	Story 21.39	story_complete	head=caaa772b3(gates)+M=ffa2a92e7 run=45032370635(+45048213834) fresh=pass sweep=20/20 smoke=50/50 ledger_owned=0 routed_out=DW-1822,DW-2600,DW-2839(burndown)
+2026-11-22T17:14:13Z	Story 21.6	story_started	base=M_ffa2a92e7 doctrine=3d11cec9 policy=b9ff703e hold=none spec=ready-for-dev(planned_2026-11-16,revalidate_at_implement)
+2026-11-22T17:14:13Z	Story 21.6	stage_spawned	stage=implement spawn_at=2026-11-22T17:14:13Z model=sonnet agent_name=21-6-impl prior_lines_ended=verified(a9f7feaad)
+2026-11-22T17:48:26Z	Story 21.39	ci_red	run=45048213834 sha=ffa2a92e7 job=browser_shard_1/5 test=a11y-structural-invariants(whole-file) cause=DW-1822_recurrence_first_with_capture(renderer_deaf_to_all_CDP;no_profile) touched=21.39_capture_only_reports
+2026-11-22T18:09:44Z	Story 21.6	ledger_routed	id=DW-2842 by=orchestrator cause=gates_timeout_20min(run_45048213834_job_137287353314)
+2026-11-22T18:46:40Z	Story 21.39	merged	feature=c655a65bd by=orchestrator rerun=45048213834_attempt2_green
+2026-11-22T19:42:41Z	Story 21.6	stage_complete	stage=implement agent=af5fdb796 result=done commits=595d8a352(B1),ccab7839b(B2),804202bf9(review+finalize) task-1=mechanical_drift_only(side-bar_position_20) followup_review_recommended=true protocol=B2_subagent_python_heredoc_on_its_own_new_untracked_browser_spec(now_tracked) escalate=strings_outside_ruled_list,all-namespace_purge
+2026-11-22T19:42:41Z	Story 21.6	lead_patch	sha=e69955f4e ci.yml_gates_timeout_20->30 pin=LARGEST_OBSERVED_GATES_MINUTES_19.9 mutation=29->pin_alone_red
+2026-11-22T19:42:41Z	Story 21.6	integrated_forward	feature=c655a65bd merge=M=010f0f951 conflicts=0 verified=test:tools_2402
+2026-11-22T19:42:41Z	Story 21.6	code_head_pushed	sha=010f0f951 run=45062235807 missing=none
+2026-11-22T19:42:41Z	Story 21.6	ledger_routed	id=DW-2843 owner=burndown source=deferred(all-namespace_purge)
+2026-11-22T19:43:36Z	Story 21.6	stage_spawned	stage=code_review spawn_at=2026-11-22T19:43:36Z model=opus agent_name=21-6-cr prior_lines_ended=verified(af5fdb796) strings=pending_orchestrator_ruling
+2026-11-22T19:44:03Z	Story 21.6	ruling	question=strings_outside_U-83 via=orchestrator choice=items1,3_accepted;404_new_sentences(hash,cached_query);400_reuse_ok;veto=U-143
+2026-11-22T20:27:40Z	Story 21.6	ci_resolved	sha=010f0f951 run=45062235807 result=success
+2026-11-22T20:36:06Z	Story 21.6	stage_complete	stage=code_review agent=a8d18616b result=done tier=full-opus high=1(AD-16/AD-61r4_StatementCall_switched,patched) med=4(patched) low=7 ledger=DW-2844(decision-pending,burndown),DW-2845(wontfix-accepted) strings=404s_applied(visibility_clause_dropped:measured),clean_description_+1_sentence(U-143_change) bashedits=none lines_ended=verified
+2026-11-22T20:36:07Z	Story 21.6	code_head_pushed	sha=71884f36a run=45067284861 missing=none scope=review_patches
+2026-11-22T20:37:27Z	Story 21.6	rework_opened	iteration=1 cause=orchestrator_ruling_DW-2844(in-story;veto_U-144)
+2026-11-22T20:37:27Z	Story 21.6	stage_spawned	stage=implement(rework1) spawn_at=2026-11-22T20:37:27Z model=sonnet agent_name=21-6-rework1 prior_lines_ended=verified(a8d18616b)
+2026-11-22T21:09:35Z	Story 21.6	stage_complete	stage=implement(rework1) agent=a455605c6 result=done commit=47363d553 pin=planted_plan_flag(no_real_parallel_plan_on_throwaway) mutations=3 bashedits=none lines_ended=verified
+2026-11-22T21:09:35Z	Story 21.6	code_head_pushed	sha=47363d553 run=45070444672 missing=none scope=rework1(supersedes_45067284861)
+2026-11-22T21:09:35Z	Story 21.6	ledger_closed	resolved-by=DW-2844,DW-2842 wontfix=DW-2845 routed_out=DW-2843(burndown) remaining_owned=0
+2026-11-22T21:09:35Z	Story 21.6	gate_step	step=fresh_check+full_sweep+smoke head=47363d553 started=2026-11-22T21:09:35Z dir=e21u/21-6/gate
+2026-11-22T22:01:59Z	Story 21.6	ci_resolved	sha=47363d553 run=45070444672 result=success
+2026-11-22T22:01:59Z	Story 21.6	fresh_check	env=recipe(ci-throwaway_rebuild) tests=22_classes+2_specs result=pass order=forward,reverse head=47363d553
+2026-11-22T22:03:55Z	Story 21.25	ruling	question=strings+types+keys via=orchestrator choice=accept_as_written(veto_U-146);4_clauses_measure_first;batch3=21.31;types=sql-table,sql-index,sql-schema(+consumer_list,upgrade_pin);keys=collect_true,rest_false
+2026-11-22T23:43:55Z	Story 21.6	sweep	shards=20/20_green head=47363d553
+2026-11-22T23:43:55Z	Story 21.6	smoke	container=ocupilot-ci executed=50 passed=50 failed=0 skipped=0
+2026-11-22T23:43:55Z	Story 21.6	story_complete	head=47363d553(gates,contains_feature_c655a65bd;no_M_needed) run=45070444672 fresh=pass sweep=20/20 smoke=50/50 vetoes=U-83,U-143,U-144 ledger_owned=0

@@ -33,12 +33,16 @@
 /// (<method>SaveComposed</method>) through <method>Executed</method> under one alarm budget, each row's
 /// outcome the instance's own row count. Its keys, values, SQLCODEs and messages reach the caller's
 /// answer alone.</p>
-/// <p>Seams a fixture subclass overrides: <method>GateClass</method> and
-/// <method>BoundSeconds</method>. Production overrides neither.</p>
+/// <p><b>The tuning track reads and writes the statement index and the cached queries here too</b> (AD-51's Story 21.6 case):
+/// <method>TuningInvoke</method> answers a statement or the whole index (<code>STATEMENT</code>), the cached queries a target holds
+/// (<code>PURGE</code>), the five statement writes and the purge, each as one vendor call made with the hash alone or with qualifiers
+/// built from the target alone.</p>
+/// <p>Seams a fixture subclass overrides: <method>GateClass</method>, <method>BoundSeconds</method> and
+/// <method>StatementCall</method>. Production overrides none.</p>
 Class OcuPilot.Port.SqlPort Extends (%RegisteredObject, OcuPilot.Kernel.RowFetch)
 {
 
-/// <p>The one endpoint this port serves.</p>
+/// <p>The console's endpoint.</p>
 Parameter ENDPOINTSQL = "Sql";
 
 /// <p>The fresh read of a console run: <method>Classify</method>'s guard with the run's three
@@ -51,7 +55,64 @@ Parameter TYPERUN = "RUN";
 /// <p>The writes this port composes from the caller's declared values, as <code>endpoint/type</code>
 /// (AD-51): the run, from its statement, values and Max rows; and the data browser's save, from its
 /// schema, table and staged changes.</p>
-Parameter COMPOSEDTYPES = "Sql/RUN,SqlData/RUN";
+Parameter COMPOSEDTYPES = "Sql/RUN,SqlData/RUN,Statements/FREEZE,Statements/UNFREEZE,Statements/CLEARSTATISTICS,Statements/CLEARERROR,Statements/CLEAN,CachedQueries/PURGEQUERIES";
+
+/// <p>The tuning track's two endpoints (Story 21.6, AD-51): the namespace's statement index, whose
+/// <parameter>TYPESTATEMENT</parameter> read answers one statement by its hash, or the index itself for
+/// <parameter>ALLID</parameter>, and whose five writes are <parameter>STATEMENTWRITES</parameter>; and its cached
+/// queries, whose <parameter>TYPEPURGE</parameter> read answers the count a target holds and whose write is
+/// <parameter>TYPEPURGEQUERIES</parameter>. Both take their target from <parameter>IDKEY</parameter>.</p>
+Parameter ENDPOINTSTATEMENTS = "Statements";
+
+Parameter ENDPOINTCACHEDQUERIES = "CachedQueries";
+
+Parameter TYPESTATEMENT = "STATEMENT";
+
+Parameter TYPEPURGE = "PURGE";
+
+Parameter TYPEFREEZE = "FREEZE";
+
+Parameter TYPEUNFREEZE = "UNFREEZE";
+
+Parameter TYPECLEARSTATISTICS = "CLEARSTATISTICS";
+
+Parameter TYPECLEARERROR = "CLEARERROR";
+
+Parameter TYPECLEAN = "CLEAN";
+
+Parameter TYPEPURGEQUERIES = "PURGEQUERIES";
+
+/// <p>The writes the <parameter>ENDPOINTSTATEMENTS</parameter> endpoint serves.</p>
+Parameter STATEMENTWRITES = "FREEZE,UNFREEZE,CLEARSTATISTICS,CLEARERROR,CLEAN";
+
+/// <p>The target that names a namespace's whole statement index, or the whole of its cached queries.</p>
+Parameter ALLID = "*";
+
+/// <p>The shape of a statement hash, which holds <code>/</code>, <code>+</code> and <code>=</code> beside the
+/// letters and digits (AD-13).</p>
+Parameter HASHPATTERN = "^[A-Za-z0-9+/=]{1,64}$";
+
+/// <p>The shape of a cached query's class name: the prefix, the namespace it belongs to and a number. The count of cached queries
+/// reads the information schema's locations that begin with <parameter>CACHEDQUERYPREFIX</parameter>.</p>
+Parameter CACHEDQUERYPATTERN = "^%sqlcq\.[A-Za-z0-9_%-]{1,64}\.cls[0-9]{1,12}$";
+
+Parameter CACHEDQUERYPREFIX = "%sqlcq.";
+
+/// <p>The statement index's row count, and the count of its entries no class or routine holds whose plan is not frozen, which are the
+/// entries the vendor's clean removes, in the target namespace.</p>
+Parameter INDEXCOUNTQUERY = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATEMENTS";
+
+Parameter STALECOUNTQUERY = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATEMENTS s WHERE (s.Frozen IS NULL OR s.Frozen NOT IN (1, 2)) AND NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.STATEMENT_LOCATIONS l WHERE l.Statement = s.Hash)";
+
+/// <p>The distinct cached-query locations of the namespace, of one table (bound with its relation key,
+/// <method>OcuPilot.Port.AtelierPort.CatalogRelation</method>) and of one class, each bound with its prefix.</p>
+Parameter PURGENAMESPACEQUERY = "SELECT COUNT(DISTINCT Location) FROM INFORMATION_SCHEMA.STATEMENT_LOCATIONS WHERE Location %STARTSWITH ?";
+
+Parameter PURGETABLEQUERY = "SELECT COUNT(DISTINCT l.Location) FROM INFORMATION_SCHEMA.STATEMENT_RELATIONS r JOIN INFORMATION_SCHEMA.STATEMENT_LOCATIONS l ON l.Statement = r.Statement WHERE r.Relation = ? AND l.Location %STARTSWITH ?";
+
+/// <p>The class whose <code>PurgeCachedQueries</code> purges cached queries, run in the target namespace (Story 21.4's purge, one for both
+/// callers).</p>
+Parameter PURGECLASS = "OcuPilot.Port.ConfigPort";
 
 /// <p>The data browser's save (Story 19.8): its endpoint, and its fresh read, the plan of the table
 /// it writes (<method>SavePlan</method>); its write is <parameter>TYPERUN</parameter>
@@ -643,7 +704,8 @@ ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %Dyn
 
 /// <p>Serve <var>pEndpoint</var> (<parameter>ENDPOINTSQL</parameter> or
 /// <parameter>ENDPOINTDATA</parameter>) for request type <var>pType</var>, the write path's way in
-/// (AD-51, AD-52). <var>pQuery</var> carries <code>id</code>, which must be
+/// (AD-51, AD-52); <parameter>ENDPOINTSTATEMENTS</parameter> and <parameter>ENDPOINTCACHEDQUERIES</parameter> are
+/// <method>TuningInvoke</method>'s. <var>pQuery</var> carries <code>id</code>, which must be
 /// <parameter>IDVALUE</parameter>; <code>namespace</code>, or the request's resolved scope where it is
 /// absent; for the console, <code>statement</code>, <code>parameters</code> (JSON array text) and
 /// <code>maxRows</code>; for the data browser's save, <code>schema</code>, <code>table</code> and
@@ -662,6 +724,11 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Set pFault = ""
     Set tSC = $$$OK
     Try {
+        If (pEndpoint = ..#ENDPOINTSTATEMENTS) || (pEndpoint = ..#ENDPOINTCACHEDQUERIES) {
+            Set tSC = ..TuningInvoke(pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            If $$$ISOK(tSC) Set pHttpStatus = 200
+            Quit
+        }
         Set tServed = ((pEndpoint = ..#ENDPOINTSQL) && ((pType = ..#TYPEGUARD) || (pType = ..#TYPERUN))) || ((pEndpoint = ..#ENDPOINTDATA) && ((pType = ..#TYPEPLAN) || (pType = ..#TYPERUN)))
         If 'tServed {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ##class(OcuPilot.Port.AtelierPort).#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
@@ -713,6 +780,342 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Quit tSC
 }
 
+/// <p>The tuning track's way in (Story 21.6, AD-51, AD-52): serve <var>pType</var> of
+/// <parameter>ENDPOINTSTATEMENTS</parameter> or <parameter>ENDPOINTCACHEDQUERIES</parameter>. <var>pQuery</var> carries
+/// <code>id</code>, the target (a statement's hash, a table as <code>Schema.Table</code>, a cached query's class, or
+/// <parameter>ALLID</parameter>), and <code>namespace</code>, or the request's resolved scope where it is absent.
+/// <var>pResult</var> is the read's answer, or a write's <code>{Namespace, Target}</code>.</p>
+/// <p><b>The order of every call is fixed.</b> An endpoint or type this port does not serve is 501
+/// <code>PORT.NOTIMPLEMENTED</code>; then the gate (<method>Gate</method>, a write with
+/// <method>OcuPilot.Port.AtelierPort.WritePairs</method>), 403 naming the failed pair; then the target's shape, 400
+/// <code>PORT.VALIDATION</code>; then the call. Nothing is read or written before the gate has answered.</p>
+/// <p><b>A statement write is one vendor call made with the hash alone</b> (<method>StatementCall</method>), and a purge is
+/// <code>PurgeQueries</code> with qualifiers built from the target alone (<method>PurgeTarget</method>). The namespace is switched
+/// by save and restore around the call (<method>Applied</method>). A statement write the instance answers with an error status is
+/// 409 <code>SQL.STATEMENT.VENDOR</code>, the instance's message in <code>detail.message</code> alone and never logged (AD-39).</p>
+ClassMethod TuningInvoke(pEndpoint As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tStatementWrite = ''$ListFind($ListFromString(..#STATEMENTWRITES), pType)
+    Set tWrite = tStatementWrite || (pType = ..#TYPEPURGEQUERIES)
+    If pEndpoint = ..#ENDPOINTSTATEMENTS {
+        Set tServed = (pType = ..#TYPESTATEMENT) || tStatementWrite
+    } Else {
+        Set tServed = (pType = ..#TYPEPURGE) || (pType = ..#TYPEPURGEQUERIES)
+    }
+    If 'tServed {
+        Quit ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ##class(OcuPilot.Port.AtelierPort).#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+    }
+    Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
+    If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+    Set tSC = ..Gate(tNamespace, .pHttpStatus, .pFault, tWrite)
+    If $$$ISERR(tSC) Quit tSC
+    Set tId = $Get(pQuery(..#IDKEY))
+    If pEndpoint = ..#ENDPOINTSTATEMENTS {
+        Set tAll = (tId = ..#ALLID)
+        Set tHash = ..HashValid(tId)
+        Set tShapeOK = $Case(pType, ..#TYPESTATEMENT: tAll || tHash, ..#TYPECLEAN: tAll, : tHash)
+        If 'tShapeOK {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Api.Error).#REASONPORTFIELDSHAPE, .pHttpStatus, .pFault)
+        }
+        If pType = ..#TYPESTATEMENT Quit ..StatementRead(tNamespace, tId, .pResult, .pHttpStatus, .pFault)
+        Quit ..StatementWrite(tNamespace, pType, tId, .pResult, .pHttpStatus, .pFault)
+    }
+    If pType = ..#TYPEPURGE Quit ..PurgeRead(tNamespace, tId, .pResult, .pHttpStatus, .pFault)
+    Quit ..PurgeWrite(tNamespace, tId, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p>Whether <var>pText</var> has the shape of a statement hash (<parameter>HASHPATTERN</parameter>). Pure.</p>
+ClassMethod HashValid(pText As %String) As %Boolean
+{
+    Quit $Match(pText, ..#HASHPATTERN)
+}
+
+/// <p>The sentence <var>pCode</var> carries, one of <class>OcuPilot.Api.AtelierError</class>'s <code>SQL.*</code> codes, or
+/// <code>""</code>. A tool names this method rather than the error class, which only a port may name.</p>
+ClassMethod ReasonFor(pCode As %String) As %String
+{
+    Quit ##class(OcuPilot.Api.AtelierError).SqlReasonFor(pCode)
+}
+
+/// <p>One select <var>pText</var> run in <var>pNamespace</var> with <var>pValues</var> bound, at most <var>pMaxRows</var> rows, as
+/// <method>Executed</method> answers it in <var>pRaw</var>; a statement the instance did not prepare, a refusal, a stop or a row beyond
+/// the cap is the internal fault, logged by its name alone. A cell cut at <parameter>MAXCELL</parameter> characters is the caller's
+/// to judge.</p>
+ClassMethod ReadRows(pNamespace As %String, pText As %String, pValues As %DynamicArray, pMaxRows As %Integer, Output pRaw As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = ..Executed(pNamespace, pText, 1, pValues, ..BoundSeconds(), 1, pMaxRows, .pRaw)
+    If $$$ISERR(tSC) Quit ..Fail("a statement index read failed", tSC, .pHttpStatus, .pFault)
+    If pRaw.%Get("stopped") || pRaw.%Get("changed") || (pRaw.%Get("sqlcode") < 0) || pRaw.%Get("more") || (pRaw.%GetTypeOf("rows") '= "array") {
+        Quit ..Fail("a statement index read failed", $$$ERROR($$$GeneralError, $Select(pRaw.%Get("changed"): "not prepared", pRaw.%Get("stopped"): "stopped", 1: "refused")), .pHttpStatus, .pFault)
+    }
+    Quit $$$OK
+}
+
+/// <p>The one number <var>pText</var> counts in <var>pNamespace</var>, with <var>pValues</var> bound, as <var>pCount</var>.</p>
+ClassMethod CountOf(pNamespace As %String, pText As %String, pValues As %DynamicArray, Output pCount As %Integer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pCount = 0
+    Set tSC = ..ReadRows(pNamespace, pText, pValues, 2, .tRaw, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If tRaw.%Get("rows").%Size() '= 1 Quit ..Fail("a statement index count answered no row", $$$ERROR($$$GeneralError, "no row"), .pHttpStatus, .pFault)
+    Set pCount = +tRaw.%Get("rows").%Get(0).%Get(0)
+    Quit $$$OK
+}
+
+/// <p>The statement index's answer for <var>pId</var> in <var>pNamespace</var>: for a hash, the statement's
+/// <code>{Namespace, Hash, PlanState, NewPlan, PlanError, Executions, AverageTime, Tables}</code> read through
+/// <parameter>OcuPilot.Port.AtelierPort.CATALOGSTATEMENTINDEXQUERY</parameter> with the hash bound, 404 <code>PORT.NOTFOUND</code>
+/// when the index holds none; a list of <code>Tables</code> cut at <parameter>MAXCELL</parameter> characters is the internal fault,
+/// since a cut list could hide a table. For <parameter>ALLID</parameter>, <code>{Namespace, Statements, Stale}</code>: how many
+/// statements the index holds and how many of them no class or routine holds a location of and are not frozen. A statement's <code>Executions</code> and
+/// <code>AverageTime</code> are numbers, or <code>""</code> where it has none.</p>
+ClassMethod StatementRead(pNamespace As %String, pId As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pAnswer = ""
+    Set tAnswer = {}
+    Do tAnswer.%Set("Namespace", pNamespace, "string")
+    If pId = ..#ALLID {
+        Set tSC = ..CountOf(pNamespace, ..#INDEXCOUNTQUERY, [], .tStatements, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        Set tSC = ..CountOf(pNamespace, ..#STALECOUNTQUERY, [], .tStale, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        Do tAnswer.%Set("Statements", tStatements, "number")
+        Do tAnswer.%Set("Stale", tStale, "number")
+        Set pAnswer = tAnswer
+        Quit $$$OK
+    }
+    Set tSC = ..ReadRows(pNamespace, ##class(OcuPilot.Port.AtelierPort).#CATALOGSTATEMENTINDEXQUERY, [(pId), (pId)], 2, .tRaw, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tRows = tRaw.%Get("rows")
+    If (tRows.%Size() '= 1) || (tRows.%Get(0).%Get(0) '= pId) {
+        Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ##class(OcuPilot.Api.AtelierError).#REASONSTATEMENTNOTFOUND, .pHttpStatus, .pFault)
+    }
+    Set tRow = tRows.%Get(0)
+    Set tTables = tRow.%Get(14)
+    If ($Length(tTables) = ..#MAXCELL) && ($Extract(tTables, *) = $Char(8230)) {
+        Quit ..Fail("a statement's tables are cut by the read's cell bound", $$$ERROR($$$GeneralError, "cut"), .pHttpStatus, .pFault)
+    }
+    Do tAnswer.%Set("Hash", tRow.%Get(0), "string")
+    Do tAnswer.%Set("PlanState", tRow.%Get(1), "string")
+    Do tAnswer.%Set("NewPlan", (tRow.%Get(2) = 1), "boolean")
+    Do tAnswer.%Set("PlanError", tRow.%Get(3), "string")
+    Do ..SetNumber(tAnswer, "Executions", tRow.%Get(6))
+    Do ..SetNumber(tAnswer, "AverageTime", tRow.%Get(8))
+    Set tList = []
+    If tTables '= "" {
+        For tI = 1:1:$Length(tTables, ",") {
+            Do tList.%Push($Piece(tTables, ",", tI), "string")
+        }
+    }
+    Do tAnswer.%Set("Tables", tList)
+    Set pAnswer = tAnswer
+    Quit $$$OK
+}
+
+/// <p><var>pValue</var> as member <var>pName</var> of <var>pObject</var>: a number when it is one, else the text, which is
+/// <code>""</code> where the instance holds none.</p>
+ClassMethod SetNumber(pObject As %DynamicObject, pName As %String, pValue As %String) [ Private ]
+{
+    If (pValue '= "") && $IsValidNum(pValue) {
+        Do pObject.%Set(pName, +pValue, "number")
+    } Else {
+        Do pObject.%Set(pName, pValue, "string")
+    }
+}
+
+/// <p>The statement write <var>pType</var> (<parameter>STATEMENTWRITES</parameter>) on <var>pId</var>, a hash or, for
+/// <parameter>TYPECLEAN</parameter>, <parameter>ALLID</parameter>, in <var>pNamespace</var>. The write is the one vendor call
+/// <method>StatementCall</method> makes; a refusal that call answers is 409 <code>SQL.STATEMENT.VENDOR</code>.</p>
+ClassMethod StatementWrite(pNamespace As %String, pType As %String, pId As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pAnswer = ""
+    Set tSC = ..Applied(pNamespace, pType, pId, .tStatus)
+    If $$$ISERR(tSC) Quit ..Fail("a statement write failed", tSC, .pHttpStatus, .pFault)
+    If $$$ISERR(tStatus) {
+        Set tDetail = {}
+        Do tDetail.%Set("message", $System.Status.GetErrorText(tStatus), "string")
+        Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#STATEMENTVENDOR, ##class(OcuPilot.Api.AtelierError).#REASONSTATEMENTVENDOR, .pHttpStatus, .pFault, tDetail)
+    }
+    Set pAnswer = {}
+    Do pAnswer.%Set("Namespace", pNamespace, "string")
+    Do pAnswer.%Set("Target", pId, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The one vendor call of statement write <var>pType</var> on <var>pHash</var>, in <var>pNamespace</var>, as its status:
+/// <code>FreezeStatement</code>, <code>UnfreezeStatement</code> and <code>ClearStatement</code> with the hash alone, the plan
+/// error update with the hash and an empty error, and <code>Clean</code>, which takes no argument and cleans the namespace's stale
+/// entries. A call that answers no status is <code>$$$OK</code>. The namespace is switched by save and restore around the vendor
+/// call alone, restored first when it throws, and the throw is passed on. Overridable so a fixture can feed an error status;
+/// production overrides none.</p>
+ClassMethod StatementCall(pType As %String, pHash As %String, pNamespace As %String) As %Status
+{
+    Set tStatus = $$$ERROR($$$GeneralError, "no statement call for " _ pType)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        If pType = ..#TYPEFREEZE {
+            Set tStatus = $SYSTEM.SQL.Statement.FreezeStatement(pHash)
+        } ElseIf pType = ..#TYPEUNFREEZE {
+            Set tStatus = $SYSTEM.SQL.Statement.UnfreezeStatement(pHash)
+        } ElseIf pType = ..#TYPECLEARSTATISTICS {
+            Set tStatus = $SYSTEM.SQL.Statement.ClearStatement(pHash)
+        } ElseIf pType = ..#TYPECLEARERROR {
+            Do UpdateSQLIndex^%SYS.SQLSRV(pHash, "")
+            Set tStatus = $$$OK
+        } ElseIf pType = ..#TYPECLEAN {
+            Do $SYSTEM.SQL.Statement.Clean()
+            Set tStatus = $$$OK
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Quit tStatus
+}
+
+/// <p>The call of <var>pType</var> in <var>pNamespace</var>: <method>StatementCall</method> with <var>pArgument</var>, a hash, or
+/// <parameter>PURGECLASS</parameter>'s <code>PurgeCachedQueries</code> with <var>pArgument</var>, the qualifiers, answering the call's
+/// own status as <var>pStatus</var>. Each call is named <var>pNamespace</var> and switches to it around its vendor call alone, so no
+/// OcuPilot class is called while switched; the returned status is an unexpected failure.</p>
+ClassMethod Applied(pNamespace As %String, pType As %String, pArgument, Output pStatus As %Status) As %Status [ Private ]
+{
+    Set pStatus = $$$OK
+    Set tSC = $$$OK
+    Try {
+        If pType = ..#TYPEPURGEQUERIES {
+            Set pStatus = $ClassMethod(..#PURGECLASS, "PurgeCachedQueries", pArgument, pNamespace)
+        } Else {
+            Set pStatus = ..StatementCall(pType, pArgument, pNamespace)
+        }
+    } Catch ex {
+        Set tSC = $$$ERROR($$$GeneralError, "the write raised " _ ex.Name)
+    }
+    Quit tSC
+}
+
+/// <p>What <var>pId</var> names in <var>pNamespace</var> as the target of a cached-query purge, with the count of cached queries it
+/// holds, in <var>pCount</var>:</p>
+/// <ul>
+/// <li><parameter>ALLID</parameter>: <var>pKind</var> <code>namespace</code>, the namespace's cached queries;</li>
+/// <li>a class (<parameter>CACHEDQUERYPATTERN</parameter>) of the namespace: <code>class</code>, 404 <code>PORT.NOTFOUND</code> when
+/// no statement index location names it, and 400 <code>PORT.VALIDATION</code> for a class of another namespace;</li>
+/// <li>a table, <code>Schema.Table</code>: <code>table</code>, resolved through the caller's own information schema as
+/// <method>BrowsePlan</method> resolves one, 404 when it shows none and 400 for a name that matches more than one.</li>
+/// </ul>
+/// <p>The count is the distinct <parameter>CACHEDQUERYPREFIX</parameter> locations in the index for the target, a table's joined through
+/// its relation key. <var>pName</var> is the target as the instance holds it.</p>
+ClassMethod PurgeTarget(pNamespace As %String, pId As %String, Output pKind As %String, Output pName As %String, Output pCount As %Integer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pKind = ""
+    Set pName = ""
+    Set pCount = 0
+    Set tPort = "OcuPilot.Port.AtelierPort"
+    If pId = ..#ALLID {
+        Set pKind = "namespace"
+        Set pName = ..#ALLID
+        Quit ..CountOf(pNamespace, ..#PURGENAMESPACEQUERY, [(..#CACHEDQUERYPREFIX)], .pCount, .pHttpStatus, .pFault)
+    }
+    If $Extract(pId, 1, $Length(..#CACHEDQUERYPREFIX)) = ..#CACHEDQUERYPREFIX {
+        If '$Match(pId, ..#CACHEDQUERYPATTERN) || ($ZConvert($Piece(pId, ".", 2), "U") '= $ZConvert(pNamespace, "U")) {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Api.Error).#REASONPORTFIELDSHAPE, .pHttpStatus, .pFault)
+        }
+        Set tSC = ..CountOf(pNamespace, ..#PURGENAMESPACEQUERY, [(pId _ ".")], .pCount, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        If pCount = 0 {
+            Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ##class(OcuPilot.Api.AtelierError).#REASONCACHEDQUERYNOTFOUND, .pHttpStatus, .pFault)
+        }
+        Set pKind = "class"
+        Set pName = pId
+        Quit $$$OK
+    }
+    If (pId '[ ".") || ($Length(pId) > $Parameter(tPort, "MAXTABLE")) || ($ZStrip(pId, "*C") '= pId) {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, $Parameter(tPort, "REASONCATALOGTABLE"), .pHttpStatus, .pFault)
+    }
+    Set tSC = ..ReadRows(pNamespace, $Parameter(tPort, "CATALOGRESOLVEQUERY"), [(pId)], 3, .tRaw, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tRows = tRaw.%Get("rows")
+    If tRows.%Size() = 0 {
+        Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, $Parameter(tPort, "REASONCATALOGNOTFOUND"), .pHttpStatus, .pFault)
+    }
+    If tRows.%Size() > 1 {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, $Parameter(tPort, "REASONCATALOGAMBIGUOUS"), .pHttpStatus, .pFault)
+    }
+    Set tSchema = tRows.%Get(0).%Get(0)
+    Set tTable = tRows.%Get(0).%Get(1)
+    Set pKind = "table"
+    Set pName = tSchema _ "." _ tTable
+    Quit ..CountOf(pNamespace, ..#PURGETABLEQUERY, [($ClassMethod(tPort, "CatalogRelation", tSchema, tTable)), (..#CACHEDQUERYPREFIX)], .pCount, .pHttpStatus, .pFault)
+}
+
+/// <p>The cached-query purge's fresh read: <code>{Namespace, Target, Kind, CachedQueries}</code> for <var>pId</var>
+/// (<method>PurgeTarget</method>).</p>
+ClassMethod PurgeRead(pNamespace As %String, pId As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pAnswer = ""
+    Set tSC = ..PurgeTarget(pNamespace, pId, .tKind, .tName, .tCount, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pAnswer = {}
+    Do pAnswer.%Set("Namespace", pNamespace, "string")
+    Do pAnswer.%Set("Target", tName, "string")
+    Do pAnswer.%Set("Kind", tKind, "string")
+    Do pAnswer.%Set("CachedQueries", tCount, "number")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The cached-query purge of <var>pId</var> in <var>pNamespace</var>: the target is resolved as <method>PurgeRead</method>
+/// resolves it, and <code>PurgeQueries</code> is called with qualifiers built from it alone, <code>{}</code> for the namespace,
+/// <code>{"table": [...]}</code> for a table and <code>{"class": [...]}</code> for one cached query. A purge the instance answers
+/// with an error status is the internal fault.</p>
+ClassMethod PurgeWrite(pNamespace As %String, pId As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pAnswer = ""
+    Set tSC = ..PurgeTarget(pNamespace, pId, .tKind, .tName, .tCount, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tQualifiers = $Case(tKind, "namespace": {}, "table": {"table": [(tName)]}, : {"class": [(tName)]})
+    Set tSC = ..Applied(pNamespace, ..#TYPEPURGEQUERIES, tQualifiers, .tStatus)
+    If $$$ISOK(tSC) && $$$ISERR(tStatus) Set tSC = tStatus
+    If $$$ISERR(tSC) Quit ..Fail("the cached queries could not be purged", tSC, .pHttpStatus, .pFault)
+    Set pAnswer = {}
+    Do pAnswer.%Set("Namespace", pNamespace, "string")
+    Do pAnswer.%Set("Target", tName, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The tuning write <var>pType</var> as a script (AD-59) in the namespace <code>namespace</code> names: the one vendor call, with
+/// the target <code>id</code> names as its argument, each shown as a string literal, so nothing the query carries runs as code.</p>
+ClassMethod TuningSnippet(pType As %String, ByRef pQuery) As %DynamicArray [ Private ]
+{
+    Set tId = $Get(pQuery(..#IDKEY))
+    If pType = ..#TYPEPURGEQUERIES {
+        Set tQualifiers = $Select(tId = ..#ALLID: "{}", $Extract(tId, 1, $Length(..#CACHEDQUERYPREFIX)) = ..#CACHEDQUERYPREFIX: "{""class"": [" _ ..Literal(tId) _ "]}", 1: "{""table"": [" _ ..Literal(tId) _ "]}")
+        Set tCall = " Set tSC = $SYSTEM.SQL.PurgeQueries(" _ tQualifiers _ ")"
+    } ElseIf pType = ..#TYPEFREEZE {
+        Set tCall = " Set tSC = $SYSTEM.SQL.Statement.FreezeStatement(" _ ..Literal(tId) _ ")"
+    } ElseIf pType = ..#TYPEUNFREEZE {
+        Set tCall = " Set tSC = $SYSTEM.SQL.Statement.UnfreezeStatement(" _ ..Literal(tId) _ ")"
+    } ElseIf pType = ..#TYPECLEARSTATISTICS {
+        Set tCall = " Set tSC = $SYSTEM.SQL.Statement.ClearStatement(" _ ..Literal(tId) _ ")"
+    } ElseIf pType = ..#TYPECLEARERROR {
+        Set tCall = " Do UpdateSQLIndex^%SYS.SQLSRV(" _ ..Literal(tId) _ ", """")"
+    } Else {
+        Set tCall = " Do $SYSTEM.SQL.Statement.Clean()"
+    }
+    Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY))) _ $Char(10) _ tCall
+    If tCall [ "Set tSC" Set tText = tText _ $Char(10) _ " If $System.Status.IsError(tSC) Do $System.Status.DisplayError(tSC)"
+    Set tStep = {}
+    Do tStep.%Set("kind", "objectscript", "string")
+    Do tStep.%Set("text", tText, "string")
+    Quit [(tStep)]
+}
+
 /// <p><var>pText</var>, JSON array text, as a <class>%DynamicArray</class>, with
 /// <var>pReadable</var> 0 when it is not an array; <code>""</code> and an absent key read as no
 /// values.</p>
@@ -736,6 +1139,8 @@ ClassMethod ValuesFrom(pText As %String, Output pReadable As %Boolean) As %Dynam
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
     If ((pEndpoint = ..#ENDPOINTSQL) || (pEndpoint = ..#ENDPOINTDATA)) && (pType = ..#TYPERUN) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTSTATEMENTS) && $ListFind($ListFromString(..#STATEMENTWRITES), pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTCACHEDQUERIES) && (pType = ..#TYPEPURGEQUERIES) Quit "objectscript"
     Quit ""
 }
 
@@ -749,6 +1154,7 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     If pEndpoint = ..#ENDPOINTDATA Quit ..SaveSnippet(.pQuery)
+    If (pEndpoint = ..#ENDPOINTSTATEMENTS) || (pEndpoint = ..#ENDPOINTCACHEDQUERIES) Quit ..TuningSnippet(pType, .pQuery)
     Set tValues = ..ValuesFrom($Get(pQuery(..#PARAMETERSKEY)), .tReadable)
     Set tList = ""
     Set tIterator = tValues.%GetIterator()
@@ -775,8 +1181,9 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
 /// READ on <var>pNamespace</var>'s code databases (<method>OcuPilot.Port.AtelierPort.NamespacePairs</method>),
 /// each through <code>EvaluateRequired</code>, so an empty pair set fails closed. A refusal names the
 /// failed pair; a malformed namespace, or one whose databases cannot be named, is 400
-/// <code>PORT.VALIDATION</code>.</p>
-ClassMethod Gate(pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+/// <code>PORT.VALIDATION</code>. With <var>pWrite</var>, the pair set is
+/// <method>OcuPilot.Port.AtelierPort.WritePairs</method>: WRITE on the namespace's routines database beside the reads.</p>
+ClassMethod Gate(pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pWrite As %Boolean = 0) As %Status
 {
     Set pHttpStatus = 0
     Set pFault = ""
@@ -785,7 +1192,7 @@ ClassMethod Gate(pNamespace As %String, Output pHttpStatus As %Integer, Output p
     If '$Match(pNamespace, ##class(OcuPilot.Port.AtelierPort).#NAMESPACEPATTERN) {
         Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.AtelierPort).#REASONNAMESPACESHAPE, .pHttpStatus, .pFault)
     }
-    Set tPairs = ##class(OcuPilot.Port.AtelierPort).NamespacePairs(pNamespace)
+    Set tPairs = $Select(pWrite: ##class(OcuPilot.Port.AtelierPort).WritePairs(pNamespace), 1: ##class(OcuPilot.Port.AtelierPort).NamespacePairs(pNamespace))
     If tPairs = "" {
         Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.AtelierPort).#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
     }

@@ -70,7 +70,7 @@ jobs:
   gates:
     name: gates (node ${{ matrix.node }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     # One leg per band `ui/package.json` declares in `engines.node`, at that band's FLOOR -- the
     # oldest Node the project claims to support is the one least likely to run it. Run
     # 34773637146 is why this is a matrix rather than a single pin: `npm test` ran `node --test`
@@ -253,7 +253,7 @@ jobs:
     runs-on: ubuntu-24.04
     # At least 1.5 times the sum of the largest leg's estimate from ui/tools/ci-timings.json and 3
     # minutes of setup, a margin ui/tools/ci.test.mjs holds.
-    timeout-minutes: 62
+    timeout-minutes: 63
     strategy:
       fail-fast: false
       matrix:

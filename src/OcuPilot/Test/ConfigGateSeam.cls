@@ -22,7 +22,7 @@ ClassMethod GateClass() As %String
 /// <p>The shipped answers again, and no recorded call.</p>
 ClassMethod Reset()
 {
-    Kill ^||OcuPilotConfigHeld, ^||OcuPilotConfigHeldExtra, ^||OcuPilotConfigFaults, ^||OcuPilotConfigEntries, ^||OcuPilotConfigEntryKeys, ^||OcuPilotConfigRefuses, ^||OcuPilotConfigModifies, ^||OcuPilotConfigDialect, ^||OcuPilotConfigDialectSent, ^||OcuPilotConfigPurges, ^||OcuPilotConfigPurgeFails, ^||OcuPilotConfigWriteThrough, ^||OcuPilotConfigReloads, ^||OcuPilotConfigReloadFails, ^||OcuPilotConfigMailFails
+    Kill ^||OcuPilotConfigHeld, ^||OcuPilotConfigHeldExtra, ^||OcuPilotConfigFaults, ^||OcuPilotConfigEntries, ^||OcuPilotConfigEntryKeys, ^||OcuPilotConfigRefuses, ^||OcuPilotConfigModifies, ^||OcuPilotConfigDialect, ^||OcuPilotConfigDialectSent, ^||OcuPilotConfigPurges, ^||OcuPilotConfigPurgeQualifiers, ^||OcuPilotConfigPurgeFails,^||OcuPilotConfigWriteThrough, ^||OcuPilotConfigReloads, ^||OcuPilotConfigReloadFails, ^||OcuPilotConfigMailFails
 }
 
 /// <p>Answer an error from <method>ReadMail</method> until <method>Reset</method>.</p>
@@ -68,6 +68,12 @@ ClassMethod DialectSent() As %String
 ClassMethod Purges() As %Integer
 {
     Quit +$Get(^||OcuPilotConfigPurges)
+}
+
+/// <p>The JSON text of the qualifiers the last purge <method>PurgeCachedQueries</method> recorded was called with.</p>
+ClassMethod PurgeQualifiers() As %String
+{
+    Quit $Get(^||OcuPilotConfigPurgeQualifiers)
 }
 
 /// <p>Answer an error from <method>PurgeCachedQueries</method> until <method>Reset</method>.</p>
@@ -266,9 +272,10 @@ ClassMethod SendTsql(pName As %String, pDialect As %String, pValue As %String) A
     Quit $$$OK
 }
 
-ClassMethod PurgeCachedQueries() As %Status
+ClassMethod PurgeCachedQueries(pQualifiers As %DynamicObject = "", pNamespace As %String = "") As %Status
 {
     Set ^||OcuPilotConfigPurges = $Get(^||OcuPilotConfigPurges) + 1
+    Set ^||OcuPilotConfigPurgeQualifiers = $Select($IsObject(pQualifiers): pQualifiers.%ToJSON(), 1: {"allNamespace": 1}.%ToJSON())
     If $Get(^||OcuPilotConfigPurgeFails) Quit $$$ERROR($$$GeneralError, "a purge failure fed by the test")
     Quit $$$OK
 }
