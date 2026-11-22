@@ -37,7 +37,8 @@
  */
 
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -213,6 +214,26 @@ const STALL_BUSY_WINDOW_MS = 2000;
 /** How long each probe of a stall report may take before it is reported as unanswered. */
 const STALL_PROBE_MS = 5000;
 
+/** How long a stall report waits for its one `Debugger.pause` to land. */
+const STALL_PAUSE_MS = 10_000;
+
+/** How many of the paused stack's top frames a stall report names. */
+const STALL_FRAMES = 5;
+
+/** The answer whose body length a stall report names. */
+const GOVERNANCE_ANSWER_PATH = '/api/ocupilot/agent/governance';
+
+/** The variable that names the folder an abandoned visit's CPU profile is saved in. */
+export const PROFILE_DIR_VARIABLE = 'OCUPILOT_WALK_PROFILE_DIR';
+
+/** The folder an abandoned visit's CPU profile is saved in: `PROFILE_DIR_VARIABLE`, or one under the OS temp directory. */
+export function profileDir() {
+  return process.env[PROFILE_DIR_VARIABLE] || join(tmpdir(), 'ocupilot-walk-profiles');
+}
+
+/** The visit profile each page is recording, for the stall report to save. */
+const captures = new WeakMap();
+
 /** Settle with `work`, or reject after `ms` with an error that names `what` and carries the `unanswered` marker. */
 function withinProbe(ms, work, what) {
   let timer;
@@ -253,14 +274,112 @@ async function rendererState(page, windowMs, probeMs) {
   }
 }
 
+/** `url` as the last segment of its path, or `(no script)` for a frame that has none. */
+function scriptOf(url) {
+  const path = pathOf(url ?? '');
+  return path === '' ? '(no script)' : path.split('?')[0].split('/').pop() || path;
+}
+
+/**
+ * The renderer's main thread, from one `Debugger.pause` on a DevTools session of its own: the top
+ * frames it stopped in, `not running JS` when no pause landed within `pauseMs` (the request is then
+ * cancelled, never left armed), or `unresponsive` when the session does not answer within `probeMs`.
+ * `duringPause`, when given, runs while the thread is stopped. The thread is always resumed and the
+ * session detached; a failed probe is named, never thrown.
+ */
+async function mainThreadState(page, pauseMs, probeMs, duringPause = null) {
+  let session = null;
+  let paused = false;
+  try {
+    session = await withinProbe(probeMs, page.createCDPSession(), 'a new DevTools session');
+    let resolveLanded;
+    const landed = new Promise((resolve) => {
+      resolveLanded = resolve;
+    });
+    session.on('Debugger.paused', resolveLanded);
+    await withinProbe(probeMs, session.send('Debugger.enable'), 'Debugger.enable');
+    await withinProbe(probeMs, session.send('Debugger.pause'), 'Debugger.pause');
+    let timer;
+    const event = await Promise.race([
+      landed,
+      new Promise((resolve) => {
+        timer = setTimeout(() => resolve(null), pauseMs);
+      }),
+    ]).finally(() => clearTimeout(timer));
+    if (event === null) return `not running JS (no pause landed within ${pauseMs} ms)`;
+    paused = true;
+    if (duringPause !== null) await duringPause().catch(() => {});
+    const frames = (event.callFrames ?? []).slice(0, STALL_FRAMES).map((frame) => `${frame.functionName || '(anonymous)'} ${scriptOf(frame.url)}:${(frame.location?.lineNumber ?? 0) + 1}:${(frame.location?.columnNumber ?? 0) + 1}`);
+    return `paused in ${frames.length === 0 ? 'no frames' : frames.join(' < ')}`;
+  } catch (error) {
+    return error?.unanswered === true ? `unresponsive (${reasonOf(error)})` : `unread (${reasonOf(error)})`;
+  } finally {
+    if (session !== null) {
+      if (paused) await withinProbe(probeMs, session.send('Debugger.resume'), 'Debugger.resume').catch(() => {});
+      await withinProbe(probeMs, session.send('Debugger.disable'), 'Debugger.disable').catch(() => {});
+      await withinProbe(probeMs, session.detach(), 'detach').catch(() => {});
+    }
+  }
+}
+
+/**
+ * Record a CPU profile of the visit the page is making, on a DevTools session of its own.
+ * `save(probeMs)` stops the profile and writes it under `profileDir()`, answering `profile: <file>` or
+ * `profile: not saved (<why>)`; `discard()` throws the profile away. Either releases the session, once.
+ * Recording never throws and is not waited for: a page that cannot open a session leaves a visit
+ * with nothing to save.
+ */
+function armVisitProfile(page, label) {
+  const armed = (async () => {
+    const session = await page.createCDPSession();
+    await session.send('Profiler.enable');
+    await session.send('Profiler.start');
+    return session;
+  })();
+  armed.catch(() => {});
+  let released = false;
+  let saved = null;
+  const release = async (session, probeMs = STALL_PROBE_MS) => {
+    if (released) return;
+    released = true;
+    await withinProbe(probeMs, session.send('Profiler.disable'), 'Profiler.disable').catch(() => {});
+    await withinProbe(probeMs, session.detach(), 'detach').catch(() => {});
+  };
+  return {
+    save(probeMs = STALL_PROBE_MS) {
+      saved ??= (async () => {
+        try {
+          const session = await withinProbe(probeMs, armed, 'the profiler');
+          const { profile } = await withinProbe(probeMs, session.send('Profiler.stop'), 'Profiler.stop');
+          const folder = profileDir();
+          mkdirSync(folder, { recursive: true });
+          const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+          const file = join(folder, `${new Date().toISOString().replace(/[:.]/g, '-')}-${slug}.cpuprofile`);
+          writeFileSync(file, JSON.stringify(profile));
+          armed.then((held) => release(held, probeMs), () => {});
+          return `profile: ${file}`;
+        } catch (error) {
+          armed.then((held) => release(held, probeMs), () => {});
+          return `profile: not saved (${reasonOf(error)})`;
+        }
+      })();
+      return saved;
+    },
+    discard() {
+      if (saved === null) armed.then((held) => release(held), () => {});
+    },
+  };
+}
+
 /**
  * One `stall:` line for a page whose call was abandoned: whether the page crashed since its tracker
  * began, its frame's URL and the document requests in flight, the `/api/ocupilot` requests still
- * unanswered with how long each has waited, the renderer's state, and the last `/api/ocupilot`
- * answers with status and milliseconds. Each probe has its own bound and a failed one is named in
- * the line; this never throws.
+ * unanswered with how long each has waited, the renderer's state, the main thread's top frames from
+ * one bounded pause, the byte length of the last governance answer, the visit's saved CPU profile
+ * while a visit is being recorded, and the last `/api/ocupilot` answers with status and
+ * milliseconds. Each probe has its own bound and a failed one is named in the line; this never throws.
  */
-export async function stallLine(page, { busyWindowMs = STALL_BUSY_WINDOW_MS, probeMs = STALL_PROBE_MS } = {}) {
+export async function stallLine(page, { busyWindowMs = STALL_BUSY_WINDOW_MS, probeMs = STALL_PROBE_MS, pauseMs = STALL_PAUSE_MS } = {}) {
   const probe = (read) => {
     try {
       return read();
@@ -290,7 +409,30 @@ export async function stallLine(page, { busyWindowMs = STALL_BUSY_WINDOW_MS, pro
   } catch (error) {
     renderer = `unread (${reasonOf(error)})`;
   }
-  return `stall: page crashed: ${crashed}; frame: ${frame}; /api/ocupilot unanswered: ${unanswered}; renderer: ${renderer}; last ${STALL_ANSWERS} /api/ocupilot answers: ${answers}`;
+  const visit = captures.get(page);
+  let saved = null;
+  let mainThread;
+  try {
+    mainThread = await mainThreadState(page, pauseMs, probeMs, visit === undefined ? null : async () => void (saved = await visit.save(probeMs)));
+  } catch (error) {
+    mainThread = `unread (${reasonOf(error)})`;
+  }
+  if (visit !== undefined && saved === null) saved = await visit.save(probeMs);
+  let governance;
+  try {
+    governance = await governanceAnswer(tracker, probeMs);
+  } catch (error) {
+    governance = `unread (${reasonOf(error)})`;
+  }
+  return `stall: page crashed: ${crashed}; frame: ${frame}; /api/ocupilot unanswered: ${unanswered}; renderer: ${renderer}; main thread: ${mainThread}; governance answer: ${governance}; ${saved === null ? '' : `${saved}; `}last ${STALL_ANSWERS} /api/ocupilot answers: ${answers}`;
+}
+
+/** The last governance answer a tracker saw, as its status and body length, or why there is none to name. */
+async function governanceAnswer(tracker, probeMs) {
+  const held = tracker?.governance;
+  if (held === undefined) return 'none seen';
+  const bytes = await withinProbe(probeMs, held.bytes, 'the governance answer body');
+  return `${held.status}, ${bytes} bytes`;
 }
 
 /**
@@ -779,7 +921,7 @@ function isShellScript(page, request) {
  */
 export function trackRequests(page) {
   const state = { inflight: new Set(), last: Date.now() };
-  const watched = { crashed: null, documents: new Set(), answers: [], pending: new Map() };
+  const watched = { crashed: null, documents: new Set(), answers: [], pending: new Map(), governance: undefined };
   const started = watched.pending;
   trackers.set(page, watched);
   page.on('error', (error) => {
@@ -796,6 +938,11 @@ export function trackRequests(page) {
     const request = response.request();
     if (!started.has(request)) return;
     watched.answers.push({ path: pathOf(request.url()), status: response.status(), ms: Date.now() - started.get(request) });
+    if (pathOf(request.url()).split('?')[0] === GOVERNANCE_ANSWER_PATH) {
+      const bytes = Promise.resolve().then(async () => (await response.buffer()).length);
+      bytes.catch(() => {});
+      watched.governance = { status: response.status(), bytes };
+    }
     started.delete(request);
     if (watched.answers.length > STALL_ANSWERS) watched.answers.shift();
   });
@@ -860,20 +1007,29 @@ function pathOf(url) {
 export async function goInApp(page, requests, path, timeoutMs) {
   const pathname = path.split('?')[0];
   requests.last = Date.now();
-  await bounded(
-    stepLabel(requests, `navigate ${path}`),
-    page.evaluate((to) => {
-      window.history.pushState({}, '', to);
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    }, path),
-    page
-  );
-  await bounded(
-    stepLabel(requests, `await ${pathname}`),
-    page.waitForFunction((wanted) => window.location.pathname === wanted, { timeout: timeoutMs }, pathname),
-    page
-  );
-  return settle(page, requests, path);
+  // The visit's CPU profile is recorded beside it and kept only when a call of the visit is abandoned
+  // (`stallLine` saves it); the visit's own calls and outcome are the same with or without it.
+  const visit = armVisitProfile(page, `${requests?.pass ?? 'walk'} ${path}`);
+  captures.set(page, visit);
+  try {
+    await bounded(
+      stepLabel(requests, `navigate ${path}`),
+      page.evaluate((to) => {
+        window.history.pushState({}, '', to);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }, path),
+      page
+    );
+    await bounded(
+      stepLabel(requests, `await ${pathname}`),
+      page.waitForFunction((wanted) => window.location.pathname === wanted, { timeout: timeoutMs }, pathname),
+      page
+    );
+    return await settle(page, requests, path);
+  } finally {
+    if (captures.get(page) === visit) captures.delete(page);
+    visit.discard();
+  }
 }
 
 /** The id segment of the first rendered row link on the list the page stands on under `route`. */

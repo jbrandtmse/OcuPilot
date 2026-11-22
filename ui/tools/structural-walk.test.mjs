@@ -54,7 +54,9 @@
 //   step's stall case red; drop `wide.page` from the `close context` call -> the context-close pin red.
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test, { afterEach, mock } from 'node:test';
 
 import { CLOSEDEADLINE, WALKCALLDEADLINE, isProtocolTimeout, retryOnce } from '../browser/protocol-retry.mjs';
@@ -713,4 +715,140 @@ test('both context closes of the walk go through the deadline with their page, s
   const source = readFileSync(new URL('../browser/structural-walk.mjs', import.meta.url), 'utf8');
   assert.match(source, /bounded\('1280px light then dark: close context', wide\.context\.close\(\), wide\.page\)/, 'the wide pass');
   assert.match(source, /bounded\('720px light: close context', narrow\.context\.close\(\), narrow\.page\)/, 'the narrow pass');
+});
+
+// --- The evidence an abandoned visit keeps -----------------------------------------------------------
+
+const SPIN_FRAMES = [
+  { functionName: 'spin', url: 'http://localhost:52776/ocupilot/main-ABC.js', location: { lineNumber: 9, columnNumber: 4 } },
+  { functionName: '', url: '', location: { lineNumber: 0, columnNumber: 0 } },
+];
+const CPU_PROFILE = { nodes: [{ id: 1, callFrame: { functionName: '(root)' } }], samples: [1], timeDeltas: [1000] };
+
+/**
+ * A page that records every DevTools session it opens. A session answers `Performance.getMetrics`,
+ * `Profiler.stop` with `CPU_PROFILE`, and, unless `pauseLands` is false, `Debugger.pause` with a
+ * `Debugger.paused` event over `SPIN_FRAMES`.
+ */
+function evidencePage({ pauseLands = true, settleHangs = false } = {}) {
+  const page = eventPage({ evaluate: undefined });
+  const sessions = [];
+  let evaluates = 0;
+  page.evaluate = async () => (++evaluates === 2 && settleHangs ? hang() : evaluates === 1 ? undefined : true);
+  page.waitForFunction = async () => true;
+  page.createCDPSession = async () => {
+    const handlers = new Map();
+    const sent = [];
+    sessions.push(sent);
+    let task = 0;
+    return {
+      on: (event, handler) => handlers.set(event, handler),
+      send: async (method) => {
+        sent.push(method);
+        if (method === 'Performance.getMetrics') return { metrics: [{ name: 'TaskDuration', value: (task += 1) }] };
+        if (method === 'Profiler.stop') return { profile: CPU_PROFILE };
+        if (method === 'Debugger.pause' && pauseLands) setImmediate(() => handlers.get('Debugger.paused')?.({ callFrames: SPIN_FRAMES }));
+        return {};
+      },
+      detach: async () => {},
+    };
+  };
+  page.sessions = sessions;
+  return page;
+}
+
+/** Emit the governance read answering with `bytes` bytes on `page`, then finish it. */
+function answerGovernance(page, bytes) {
+  const request = apiRequest('/api/ocupilot/agent/governance?ns=HSCUSTOM');
+  page.emit('request', request);
+  page.emit('response', { request: () => request, status: () => 200, buffer: async () => Buffer.alloc(bytes) });
+  page.emit('requestfinished', request);
+}
+
+/** Run `work` with the walk's profile folder pointing at a fresh temporary directory, and remove it after. */
+async function withProfileDir(work) {
+  const folder = mkdtempSync(join(tmpdir(), 'ocupilot-walk-test-'));
+  const before = process.env.OCUPILOT_WALK_PROFILE_DIR;
+  process.env.OCUPILOT_WALK_PROFILE_DIR = folder;
+  try {
+    return await work(folder);
+  } finally {
+    if (before === undefined) delete process.env.OCUPILOT_WALK_PROFILE_DIR;
+    else process.env.OCUPILOT_WALK_PROFILE_DIR = before;
+    rmSync(folder, { recursive: true, force: true });
+  }
+}
+
+/** Wait, on the real clock, until `check` holds or one second has gone by. */
+async function until(check) {
+  for (let step = 0; step < 100 && !check(); step += 1) await new Promise((resolve) => setTimeout(resolve, 10));
+}
+
+// Mutations (Rule 19):
+// - drop `visit.discard()` from `goInApp`'s `finally` -> the settled-visit case red: its profiler session is never disabled.
+// - drop the `writeFileSync` in `armVisitProfile`'s save -> the abandoned-visit case red: no profile file.
+// - drop the `governance` record from `trackRequests`, or the `main thread:` field from `stallLine` -> the abandoned-visit case red.
+test('an abandoned visit saves its CPU profile and its stall line names the paused frames and the governance answer length', { timeout: 20_000 }, async () => {
+  await withProfileDir(async (folder) => {
+    const page = evidencePage({ settleHangs: true });
+    const requests = trackRequests(page);
+    requests.pass = '1280px light';
+    answerGovernance(page, 39351);
+    mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+    let outcome = 'still waiting';
+    try {
+      const running = goInApp(page, requests, '/ocupilot/agent/governance?ns=HSCUSTOM', 30_000).then(
+        () => {
+          outcome = 'resolved';
+        },
+        (error) => {
+          outcome = error;
+        }
+      );
+      await flush();
+      mock.timers.tick(500);
+      await flush();
+      mock.timers.tick(WALKCALLDEADLINE);
+      for (let step = 0; step < 40 && outcome === 'still waiting'; step += 1) {
+        await flush();
+        mock.timers.tick(1000);
+      }
+      await running;
+    } finally {
+      mock.timers.reset();
+    }
+    assert.ok(outcome instanceof Error && isProtocolTimeout(outcome), 'still abandoned as a protocol timeout, so the pass retry runs');
+    assert.match(outcome.message, /main thread: paused in spin main-ABC\.js:10:5 < \(anonymous\) \(no script\):1:1; /, 'the paused frames, top first');
+    assert.match(outcome.message, /; governance answer: 200, 39351 bytes; /, "the governance answer's byte length");
+    const files = readdirSync(folder);
+    assert.equal(files.length, 1, 'one profile is saved');
+    assert.match(files[0], /-1280px-light-ocupilot-agent-governance-ns-hscustom\.cpuprofile$/, 'named for the pass and the path');
+    assert.ok(outcome.message.includes(`profile: ${join(folder, files[0])}; last 5 /api/ocupilot answers: `), 'and the stall line names the file');
+    assert.deepEqual(JSON.parse(readFileSync(join(folder, files[0]), 'utf8')), CPU_PROFILE, 'holding what the profiler stopped with');
+    const debuggerSession = page.sessions.find((sent) => sent.includes('Debugger.pause'));
+    assert.deepEqual(debuggerSession.filter((method) => method.startsWith('Debugger.')), ['Debugger.enable', 'Debugger.pause', 'Debugger.resume', 'Debugger.disable'], 'the paused thread is resumed and the debugger turned off');
+  });
+});
+
+test('a settled visit saves no profile and releases its profiler', { timeout: 20_000 }, async () => {
+  await withProfileDir(async (folder) => {
+    const page = evidencePage();
+    const requests = trackRequests(page);
+    requests.pass = '1280px light';
+    const answer = await goInApp(page, requests, '/ocupilot/agent/governance?ns=HSCUSTOM', 30_000);
+    assert.equal(answer.settled, true, 'the visit settles as it did');
+    await until(() => page.sessions[0]?.includes('Profiler.disable'));
+    assert.equal(readdirSync(folder).length, 0, 'no profile file is written');
+    assert.deepEqual(page.sessions[0].filter((method) => method.startsWith('Profiler.')), ['Profiler.enable', 'Profiler.start', 'Profiler.disable'], 'the profile is discarded, never stopped');
+  });
+});
+
+test('a pause that does not land says the main thread is not running JS, and is cancelled', { timeout: 10_000 }, async () => {
+  const page = evidencePage({ pauseLands: false });
+  trackRequests(page);
+  const line = await stallLine(page, { busyWindowMs: 10, probeMs: 100, pauseMs: 30 });
+  assert.match(line, /; main thread: not running JS \(no pause landed within 30 ms\); governance answer: none seen; last 5 /, 'named in the line, with no governance answer seen');
+  assert.doesNotMatch(line, /profile:/, 'and a page recording no visit names no profile');
+  const debuggerSession = page.sessions.find((sent) => sent.includes('Debugger.pause'));
+  assert.deepEqual(debuggerSession.filter((method) => method.startsWith('Debugger.')), ['Debugger.enable', 'Debugger.pause', 'Debugger.disable'], 'the pending pause is cancelled by turning the debugger off');
 });

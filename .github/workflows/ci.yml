@@ -295,6 +295,7 @@ jobs:
         env:
           OCUPILOT_BROWSER_ORIGIN: http://localhost:52780
           OCUPILOT_BROWSER_CONTAINER: ocupilot-browser-ci
+          OCUPILOT_WALK_PROFILE_DIR: ${{ runner.temp }}/walk-profiles
         run: npm run test:browser:shard -- --shard ${{ matrix.shard }}/5 --record ${{ runner.temp }}/ci-records/browser-shard-${{ matrix.shard }}.json
       - name: upload this leg's record
         if: ${{ !cancelled() }}
@@ -303,6 +304,18 @@ jobs:
           name: ci-record-browser-${{ matrix.shard }}
           path: ${{ runner.temp }}/ci-records/browser-shard-${{ matrix.shard }}.json
           if-no-files-found: error
+          overwrite: true
+      # Evidence only: the structural walk saves the CPU profile of a visit whose call it abandoned
+      # (ui/browser/structural-walk.mjs), and nothing else writes here, so a leg without a stall has no
+      # file to upload.
+      - name: upload the structural walk's CPU profiles
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: walk-profiles-browser-${{ matrix.shard }}
+          path: ${{ runner.temp }}/walk-profiles
+          if-no-files-found: ignore
+          retention-days: 3
           overwrite: true
       - name: capture the throwaway on failure
         if: ${{ failure() || cancelled() }}
