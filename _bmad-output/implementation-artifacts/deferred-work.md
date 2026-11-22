@@ -14436,3 +14436,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-15-credentials-default-settings-and-schedules-4.md (implement review 05fd00c24) | severity: low | fix-risk: low | footprint: in-footprint
 - evidence: 24.15 Batch 3 implement-stage review, deferred low
 - 2026-11-22T15:07:16Z status=routed owner=burndown by=epic-24-runner note=add a mint and a route leg under a source-controlled seam namespace
+
+### DW-2841: At confirm, every Interop write tool takes its globals-database WRITE pair check from the confirming request's namespace, not the proposal's; no write lands (the port refuses 403 afterwards), but the gate answer can differ from the proposal's namespace
+- source: spec-24-15-credentials-default-settings-and-schedules-4.md (review 76c6b6f06) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: 24.15 Batch 3 review layer; family-wide, predates the batch
+- 2026-11-22T15:43:28Z status=routed owner=burndown by=epic-24-runner note=ask the pair in the proposal's stored namespace
