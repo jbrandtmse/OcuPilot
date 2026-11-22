@@ -6,7 +6,7 @@
 /// <code>%Development:USE</code> and WRITE on <code>USER</code>'s routines database, a <code>USER</code> namespace, and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the purge removes every cached query of <code>USER</code> and the clean
 /// every stale statement of its index, which a test cannot confine to its own objects. It runs on a throwaway container only. It makes
-/// <class>OcuPilot.Test.SqlTuningProbe</class>'s objects in <code>USER</code> and removes them after, and snapshots the stored governance policy
+/// <class>OcuPilot.Test.SqlTuningProbe</class>'s objects in <code>USER</code> (and, for one test, in <code>HSCUSTOM</code>) and removes them after, and snapshots the stored governance policy
 /// before and puts it back after.</p>
 Class OcuPilot.Test.SqlTuningWrite Extends %UnitTest.TestCase
 {
@@ -21,6 +21,9 @@ Parameter WRITE = "OcuPilot.Test.SqlStatementWrite";
 Parameter PURGE = "OcuPilot.Test.SqlCachedQueryPurge";
 
 Parameter NAMESPACE = "USER";
+
+/// <p>The second namespace the purge tests make a probe in, to show a purge of <parameter>NAMESPACE</parameter> leaves it.</p>
+Parameter OTHERNAMESPACE = "HSCUSTOM";
 
 Parameter CLEAN = "OcuPilot.Screen.Tool.ExplorerSqlStatementClean";
 
@@ -66,6 +69,7 @@ Method OnBeforeOneTest() As %Status
 Method OnAfterOneTest() As %Status
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", ..#NAMESPACE), "every probe object is removed")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", ..#OTHERNAMESPACE), "every probe object of the other namespace is removed")
     Kill ^||OcuPilotDatabaseWritePort
     Do ##class(OcuPilot.Kernel.Scope).Clear()
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)
@@ -82,10 +86,10 @@ Method OnAfterOneTest() As %Status
 Method TestTheNamespacesCachedQueriesArePurgedOnBothCallers()
 {
     Set tWrite = ..#WRITE
-    Set tClass = $ClassMethod(..#PURGE, "Class", "SELECT A FROM")
-    Do $$$AssertEquals($ClassMethod(..#PURGE, "Count", "OcuProbe216.T1") _ "|" _ $ClassMethod(..#PURGE, "Count", "OcuProbe216.T2"), "2|1", "the probe holds its three cached queries")
+    Set tHash = $ClassMethod(..#PROBE, "HashOf", ..#NAMESPACE, "SELECT A FROM")
+    Do $$$AssertEquals($ClassMethod(..#PURGE, "Count", "OcuProbe216.T1") _ "|" _ $ClassMethod(..#PURGE, "Count", "OcuProbe216.T2") _ "|" _ ($ClassMethod(..#PROBE, "LocationOf", ..#NAMESPACE, tHash) '= ""), "2|1|1", "the probe holds its three cached queries, and its statement a location")
     Set tStatus = $ClassMethod(tWrite, "Act", "purge-namespace", "*", ..#NAMESPACE, .tAnswer, "explorer.sqlcachedqueries")
-    Do $$$AssertEquals(tStatus _ "|" _ $ClassMethod(..#PURGE, "Count", "OcuProbe216.T1") _ "|" _ $ClassMethod(..#PURGE, "Count", "OcuProbe216.T2") _ "|" _ $ClassMethod(..#PURGE, "Count", tClass), "200|0|0|-1", "the screen's purge removes them, and the probe's class is no longer found")
+    Do $$$AssertEquals(tStatus _ "|" _ $ClassMethod(..#PURGE, "Count", "OcuProbe216.T1") _ "|" _ $ClassMethod(..#PURGE, "Count", "OcuProbe216.T2") _ "|" _ $ClassMethod(..#PROBE, "LocationOf", ..#NAMESPACE, tHash), "200|0|0|", "the screen's purge removes them, and the probe's statement holds no location")
     Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.action _ "|" _ tAnswer.target.type _ "|" _ tAnswer.target.id, 1: ""), "updated|cached-query|*", "its answer names the namespace's cached queries")
     Do $ClassMethod(..#PROBE, "Make", ..#NAMESPACE)
     Set tConfirm = $ClassMethod(tWrite, "Agent", ..#PURGENAMESPACE, "*", "Target", , .tProposal, .tResult)
@@ -118,10 +122,34 @@ Method TestTheStaleStatementIsCleanedOnBothCallers()
     Set tQuery("namespace") = ..#NAMESPACE
     Set tQuery("id") = "*"
     Set tSC = ##class(OcuPilot.Port.SqlPort).Invoke("Statements", "STATEMENT", .tQuery, "", .tIndex, .tHttp, .tFault)
-    If $IsObject($Get(tIndex)) && (tIndex.Stale = 0) {
-        Set tStatus = $ClassMethod(tWrite, "Act", "clean", "*", ..#NAMESPACE, .tAnswer)
-        Do $$$AssertEquals($ClassMethod(tWrite, "Verdict", tStatus, tAnswer) _ "|" _ $Select($IsObject(tAnswer) && $IsObject(tAnswer.detail): tAnswer.detail.problem, 1: ""), "400 TOOL.ARGUMENTS|" _ ##class(OcuPilot.Api.AtelierError).#REASONSTATEMENTNOSTALE, "a clean of an index that holds nothing stale is refused with its sentence")
-    }
+    Do $$$AssertEquals($Select($IsObject($Get(tIndex)): tIndex.Stale, 1: -1), 0, "the clean left the index holding nothing stale")
+    Set tStatus = $ClassMethod(tWrite, "Act", "clean", "*", ..#NAMESPACE, .tAnswer)
+    Do $$$AssertEquals($ClassMethod(tWrite, "Verdict", tStatus, tAnswer) _ "|" _ $Select($IsObject(tAnswer) && $IsObject(tAnswer.detail): tAnswer.detail.problem, 1: ""), "400 TOOL.ARGUMENTS|" _ ##class(OcuPilot.Api.AtelierError).#REASONSTATEMENTNOSTALE, "the screen's clean of an index that holds nothing stale is refused with its sentence")
+    Set tConfirm = $ClassMethod(tWrite, "Agent", ..#CLEAN, "*", "Hash", , .tProposal, .tResult)
+    Do $$$AssertEquals(tConfirm, "mint 400 " _ ##class(OcuPilot.Api.AtelierError).#REASONSTATEMENTNOSTALE, "the agent's clean of such an index is refused before any write: " _ tConfirm)
+}
+
+/// <p>AC4. A purge of one namespace's cached queries removes that namespace's and leaves another namespace's. Each namespace holds its own probe.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.Applied</code> calls <code>PurgeCachedQueries</code> without the target namespace -> the purge
+/// runs in the request's own namespace, the other namespace's queries are gone and the target's stay, and this goes red.</p>
+Method TestAnotherNamespacesCachedQueriesSurviveTheNamespacePurge()
+{
+    Set tWrite = ..#WRITE
+    Set tOther = ..#OTHERNAMESPACE
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Make", tOther), "the probe objects are created in " _ tOther)
+    Do $$$AssertEquals(..CountIn(tOther, "OcuProbe216.T1") _ "|" _ ..CountIn(tOther, "OcuProbe216.T2"), "2|1", tOther _ " holds the probe's three cached queries")
+    Set tStatus = $ClassMethod(tWrite, "Act", "purge-namespace", "*", ..#NAMESPACE, .tAnswer, "explorer.sqlcachedqueries")
+    Do $$$AssertEquals(tStatus _ "|" _ $ClassMethod(..#PURGE, "Count", "OcuProbe216.T1") _ "|" _ ..CountIn(tOther, "OcuProbe216.T1") _ "|" _ ..CountIn(tOther, "OcuProbe216.T2"), "200|0|2|1", "the purge of " _ ..#NAMESPACE _ " removes its queries and leaves the queries of " _ tOther)
+}
+
+/// <p>The cached queries the port's <code>PURGE</code> read says <var>pId</var> holds in <var>pNamespace</var>, or <code>-1</code> when it answers none.</p>
+ClassMethod CountIn(pNamespace As %String, pId As %String) As %Integer
+{
+    Kill tQuery
+    Set tQuery("namespace") = pNamespace
+    Set tQuery("id") = pId
+    Set tSC = ##class(OcuPilot.Port.SqlPort).Invoke("CachedQueries", "PURGE", .tQuery, "", .tAnswer, .tHttp, .tFault)
+    Quit $Select($IsObject($Get(tAnswer)): tAnswer.CachedQueries, 1: -1)
 }
 
 }

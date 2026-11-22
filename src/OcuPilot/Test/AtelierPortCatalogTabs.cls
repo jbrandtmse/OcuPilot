@@ -15,12 +15,12 @@ Class OcuPilot.Test.AtelierPortCatalogTabs Extends %UnitTest.TestCase
 
 Parameter PORT = "OcuPilot.Port.AtelierPort";
 
-/// <p>The statement a SQL statements tab sends, written out here so that a column added to or
-/// renamed in the port's select list, and a grouping dropped from it, fails this class rather than
-/// passing through a body built from the port's own parameter.</p>
 /// <p>The text a statement or a call of the vendor's statement index procedure would carry, in upper case: <code>%SQL_Manager.StatementIndexAll</code>.</p>
 Parameter VENDORPROCEDURE = "SQL_MANAGER.STATEMENTINDEX";
 
+/// <p>The statement a SQL statements tab sends, written out here so that a column added to or
+/// renamed in the port's select list, and a grouping dropped from it, fails this class rather than
+/// passing through a body built from the port's own parameter.</p>
 Parameter STATEMENTSQUERY = "SELECT CASE s.Frozen WHEN 1 THEN 'Frozen/Explicit' WHEN 2 THEN 'Frozen/Upgrade' WHEN 3 THEN 'Unfrozen/Parallel' ELSE 'Unfrozen' END AS PLAN_STATE, s.FrozenDifferent AS FROZEN_DIFF, s.StatCount AS EXECUTIONS, s.StatTotal AS TOTAL_TIME, s.StatAverage AS AVERAGE_TIME, s.StatStdDev AS STDDEV_TIME, s.StatRowCount AS ROW_COUNT, s.StatCommands AS COMMANDS, %ODBCOUT(s.StatFirst) AS FIRST_SEEN, CASE WHEN CHAR_LENGTH(s.Statement) > 1024 THEN SUBSTRING(s.Statement, 1, 1021) || '...' ELSE s.Statement END AS STATEMENT, LIST(l.Location) AS LOCATION FROM INFORMATION_SCHEMA.STATEMENT_RELATIONS r JOIN INFORMATION_SCHEMA.STATEMENTS s ON s.Hash = r.Statement LEFT OUTER JOIN INFORMATION_SCHEMA.STATEMENT_LOCATIONS l ON l.Statement = s.Hash WHERE r.Relation = ? GROUP BY s.Hash";
 
 Method OnBeforeOneTest() As %Status

@@ -227,6 +227,11 @@ test('AC1: the list shows the probe statement with its plan state and statistics
     assert.equal(await cellOf(page, hashes.one, COLUMN.hash), hashes.one, 'the probe statement is listed by its hash');
     assert.equal(await cellOf(page, hashes.one, COLUMN.planState), 'Unfrozen', 'it reads its plan state');
     assert.equal(await cellOf(page, hashes.one, COLUMN.executions), '3', 'and the run statistics the fixture recorded');
+    await selectRow(page, hashes.one);
+    const labels = await barLabels(page);
+    for (const label of [STRINGS.sqlStatementFreezeAction, STRINGS.sqlStatementClearStatisticsAction, STRINGS.sqlStatementCleanAction]) {
+      assert.ok(labels.includes(label), `the command bar offers ${label}: ${JSON.stringify(labels)}`);
+    }
   } finally {
     await context.close();
   }
