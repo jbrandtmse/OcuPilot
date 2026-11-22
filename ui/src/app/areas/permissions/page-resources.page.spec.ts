@@ -42,10 +42,10 @@ const ROWS = [
 const REVIEW_ROUTE = `/api/ocupilot/screens/${LIST.toolIdentifier}/dryrun`;
 const ACTION_ROUTE = `/api/ocupilot/screens/${LIST.toolIdentifier}/action`;
 
-const reviewed = (screens: readonly string[], consequence = ''): JsonResult<unknown> => ({
+const reviewed = (screens: readonly string[], consequence = '', actions: readonly unknown[] = []): JsonResult<unknown> => ({
   kind: 'ok',
   status: 200,
-  body: { rows: [], review: { Screens: screens, Consequence: consequence } },
+  body: { rows: [], review: { Screens: screens, Opens: screens, Actions: actions, Consequence: consequence } },
 });
 
 const applied = (action: 'updated' | 'deleted', id: string): JsonResult<unknown> => ({
@@ -297,6 +297,20 @@ describe('the Page resources page', () => {
     release(reviewed([]));
     await settle(fixture);
     expect(host.querySelector('.ocu-page-resources-line')?.textContent?.trim()).toContain('These 2 screens');
+  });
+
+  it("draws the action line from the review's Actions and ignores an entry that names no screen", async () => {
+    const mounted = mount([
+      reviewed([], 'PAGERESOURCE.CHANGED', [{ screen: 'OcuPilot.Screen.Descriptor.ResourceList', action: 'export' }, { screen: '', action: 'x' }, 'text', null]),
+    ]);
+    const { fixture, host } = mounted;
+    await open(mounted, PAGE_RESOURCE_ASSIGN);
+    type(mounted, 'page', ABOUT);
+    type(mounted, 'resource', 'ResC', true);
+    await settle(fixture);
+    expect(host.querySelector('.ocu-page-resources-line')?.textContent?.trim()).toBe(
+      "This page's resource will be required from the next request for: Export on Resources."
+    );
   });
 
   it('Cancel closes the dialog and sends nothing', async () => {

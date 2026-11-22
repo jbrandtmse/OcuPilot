@@ -10,11 +10,14 @@ import {
   formatRemovalResidue,
   toCardView,
 } from '../core/proposal-view';
+import { OverlayStack } from '../core/overlay-stack';
+import type { SourceControlQuestion } from '../core/source-control-question';
 import { STRINGS } from '../core/strings';
 import { testOutcomeLines, transformOutcomeLines } from '../core/test-answer';
 import { PROPOSAL_LIVE_STATE, outputErrorsOf, parseProposals } from '../core/turn';
 import { EXAMPLE_PROPOSAL, type ProposalCardView } from './example-proposal';
 import { ProposalCard } from './proposal-card';
+import { ScreenActionHandler } from './screen-action-handler';
 
 /**
  * The proposal card's rendered contract, asserted against the DOM.
@@ -830,6 +833,32 @@ describe('the proposal card', () => {
 
     expect(mount(liveView({ consequence: '' }), { phase: 'live' }).card.querySelector('[data-slot="consequence"]')).toBeNull();
     expect(mount(EXAMPLE_PROPOSAL).card.querySelector('[data-slot="consequence"]')).toBeNull();
+  });
+
+  it('Story 21.38: a page resource proposal draws its Action row as phrases and states the action sentence, never the screen-open one, for a tool-only page', () => {
+    // Mutation (Rule 19): `changedRows` answers the view's rows as they are -> the row leg goes red; `pageResourceSentence` reads the Screen row
+    // while an Action row names writes -> the sentence leg goes red.
+    const RESOURCES = 'OcuPilot.Screen.Descriptor.ResourceList';
+    const { card } = mount(
+      liveView({
+        targetType: 'page-resource',
+        consequence: 'PAGERESOURCE.CHANGED',
+        changed: [
+          { field: 'Resource', before: 'ResA', after: 'ResB' },
+          { field: 'Screen', before: 'Resources', after: 'Resources' },
+          { field: 'Action', before: `${RESOURCES}#export,${RESOURCES}#import`, after: `${RESOURCES}#export,${RESOURCES}#import` },
+        ],
+        unchanged: [],
+        maskedFields: [],
+      }),
+      { phase: 'live' }
+    );
+    const rows = Array.from(card.querySelectorAll('.ocu-diff-row')).map((row) => row.textContent ?? '');
+    expect(rows.some((row) => row.includes('Export on Resources, changes on Resources'))).toBe(true);
+    expect(card.textContent).not.toContain('OcuPilot.Screen.Descriptor');
+    const line = card.querySelector('[data-slot="consequence"]') as HTMLElement;
+    expect(line.textContent).toContain('Accounts that hold only the old resource can no longer use: Export on Resources, changes on Resources.');
+    expect(line.textContent).not.toContain('can no longer open');
   });
 
   it('Story 18.16, AC5: a remote database proposal states the listing\u2019s bound and its data server before the confirm', () => {
@@ -1662,5 +1691,89 @@ describe('the proposal card with a long block (Story 20.17)', () => {
     expect(blocks[0].querySelector('row')).toBeNull();
     expect((card.querySelector('[data-slot="output"]') as HTMLElement).closest('.ocu-long-block')?.classList.contains('ocu-long-block-collapsed')).toBe(true);
     expect(summary(card)).not.toBeNull();
+  });
+});
+
+describe('the proposal card and a source-control question (Story 21.38, AD-39\'s ninth exception)', () => {
+  const DESCRIPTOR = 'OcuPilot.Screen.Descriptor.ExplorerClassList';
+  const HOSTILE = 'Add <img src="x" onerror="alert(1)"> to <b>source control</b>?\nSecond line';
+
+  /** A card over a stubbed `ScreenActionHandler`, whose sends the test reads. */
+  function mountAsking(phase: ProposalPhase, questions: readonly SourceControlQuestion[]) {
+    TestBed.resetTestingModule();
+    const sends: { descriptor: string; action: string; target: string; values: Readonly<Record<string, string>> | undefined; scope: string | undefined }[] = [];
+    const handler = {
+      sendFor: async (descriptor: string, action: string, target: string, values?: Readonly<Record<string, string>>, _sink?: unknown, scope?: string) => {
+        sends.push({ descriptor, action, target, values, scope });
+        return true;
+      },
+      lastRefusal: () => null,
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: ScreenActionHandler, useValue: handler as unknown as ScreenActionHandler },
+        { provide: OverlayStack, useValue: new OverlayStack() },
+      ],
+    });
+    const fixture = TestBed.createComponent(ProposalCard);
+    fixture.componentRef.setInput('view', liveView({ maskedFields: [] }));
+    fixture.componentRef.setInput('phase', phase);
+    fixture.componentRef.setInput('nowMs', NOW_MS);
+    fixture.componentRef.setInput('questions', questions);
+    fixture.componentRef.setInput('questionDescriptor', DESCRIPTOR);
+    fixture.componentRef.setInput('questionScope', 'HSCUSTOM');
+    fixture.detectChanges();
+    return { fixture, host: fixture.nativeElement as HTMLElement, sends };
+  }
+
+  async function settled(fixture: { detectChanges(): void; whenStable(): Promise<unknown> }): Promise<void> {
+    for (let pass = 0; pass < 4; pass += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      fixture.detectChanges();
+      await fixture.whenStable();
+    }
+  }
+
+  // Mutation (Rule 19): drop `confirmed` from `questionsOpen` in `proposal-card.ts` -> the live-card leg goes red.
+  it('AC5: a confirmed card whose write asked a question opens it, and Yes sends the answer to the tool\'s own list screen; a live card opens none', async () => {
+    const asked: SourceControlQuestion[] = [{ document: 'Probe.Alpha.cls', step: 1, kind: 'question', text: 'Add Probe.Alpha.cls to source control?' }];
+    const live = mountAsking('live', asked);
+    expect(live.host.querySelector('app-source-control-question-dialog')).toBeNull();
+    const view = mountAsking('confirmed', asked);
+    await settled(view.fixture);
+    expect(view.host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe('Source control asks about Probe.Alpha.cls');
+    (view.host.querySelector('[data-ocu-source-control="yes"]') as HTMLButtonElement).click();
+    await settled(view.fixture);
+    expect(view.sends).toEqual([
+      { descriptor: DESCRIPTOR, action: 'answer', target: 'Probe.Alpha.cls', values: { step: '1', answer: '1' }, scope: 'HSCUSTOM' },
+    ]);
+    expect(view.host.querySelector('app-source-control-question-dialog')).toBeNull();
+    view.fixture.detectChanges();
+    expect(view.host.querySelector('app-source-control-question-dialog')).toBeNull();
+  });
+
+  // Mutation (Rule 19): bind the question's text through `innerHTML` in the dialog template -> the element legs go red.
+  it('AC9: a question carrying markup and a line break renders on the card as inert plain text', async () => {
+    const view = mountAsking('confirmed', [{ document: 'Probe.Alpha.cls', step: 1, kind: 'question', text: HOSTILE }]);
+    await settled(view.fixture);
+    const text = view.host.querySelector('[data-ocu-source-control="text"]') as HTMLElement;
+    expect(text.textContent).toBe(HOSTILE);
+    expect(text.children).toHaveLength(0);
+    expect(view.host.querySelector('.ocu-dialog img, .ocu-dialog b, .ocu-dialog script')).toBeNull();
+    view.fixture.componentRef.setInput('output', ['Deleted Probe.Alpha.cls']);
+    await settled(view.fixture);
+    const output = view.host.querySelector('[data-slot="output"]');
+    expect(output?.textContent).toContain('Deleted Probe.Alpha.cls');
+    expect(output?.textContent).not.toContain('source control');
+  });
+
+  it('AC6: an alert on the card shows with Close and sends nothing', async () => {
+    const view = mountAsking('confirmed', [{ document: 'Probe.Alpha.cls', step: 7, kind: 'alert', text: 'Added to source control.' }]);
+    await settled(view.fixture);
+    expect(view.host.querySelector('[data-ocu-source-control="text"]')?.textContent).toBe('Added to source control.');
+    (view.host.querySelector('.ocu-dialog-actions .ocu-button-secondary') as HTMLButtonElement).click();
+    await settled(view.fixture);
+    expect(view.sends).toEqual([]);
+    expect(view.host.querySelector('app-source-control-question-dialog')).toBeNull();
   });
 });

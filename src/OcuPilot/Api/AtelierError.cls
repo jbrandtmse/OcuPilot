@@ -94,6 +94,14 @@ Parameter SAVEREFUSED = "EXPLORER.SAVE.REFUSED";
 /// <p>The sentence <parameter>SAVEREFUSED</parameter> carries.</p>
 Parameter REASONSAVEREFUSED = "The instance refused this text, so nothing was saved.";
 
+/// <p>Envelope code: the namespace's source-control class reported an error for a person's answer to its question after
+/// a create or a delete (Story 21.38). Rendered on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug
+/// with 422; the class's text is logged at information severity and never sent.</p>
+Parameter SOURCECONTROLANSWER = "EXPLORER.SOURCECONTROL.ANSWER";
+
+/// <p>The sentence <parameter>SOURCECONTROLANSWER</parameter> carries.</p>
+Parameter REASONSOURCECONTROLANSWER = "The source-control class reported an error for this answer, so its step may not have finished.";
+
 /// <p>A deleted document's per-document reason when the vendor refused it for want of a privilege
 /// (#5838, #5883, #302) or a <code>&lt;PROTECT&gt;</code>.</p>
 Parameter DELETEACCESS = "This account cannot change the database that holds this document.";

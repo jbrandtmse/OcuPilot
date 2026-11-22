@@ -253,8 +253,9 @@ ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output 
 }
 
 /// <p>What the screen shows of the save the port answered <var>pWritten</var> for: its compile's
-/// <code>{lines, errors}</code> when it compiled, or <code>""</code>. Never stored, logged or put on
-/// the ledger, and never sent to the model (AD-39).</p>
+/// <code>{lines, errors}</code> when it compiled, which carries the source-control class's <code>questions</code>
+/// after a create, or <code>""</code>. Never stored, logged or put on the ledger, and never sent to the model
+/// (AD-39, its fifth and ninth exceptions).</p>
 ClassMethod WriteOutput(pWritten) As %DynamicObject
 {
     If '$IsObject($Get(pWritten)) || 'pWritten.%IsA("%Library.DynamicObject") Quit ""

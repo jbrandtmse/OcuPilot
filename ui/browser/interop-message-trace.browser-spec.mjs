@@ -303,6 +303,9 @@ test('AC4: the Trace tab passes the structural checks, and its links are named, 
       assert.equal(facts.arrows.length, 4, `${theme}: four links`);
       for (const arrow of facts.arrows) {
         assert.ok(arrow.aria.length > 0, `${theme}: link ${arrow.id} has an accessible name`);
+        assert.ok(arrow.id.length > 0 && arrow.label.length > 0, `${theme}: link ${arrow.id} draws a visible id and label`);
+        assert.ok(arrow.aria.includes(arrow.id), `${theme}: link ${arrow.id}'s accessible name holds the id it draws`);
+        assert.ok(arrow.aria.includes(arrow.label), `${theme}: link ${arrow.id}'s accessible name holds the label it draws, "${arrow.label}"`);
         assert.ok(arrow.height >= 24, `${theme}: link ${arrow.id}'s hit area is ${arrow.height} pixels tall, at least 24`);
         assert.equal(arrow.labelFill, facts.panelColor, `${theme}: link ${arrow.id}'s label takes the panel text's color`);
       }

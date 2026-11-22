@@ -2,7 +2,9 @@
 /// Classes and Routines lists' delete tools share. Both callers send the whole set in one call. The
 /// vendor removes each document's source and compiled code and keeps a persistent class's data
 /// (measured, as the classic page does), and answers each document's own result, which the port maps
-/// to a port-owned reason (<method>OcuPilot.Port.AtelierPort.DeleteReason</method>).</p>
+/// to a port-owned reason (<method>OcuPilot.Port.AtelierPort.DeleteReason</method>). A question the namespace's
+/// source-control class asks after a deleted document rides on the output beside them
+/// (<method>OcuPilot.Screen.Tool.ExplorerWrite.WriteOutput</method>).</p>
 /// <p><b>It is destructive</b>: a deleted document cannot be restored from OcuPilot. Its fingerprint
 /// subject is each held document's modified time, the missing ones and the namespace, so a document
 /// changed since the proposal refuses the confirm. Its read-back reads <code>DOCS</code> again and is

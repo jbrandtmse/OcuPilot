@@ -4148,26 +4148,16 @@ ClassMethod ScreensDeclaringPage(pPage As %String, Output pResolved As %Boolean)
     Set tFound = ""
     Set pResolved = 0
     Try {
-        If pPage = "" Quit
+        Do ..PageDeclarations(pPage, .tOpens, .tActions, .tResolved)
+        If 'tResolved Quit
         Set tSC = ..Descriptors(.tList)
         If $$$ISERR(tSC) Quit
-        Set tToolSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
-        If $$$ISERR(tToolSC) Quit
         Kill tDeclared
-        Set tIterator = tTools.%GetIterator()
-        While tIterator.%GetNext(.tIndex, .tTool) {
-            If tTool.%Get("kind") '= "write" Continue
-            Set tToolClass = tTool.%Get("class")
-            If '..PageListed($Parameter(tToolClass, "CLASSICPAGES"), pPage) Continue
-            Set tToolDescriptor = $Parameter(tToolClass, "DESCRIPTORCLASS")
-            If tToolDescriptor = "" Set tToolDescriptor = ..DescriptorForTool($Piece(tTool.%Get("name"), ".", 1, 2))
-            If tToolDescriptor '= "" Set tDeclared(tToolDescriptor) = ""
-        }
+        For tI = 1:1:$ListLength(tActions) Set tDeclared($List($List(tActions, tI), 1)) = ""
+        For tI = 1:1:$ListLength(tOpens) Set tDeclared($List(tOpens, tI)) = ""
         For tI = 1:1:$ListLength(tList) {
             Set tClass = $List(tList, tI)
-            If '$ClassMethod(tClass, "IsBuilt") Continue
-            If ($ClassMethod(tClass, "ClassicPage") '= pPage) && '..PageListed($Parameter(tClass, "CLASSICPAGES"), pPage) && '$Data(tDeclared(tClass)) Continue
-            Set tFound = tFound _ $ListBuild(tClass)
+            If $Data(tDeclared(tClass)) Set tFound = tFound _ $ListBuild(tClass)
         }
         Set pResolved = 1
     } Catch {
@@ -4175,6 +4165,59 @@ ClassMethod ScreensDeclaringPage(pPage As %String, Output pResolved As %Boolean)
         Set pResolved = 0
     }
     Quit tFound
+}
+
+/// <p>How the built screens declare the classic page <var>pPage</var> (a normalized class name, spelled as the screen declares it), read from the
+/// registry on every call. <var>pOpens</var> is a <class>%List</class> of the descriptor classes whose own <code>classicPage</code> or
+/// <parameter>OcuPilot.Screen.Descriptor.Base.CLASSICPAGES</parameter> name the page, in descriptor order and each once: the screens
+/// <method>OcuPilot.Screen.Gate.RequiredPairs</method> gates by the page's resource. <var>pActions</var> is a <class>%List</class> of one
+/// <code>$ListBuild(descriptor class, screen-action id)</code> for each write tool whose
+/// <parameter>OcuPilot.Screen.Tool.Write.CLASSICPAGES</parameter> name the page, in the tool registry's order, where the descriptor is the tool's
+/// screen (<code>DESCRIPTORCLASS</code>, else the descriptor whose <code>toolIdentifier</code> is the first two segments of the tool's name) and the
+/// id is the first of the tool's <code>SCREENACTIONS</code>, <code>""</code> for a tool with none; the same pair is listed once.
+/// <var>pResolved</var> is 1 only when the registry was read, and both lists are <code>""</code> otherwise (AD-44, AD-64).</p>
+ClassMethod PageDeclarations(pPage As %String, Output pOpens As %List, Output pActions As %List, Output pResolved As %Boolean)
+{
+    Set pOpens = ""
+    Set pActions = ""
+    Set pResolved = 0
+    Try {
+        If pPage = "" Quit
+        Set tSC = ..Descriptors(.tList)
+        If $$$ISERR(tSC) Quit
+        Set tToolSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
+        If $$$ISERR(tToolSC) Quit
+        Set tOpens = ""
+        Set tActions = ""
+        Kill tBuilt, tSeen
+        For tI = 1:1:$ListLength(tList) {
+            Set tClass = $List(tList, tI)
+            If '$ClassMethod(tClass, "IsBuilt") Continue
+            Set tBuilt(tClass) = ""
+            If ($ClassMethod(tClass, "ClassicPage") = pPage) || ..PageListed($Parameter(tClass, "CLASSICPAGES"), pPage) Set tOpens = tOpens _ $ListBuild(tClass)
+        }
+        Set tIterator = tTools.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tTool) {
+            If tTool.%Get("kind") '= "write" Continue
+            Set tToolClass = tTool.%Get("class")
+            If '..PageListed($Parameter(tToolClass, "CLASSICPAGES"), pPage) Continue
+            Set tToolDescriptor = $Parameter(tToolClass, "DESCRIPTORCLASS")
+            If tToolDescriptor = "" Set tToolDescriptor = ..DescriptorForTool($Piece(tTool.%Get("name"), ".", 1, 2))
+            If (tToolDescriptor = "") || '$Data(tBuilt(tToolDescriptor)) Continue
+            Set tActionIds = $ClassMethod(tToolClass, "ScreenActionIds")
+            Set tActionId = $Select($ListLength(tActionIds): $List(tActionIds, 1), 1: "")
+            If $Data(tSeen(tToolDescriptor _ "#" _ tActionId)) Continue
+            Set tSeen(tToolDescriptor _ "#" _ tActionId) = ""
+            Set tActions = tActions _ $ListBuild($ListBuild(tToolDescriptor, tActionId))
+        }
+        Set pOpens = tOpens
+        Set pActions = tActions
+        Set pResolved = 1
+    } Catch {
+        Set pOpens = ""
+        Set pActions = ""
+        Set pResolved = 0
+    }
 }
 
 /// <p>Whether <var>pPage</var> is one of the comma-separated class names <var>pPages</var> (a <code>CLASSICPAGES</code> value), compared as

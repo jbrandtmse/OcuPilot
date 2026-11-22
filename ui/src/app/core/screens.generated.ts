@@ -12007,6 +12007,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "save",
         "selfProtection": ""
+      },
+      {
+        "id": "answer",
+        "selfProtection": ""
       }
     ],
     "context": {
@@ -13748,6 +13752,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       },
       {
         "id": "save",
+        "selfProtection": ""
+      },
+      {
+        "id": "answer",
         "selfProtection": ""
       }
     ],

@@ -22,6 +22,7 @@
  */
 
 import type { Impact } from './impact.ts';
+import { actionSentence, actionsText, parseActionRow, screenTitleOf } from './page-resource-actions.ts';
 import { STRINGS } from './strings.ts';
 import type { TurnProposal, TurnProposalPrivilege, TurnProposalUnchangedRow } from './turn.ts';
 
@@ -222,19 +223,69 @@ export const CONSEQUENCE_PAGERESOURCECLEARED = 'PAGERESOURCE.CLEARED';
 /** The field a page resource proposal names the screens that follow the page under, a changed row's after value or an unchanged row's. */
 const PAGE_RESOURCE_SCREEN_FIELD = 'Screen';
 
+/** The field a page resource proposal names the writes the page's resource gates under, and the screens that open the page beside them. */
+const PAGE_RESOURCE_ACTION_FIELD = 'Action';
+
+/** The entity type a page resource proposal targets. */
+const PAGE_RESOURCE_ENTITY_TYPE = 'page-resource';
+
+/** The `field` row's value from the changed rows (its after value) or, failing that, the unchanged rows. */
+function contextValue(view: Pick<ProposalCardView, 'changed' | 'unchanged'>, field: string): string {
+  const changed = view.changed.find((row) => row.field === field);
+  if (changed !== undefined) return changed.after;
+  return (view.unchanged ?? []).find((row) => row.field === field)?.value ?? '';
+}
+
 /**
- * The card's consequence sentence for a page resource proposal, or `''` for any other consequence or where no `Screen` value is carried: the
- * screens are the proposal's own `Screen` value, inserted through a replacer so a title holding a placeholder is shown as written.
+ * The card's consequence sentences for a page resource proposal, or `''` for any other consequence or where no `Screen` or `Action` value is carried.
+ * The screen-open sentence names the screens that open the page: the `Screen` row's titles where no write is named, and otherwise the screens the
+ * `Action` row lists as opening it. The action sentence names the writes the `Action` row lists, each by its label and screen. Each value is inserted
+ * through a replacer so a title holding a placeholder is shown as written.
  */
 export function pageResourceSentence(view: Pick<ProposalCardView, 'consequence' | 'changed' | 'unchanged'>): string {
   let template = '';
-  if (view.consequence === CONSEQUENCE_PAGERESOURCECHANGED) template = STRINGS.pageResourcesConsequenceChanged;
-  if (view.consequence === CONSEQUENCE_PAGERESOURCECLEARED) template = STRINGS.pageResourcesConsequenceCleared;
+  let actionTemplate = '';
+  if (view.consequence === CONSEQUENCE_PAGERESOURCECHANGED) {
+    template = STRINGS.pageResourcesConsequenceChanged;
+    actionTemplate = STRINGS.pageResourcesActionConsequenceChanged;
+  }
+  if (view.consequence === CONSEQUENCE_PAGERESOURCECLEARED) {
+    template = STRINGS.pageResourcesConsequenceCleared;
+    actionTemplate = STRINGS.pageResourcesActionConsequenceCleared;
+  }
   if (template === '') return '';
-  const changed = view.changed.find((row) => row.field === PAGE_RESOURCE_SCREEN_FIELD);
-  const unchanged = (view.unchanged ?? []).find((row) => row.field === PAGE_RESOURCE_SCREEN_FIELD);
-  const screens = changed !== undefined ? changed.after : (unchanged?.value ?? '');
-  return screens === '' ? '' : template.replace('<screen>', () => screens);
+  const row = parseActionRow(contextValue(view, PAGE_RESOURCE_ACTION_FIELD));
+  const opening =
+    row.actions.length === 0
+      ? contextValue(view, PAGE_RESOURCE_SCREEN_FIELD)
+      : row.opens
+          .map(screenTitleOf)
+          .filter((title) => title !== '')
+          .join(', ');
+  const sentences: string[] = [];
+  if (opening !== '') sentences.push(template.replace('<screen>', () => opening));
+  if (actionsText(row.actions) !== '') sentences.push(actionSentence(actionTemplate, row.actions));
+  return sentences.join(' ');
+}
+
+/**
+ * A page resource proposal's changed rows as the card draws them: the `Action` row's value as the phrases it stands for, never a descriptor class
+ * or an action id. Any other proposal's rows are returned as they are.
+ */
+export function shownChangedRows(view: Pick<ProposalCardView, 'targetType' | 'changed'>): readonly ProposalDiffRow[] {
+  if (view.targetType !== PAGE_RESOURCE_ENTITY_TYPE) return view.changed;
+  return view.changed.map((row) =>
+    row.field === PAGE_RESOURCE_ACTION_FIELD
+      ? { ...row, before: actionsText(parseActionRow(row.before).actions), after: actionsText(parseActionRow(row.after).actions) }
+      : row
+  );
+}
+
+/** The unchanged rows of a page resource proposal as the card draws them, the `Action` row's value as its phrases; any other proposal's as they are. */
+export function shownUnchangedRows(view: Pick<ProposalCardView, 'targetType' | 'unchanged'>): readonly ProposalUnchangedRow[] {
+  const rows = view.unchanged ?? [];
+  if (view.targetType !== PAGE_RESOURCE_ENTITY_TYPE) return rows;
+  return rows.map((row) => (row.field === PAGE_RESOURCE_ACTION_FIELD ? { ...row, value: actionsText(parseActionRow(row.value).actions) } : row));
 }
 
 /** Story 18.14: a copy of mappings, which replaces the destination's same-named mappings. */

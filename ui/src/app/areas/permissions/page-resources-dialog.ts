@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, input, linkedSignal, output, signal } from '@angular/core';
 
 import { pickCount } from '../../core/count-phrase';
+import { PAGE_RESOURCE_TITLE_CAP, type PageResourceActionRef, actionSentence, actionsText } from '../../core/page-resource-actions';
 import { STRINGS } from '../../core/strings';
 import { Dialog } from '../../shell/dialog';
 
@@ -11,8 +12,8 @@ let dialogCount = 0;
 const CONSEQUENCE_CHANGED = 'PAGERESOURCE.CHANGED';
 const CONSEQUENCE_CLEARED = 'PAGERESOURCE.CLEARED';
 
-/** The most screen titles the plural line names before it counts the rest. */
-export const PAGE_RESOURCE_TITLE_CAP = 5;
+/** The most screen titles the plural line names before it counts the rest; the action line's cap too. */
+export { PAGE_RESOURCE_TITLE_CAP };
 
 /** Which of the three things the dialog does. */
 export type PageResourceMode = 'assign' | 'change' | 'clear';
@@ -24,11 +25,12 @@ export interface PageResourceEntry {
 }
 
 /**
- * What the instance answered a review of `page` and `resource` with: the titles of the screens that follow the page, the consequence code, and the
- * resource the page holds now where the review names it.
+ * What the instance answered a review of `page` and `resource` with: the titles of the screens the page's resource gates opening, the writes it
+ * gates (a screen's descriptor class and action id each), the consequence code, and the resource the page holds now where the review names it.
  */
 export interface PageResourceReview extends PageResourceEntry {
   readonly screens: readonly string[];
+  readonly actions?: readonly PageResourceActionRef[];
   readonly consequence: string;
   readonly held?: string;
 }
@@ -208,24 +210,39 @@ export class PageResourcesDialog implements OnInit {
     return review.page === this.pageText().trim() && review.resource === resource ? review : null;
   }
 
-  /** The line naming the screens that follow the page, or `''` until the review of what is typed has been answered. */
+  /**
+   * The line naming what follows the page's resource, or `''` until the review of what is typed has been answered: the screens it gates opening,
+   * then the writes it gates, and the line that only the classic portal uses the resource when it gates neither.
+   */
   protected get line(): string {
     const review = this.matching;
-    return review === null ? '' : replacesLine(review.screens);
+    if (review === null) return '';
+    const actions = review.actions ?? [];
+    const parts: string[] = [];
+    if (review.screens.length > 0) parts.push(replacesLine(review.screens));
+    if (actionsText(actions) !== '') parts.push(actionSentence(STRINGS.pageResourcesActionLine, actions));
+    return parts.length === 0 ? STRINGS.pageResourcesLineNone : parts.join(' ');
   }
 
   /**
-   * The consequence the review names, with the screens' titles in place of the placeholder. A resource the page already holds changes nothing,
-   * so a review made with it states none; a clear states its own.
+   * The consequence the review names, with the screens' titles and the writes' phrases in place of the placeholders. A resource the page already
+   * holds changes nothing, so a review made with it states none; a clear states its own.
    */
   protected get consequenceLine(): string {
     const review = this.matching;
-    if (review === null || review.screens.length === 0) return '';
-    if (review.consequence === CONSEQUENCE_CLEARED) return fill(STRINGS.pageResourcesConsequenceCleared, 'screen', review.screens.join(', '));
-    if (review.consequence === CONSEQUENCE_CHANGED && this.resourceText().trim() !== this.held) {
-      return fill(STRINGS.pageResourcesConsequenceChanged, 'screen', review.screens.join(', '));
+    if (review === null) return '';
+    const actions = review.actions ?? [];
+    const cleared = review.consequence === CONSEQUENCE_CLEARED;
+    const changed = review.consequence === CONSEQUENCE_CHANGED && this.resourceText().trim() !== this.held;
+    if (!cleared && !changed) return '';
+    const parts: string[] = [];
+    if (review.screens.length > 0) {
+      parts.push(fill(cleared ? STRINGS.pageResourcesConsequenceCleared : STRINGS.pageResourcesConsequenceChanged, 'screen', review.screens.join(', ')));
     }
-    return '';
+    if (actionsText(actions) !== '') {
+      parts.push(actionSentence(cleared ? STRINGS.pageResourcesActionConsequenceCleared : STRINGS.pageResourcesActionConsequenceChanged, actions));
+    }
+    return parts.join(' ');
   }
 
   protected get refusalVisible(): boolean {

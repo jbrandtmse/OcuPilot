@@ -240,6 +240,8 @@ XData Keys [ MimeType = application/json ]
   "explorer.globals.export": true,
   "explorer.globals.import": false,
   "explorer.globals.replace": false,
+  "explorer.classes.answer": false,
+  "explorer.routines.answer": false,
   "interop.productions.start": true,
   "interop.productions.stop": true,
   "interop.productions.restart": true,

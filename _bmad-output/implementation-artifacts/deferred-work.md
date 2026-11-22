@@ -8487,6 +8487,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-21T01:35:50Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=occurrence:24.14-2b_head_73c758917(server-only)_run44845372336_browser_1/5_a11y_AC5_settle_/agent/governance_720px_light;fifth_today;21-23_moved_ahead_of_21-37
 - 2026-11-21T11:38:26Z status=routed owner=burndown by=orchestrator note=awaiting_a_CI_red_with_the_shipped_diagnostics(21.23_stall_report,346d580fe);resolve_or_wontfix_at_burn-down
 - 2026-11-21T17:49:21Z by=epic-24-runner note=occurrence after 21.23 merged: CI run 44927449204 (24.14 Batch 4 integrate head 84f1ad5c9, which carries feature de0df01f9), browser shard 1/5, a11y-structural-invariants failed whole on a settle timeout at /ocupilot/agent/governance?ns=HSCUSTOM (1280px light, 60 s, retried light then dark); the same specs plus 20 others passed 132/132 forward and reverse on ocupilot-b-ci built from the same tree
+- 2026-11-22T06:23:35Z status=routed owner=21-39-ci-health-the-governance-renderer-stall-and-the-journal-reve by=orchestrator note=fix_forward_21.39(CI_health,Rule_27): DW-1822 2 of last 5 runs, DW-2517 two consecutive runs
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -11759,6 +11760,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-14T00:50:19Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T22:56:39Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=spec_gate note=21.10 split (unattended ruling): assigned to 21-23-test-hygiene-and-contended-client-fixes
 - 2026-11-21T08:29:03Z status=routed owner=21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=orchestrator note=split_from_21.23_plan(2026-11-21)
+- 2026-11-22T09:11:47Z status=resolved-by:21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=lead note=B2 8c5e63f6c: a load failure settles refused NAV.LOADFAILED (Api/NavError.cls, S6)
 ### DW-2364: IPM's exporter drops <SystemRequirements> from the archive's module.xml, so the archive carries no IRIS version floor (DW-1333's IPM half; a tool-defect candidate)
 - source: spec-18-13-multi-namespace-install.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Story 13.3 on IPM 0.10.5 (scripts/ci-ipm-archive.sh): the exported manifest has no <SystemRequirements> though module.xml :28 declares Version >=2026.2; 18.13 enforces the floor in Installer.GuardVersionFloor
@@ -11982,6 +11984,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-14T00:50:19Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=range_end_overflow(orchestrator_ruling)
 - 2026-11-15T22:56:40Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=spec_gate note=21.10 split (unattended ruling): assigned to 21-23-test-hygiene-and-contended-client-fixes
 - 2026-11-21T08:29:03Z status=routed owner=21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=orchestrator note=split_from_21.23_plan(2026-11-21)
+- 2026-11-22T09:11:48Z status=resolved-by:21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=lead note=B4-B6 e1e734071,af8603c49,dc15f2c0d + review 26828c057: questions shown on list and card as plain text (AD-39 ninth), person-only answer through AD-61's fixed AfterUserAction statement behind routines WRITE
 
 ### DW-2407: The epic context's shared-rosters list omits ToolWrite's other-port write count, which every write through a non-admin port moves
 - source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md (rework 1 re-review) | severity: med | fix-risk: low | footprint: in-epic
@@ -12244,6 +12247,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-14T10:35:35Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=unattended note=epic23_decision_sheet:label_placeholder_in_the_accessible_name;veto_U-35
 - 2026-11-15T22:56:40Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=spec_gate note=21.10 split (unattended ruling): assigned to 21-23-test-hygiene-and-contended-client-fixes
 - 2026-11-21T08:29:03Z status=routed owner=21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=orchestrator note=split_from_21.23_plan(2026-11-21)
+- 2026-11-22T09:11:47Z status=resolved-by:21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=lead note=B1 74936e41d: the arrow's accessible name carries its visible label (S5); interop-item-test fixed 26d55f715
 
 ### DW-2443: Every trace arrow is its own Tab stop, so a session drawn to the 1,000-row cap is up to 1,000 Tab presses to leave the diagram
 - source: spec-20-30-the-session-trace.md code review | severity: low | fix-risk: med | footprint: in-story
@@ -12412,6 +12416,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-14T10:35:35Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=unattended note=epic23_decision_sheet:wording='No_cube_in_this_namespace_is_visible_to_you.';veto_U-35
 - 2026-11-15T22:56:41Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=spec_gate note=21.10 split (unattended ruling): assigned to 21-23-test-hygiene-and-contended-client-fixes
 - 2026-11-21T08:29:03Z status=routed owner=21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=orchestrator note=split_from_21.23_plan(2026-11-21)
+- 2026-11-22T09:11:47Z status=resolved-by:21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=lead note=B1 74936e41d: S1-S4 cube empty sentences
 
 ### DW-2475: A failed fact count's JSON null is pinned only in AnalyticsPort.Rows; Collect's mapping of the vendor's failed status to an empty count is unpinned
 - source: spec-20-11-the-analytics-rider.md | severity: low | fix-risk: med | footprint: in-story
@@ -12571,6 +12576,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-15T22:56:39Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=spec_gate note=21.10 split (unattended ruling): assigned to 21-23-test-hygiene-and-contended-client-fixes
 - 2026-11-18T05:45:22Z occurrence=24-11-listing-groups
 - 2026-11-21T08:29:03Z status=routed owner=21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=orchestrator note=split_from_21.23_plan(2026-11-21)
+- 2026-11-22T09:11:48Z status=resolved-by:21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=lead note=B7-B10 439202455..7c50fd9bf: ViolationsSentence, ReadTaken, SslConfiguration shared by 31 adopters, outputs byte-identical (review measured); HandleForm per class (Rule 2); Screen/Tool copies DW-2829 and Gate methods DW-2830 to burndown
 
 ### DW-2500: Kernel/State/SqlRun declares Kind between Namespace and State with no source Storage section, so an update from 1.0.12 shifts stored slots 4-10 and a pre-update background run reads 404 and is never swept
 - source: upgrade-1013-check | severity: high | fix-risk: low | footprint: out-of-footprint
@@ -12713,6 +12719,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: full sweep on ocupilot-ci at c98a0877, shard 3/20: AssertStatusOK at +14 'and its next page reads' => ERROR #5001 PORT.TIMEOUT; the class reran alone 10/10 green (run 701); batch 1 touches no journal code
 - 2026-11-12T17:08:40Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI-health flake; first priority in 23.10 with DW-2513 (Rule 27)
 - 2026-11-13T08:40:40Z status=resolved-by:23-10-the-range-end-cleanup-part-9-two-sweeps by=adjudication note=cd679de0: second page sends maxRows 10; red not observed (23.4 s vs 0.33 s at 10.4M records); structural pin
+- 2026-11-22T03:54:36Z status=routed owner=burndown by=orchestrator note=reopen_reason=recurrence; recurred after the 23-10 fix (cd679de0), run 44979425183 job 137076439199 on ca78cffc5 (instance shard 1/8, PORT.TIMEOUT on the reverse-order read); an AdminPort BackgroundTask 500 ERROR #9509 Failed to send signal to job came earlier in the same shard
+- 2026-11-22T05:34:51Z status=routed owner=burndown by=lead note=recurred again: run 44986244257 job 137097327539 on 83879c118 (instance shard 2/8), PORT.TIMEOUT on the reverse-order read; second recurrence in consecutive runs
+- 2026-11-22T06:23:35Z status=routed owner=21-39-ci-health-the-governance-renderer-stall-and-the-journal-reve by=orchestrator note=fix_forward_21.39(CI_health,Rule_27): DW-1822 2 of last 5 runs, DW-2517 two consecutive runs
 
 ### DW-2526: flake: LogHubErrors.TestASeededErrorReadsInTheHubsForm read a row other than its seeded error as the newest (CI instance shard 8/8)
 - source: CI run 43332030735 (Story 20.39 head 8d7fa08a) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -13195,6 +13204,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-15T18:29:29Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=flake_classified; unchanged rerun
 - 2026-11-19T11:02:54Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=same_family_as_DW-1822(a11y_governance_settle;reopened_and_routed_to_21-23_2026-11-18);not_in_21.10's_scope
 - 2026-11-21T11:38:26Z status=routed owner=burndown by=orchestrator note=awaiting_a_CI_red_with_the_shipped_diagnostics(21.23_stall_report,346d580fe);resolve_or_wontfix_at_burn-down
+- 2026-11-22T06:23:36Z status=routed owner=21-39-ci-health-the-governance-renderer-stall-and-the-journal-reve by=orchestrator note=fix_forward_21.39(CI_health,Rule_27): DW-1822 2 of last 5 runs, DW-2517 two consecutive runs
 ### DW-2601: A screen action whose write landed but whose after-write step failed answers an error, so the client publishes no change event and the list keeps the old value
 - source: spec-21-4-nls-locales-and-sql-settings.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Operation.ApplyAt returns AfterWrite's error after the write; ScreenAction.cls:422-426 answers Fault and skips readBack/target; screen-action-handler.ts:1750 publishes nothing on error (its comment says a refused write changed nothing). Reached by ConfigSettingSet's failed purge and UserPassword's flag re-apply.
@@ -14371,6 +14381,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ScreensDeclaringPage counts a write tool's CLASSICPAGES (e.g. %CSP.UI.Portal.Dialog.ExportResource -> Resources) while Gate.RequiredPairs unions only the descriptor's own pages; the ruled sentences then overstate the effect
 - 2026-11-21T21:37:02Z status=decision-pending owner=burndown by=cr note=wording or a split of the declaring set is the owner's: ruled strings (U-128) and AC4's derivation are spec-bound
 - 2026-11-22T00:21:48Z status=routed owner=21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=orchestrator note=wording_and_derivation:a_page_declared_only_by_a_write_tool's_CLASSICPAGES_gets_a_line_saying_what_the_resource_gates(that_action,_name_from_the_tool's_own_label);a_page_declared_both_ways_keeps_the_screen-open_line_and_adds_the_action_line;exact_sentences_in_21.38's_plan_wording_batch
+- 2026-11-22T09:11:48Z status=resolved-by:21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=lead note=B3 6d9574a9b: Registry.PageDeclarations splits opening screens from write-tool actions; S8-S12 action lines; review 26828c057 pins the same-screen case
 
 ### DW-2824: Test fixtures repeat the replace-a-user block (Security.Users Delete and Create in %SYS) with no shared helper; PageResourceFixture.EnsureUser copies ScreenAccessFixture.EnsureSecurity (Rule 31)
 - source: spec-21-37-page-resources.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -14441,3 +14452,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-15-credentials-default-settings-and-schedules-4.md (review 76c6b6f06) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: 24.15 Batch 3 review layer; family-wide, predates the batch
 - 2026-11-22T15:43:28Z status=routed owner=burndown by=epic-24-runner note=ask the pair in the proposal's stored namespace
+### DW-2832: The source-control question dialog holds its answered state in the card alone, can stack across two cards, drops an open question when the person leaves the list, and shows a lead with no text for an action 1 or 6 with an empty target
+- source: spec-21-38-shared-rules-helpers-the-source-control-follow-up-and-escala.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Code review 21.38: proposal-card.ts questionsFinished is component-local while TurnStore keeps questions; code-list.page.ts has no destroy hand-off; sourceControlQuestionsOf keeps an empty target (inference: no remount observed)
+- 2026-11-22T09:01:51Z status=wontfix-accepted owner=21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=cr note=reopen_if=a remounted panel or card re-opens an answered question, or a source-control class answers action 1 or 6 with an empty target
+
+### DW-2833: The source-control answer keeps no record of the question asked, answers 200 when the vendor query returns no row, and a create whose compile route fails after the save loses its questions
+- source: spec-21-38-shared-rules-helpers-the-source-control-follow-up-and-escala.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Code review 21.38: AtelierPort.AnswerSet accepts any step 1, 2 or 7 for one document with WRITE (the vendor action/query has the same reach); SaveSet quits on a Compile route error after PutDoc set the questions
+- 2026-11-22T09:01:57Z status=wontfix-theoretical owner=21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=cr note=real if an answer for a step no question asked changes what a class does, the AfterUserAction query answers no row while a class is set, or the Compile route fails after a new-document PutDoc
+
+### DW-2834: Page resources reads the tool registry three times for one review, and the card names no consequence when no Action descriptor is in the client's screen mirror
+- source: spec-21-38-shared-rules-helpers-the-source-control-follow-up-and-escala.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Code review 21.38: PageResourceAction.DryRunReview calls TitleList and PageDeclarations, ScreenRows calls PageDeclarations again, each listing all tools; proposal-view.ts pageResourceSentence falls to empty when screenTitleOf resolves nothing
+- 2026-11-22T09:02:00Z status=wontfix-accepted owner=21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=cr note=reopen_if=a page-resource review is measured slow, or a descriptor the server names is missing from screens.generated.ts while screen-mirror --check passes
+- 2026-11-22T09:13:13Z status=wontfix-accepted owner=21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=lead note=evidence clarified (orchestrator ask): the mirror is ui/src/app/core/screens.generated.ts (SCREENS), which screen-mirror.mjs --check gates; it is green, 263 of 263 built descriptors (Descriptor/*.cls less Base) mirrored, so no descriptor is missing today; the case arises only for a deployed bundle older than the server's descriptor set (version skew the build gate cannot see), which a shipped package never has
+
+### DW-2835: Story 21.38's tests leave accepted limits: AC9's mint legs and screen-context input, no adopter pins a multi-violation sentence, the screen gate's WRITE pair is unpinned alone, the Routines answer has no end-to-end run, and SourceControlFollowUp passes 500 lines
+- source: spec-21-38-shared-rules-helpers-the-source-control-follow-up-and-escala.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Code review 21.38: the question exists only after confirm; code-list.page.spec builds its own context input; ViolationsSentence is pinned in AgentRules alone; the HTTP WRITE test reddens only with both layers removed; the Routines tool shares the Classes base
+- 2026-11-22T09:02:04Z status=wontfix-accepted owner=21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=cr note=reopen_if=a regression in one of these passes the suite, the Routines answer tool gains code of its own, or SourceControlFollowUp passes 600 lines
+
+### DW-2836: Story 21.38 by design: check-objectscript admits the vendor's source-control token for the whole source-code port file, two answer-tool refusal sentences sit outside the ruled strings, and the card labels the new row by its field name
+- source: spec-21-38-shared-rules-helpers-the-source-control-follow-up-and-escala.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Code review 21.38: the exact-file admission is the ruled design; the refusals reach only a hand-crafted request the dialog never sends; the Action row label follows the Screen row's
+- 2026-11-22T09:02:08Z status=by-design owner=21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=cr note=spec rulings and the Screen row's precedent

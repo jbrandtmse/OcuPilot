@@ -131,18 +131,7 @@ ClassMethod SslRules(pBody As %DynamicObject, pFresh As %DynamicObject, pPortCla
 /// exist; any other failed read is an error status.</p>
 ClassMethod ServerConfiguration(pPortClass As %String, pName As %String, Output pValid As %Boolean) As %Status
 {
-    Set pValid = 0
-    Kill tQuery
-    Set tQuery("name") = pName
-    Set tSC = $ClassMethod(pPortClass, "Invoke", ..#SSLENDPOINT, "GET", .tQuery, "", .tRead, .tHttp, .tFault)
-    If $$$ISERR(tSC) {
-        If +$Get(tHttp) = 404 Quit $$$OK
-        Quit tSC
-    }
-    If '$IsObject($Get(tRead)) || 'tRead.%IsA("%Library.DynamicObject") Quit $$$OK
-    Set tType = $ZConvert(..Text(tRead, ..#SSLTYPEFIELD), "L")
-    Set pValid = (tType = ..#SSLSERVERTYPE) || (tType = "server")
-    Quit $$$OK
+    Quit ##class(OcuPilot.Kernel.Proposal.ScreenSaveRules).SslConfiguration(pPortClass, ..#SSLENDPOINT, ..#SSLTYPEFIELD, pName, $ListBuild(..#SSLSERVERTYPE, "server"), .pValid)
 }
 
 /// <p>Whether a superserver exists at the composite id <var>pId</var>, in <var>pTaken</var>, read through
@@ -154,12 +143,7 @@ ClassMethod Taken(pPortClass As %String, pId As %String, Output pTaken As %Boole
     Kill tQuery
     Set tQuery("port") = pId
     Set tSC = $ClassMethod(pPortClass, "Invoke", "Security.Superserver", "GET", .tQuery, "", .tRead, .tHttp, .tFault)
-    If $$$ISERR(tSC) {
-        If +$Get(tHttp) = 404 Quit $$$OK
-        Quit tSC
-    }
-    Set pTaken = ($IsObject($Get(tRead)) && tRead.%IsA("%Library.DynamicObject"))
-    Quit $$$OK
+    Quit ##class(OcuPilot.Kernel.Proposal.ScreenSaveRules).ReadTaken(tSC, $Get(tHttp), $Get(tRead), .pTaken)
 }
 
 /// <p><method>Check</method> as one problem sentence naming each field and its published sentence, or
@@ -170,10 +154,7 @@ ClassMethod Problem(pPortValue As %String, pBody As %DynamicObject, pFresh As %D
     Set pProblem = ""
     Set tSC = ..Check(pPortValue, pBody, pFresh, pMode, pPortClass, .tViolations, pFull, pBindValue)
     If $$$ISERR(tSC) Quit tSC
-    For tI = 1:1:$Get(tViolations) {
-        Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation($List(tViolations(tI), 2))
-        Set pProblem = pProblem _ $Select(pProblem = "": "", 1: " ") _ "'" _ $List(tViolations(tI), 1) _ "': " _ tReason
-    }
+    Set pProblem = ##class(OcuPilot.Kernel.AgentRules).ViolationsSentence(.tViolations)
     Quit $$$OK
 }
 

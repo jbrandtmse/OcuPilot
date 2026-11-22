@@ -41,6 +41,7 @@ import { parseCitations, type Citation } from './citations.ts';
 import { impactOf, type Impact } from './impact.ts';
 import { PRODUCTION_STATE_MOVED } from './proposal-view.ts';
 import { readBackOf, type ReadBack } from './read-back.ts';
+import { sourceControlQuestionsOf, type SourceControlQuestion } from './source-control-question.ts';
 import { sqlOutcomeLines } from './sql-answer.ts';
 import { testAnswerOf, testOutcomeLines } from './test-answer.ts';
 import { transformAnswerOf, transformOutcomeLines } from './test-answer.ts';
@@ -79,9 +80,16 @@ export function proposalCancelPath(id: string): string {
   return PROPOSAL_PATH + '/' + encodeURIComponent(id) + '/cancel';
 }
 
-/** The one refusal code this client is ever the author of (Story 4.7, `POST /turn/:id/navigation`'s
- * closed vocabulary) -- a dirty `form-page`'s decline, and nothing else. */
+/** A refusal code this client authors (`POST /turn/:id/navigation`'s closed vocabulary): the
+ * departing screen declined the move, as a dirty `form-page` does. */
 export const NAV_REFUSED_UNSAVED_CODE = 'NAV.REFUSEDUNSAVED';
+
+/** A refusal code this client authors (`POST /turn/:id/navigation`'s closed vocabulary): the
+ * browser could not load the screen it was sent to. */
+export const NAV_LOAD_FAILED_CODE = 'NAV.LOADFAILED';
+
+/** The two refusal codes the navigation settle accepts, and no other. */
+export type NavRefusalCode = typeof NAV_REFUSED_UNSAVED_CODE | typeof NAV_LOAD_FAILED_CODE;
 
 /** What a decision answers when there was nothing to decide, or the transport gave no envelope. */
 const NO_OUTCOME: ProposalOutcome = {
@@ -304,6 +312,11 @@ export interface TurnProposal {
    */
   readonly outputErrors?: boolean | null;
   /**
+   * What the namespace's source-control class asked after the confirmed create or delete (Story 21.38, AD-39's ninth exception), off the confirm's
+   * own `output.questions`. Held in memory only, for the card's dialog: it is never sent, stored or logged.
+   */
+  readonly questions?: readonly SourceControlQuestion[];
+  /**
    * The impact of the removal this proposal carries (AD-8), as the instance read it at the mint, or
    * `null` for a write with none. Optional so a literal built before it existed still compiles.
    */
@@ -474,6 +487,8 @@ export interface ProposalOutcome {
   readonly output?: readonly string[];
   /** Whether the confirmed compile reported errors (Story 20.17); `null` where the answer carried none. */
   readonly outputErrors?: boolean | null;
+  /** The source-control class's questions off the confirm's own `output.questions` (Story 21.38); `[]` on every other answer. */
+  readonly questions?: readonly SourceControlQuestion[];
 }
 
 /**
@@ -770,6 +785,7 @@ function mergeHeldProposals(held: readonly TurnProposal[], fresh: readonly TurnP
       ...(proposal.readBack == null && kept.readBack != null ? { readBack: kept.readBack } : {}),
       ...(kept.output === undefined ? {} : { output: kept.output }),
       ...(kept.outputErrors === undefined ? {} : { outputErrors: kept.outputErrors }),
+      ...(kept.questions === undefined ? {} : { questions: kept.questions }),
     };
   });
 }
@@ -1502,6 +1518,7 @@ export class TurnStore {
         readBack: readBackOf(result.body?.['readBack']),
         output: outputLinesOf(result.body?.['output']),
         outputErrors: outputErrorsOf(result.body?.['output']),
+        questions: sourceControlQuestionsOf(result.body?.['output']),
       };
       const target = this.targetOf(id);
       this.recordProposalState(id, outcome);
@@ -1596,6 +1613,7 @@ export class TurnStore {
                   ...(outcome.readBack === null ? {} : { readBack: outcome.readBack }),
                   ...((outcome.output ?? []).length === 0 ? {} : { output: outcome.output }),
                   ...((outcome.outputErrors ?? null) === null ? {} : { outputErrors: outcome.outputErrors }),
+                  ...((outcome.questions ?? []).length === 0 ? {} : { questions: outcome.questions }),
                 }
               : proposal
           )
@@ -1731,7 +1749,8 @@ export class TurnStore {
 
   /**
    * Answer the live turn's own pending directive: `opened` once the browser has navigated,
-   * `refused` with `NAV_REFUSED_UNSAVED_CODE` when the departing screen declined. Posts
+   * `refused` with `NAV_REFUSED_UNSAVED_CODE` when the departing screen declined, or with
+   * `NAV_LOAD_FAILED_CODE` when the browser could not load the new screen. Posts
    * `POST /turn/{id}/navigation`; `code` travels only for a refusal, since the instance's own
    * closed vocabulary (`Api/Turn.cls`'s `NavigationViolation`) accepts it only there.
    *
@@ -1742,7 +1761,7 @@ export class TurnStore {
    * guards is a second call for the same `seq` (a stale re-render, a caller that already
    * settled) finding `navigation()` already empty rather than posting twice.
    */
-  async settleNavigation(outcome: 'opened' | 'refused', code: string | null = null): Promise<boolean> {
+  async settleNavigation(outcome: 'opened' | 'refused', code: NavRefusalCode | null = null): Promise<boolean> {
     const directive = this.pendingNavigationValue;
     if (directive === null || directive.seq <= this.actedNavigationSeq || this.currentTurnId === null) {
       return false;

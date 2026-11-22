@@ -84,6 +84,9 @@ Parameter RESOURCEDISABLED = "permissions.resources.import";
 /// <p>Story 21.5's globals delete, node save and node delete, and Story 21.17's import, each listed false in the baseline.</p>
 Parameter GLOBALDISABLED = "explorer.globals.delete,explorer.globalnodes.save,explorer.globalnodes.delete,explorer.globals.import,explorer.globals.replace";
 
+/// <p>Story 21.38's two answers to a source-control question, each listed false in the baseline: a person's own answer asks no key.</p>
+Parameter SOURCECONTROLDISABLED = "explorer.classes.answer,explorer.routines.answer";
+
 /// <p>Story 24.2's term list delete and entry remove, which ship disabled (AD-22): each removes data the editor cannot restore. The
 /// other four term list writes ship enabled.</p>
 Parameter TERMLISTDISABLED = "analytics.termlists.delete,analytics.termlistentries.remove";
@@ -245,6 +248,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If $ListFind($ListFromString(..#LOCALEDISABLED), tKey) Set tExpected = "0|baseline"
         If tKey = ..#RESOURCEDISABLED Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#GLOBALDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#SOURCECONTROLDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#MFTDISABLED), tKey) Set tExpected = "0|baseline"
         If tKey = ..#SYSTEMSECURITYDISABLED Set tExpected = "0|baseline"
         If tKey = ..#PHONEPROVIDERDISABLED Set tExpected = "0|baseline"

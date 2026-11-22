@@ -701,6 +701,8 @@ services:
       # PageResourceRead plants a custom resource on a probe classic page to read it back through the list, and restores the page (Story 21.37). PageResourceWrite
       # assigns and clears custom resources on a probe page and on the Resources list's page, creates two resources and three accounts, and restores every page.
       # classes: PageResourceFixture, PageResourceRead, PageResourceWrite
+      # SourceControlFollowUp signs one account in to prove the answer's WRITE gate, and removes it (Story 21.38).
+      # classes: SourceControlFollowUp
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -881,7 +883,7 @@ services:
       # name, writing %SYS security objects, tasks and ^%SYS nodes directly to do so.
       # classes: NamespaceInterop, NamespaceInteropGate
       # The source-control classes enable a probe source-control class on USER and remove it again.
-      # classes: SourceControlProbe, SourceControlSave
+      # classes: SourceControlProbe, SourceControlSave, SourceControlFollowUp
       # The schedule spec source-control class puts USER under the same probe class and meets each schedule spec write's refusal on the
       # shipped paths, writing and removing probe schedule specs (Story 24.15).
       # classes: InteropScheduleSourceControl

@@ -762,12 +762,7 @@ ClassMethod FieldOf(pCode As %String) As %String
 /// <p><var>pViolations</var> as one sentence naming each field and its reason, or <code>""</code>.</p>
 ClassMethod Problem(ByRef pViolations) As %String
 {
-    Set tProblem = ""
-    For tI = 1:1:$Get(pViolations) {
-        Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation($List(pViolations(tI), 2))
-        Set tProblem = tProblem _ $Select(tProblem = "": "", 1: " ") _ "'" _ $List(pViolations(tI), 1) _ "': " _ tReason
-    }
-    Quit tProblem
+    Quit ##class(OcuPilot.Kernel.AgentRules).ViolationsSentence(.pViolations)
 }
 
 /// <p>The port the rules read through: the edit tool's own declaration (AD-52).</p>

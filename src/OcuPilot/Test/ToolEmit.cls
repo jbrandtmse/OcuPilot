@@ -205,11 +205,11 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
             Set tExpected = tExpected _ $ListBuild($ListBuild("%Development", "USE"), $ListBuild("%Ens_Code", "WRITE"))
             Set tExpectedAdded = ##class(OcuPilot.Screen.Tool.ExplorerSave).CodeWritePairs({}, .tExpectedAddedResolved)
-        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerSave") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerCreate") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerCompile") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerDelete") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerImport") {
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerSave") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerCreate") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerCompile") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerDelete") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerImport") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerSourceControlAnswer") {
             ; Story 20.20 (DW-2242): a save or a create declares its screen's pairs alone, and WRITE on
             ; the routines database of the namespace its proposal stored is an argument pair, which
-            ; with no namespace argument is the request's scope (AD-8). A compile, a delete and an import
-            ; take WRITE the same way.
+            ; with no namespace argument is the request's scope (AD-8). A compile, a delete, an import
+            ; and a source-control answer take WRITE the same way.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
             Set tExpectedAdded = ##class(OcuPilot.Screen.Tool.ExplorerSave).CodeWritePairs({}, .tExpectedAddedResolved)

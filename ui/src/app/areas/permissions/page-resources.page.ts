@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 
+import type { PageResourceActionRef } from '../../core/page-resource-actions';
 import { ScreenActions } from '../../core/screen-actions';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
@@ -24,6 +25,13 @@ import {
 /** `value` as text, or `''`. */
 function text(value: unknown): string {
   return typeof value === 'string' ? value : '';
+}
+
+/** One of a review's `Actions` as a reference, or none for an entry that is not a screen and an action id. */
+function actionRefOf(entry: unknown): readonly PageResourceActionRef[] {
+  if (typeof entry !== 'object' || entry === null) return [];
+  const { screen, action } = entry as Record<string, unknown>;
+  return typeof screen === 'string' && screen !== '' && typeof action === 'string' ? [{ screen, action }] : [];
 }
 
 /** The sentence a refusal shows in the dialog: the one the instance gave a field, else the envelope's own. */
@@ -168,7 +176,8 @@ export class PageResourcesPage {
       this.refusal.set(sentenceOf(run.refusal));
       return;
     }
-    const titles = run.review['Screens'];
+    const titles = run.review['Opens'];
+    const actions = run.review['Actions'];
     const code = run.review['Consequence'];
     const current = run.review['Current'];
     this.refusal.set('');
@@ -176,6 +185,7 @@ export class PageResourcesPage {
       page: entry.page,
       resource: entry.resource,
       screens: Array.isArray(titles) ? (titles as readonly unknown[]).filter((title): title is string => typeof title === 'string') : [],
+      actions: Array.isArray(actions) ? (actions as readonly unknown[]).flatMap(actionRefOf) : [],
       consequence: typeof code === 'string' ? code : '',
       ...(typeof current === 'string' ? { held: current } : {}),
     });

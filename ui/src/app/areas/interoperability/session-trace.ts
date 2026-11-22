@@ -101,16 +101,17 @@ export function headText(name: string): string {
   return characters.length > HEAD_CHARACTERS ? `${characters.slice(0, HEAD_CHARACTERS - 1).join('')}\u2026` : shown;
 }
 
-/** One arrow's accessible name: its message, type, participants and status. */
+/** One arrow's accessible name: its message, the label the diagram draws on it, its type, participants and status. */
 export function arrowName(arrow: TraceArrow): string {
   const values: Readonly<Record<string, string>> = {
     id: arrow.id,
+    label: arrow.label,
     type: arrow.type,
     source: participantName(arrow.from),
     target: participantName(arrow.to),
     status: arrow.status,
   };
-  return STRINGS.interopTraceArrow.replace(/<(id|type|source|target|status)>/g, (_placeholder, key: string) => values[key] ?? '');
+  return STRINGS.interopTraceArrow.replace(/<(id|label|type|source|target|status)>/g, (_placeholder, key: string) => values[key] ?? '');
 }
 
 // --- The diagram's geometry ---------------------------------------------------------------------

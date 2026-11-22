@@ -225,17 +225,26 @@ Method TestAC10SettleClaimIsExactlyOnce()
 /// <p>AC10: <code>Api.Turn.NavigationViolation</code>'s closed body vocabulary --
 /// <code>{seq, outcome, code}</code> only, <code>outcome</code> one of
 /// <code>opened</code>/<code>refused</code>, and <code>code</code> exactly
-/// <code>NAV.REFUSEDUNSAVED</code> or <code>null</code> -- so the client can never author
-/// model-visible text.</p>
+/// <code>NAV.REFUSEDUNSAVED</code> or <code>NAV.LOADFAILED</code> on <code>refused</code> and
+/// <code>null</code> on <code>opened</code> -- so the client can never author model-visible
+/// text.</p>
+/// <p>Mutation (Rule 19): accept any string code in <method>OcuPilot.Api.Turn.NavigationViolation</method>
+/// -- the third-code, near-miss and <code>NAV.UNAVAILABLE</code> assertions go red.</p>
 Method TestAC10NavigationBodyVocabulary()
 {
     Do $$$AssertEquals(##class(OcuPilot.Api.Turn).NavigationViolation({"seq": 1, "outcome": "opened", "code": ""}, .s1, .o1, .c1), 1, "opened may not carry a string code")
     Do $$$AssertEquals(##class(OcuPilot.Api.Turn).NavigationViolation({"seq": 1, "outcome": "opened"}, .s2, .o2, .c2), 0, "opened with no code key validates")
     Do $$$AssertEquals(o2, "opened", "outcome is answered")
     Do $$$AssertEquals(c2, "", "code is empty")
-    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).NavigationViolation({"seq": 1, "outcome": "refused", "code": "NAV.REFUSEDUNSAVED"}, .s3, .o3, .c3), 0, "refused with the one accepted code validates")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).NavigationViolation({"seq": 1, "outcome": "refused", "code": "NAV.REFUSEDUNSAVED"}, .s3, .o3, .c3), 0, "refused with an accepted code validates")
     Do $$$AssertEquals(c3, "NAV.REFUSEDUNSAVED", "carried through")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).NavigationViolation({"seq": 1, "outcome": "refused", "code": "NAV.LOADFAILED"}, .s9, .o9, .c9), 0, "refused with the load-failure code validates")
+    Do $$$AssertEquals(c9, "NAV.LOADFAILED", "carried through")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).NavigationViolation({"seq": 1, "outcome": "opened", "code": "NAV.LOADFAILED"}, .s10, .o10, .c10), 1, "opened may not carry it")
     Do $$$AssertEquals(##class(OcuPilot.Api.Turn).NavigationViolation({"seq": 1, "outcome": "refused", "code": "NAV.UNAVAILABLE"}, .s4, .o4, .c4), 1, "any other code on refused is refused")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).NavigationViolation({"seq": 1, "outcome": "refused", "code": "NAV.ROUTEUNKNOWN"}, .s11, .o11, .c11), 1, "a third NAV code on refused is refused")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).NavigationViolation({"seq": 1, "outcome": "refused", "code": "NAV.LOADFAILED "}, .s12, .o12, .c12), 1, "a near miss of the load-failure code is refused")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).NavigationViolation({"seq": 1, "outcome": "refused"}, .s13, .o13, .c13), 1, "refused with no code is refused")
     Do $$$AssertEquals(##class(OcuPilot.Api.Turn).NavigationViolation({"seq": 1, "outcome": "maybe", "code": (0)}, .s5, .o5, .c5), 1, "an outcome outside the closed set is refused")
     Do $$$AssertEquals(##class(OcuPilot.Api.Turn).NavigationViolation({"seq": 0, "outcome": "opened"}, .s6, .o6, .c6), 1, "seq must be at least 1")
     Do $$$AssertEquals(##class(OcuPilot.Api.Turn).NavigationViolation({"seq": 1, "outcome": "opened", "extra": 1}, .s7, .o7, .c7), 1, "an unknown key is refused")

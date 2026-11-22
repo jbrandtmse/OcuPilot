@@ -84,6 +84,11 @@ Parameter ARGUMENTVALUES = "osmgmt.ecpdataservers.changestatus=Status:disabled,a
 /// <method>OcuPilot.Test.LocaleImportRules.TestAnImportAndAnExportRenderTheirScript</method>.</p>
 Parameter REFUSEDDRAFTS = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator,security.databaseencryption.activate,security.dataelementencryption.activate,security.encryptionstartup.update,osmgmt.locales.import";
 
+/// <p>The write tools that have no draft, comma-separated: a person's answer to a source-control question (Story 21.38), reached by the person's own action alone, never
+/// minted, carded or offered to the agent. <method>TestEveryWriteToolHasAScriptForm</method> holds each to being unadvertised and to its port naming no script form for it,
+/// so a tool the agent can reach never hides here.</p>
+Parameter NODRAFTTOOLS = "explorer.classes.answer,explorer.routines.answer";
+
 /// <p>The secrets a screen declares that one of its tools never sends, as <code>&lt;tool&gt;=&lt;name&gt;</code> entries, comma-separated: the tool's synthetic row carries no
 /// probe for one, since its own write sends a body that has no such member (Story 21.36: Task Manager email's setting set beside the mail password's tool).</p>
 Parameter UNSENTSECRETS = "tasks.mail.set=AuthPassword,interop.credentials.update=Password,interop.credentials.remove=Password";
@@ -115,6 +120,7 @@ ClassMethod WriteTools(Output pTools, Output pCount As %Integer) As %Status
     Set tIterator = tList.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tTool) {
         If tTool.%Get("kind") '= "write" Continue
+        If $ListFind($ListFromString(..#NODRAFTTOOLS), tTool.%Get("name")) Continue
         Set pTools(tTool.%Get("name")) = tTool
         Set pCount = pCount + 1
     }
@@ -169,6 +175,20 @@ Method TestEveryWriteToolHasAScriptForm()
         If (..Origin(tClass, "AfterWrite") '= ..#WRITEBASE) && (..Origin(tClass, "SnippetAfter") = "") Set tMissing = tMissing _ "; " _ tName _ " (overrides AfterWrite and defines no SnippetAfter)"
     }
     Do $$$AssertEquals(tMissing, "", "every write tool has a script form" _ tMissing)
+    Set tExempt = $ListFromString(..#NODRAFTTOOLS)
+    Set tNotExempt = ""
+    Set tFound = 0
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).ListTools(.tAll), "the registry lists its tools again")
+    Set tIterator = tAll.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tTool) {
+        If '$ListFind(tExempt, tTool.%Get("name")) Continue
+        Set tFound = tFound + 1
+        Set tClass = tTool.%Get("class")
+        Set tPort = ##class(OcuPilot.Kernel.Proposal.Operation).PortClassOf(tClass, ..#DEFAULTPORT)
+        If ($ClassMethod(tClass, "Advertised") '= 0) || ($ClassMethod(tPort, "SnippetForm", $ClassMethod(tClass, "Endpoint"), ##class(OcuPilot.Kernel.Proposal.Operation).WriteType(tClass)) '= "") Set tNotExempt = tNotExempt _ " " _ tTool.%Get("name")
+    }
+    Do $$$AssertEquals(tFound, $ListLength(tExempt), "every tool NODRAFTTOOLS names is registered")
+    Do $$$AssertEquals(tNotExempt, "", "and each is unadvertised and has no script form, so none the agent can reach is exempt")
 }
 
 /// <p>The class that defines <var>pClass</var>'s compiled method <var>pMethod</var>, or

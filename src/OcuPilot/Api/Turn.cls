@@ -304,7 +304,7 @@ ClassMethod HandleStop(pId As %String) As %Status
 /// <p>Answer <code>POST /turn/:id/navigation</code> (Story 4.7, AD-11 rule 3): settle the caller's
 /// own pending client-fulfilled navigation directive with the browser's answer. Owner gate first
 /// (404 <code>TURN.NOTFOUND</code>, the same as an unknown id and another user's turn alike); then
-/// the closed body vocabulary <code>{seq, outcome:"opened"|"refused", code:"NAV.REFUSEDUNSAVED"|null}</code>
+/// the closed body vocabulary <code>{seq, outcome:"opened"|"refused", code:"NAV.REFUSEDUNSAVED"|"NAV.LOADFAILED"|null}</code>
 /// (422 <code>TURN.NAVIGATION.INVALID</code> otherwise, so the client can never author
 /// model-visible text); then the claim itself
 /// (<method>OcuPilot.Kernel.State.Nav.GuardedSettle</method>) -- then a trivial
@@ -369,8 +369,9 @@ ClassMethod HandleNavigation(pId As %String) As %Status
 /// <code>seq</code> that is not a whole number of at least 1; an <code>outcome</code> outside
 /// <code>{"opened","refused"}</code>; a <code>code</code> that is not <code>null</code> when
 /// <code>outcome</code> is <code>"opened"</code>, or that is not exactly
-/// <parameter>OcuPilot.Api.Error.NAVREFUSEDUNSAVED</parameter> when it is <code>"refused"</code> --
-/// the one code a browser is ever the author of, so the client can never post model-visible text
+/// <parameter>OcuPilot.Api.Error.NAVREFUSEDUNSAVED</parameter> or
+/// <parameter>OcuPilot.Api.NavError.NAVLOADFAILED</parameter> when it is <code>"refused"</code> --
+/// the two codes a browser is ever the author of, so the client can never post model-visible text
 /// through this route. <var>pSeq</var>/<var>pOutcome</var>/<var>pCode</var> are set only when this
 /// answers 0.</p>
 ClassMethod NavigationViolation(pBody As %DynamicObject, Output pSeq As %Integer, Output pOutcome As %String, Output pCode As %String) As %Boolean
@@ -398,7 +399,9 @@ ClassMethod NavigationViolation(pBody As %DynamicObject, Output pSeq As %Integer
     If tOutcome = "opened" {
         If (tCodeType '= "null") && (tCodeType '= "unassigned") Quit 1
     } Else {
-        If (tCodeType '= "string") || (pBody.%Get("code") '= ##class(OcuPilot.Api.Error).#NAVREFUSEDUNSAVED) Quit 1
+        If tCodeType '= "string" Quit 1
+        Set tRefusal = pBody.%Get("code")
+        If (tRefusal '= ##class(OcuPilot.Api.Error).#NAVREFUSEDUNSAVED) && (tRefusal '= ##class(OcuPilot.Api.NavError).#NAVLOADFAILED) Quit 1
     }
     Set pSeq = tSeq
     Set pOutcome = tOutcome

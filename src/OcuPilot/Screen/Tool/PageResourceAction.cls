@@ -100,38 +100,70 @@ ClassMethod Summary(pTemplate As %String, pPage As %String, pResource As %String
     Quit $Replace($Replace(pTemplate, "<page>", pPage), "<resource>", pResource)
 }
 
-/// <p>The card's row that names the OcuPilot screens following the page, <code>Screen</code>, which the consequence sentence reads for its
-/// <code>&lt;screen&gt;</code>: one row, the titles before and after alike, when the fresh read names any; none otherwise.</p>
+/// <p>The card's rows that name how OcuPilot's screens follow the page, which the consequence sentence reads: <code>Screen</code>, every declaring screen's
+/// title, before and after alike, when the fresh read names any, and <code>Action</code>, the write tools that declare the page as
+/// <code>&lt;descriptor&gt;#&lt;screen-action id&gt;</code> entries joined by <code>,</code> (<code>""</code> for the id of a tool with no screen action),
+/// when any does, followed by one bare <code>&lt;descriptor&gt;</code> entry for each screen that opens the page, so the card can tell the screens
+/// the page's resource gates opening from those it gates a write of. A row is omitted when it has nothing to say.</p>
 ClassMethod ScreenRows(pFresh As %DynamicObject) As %DynamicArray
 {
     Set tRows = []
-    If '$IsObject(pFresh) || (pFresh.%GetTypeOf("Screen") '= "string") || (pFresh.%Get("Screen") = "") Quit tRows
-    Set tRow = {}
-    Do tRow.%Set("field", "Screen", "string")
-    Do tRow.%Set("before", pFresh.%Get("Screen"), "string")
-    Do tRow.%Set("after", pFresh.%Get("Screen"), "string")
-    Do tRow.%Set("removed", 0, "boolean")
-    Do tRows.%Push(tRow)
+    If '$IsObject(pFresh) Quit tRows
+    If (pFresh.%GetTypeOf("Screen") = "string") && (pFresh.%Get("Screen") '= "") Do ..PushContextRow(tRows, "Screen", pFresh.%Get("Screen"))
+    If pFresh.%GetTypeOf("Page") '= "string" Quit tRows
+    Do ##class(OcuPilot.Screen.Registry).PageDeclarations(pFresh.%Get("Page"), .tOpens, .tActions)
+    If '$ListLength(tActions) Quit tRows
+    Set tEntries = ""
+    For tI = 1:1:$ListLength(tActions) Set tEntries = tEntries _ $Select(tEntries = "": "", 1: ",") _ $List($List(tActions, tI), 1) _ "#" _ $List($List(tActions, tI), 2)
+    For tI = 1:1:$ListLength(tOpens) Set tEntries = tEntries _ "," _ $List(tOpens, tI)
+    Do ..PushContextRow(tRows, "Action", tEntries)
     Quit tRows
 }
 
-/// <p>What a reviewed action answers beside its rows (AD-53): <code>Screens</code>, the titles of the OcuPilot screens that declare the page in the
-/// registry's order, <code>Consequence</code>, the code the card carries for a write that changes the page's resource (<code>""</code> for none), and
-/// <code>Current</code>, the resource the page holds now, so the dialog can tell an assignment of that same resource from a change. A read that names no
-/// page answers none.</p>
+/// <p>One context row of the card, <var>pValue</var> before and after.</p>
+ClassMethod PushContextRow(pRows As %DynamicArray, pField As %String, pValue As %String) [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("field", pField, "string")
+    Do tRow.%Set("before", pValue, "string")
+    Do tRow.%Set("after", pValue, "string")
+    Do tRow.%Set("removed", 0, "boolean")
+    Do pRows.%Push(tRow)
+}
+
+/// <p>What a reviewed action answers beside its rows (AD-53): <code>Screens</code>, the titles of every OcuPilot screen that declares the page in the
+/// registry's order; <code>Opens</code>, the titles of those the page's resource gates opening; <code>Actions</code>, one
+/// <code>{screen, action}</code> for each write tool that declares the page, <code>screen</code> being the descriptor class and <code>action</code> its
+/// screen-action id (<code>""</code> for none); <code>Consequence</code>, the code the card carries for a write that changes the page's resource
+/// (<code>""</code> for none); and <code>Current</code>, the resource the page holds now, so the dialog can tell an assignment of that same resource from
+/// a change. A read that names no page answers none.</p>
 ClassMethod DryRunReview(pFresh As %DynamicObject) As %DynamicObject
 {
     Set tReview = {}
     Set tTitles = []
+    Set tOpenTitles = []
+    Set tActionRefs = []
     Set tConsequence = ""
     Set tCurrent = ""
     If $IsObject(pFresh) && (pFresh.%GetTypeOf("Page") = "string") {
-        Set tList = $ClassMethod(..PortClass(), "TitleList", pFresh.%Get("Page"))
+        Set tPage = pFresh.%Get("Page")
+        Set tList = $ClassMethod(..PortClass(), "TitleList", tPage)
         For tI = 1:1:$ListLength(tList) Do tTitles.%Push($List(tList, tI), "string")
+        Do ##class(OcuPilot.Screen.Registry).PageDeclarations(tPage, .tOpens, .tActions)
+        Set tOpened = $ClassMethod(..PortClass(), "TitlesOf", tOpens)
+        For tI = 1:1:$ListLength(tOpened) Do tOpenTitles.%Push($List(tOpened, tI), "string")
+        For tI = 1:1:$ListLength(tActions) {
+            Set tRef = {}
+            Do tRef.%Set("screen", $List($List(tActions, tI), 1), "string")
+            Do tRef.%Set("action", $List($List(tActions, tI), 2), "string")
+            Do tActionRefs.%Push(tRef)
+        }
         Set tCurrent = pFresh.%Get("Current") _ ""
-        Set tConsequence = ##class(OcuPilot.Kernel.Proposal.Prohibited).PageResourceEffect(pFresh.%Get("Page"), tCurrent, "", ..Removes())
+        Set tConsequence = ##class(OcuPilot.Kernel.Proposal.Prohibited).PageResourceEffect(tPage, tCurrent, "", ..Removes())
     }
     Do tReview.%Set("Screens", tTitles)
+    Do tReview.%Set("Opens", tOpenTitles)
+    Do tReview.%Set("Actions", tActionRefs)
     Do tReview.%Set("Consequence", tConsequence, "string")
     Do tReview.%Set("Current", tCurrent, "string")
     Quit tReview

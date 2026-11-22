@@ -4705,6 +4705,16 @@ export const STRINGS = {
   explorerRoutineDeleteConsequence: 'The routine\'s source and compiled code are removed and cannot be restored from OcuPilot.',
   /** EXPERIENCE.md:592 */
   explorerRoutineDeleteSetConsequence: 'Deletes <n> documents. Each one\'s source and compiled code are removed and cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:592 */
+  explorerSourceControlTitle: 'Source control asks about <document>',
+  /** EXPERIENCE.md:592 */
+  explorerSourceControlQuestionLead: 'This namespace\'s source-control class asks:',
+  /** EXPERIENCE.md:592 */
+  explorerSourceControlAlertLead: 'This namespace\'s source-control class says:',
+  /** EXPERIENCE.md:592 */
+  explorerSourceControlAnswerRefused: 'The source-control class reported an error for this answer, so its step may not have finished.',
+  /** EXPERIENCE.md:592 */
+  explorerSourceControlUnsupported: 'This namespace\'s source-control class asked for a step OcuPilot cannot show for <document>. Open the document in an editor that supports server-side source control to finish it.',
   /** EXPERIENCE.md:593 */
   explorerEditSource: 'Edit source',
   /** EXPERIENCE.md:593 */
@@ -7774,7 +7784,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopTraceViewMermaid: 'Mermaid text',
   /** EXPERIENCE.md:604 */
-  interopTraceArrow: 'Message <id>: <type> from <source> to <target>, <status>',
+  interopTraceArrow: 'Message <id> <label>: <type> from <source> to <target>, <status>',
   /** EXPERIENCE.md:604 */
   interopTraceNoBody: '(no body)',
   /** EXPERIENCE.md:604 */
@@ -7901,13 +7911,13 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   analyticsTermListCriterion: 'Term list',
   /** EXPERIENCE.md:604 */
-  analyticsCubesEmpty: 'No cube is defined in this namespace.',
+  analyticsCubesEmpty: 'No cube in this namespace is visible to you.',
   /** EXPERIENCE.md:604 */
-  analyticsCubeMeasuresEmpty: 'This cube no longer exists, or it has no measures.',
+  analyticsCubeMeasuresEmpty: 'This cube no longer exists, you cannot read it, or it has no measures.',
   /** EXPERIENCE.md:604 */
-  analyticsCubeDimensionsEmpty: 'This cube no longer exists, or it has no dimensions.',
+  analyticsCubeDimensionsEmpty: 'This cube no longer exists, you cannot read it, or it has no dimensions.',
   /** EXPERIENCE.md:604 */
-  analyticsCubeRelationshipsEmpty: 'This cube no longer exists, or it has no relationships.',
+  analyticsCubeRelationshipsEmpty: 'This cube no longer exists, you cannot read it, or it has no relationships.',
   /** EXPERIENCE.md:604 */
   analyticsTermListsEmpty: 'No term list is defined in this namespace.',
   /** EXPERIENCE.md:604 */
@@ -9335,6 +9345,16 @@ export const STRINGS = {
   pageResourcesConsequenceCleared: 'More accounts may open <screen>. The instance still checks what they do there.',
   /** EXPERIENCE.md:613 */
   pageResourcesClearWarning: 'After this, the page needs no custom resource.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesActionLine: 'This page\'s resource will be required from the next request for: <actions>.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesActionConsequenceChanged: 'Accounts that hold only the old resource can no longer use: <actions>.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesActionConsequenceCleared: 'More accounts may use: <actions>. The instance still checks what they do there.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesActionItem: '<action> on <screen>',
+  /** EXPERIENCE.md:613 */
+  pageResourcesActionItemUnnamed: 'changes on <screen>',
   /** EXPERIENCE.md:613 */
   pageResourcesSummaryAssign: 'Assign <resource> to <page>',
   /** EXPERIENCE.md:613 */

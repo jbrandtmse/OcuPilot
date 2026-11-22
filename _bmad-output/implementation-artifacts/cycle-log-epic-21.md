@@ -937,3 +937,36 @@
 2026-11-22T03:30:13Z	Story 21.38	escalation_sent	to=orchestrator items=S1-S20,E1-E4,AD-39_ninth at=2026-11-22T03:30:13Z
 2026-11-22T03:33:12Z	Story 21.38	spec_gate	result=pass rulings=S1-S20_approved(veto_U-138),E1=A(Error.cls_1_dispatch+1_doc,0_removed_words),E2=allowed+AD-61_record,E3=A,E4=approved ad53=batch1_task0_measure ad39_ninth=accepted(+plain_text_never_markup) spine=771a04cb3(AD-39,AD-61)
 2026-11-22T03:33:54Z	Story 21.38	stage_spawned	stage=implement pass=1(B1-B3+Task0) spawn_at=2026-11-22T03:33:54Z model=sonnet agent_name=21-38-impl prior_lines_ended=verified(a068311fa)
+2026-11-22T03:54:36Z	Story 21.37	ci_red	run=44979425183 sha=ca78cffc5 job=instance_shard_1/8 test=JournalRecords.TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap cause=DW-2517_recurrence(PORT.TIMEOUT) touched=none action=orchestrator_rerun_--failed push_hold=until_rerun_lands
+2026-11-22T04:18:59Z	Story 21.37	ci_resolved	story=21.37 sha=ca78cffc5 runs=44979425183(attempt2_--failed) result=success flake=DW-2517(reopened,burndown)
+2026-11-22T04:22:04Z	Story 21.37	merged	feature=1d3cc3a3b by=orchestrator
+2026-11-22T04:42:50Z	Story 21.38	stage_complete	stage=implement pass=1 agent=a4950ebab result=batches-1-3-committed commits=74936e41d,8c5e63f6c,6d9574a9b,e620ac507 task0=no_vendor_audit_event(230527_rows_before=after) error_cls=991_params,0_removed_words mutations=AC1,AC2,AC3,AC4_red protocol=one_git_fetch_from_main_checkout(breach_of_git-only-here_line,remote_refs_only) bashedits=none lines_ended=verified in_stage=Action_row_lists_opening_screens_as_bare_descriptor
+2026-11-22T04:42:50Z	Story 21.38	integrated_forward	feature=1d3cc3a3b merge=M=83879c118 conflicts=0 verified=screen-mirror,test:tools_2391,check-objectscript_0
+2026-11-22T04:42:50Z	Story 21.38	code_head_pushed	sha=83879c118 run=44986244257 missing=none
+2026-11-22T04:43:39Z	Story 21.38	stage_spawned	stage=implement pass=2(B4-B6) spawn_at=2026-11-22T04:43:39Z model=sonnet agent_name=21-38-impl2 prior_lines_ended=verified(a4950ebab)
+2026-11-22T05:34:52Z	Story 21.38	ci_red	run=44986244257 sha=83879c118 reds=browser_shard_3/5(interop-item-test_AC3:B1_regression,arrow-name_prefix_lacks_<label>,fix_after_pass2_returns),browser_shard_1/5(a11y-structural-invariants:DW-1822_stall_evidence#2,held_for_burndown),instance_shard_2/8(JournalRecords:DW-2517_recurrence#2)
+2026-11-22T06:24:13Z	Story 21.39	story_inserted	by=orchestrator_ruling(fix_forward,Rule_27) runs_after=21.38_merge before=21.6 takes=DW-1822,DW-2517,DW-2600(+DW-2821_if_recurs) epics=add-only tracker=backlog test:tools=2392
+2026-11-22T06:24:13Z	Story 21.38	stage_complete	stage=implement pass=2 agent=a0ef5f04b result=batches-4-6-committed commits=e1e734071,af8603c49,dc15f2c0d bashedits=1_false_positive(heredoc_print_noop,read-only) lines_ended=verified decisions=check-objectscript_%Atelier_admitted_in_AtelierPort+harness_case,ANSWERDOCS_read_type,S16-S18_reuse_existing_keys(uniqueness),S13-S20_on_EXPERIENCE_row_592
+2026-11-22T06:24:13Z	Story 21.38	lead_patch	sha=26d55f715 file=ui/browser/interop-item-test.browser-spec.mjs cause=B1_in-place_string_consumer_missed specs=interop-item-test(6/6),interop-message-trace(4/4) mutation=label.toUpperCase()->red_at_:294
+2026-11-22T06:27:57Z	Story 21.38	integrated_forward	feature=658744ffb(24.15_B1b) merge=M=fd137868f conflicts=0 verified=screen-mirror,check-objectscript_0,test:tools_2392,LOADERRORS=0,ConfirmNamespaceRoster_green,SourceControlFollowUp_green
+2026-11-22T06:27:57Z	Story 21.38	code_head_pushed	sha=fd137868f run=44993824287 missing=none includes=B4-B6+lead_patch_26d55f715
+2026-11-22T06:28:25Z	Story 21.38	stage_spawned	stage=implement pass=3(B7-B10) spawn_at=2026-11-22T06:28:25Z model=sonnet agent_name=21-38-impl3 prior_lines_ended=verified(a0ef5f04b)
+2026-11-22T06:29:56Z	Story 21.38	stage_complete	stage=implement pass=3 agent=afe6be3b2 result=blocked(protocol:git_-C_epic-24_status_read-only) cause=runner_rule_conflict(stage-common.md_contended-paths_line_named_-C_main_checkout_and_epic-24) fix=stage-common.md_reconciled(origin_refs_from_epic-21_only) tree=clean
+2026-11-22T06:29:56Z	Story 21.38	stage_spawned	stage=implement pass=3 cycle_iteration=2 spawn_at=2026-11-22T06:29:56Z model=sonnet agent_name=21-38-impl3b prior_lines_ended=verified(afe6be3b2)
+2026-11-22T07:25:31Z	Story 21.38	ci_resolved	sha=fd137868f run=44993824287 result=success scope=B1-B6+lead_patch
+2026-11-22T08:18:11Z	Story 21.38	stage_complete	stage=implement pass=3 agent=a8c880cfd result=done commits=439202455,248262974,19eb9b95d,7c50fd9bf,4b7f31401 deviation=SslConfiguration_6_args(recorded) protocol=batch8_subagent_multi---class_ci-runner_call(sequential_in_one_process,no_overlap;gates_rebuild_from_scratch) bashedits=none lines_ended=verified
+2026-11-22T08:18:11Z	Story 21.38	code_head_pushed	sha=4b7f31401 run=45002154533 missing=none scope=B7-B10
+2026-11-22T08:18:11Z	Story 21.38	stage_spawned	stage=code_review spawn_at=2026-11-22T08:18:11Z model=opus agent_name=21-38-cr prior_lines_ended=verified(a8c880cfd)
+2026-11-22T08:55:23Z	Story 21.38	ci_resolved	sha=4b7f31401 run=45002154533 result=success scope=B1-B10
+2026-11-22T09:11:48Z	Story 21.38	stage_complete	stage=code_review agent=a2f7c1a55 result=done tier=full-opus high=0 med=6(patched) low=9(4_patched,5_ledgered:DW-2832..2836) patch_sha=26828c057 bashedits=none lines_ended=verified
+2026-11-22T09:11:48Z	Story 21.38	code_head_pushed	sha=26828c057 run=45006300417 missing=none scope=review_patches
+2026-11-22T09:11:48Z	Story 21.38	ledger_closed	resolved-by=DW-2369,2405,2442,2474,2499,2823 remaining_owned=0
+2026-11-22T09:11:48Z	Story 21.38	gate_step	step=fresh_check+full_sweep+smoke head=26828c057 started=2026-11-22T09:11:48Z dir=e21u/21-38/gate
+2026-11-22T09:13:13Z	Story 21.38	ledger_note	id=DW-2834 evidence=screens.generated.ts_gated_green_263/263 status_stands=wontfix-accepted(skew_only)
+2026-11-22T10:07:47Z	Story 21.38	ci_resolved	sha=26828c057 run=45006300417 result=success
+2026-11-22T10:07:47Z	Story 21.38	fresh_check	env=recipe(ci-throwaway_rebuild) tests=22_classes+6_specs result=pass order=forward,reverse(specs) head=26828c057
+2026-11-22T12:06:01Z	Story 21.38	sweep	shards=20/20_green head=26828c057
+2026-11-22T12:06:01Z	Story 21.38	smoke	container=ocupilot-ci executed=50 passed=50 failed=0 skipped=0
+2026-11-22T12:06:01Z	Story 21.38	integrated_forward	feature=ccb170485(24.15_B2) merge=M=b046a0a36 conflicts=4(GovernanceBaseline+ToolRoundTrip_list_unions;ReadTool_580;ToolWrite_158,counts_from_base) verified=screen-mirror(264/114),check-objectscript_0,test:tools_2394,LOADERRORS=0,16_roster_classes_green(incl_ConfirmNamespaceRoster)
+2026-11-22T12:06:01Z	Story 21.38	code_head_pushed	sha=b046a0a36 run=45020515239 missing=none note=integrate-only_M
+2026-11-22T12:06:01Z	Story 21.38	story_complete	head=26828c057(gates)+M=b046a0a36 run=45006300417(+45020515239) fresh=pass sweep=20/20 smoke=50/50 vetoes=U-138,U-139 spine=771a04cb3(AD-39_ninth,AD-61_case) ledger_owned=0
