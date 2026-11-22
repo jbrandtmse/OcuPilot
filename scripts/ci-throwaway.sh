@@ -562,7 +562,7 @@ services:
       # The system default setting classes write probe default settings in USER and HSCUSTOM and remove them (Story 24.15): the control
       # class drives the add, edit and remove from both callers and reads the vendor's audit rows each leaves, the refusals class
       # meets every refusal and signs in as probe principals each missing one pair or rule a write requires, and the diff class
-      # compares probe settings between the two namespaces. The edges class refuses an empty value for an integer setting and reads
+      # compares probe settings between the two namespaces. The edges class refuses an empty value for PoolSize and reads
       # the vendor's audit rows of a secret-named setting through the Logs audit screen.
       # classes: InteropDefaultSettingControl, InteropDefaultSettingDiff, InteropDefaultSettingEdges, InteropDefaultSettingRefusals
       # The host test classes compile and run the same probe production in USER, with a request class of their own and an

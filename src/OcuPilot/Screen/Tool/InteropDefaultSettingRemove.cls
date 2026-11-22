@@ -25,8 +25,8 @@ Parameter CHANGEACTION = "deleted";
 Parameter CONSEQUENCECODE = "INTEROP.DEFAULTSETTING.REMOVE";
 
 /// <p>The setting's name, value, description and flag: what the removal reviewed, so a setting edited since the review closes the proposal
-/// target-changed.</p>
-Parameter FINGERPRINTSUBJECT = "Setting,Value,Description,Deployable";
+/// target-changed; and its namespace, which the stored payload keeps so the confirm and the script form act where the proposal read.</p>
+Parameter FINGERPRINTSUBJECT = "Setting,Value,Description,Deployable,Namespace";
 
 Parameter PRECONDITIONFIELD = "Value";
 

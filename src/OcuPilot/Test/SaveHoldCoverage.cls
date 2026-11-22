@@ -124,6 +124,9 @@ Method TestACreateSaveHoldsTheKeyItsMintComputes()
     Do ..HeldLeg("/analytics/user-icons?ns=USER", "OcuPilot.Screen.Tool.AnalyticsUserIconAdd", "OcuProbeHold2413Icon", {"Name": "OcuProbeHold2413Icon", "OcuProbeUnexpected": 1}.%ToJSON())
     ; A business partner is namespace-scoped and its id is its name alone.
     Do ..HeldLeg("/interop/business-partners?ns=USER", "OcuPilot.Screen.Tool.InteropPartnerAdd", "OcuProbeHold226", {"Name": "OcuProbeHold226", "OcuProbeUnexpected": 1}.%ToJSON())
+    ; A system default setting is namespace-scoped and its id is its production, item, host class and setting, each part distinct.
+    Set tDefault = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("OcuProbeHold2415.Production", "HoldItem", "HoldHost", "HoldSetting"))
+    Do ..HeldLeg("/interop/default-settings?ns=USER", "OcuPilot.Screen.Tool.InteropDefaultSettingAdd", tDefault, {"Production": "OcuProbeHold2415.Production", "Item": "HoldItem", "HostClass": "HoldHost", "Setting": "HoldSetting", "OcuProbeUnexpected": 1}.%ToJSON())
     ; A REST service is namespace-scoped and named by its package as typed; the document breaks a rule the Save checks after the hold.
     Do ..HeldLeg("/rest-service?ns=USER", "OcuPilot.Screen.Tool.RestServiceCreate", "OcuProbe1832Hold", {"Name": "OcuProbe1832Hold", "Document": "not json"}.%ToJSON())
     Do ##class(OcuPilot.Kernel.Scope).Clear()

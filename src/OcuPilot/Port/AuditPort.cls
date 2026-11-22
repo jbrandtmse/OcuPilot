@@ -198,8 +198,8 @@ Parameter VENDORCONFIGSOURCE = "%System/%System/ConfigurationChange";
 
 /// <p>The vendor event whose rows carry a system default setting's value in plain text (AD-35, Story 24.15): one row for each insert,
 /// update and delete, whose <code>EventData</code> names the setting on a <code>SettingName:</code> line and its value on a
-/// <code>SettingValue:</code> line or, for an update, in a <code>SettingValue modified:</code> block. The value is masked when the
-/// setting's name matches the credential pattern.</p>
+/// <code>SettingValue:</code> line or, for an update, in a <code>SettingValue modified:</code> block, each value on as many lines as it
+/// holds. The value is masked when the setting's name matches the credential pattern (<method>MaskedDefaultSettingData</method>).</p>
 Parameter VENDORDEFAULTSETTINGSOURCE = "%Ensemble/%Production/ModifyDefaultSetting";
 
 Parameter VENDORDEFAULTSETTINGNAME = "SettingName";
@@ -229,7 +229,7 @@ ClassMethod MaskVendorSecrets(pRows As %DynamicArray)
             Continue
         }
         If ..DefaultSettingSecret(tRow) {
-            Do tRow.%Set("EventData", ..MaskedEventData(tRow.%Get("EventData"), $ListBuild(..#VENDORDEFAULTSETTINGVALUE)), "string")
+            Do tRow.%Set("EventData", ..MaskedDefaultSettingData(tRow.%Get("EventData")), "string")
             Continue
         }
         Set tSettings = ..SettingKeys(tRow)
@@ -296,6 +296,37 @@ ClassMethod DefaultSettingSecret(pRow As %DynamicObject) As %Boolean
     }
     If $Extract(tLine, 1, $Length(tPrefix)) '= tPrefix Quit 0
     Quit ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName($ZStrip($Extract(tLine, $Length(tPrefix) + 1, *), "<>W"))
+}
+
+/// <p><var>pData</var>, a <parameter>VENDORDEFAULTSETTINGSOURCE</parameter> row's <code>EventData</code>, with the setting's value masked.
+/// The vendor writes the value after every other field, on a line that begins with <parameter>VENDORDEFAULTSETTINGVALUE</parameter>
+/// (<code>SettingValue: &lt;value&gt;</code>, or <code>SettingValue modified:</code> before a <code>New value</code> and an
+/// <code>Old value</code> line), so from that line on: the text after its colon is masked, each <code>New value</code> and
+/// <code>Old value</code> line reads <parameter>MASK</parameter> after its label, and every other non-empty line continues a value and is
+/// dropped. An empty value stays empty.</p>
+ClassMethod MaskedDefaultSettingData(pData As %String) As %String
+{
+    Set tBreak = $Char(13, 10)
+    If pData '[ tBreak Set tBreak = $Char(10)
+    Set tKey = ..#VENDORDEFAULTSETTINGVALUE
+    Set tOut = ""
+    Set tInValue = 0
+    For tI = 1:1:$Length(pData, tBreak) {
+        Set tLine = $Piece(pData, tBreak, tI)
+        Set tTrimmed = $ZStrip(tLine, "<>W")
+        If tInValue {
+            If ($Extract(tTrimmed, 1, 10) = "New value:") || ($Extract(tTrimmed, 1, 10) = "Old value:") {
+                Set tLine = ..MaskedAfter(tLine, ":")
+            } ElseIf tTrimmed '= "" {
+                Continue
+            }
+        } ElseIf $Extract(tTrimmed, 1, $Length(tKey)) = tKey {
+            Set tLine = ..MaskedAfter(tLine, ":")
+            Set tInValue = 1
+        }
+        Set tOut = tOut _ $Select(tI = 1: "", 1: tBreak) _ tLine
+    }
+    Quit tOut
 }
 
 /// <p><var>pData</var>, a vendor row's <code>EventData</code>, with each value of a key in

@@ -7904,10 +7904,11 @@ ClassMethod DefaultSettingId(pParts As %List) As %String [ Private ]
 }
 
 /// <p>Whether <var>pPart</var> is a valid part of a default setting's key: 1 to <parameter>DEFAULTSETTINGKEYMAX</parameter> characters
-/// with no control character and no <code>||</code>. Pure.</p>
+/// with no control character, no <code>||</code>, and no <code>|</code> at either end, since the vendor's id joins the parts with
+/// <code>||</code> and a bar at a part's edge would split that id at another place. Pure.</p>
 ClassMethod DefaultSettingPartOK(pPart As %String) As %Boolean
 {
-    Quit (pPart '= "") && ($Length(pPart) <= ..#DEFAULTSETTINGKEYMAX) && ($ZStrip(pPart, "*C") = pPart) && (pPart '[ "||")
+    Quit (pPart '= "") && ($Length(pPart) <= ..#DEFAULTSETTINGKEYMAX) && ($ZStrip(pPart, "*C") = pPart) && (pPart '[ "||") && ($Extract(pPart) '= "|") && ($Extract(pPart, *) '= "|")
 }
 
 /// <p>Whether the instance can address <code>^Ens.Config.DefaultSettingsD</code> by the four parts <var>pParts</var>: a key whose encoded
@@ -7965,13 +7966,15 @@ ClassMethod DefaultSettingAccepts(pNamespace As %String, pParts As %List, pValue
 }
 
 /// <p>The 422 violations of a default setting's key and fields, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field,
-/// code)</code> with the count in <code>pViolations</code> (Story 24.15): a key part that is empty, past
-/// <parameter>DEFAULTSETTINGKEYMAX</parameter>, holds a control character or <code>||</code>, or a key the instance cannot address is
-/// <code>KEY</code> on that part (judged only when <var>pJudgeKey</var>); a value or description past
-/// <parameter>DEFAULTSETTINGTEXTMAX</parameter> is <code>VALUE</code>; a field of the wrong type is <code>PORT.FIELD.SHAPE</code>; and,
-/// when nothing else is wrong and a value is given, or an add names none (the empty value), a value the vendor refuses
-/// (<method>DefaultSettingAccepts</method>) is <code>VALUE</code>. <var>pFields</var> is the body: <code>Value</code> and <code>Description</code> strings and <code>Deployable</code> a boolean.</p>
-ClassMethod DefaultSettingViolations(pNamespace As %String, pProduction As %String, pItem As %String, pHostClass As %String, pSetting As %String, pFields As %DynamicObject, Output pViolations, pJudgeKey As %Boolean = 1) As %Status
+/// code)</code> with the count in <code>pViolations</code> (Story 24.15): a key part that <method>DefaultSettingPartOK</method> refuses, or
+/// a key the instance cannot address, is <code>KEY</code> on that part (judged only when <var>pJudgeKey</var>, which an add passes); a value
+/// or description past <parameter>DEFAULTSETTINGTEXTMAX</parameter> is <code>VALUE</code>; a field of the wrong type is
+/// <code>PORT.FIELD.SHAPE</code>; and, with <var>pJudgeValue</var>, when nothing else is wrong and a value is given, or an add names none
+/// (the empty value), a value the vendor refuses (<method>DefaultSettingAccepts</method>) is <code>VALUE</code>. The vendor is never asked
+/// about a setting whose name the credential pattern matches, which every write refuses by its name. A caller that has not yet passed the
+/// port's gate and refusals passes <var>pJudgeValue</var> 0, so no vendor call runs before them. <var>pFields</var> is the body:
+/// <code>Value</code> and <code>Description</code> strings and <code>Deployable</code> a boolean.</p>
+ClassMethod DefaultSettingViolations(pNamespace As %String, pProduction As %String, pItem As %String, pHostClass As %String, pSetting As %String, pFields As %DynamicObject, Output pViolations, pJudgeKey As %Boolean = 1, pJudgeValue As %Boolean = 1) As %Status
 {
     Kill pViolations
     Set pViolations = 0
@@ -7994,7 +7997,7 @@ ClassMethod DefaultSettingViolations(pNamespace As %String, pProduction As %Stri
     }
     Set tType = pFields.%GetTypeOf("Deployable")
     If (tType '= "boolean") && (tType '= "unassigned") Set pViolations($Increment(pViolations)) = $ListBuild("Deployable", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
-    If pViolations Quit $$$OK
+    If pViolations || 'pJudgeValue || ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(pSetting) Quit $$$OK
     If ((pFields.%GetTypeOf("Value") = "string") || (pJudgeKey && (pFields.%GetTypeOf("Value") = "unassigned"))) && '..DefaultSettingAccepts(pNamespace, tParts, pFields.%Get("Value")) {
         Set pViolations($Increment(pViolations)) = $ListBuild("Value", ##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGVALUE)
     }

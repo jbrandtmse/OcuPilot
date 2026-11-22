@@ -100,11 +100,12 @@ ClassMethod SaveBody(pSetting As %String, pValue As %String, pDescription As %St
     Quit tBody
 }
 
-/// <p>The vendor's own audit rows since <var>pSince</var> whose data begins with the words <var>pWords</var> and names the probe
-/// production and the setting <var>pSetting</var>, with the last row's data in <var>pData</var>.</p>
+/// <p>The vendor's own audit rows since <var>pSince</var> whose data begins with the words <var>pWords</var> and names the setting
+/// <var>pSetting</var> on a line of its own (so a setting whose name begins with it is not counted), with the last row's data in
+/// <var>pData</var>.</p>
 ClassMethod VendorRows(pSince As %String, pWords As %String, pSetting As %String, Output pData As %String) As %Integer
 {
-    Quit ##class(OcuPilot.Test.AuditEvent).RowsCarrying(pSince, "ModifyDefaultSetting", pWords, .pData, "SettingName: " _ pSetting, "%Ensemble", "%Production")
+    Quit ##class(OcuPilot.Test.AuditEvent).RowsCarrying(pSince, "ModifyDefaultSetting", pWords, .pData, "SettingName: " _ pSetting _ $Char(13, 10), "%Ensemble", "%Production")
 }
 
 /// <p>How many rows of OcuPilot's own <code>ConfigChange</code> since <var>pSince</var> name the probe setting.</p>

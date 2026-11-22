@@ -9,7 +9,8 @@ followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-3-interoperability-parity.md'
 warnings: ['oversized', 'multiple-goals']
-deferred: []
+deferred:
+  - 'out-of-footprint (Story 20.26 and 20.5 files): InteropPartnerRemove, InteropLookupEntryRemove and InteropLookupTableDelete declare a FINGERPRINTSUBJECT without Namespace, so the narrowed payload loses it and a confirm sent from another namespace acts there (AD-52); same root cause as this batch''s remove, fixed here by adding Namespace'
 ---
 
 <intent-contract>
@@ -129,6 +130,35 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `928133dd
   - `[false]` `[reject]` a refusal naming the route's own namespace in a comparison is untested — that refusal is the existing `Invoke` gate's, unchanged here; the target's refusal is tested.
   - `[false]` `[reject]` truncation (AD-36) and the kill-switch exemption lack tests of their own — both rest on shared framework code this story does not change.
   - `[low]` `[reject]` the business-partners browser spec's helpers moved into `interop-list-spec.mjs` — the spec names the sharing by import.
+
+### 2026-11-21 — Code review stage (four layers: adversarial, edge cases, verification gaps, security)
+
+- verdicts: 21 findings — high 2, medium 4, low 15; patch 11, reject 10, defer 1 (frontmatter).
+- findings:
+  - `[high]` `[patch]` the Save route ran the vendor's value check (`DefaultSettingAccepts`, which logs the vendor's text) before the port's gate and its RESTRICTED, SOURCECONTROL and SECRET refusals (AD-29, AD-35): `DefaultSettingSave.Violations` now judges no value, the port's add judges it after its gate, and a credential-named setting is never put to the vendor. mutation: `DefaultSettingSave.Violations` passes 1 for the value judgement -> `InteropDefaultSettingEdges.TestTheSaveAsksTheVendorNothingBeforeThePortsGate` red.
+  - `[high]` `[patch]` the vendor audit mask kept every continuation line of a secret value written on several lines, and an update's old value after it (AD-35): new `AuditPort.MaskedDefaultSettingData`. mutation: mask with `MaskedEventData` again -> `TestASecretValueOnSeveralLinesIsMaskedOnEveryLine` red.
+  - `[medium]` `[patch]` the remove's `FINGERPRINTSUBJECT` lacked `Namespace`, so the narrowed payload lost it and a confirm sent from HSCUSTOM removed HSCUSTOM's identical setting (AD-52): `Namespace` added. mutation: take it out -> `TestARemoveConfirmedFromAnotherNamespaceActsWhereItRead` red on both legs. The three sibling removes share it (deferred, frontmatter).
+  - `[medium]` `[patch]` a key part beginning or ending with `|` split the vendor's `||` id at another place (wrong row read, edited or removed): `DefaultSettingPartOK` refuses it under KEY; two `KeyCase` rows, green. No mutation run: a mutated add stores a row the fixture's id-based delete cannot address.
+  - `[medium]` `[patch]` item and host class were `*` in every write test, so a swap passed: `TestADistinctItemAndHostClassAreKeptWhereTheySit` (Save, port add, read, script). mutation: swap them in `PerformDefaultSetting`'s add -> red.
+  - `[medium]` `[patch]` `SaveHoldCoverage` had no held-key leg for the four-part Save: leg added, green.
+  - `[low]` `[patch]` the browser audit leg typed its criteria before the screen's opening read answered: waits for it, and the awaited read must carry `beginDateTime`; spec green.
+  - `[low]` `[patch]` a description-only update was unpinned at the mint and the Edit: two `PoolSize` legs in `Edges`.
+  - `[low]` `[patch]` `Control.VendorRows` counted `ArchiveIOProbe` rows as `ArchiveIO`: the name is matched with its line end.
+  - `[low]` `[patch]` the `Edges` header and the arming comment said "an integer setting" where only `PoolSize` is refused empty: replaced.
+  - `[low]` `[patch]` the Residual line about an empty integer value contradicted QA's fix: deleted.
+  - `[low]` `[reject]` a `differs` row shows only the values — the spec rules the row as `Value` and `OtherValue`.
+  - `[low]` `[reject]` SQL-path rows not normalized for `$Char(0)` (inference) — only a SQL UPDATE to `''` writes it; reopen_if a listed value reads as NUL.
+  - `[low]` `[reject]` race mappings (row deleted between read and open is 503; lock or duplicate on `%DeleteId`/`%Save` is generic) — race-only.
+  - `[low]` `[reject]` a description-only edit over a stored value the vendor now refuses answers a generic failure — needs an out-of-band invalid value; reopen_if one is observed.
+  - `[low]` `[reject]` an over-long key is blamed on `Setting` — multibyte keys past the subscript limit only.
+  - `[low]` `[reject]` no client `maxlength`, and the client trims where the server does not — the server refuses with the ruled sentences.
+  - `[low]` `[reject]` the update block's labels are localized by the vendor — the new mask drops any unrecognised line after the `SettingValue` line; a header with the field not first is the existing declarations' shared assumption; reopen_if a non-English audit row.
+  - `[low]` `[reject]` the credential pattern misses names like `Passphrase` — the spec rules `IsCredentialName`.
+  - `[low]` `[reject]` `Edges`' exact audit count over a seconds window — rows are qualified by setting name.
+  - `[low]` `[reject]` a description over 2,000 answers VALUE's sentence — the matrix rules it VALUE.
+- Decisions: the edge-bar refusal reuses the ruled KEY code and sentence (no new string); the Save's value is judged by the port's add, with the same 422 envelope.
+- A (strings): pass — every person-facing string is ruled or existing; the update's "'Deployable' is true or false", the remove's state problem and tool descriptions are agent-facing, as for partners. B (frozen): pass — `Error.cls` empty; `Prohibited.cls` keeps every old token (`COVEREDTYPES` gains `,default-setting`, the condition one term); `ci-throwaway.sh` roster and comment lines only; the five roster classes add-only, ToolWrite 149 to 152 = the three writes. C (AD-59): pass — three script forms mirror `Invoke`; a secret value renders `<Value>`; the remove's now carries its namespace. D (DW-2636): pass — only here, only there and differs, per namespace through `InteropPort`. E (QA fix): pass — empty or absent `PoolSize` is 422 VALUE, a text setting takes empty, a description-only edit keeps the value (port, Edit, mint).
+- Verification: rebuilt `ocupilot-b-ci`; `InteropDefaultSettingEdges` (6), `Refusals` (8), `Control` (10), `Diff` (4), `DraftRegistry` (9), `SaveHoldCoverage` (2), `AuditVendorSecrets` (4) green on first run; mutations reverted and recompiled with descendants, `Edges` green again; `interop-default-settings.browser-spec.mjs` 5/5; `check-objectscript`, `test:tools` 2385, `test:components` 3769, `lint-docs` clean.
 
 ## Design Notes
 
@@ -250,4 +280,4 @@ Blocking condition: none
 
 **Verification.** Fresh `ocupilot-b-ci`: the 18 changed or related classes, forward and reverse, green on the first run (218 tests each); the 17-shard ObjectScript sweep green after five roster classes the sweep reddened were updated (ToolEmit, CompositeMintSweep, InteropMessageDescriptor, ToolWrite, ToolDispatch; each green on its own re-run); `npm run test:tools` 2385 of 2385; `npm run test:components` 315 files, 3769 tests; the two default-settings and partner browser specs green in both orders; the a11y structural spec green once (13 of 13); `check-objectscript` and `lint-docs` clean. No known flake appeared.
 
-**Residual.** Task 0 (e): a Host default marks no update pending, so its effect on a running job is not observed here. An empty value for an integer setting is not pre-validated by the port.
+**Residual.** Task 0 (e): a Host default marks no update pending, so its effect on a running job is not observed here.

@@ -341,10 +341,22 @@ test('a secret-named setting\'s value appears in no list, comparison or audit ro
     // Logs > Audit: the vendor's own rows of these two inserts, read since before they were written.
     await page.goto(`${config.origin}/ocupilot/logs/audit?ns=USER`, { waitUntil: 'networkidle2' });
     await page.waitForSelector('#ocu-audit-criterion-events', { timeout: config.navigationTimeoutMs });
+    // The screen opens on its default search: wait for that read to render, rows or the empty state, so its answer
+    // cannot overwrite the begin criterion typed below.
+    await page.waitForFunction(
+      () => document.querySelector('[role="grid"] .ocu-data-table-body [role="row"]') !== null
+        || document.querySelector('.ocu-data-table-empty') !== null,
+      { timeout: config.navigationTimeoutMs }
+    );
     await fill(page, '#ocu-audit-criterion-beginDateTime', since);
     await fill(page, '#ocu-audit-criterion-events', 'ModifyDefaultSetting');
     const answered = page.waitForResponse(
-      (response) => new URL(response.url()).pathname === AUDIT_READ_PATH && response.url().includes('events=ModifyDefaultSetting'),
+      (response) => {
+        const url = new URL(response.url());
+        return url.pathname === AUDIT_READ_PATH
+          && url.searchParams.get('events') === 'ModifyDefaultSetting'
+          && url.searchParams.get('beginDateTime') === since;
+      },
       { timeout: config.navigationTimeoutMs }
     );
     await page.click('.ocu-criteria-controls button[type="submit"]');

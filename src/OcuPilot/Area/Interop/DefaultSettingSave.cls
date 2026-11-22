@@ -7,7 +7,8 @@
 /// <code>Description</code> and <code>Deployable</code>.</p>
 /// <p>A production need not be held, since a default setting may name one the namespace does not have yet or <code>*</code>
 /// (<method>ParentHeld</method>), and the rules over the key and the fields are
-/// <method>OcuPilot.Port.InteropPort.DefaultSettingViolations</method>'s (<method>Violations</method>).</p>
+/// <method>OcuPilot.Port.InteropPort.DefaultSettingViolations</method>'s (<method>Violations</method>), the vendor's own judgement of the
+/// value left to the port's add.</p>
 Class OcuPilot.Area.Interop.DefaultSettingSave Extends OcuPilot.Area.Interop.ItemSave
 {
 
@@ -61,10 +62,11 @@ ClassMethod IdOf(pProduction As %String, pName As %String, pFields As %DynamicOb
 }
 
 /// <p>The rules over the setting: the port's <method>OcuPilot.Port.InteropPort.DefaultSettingViolations</method> over the key, with the item
-/// and the host class from <var>pFields</var>, and the value, the description and the flag.</p>
+/// and the host class from <var>pFields</var>, and the lengths and types of the value, the description and the flag. It calls no vendor
+/// class: whether the vendor accepts the value is judged by the port's add, after its gate and its refusals.</p>
 ClassMethod Violations(pNamespace As %String, pParent As %String, pName As %String, pFields As %DynamicObject, Output pViolations) As %Status
 {
-    Quit $ClassMethod(..PortClass(), "DefaultSettingViolations", pNamespace, pParent, ..MemberOf(pFields, ..#ITEMMEMBER), ..MemberOf(pFields, ..#HOSTCLASSMEMBER), pName, pFields, .pViolations, 1)
+    Quit $ClassMethod(..PortClass(), "DefaultSettingViolations", pNamespace, pParent, ..MemberOf(pFields, ..#ITEMMEMBER), ..MemberOf(pFields, ..#HOSTCLASSMEMBER), pName, pFields, .pViolations, 1, 0)
 }
 
 /// <p>The superclass's refusal of a body key the tool does not settle, with the item and the host class, which the id carries, left out.</p>

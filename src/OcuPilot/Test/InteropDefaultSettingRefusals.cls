@@ -249,7 +249,8 @@ Method TestTheVendorAuditRowsOfASecretNamedSettingAreMasked()
 /// setting), is <code>INTEROP.DEFAULTSETTING.VALUE</code>: 422 from the Save and the port, each with its published sentence, before anything
 /// is stored, and the agent's mint refuses the same rules.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.DefaultSettingAccepts</method> answer 1 -- the vendor legs go red; drop the
-/// control character test from <method>OcuPilot.Port.InteropPort.DefaultSettingPartOK</method> -- the control character row goes red.</p>
+/// control character test from <method>OcuPilot.Port.InteropPort.DefaultSettingPartOK</method> -- the control character row goes red; drop
+/// its edge bar tests -- the two vertical bar rows at a part's edge go red.</p>
 Method TestAKeyPartOrAValueTheRulesRefuseIsRefusedBeforeAnythingIsStored()
 {
     Set tFixture = ..#FIXTURE
@@ -284,7 +285,7 @@ Method TestAKeyPartOrAValueTheRulesRefuseIsRefusedBeforeAnythingIsStored()
 /// <p>The key parts, as <code>$ListBuild(production, item, host class, setting)</code> with a label, each wrong in one part.</p>
 ClassMethod KeyCase(pLong As %String) As %List
 {
-    Quit $ListBuild($ListBuild($ListBuild("", "*", "*", "ArchiveIO"), "an empty production"), $ListBuild($ListBuild(..#PRODUCTION, "", "*", "ArchiveIO"), "an empty item"), $ListBuild($ListBuild(..#PRODUCTION, "*", pLong, "ArchiveIO"), "a host class of 256 characters"), $ListBuild($ListBuild(..#PRODUCTION, "*", "*", pLong), "a setting of 256 characters"), $ListBuild($ListBuild(..#PRODUCTION, "a||b", "*", "ArchiveIO"), "an item with two vertical bars"), $ListBuild($ListBuild(..#PRODUCTION, "*", "*", "Arch" _ $Char(2) _ "ive"), "a setting with a control character"))
+    Quit $ListBuild($ListBuild($ListBuild("", "*", "*", "ArchiveIO"), "an empty production"), $ListBuild($ListBuild(..#PRODUCTION, "", "*", "ArchiveIO"), "an empty item"), $ListBuild($ListBuild(..#PRODUCTION, "*", pLong, "ArchiveIO"), "a host class of 256 characters"), $ListBuild($ListBuild(..#PRODUCTION, "*", "*", pLong), "a setting of 256 characters"), $ListBuild($ListBuild(..#PRODUCTION, "a||b", "*", "ArchiveIO"), "an item with two vertical bars"), $ListBuild($ListBuild(..#PRODUCTION, "a|", "*", "ArchiveIO"), "an item ending in a vertical bar"), $ListBuild($ListBuild(..#PRODUCTION, "*", "|b", "ArchiveIO"), "a host class beginning with a vertical bar"), $ListBuild($ListBuild(..#PRODUCTION, "*", "*", "Arch" _ $Char(2) _ "ive"), "a setting with a control character"))
 }
 
 /// <p>AC2: a namespace under source control refuses every default setting write by <code>SOURCECONTROL</code> before the vendor is called,
