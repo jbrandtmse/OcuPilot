@@ -999,3 +999,8 @@
 2026-11-22T17:48:26Z	Story 21.39	ci_red	run=45048213834 sha=ffa2a92e7 job=browser_shard_1/5 test=a11y-structural-invariants(whole-file) cause=DW-1822_recurrence_first_with_capture(renderer_deaf_to_all_CDP;no_profile) touched=21.39_capture_only_reports
 2026-11-22T18:09:44Z	Story 21.6	ledger_routed	id=DW-2842 by=orchestrator cause=gates_timeout_20min(run_45048213834_job_137287353314)
 2026-11-22T18:46:40Z	Story 21.39	merged	feature=c655a65bd by=orchestrator rerun=45048213834_attempt2_green
+2026-11-22T19:42:41Z	Story 21.6	stage_complete	stage=implement agent=af5fdb796 result=done commits=595d8a352(B1),ccab7839b(B2),804202bf9(review+finalize) task-1=mechanical_drift_only(side-bar_position_20) followup_review_recommended=true protocol=B2_subagent_python_heredoc_on_its_own_new_untracked_browser_spec(now_tracked) escalate=strings_outside_ruled_list,all-namespace_purge
+2026-11-22T19:42:41Z	Story 21.6	lead_patch	sha=e69955f4e ci.yml_gates_timeout_20->30 pin=LARGEST_OBSERVED_GATES_MINUTES_19.9 mutation=29->pin_alone_red
+2026-11-22T19:42:41Z	Story 21.6	integrated_forward	feature=c655a65bd merge=M=010f0f951 conflicts=0 verified=test:tools_2402
+2026-11-22T19:42:41Z	Story 21.6	code_head_pushed	sha=010f0f951 run=45062235807 missing=none
+2026-11-22T19:42:41Z	Story 21.6	ledger_routed	id=DW-2843 owner=burndown source=deferred(all-namespace_purge)
