@@ -1,13 +1,15 @@
-/// <p>Pins that every registered write tool that can reach more than one namespace keeps, in the payload its proposal stores, the
-/// namespace the proposal read, so that a confirm sent from another namespace asks its port in the first one (AD-52, AD-62).</p>
+/// <p>Pins that every registered write tool that can reach more than one namespace keeps, in the payload its proposal would store
+/// from a read that answers its declared namespace field, that namespace, so that a confirm sent from another namespace asks its
+/// port in the first one (AD-52, AD-62). Whether each port's real read answers that field is not asked here.</p>
 /// <p>For each tool outside the declared exemptions (<code>Exemptions</code>) it sets the request scope to one sentinel, builds the
 /// payload the mint stores (the tool's <code>MergeUpdate</code> over a read that answers every <code>READANSWERS</code> field, narrowed
 /// by its fingerprint subject, or its <code>ComposeCreate</code>), sets the scope to a second sentinel, builds the confirm's port query
-/// with <method>OcuPilot.Kernel.Proposal.Operation.Query</method> and asks that the query names the first. The mint of three creates
-/// puts the namespace into the arguments it hands <code>ComposeCreate</code>; <parameter>MINTARGUMENT</parameter> names them.</p>
+/// with <method>OcuPilot.Kernel.Proposal.Operation.Query</method> and asks that the query names the first under the port's own
+/// namespace key. The mint of three creates puts the namespace into the arguments it hands <code>ComposeCreate</code>;
+/// <parameter>MINTARGUMENT</parameter> names them.</p>
 /// <p>An exemption names a port class or a tool. A port entry exempts the tools that reach that port and declare instance scope; a
 /// tool entry exempts one instance-scoped tool; a person entry exempts a tool that mints no proposal. Every entry must match a
-/// registered write tool.</p>
+/// registered write tool, and the port of a port or tool entry must not read the request scope in any method it compiles.</p>
 /// <p><b>What it needs from the environment:</b> nothing is written and no variable arms it; it sets the request scope and puts it
 /// back.</p>
 Class OcuPilot.Test.ConfirmNamespaceRoster Extends %UnitTest.TestCase
@@ -27,6 +29,12 @@ Parameter MINTARGUMENT = "OcuPilot.Screen.Tool.ExplorerClassCreate,OcuPilot.Scre
 
 /// <p>How many entries <code>Exemptions</code> holds.</p>
 Parameter EXEMPTIONCOUNT = 42;
+
+/// <p>The fewest write tools the walk must ask, so an exemption that takes tools out of the check is seen.</p>
+Parameter CHECKEDFLOOR = 115;
+
+/// <p>The source texts that read the request scope, comma-separated.</p>
+Parameter SCOPEREADERS = "Kernel.Scope,OcuPilotScope";
 
 /// <p>One exemption to a line, <code>&lt;kind&gt;|&lt;key&gt;|&lt;reason&gt;</code>: <code>port</code> keys a port class,
 /// <code>tool</code> and <code>person</code> a tool's name.</p>
@@ -111,8 +119,9 @@ ClassMethod ExemptionOf(pClass As %String, pName As %String, pRoster, ByRef pMat
 }
 
 /// <p>What is wrong with exempting the tool <var>pClass</var> under <var>pKind</var>, or <code>""</code>: a <code>person</code> tool
-/// declares a person's gate, any other declares instance scope.</p>
-ClassMethod ExemptionProblem(pClass As %String, pKind As %String) As %String
+/// declares a person's gate; any other declares instance scope, and its port reads no request scope
+/// (<method>ScopeReader</method>, remembered in <var>pSeen</var>).</p>
+ClassMethod ExemptionProblem(pClass As %String, pKind As %String, ByRef pSeen) As %String
 {
     If pKind = "person" {
         If $Parameter(pClass, "PERSONGATE") = "" Quit "it is exempt as a person's alone and declares no person's gate"
@@ -125,7 +134,51 @@ ClassMethod ExemptionProblem(pClass As %String, pKind As %String) As %String
         Set tScope = ""
     }
     If tScope '= ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE Quit "it is exempt as instance-scoped and its descriptor declares '" _ tScope _ "'"
+    Set tPort = ##class(OcuPilot.Kernel.Proposal.Operation).PortClassOf(pClass, $Parameter("OcuPilot.Screen.Tool.Write", "PORTCLASS"))
+    Set tReader = ..ScopeReader(tPort, .pSeen)
+    If tReader '= "" Quit "it is exempt as namespace-free and its port " _ tPort _ " " _ tReader
     Quit ""
+}
+
+/// <p>How the port <var>pPort</var> reads the request scope, or <code>""</code> when no method it compiles from an OcuPilot class
+/// names any text of <parameter>SCOPEREADERS</parameter>. A method whose source cannot be read is reported, never taken as clean.
+/// Each port and method is read once, remembered in <var>pSeen</var>.</p>
+ClassMethod ScopeReader(pPort As %String, ByRef pSeen) As %String
+{
+    If $Data(pSeen("port", pPort), tFound) Quit tFound
+    Set tFound = ""
+    Set tNeedles = $ListFromString(..#SCOPEREADERS)
+    Set tStatement = ##class(%SQL.Statement).%New()
+    Set tSC = tStatement.%Prepare("SELECT Name, Origin FROM %Dictionary.CompiledMethod WHERE parent = ?")
+    If $$$ISERR(tSC) Quit "could not have its methods listed"
+    Set tResult = tStatement.%Execute(pPort)
+    Set tListed = 0
+    While (tFound = "") && tResult.%Next() {
+        Set tListed = tListed + 1
+        Set tOrigin = tResult.%Get("Origin")
+        If $Extract(tOrigin, 1, 9) '= "OcuPilot." Continue
+        Set tKey = tOrigin _ "||" _ tResult.%Get("Name")
+        If '$Data(pSeen("method", tKey), tHit) {
+            Set tHit = "its method " _ tKey _ " could not be read"
+            Set tMethod = ##class(%Dictionary.MethodDefinition).%OpenId(tKey)
+            If $IsObject(tMethod) {
+                Set tHit = ""
+                Set tStream = tMethod.Implementation
+                Do tStream.Rewind()
+                While (tHit = "") && 'tStream.AtEnd {
+                    Set tLine = tStream.ReadLine()
+                    For tAt = 1:1:$ListLength(tNeedles) {
+                        If tLine [ $List(tNeedles, tAt) Set tHit = "reads the request scope in " _ tKey
+                    }
+                }
+            }
+            Set pSeen("method", tKey) = tHit
+        }
+        Set tFound = tHit
+    }
+    If (tFound = "") && (tListed = 0) Set tFound = "compiles no method"
+    Set pSeen("port", pPort) = tFound
+    Quit tFound
 }
 
 /// <p>Whether a member of <var>pObject</var> holds <var>pValue</var>.</p>
@@ -218,8 +271,9 @@ ClassMethod MergedUpdate(pToolClass As %String, Output pNote As %String) As %Dyn
     Quit tPayload
 }
 
-/// <p>Whether the confirm's port query for <var>pToolClass</var> names the namespace its proposal was minted in. The mint's request
-/// scope is <parameter>MINTSCOPE</parameter> while the payload is built and <parameter>CONFIRMSCOPE</parameter> while the query is.
+/// <p>Whether the confirm's port query for <var>pToolClass</var> names the namespace its proposal was minted in, under the port's
+/// own namespace key (its <code>NAMESPACEKEY</code>, else its <code>NAMESPACEQUERY</code>). The mint's request scope is
+/// <parameter>MINTSCOPE</parameter> while the payload is built and <parameter>CONFIRMSCOPE</parameter> while the query is.
 /// <var>pNote</var> says why the question could not be asked, and <var>pBare</var> is set for a create named by
 /// <parameter>MINTARGUMENT</parameter> whose compose carries the namespace without being given it.</p>
 ClassMethod Carries(pToolClass As %String, Output pNote As %String, Output pBare As %Boolean) As %Boolean
@@ -228,6 +282,13 @@ ClassMethod Carries(pToolClass As %String, Output pNote As %String, Output pBare
     Set pBare = 0
     Set tCarries = 0
     Try {
+        Set tPort = ##class(OcuPilot.Kernel.Proposal.Operation).PortClassOf(pToolClass, $Parameter("OcuPilot.Screen.Tool.Write", "PORTCLASS"))
+        Set tKeyName = $Parameter(tPort, "NAMESPACEKEY")
+        If tKeyName = "" Set tKeyName = $Parameter(tPort, "NAMESPACEQUERY")
+        If tKeyName = "" {
+            Set pNote = "its port " _ tPort _ " declares no namespace key"
+            Quit
+        }
         Set tIdParam = $ClassMethod(pToolClass, "IdParam")
         If tIdParam = "" Set tIdParam = "id"
         Do ##class(OcuPilot.Kernel.Scope).Set(..#MINTSCOPE)
@@ -242,12 +303,7 @@ ClassMethod Carries(pToolClass As %String, Output pNote As %String, Output pBare
             Quit
         }
         Do ##class(OcuPilot.Kernel.Proposal.Operation).Query(pToolClass, tIdParam, "PROBEID", tPayload.%ToJSON(), .tQuery)
-        Set tKey = ""
-        For {
-            Set tKey = $Order(tQuery(tKey), 1, tValue)
-            If tKey = "" Quit
-            If tValue = ..#MINTSCOPE Set tCarries = 1
-        }
+        Set tCarries = ($Get(tQuery(tKeyName)) = ..#MINTSCOPE)
     } Catch ex {
         Set pNote = "raised: " _ $System.Status.GetErrorText(ex.AsStatus())
     }
@@ -281,7 +337,7 @@ ClassMethod Walk(Output pWalked As %Integer, Output pExempt As %Integer, Output 
             Set tKind = ..ExemptionOf(tClass, tName, .tRoster, .tMatched)
             If tKind '= "" {
                 Set pExempt = pExempt + 1
-                Set tProblem = ..ExemptionProblem(tClass, tKind)
+                Set tProblem = ..ExemptionProblem(tClass, tKind, .tSeen)
                 If tProblem '= "" Set pProblems = pProblems _ tName _ ": " _ tProblem _ "; "
                 Continue
             }
@@ -324,11 +380,13 @@ ClassMethod Walk(Output pWalked As %Integer, Output pExempt As %Integer, Output 
 /// <p>Every write tool outside the exemptions asks its port, in a confirm sent from another namespace, where its proposal was minted.</p>
 /// <p>Mutation (Rule 19): take <code>Namespace</code> out of the <code>FINGERPRINTSUBJECT</code> of
 /// <class>OcuPilot.Screen.Tool.InteropPartnerRemove</class>, <class>OcuPilot.Screen.Tool.InteropLookupEntryRemove</class> or
-/// <class>OcuPilot.Screen.Tool.InteropLookupTableDelete</class> -- this goes red and names that tool.</p>
+/// <class>OcuPilot.Screen.Tool.InteropLookupTableDelete</class> -- this goes red and names that tool. Exempt a port whose tools
+/// carry the namespace -- this goes red on <parameter>CHECKEDFLOOR</parameter>.</p>
 Method TestEveryWriteToolAsksItsPortInTheNamespaceItsProposalRead()
 {
     Set tSC = ..Walk(.tWalked, .tExempt, .tChecked, .tLost, .tProblems, .tUnmatched, .tNeedless)
     Do $$$AssertStatusOK(tSC, "the registry's write tools are walked")
+    Do $$$AssertTrue(tChecked >= ..#CHECKEDFLOOR, "at least " _ ..#CHECKEDFLOOR _ " write tools are asked: " _ tChecked)
     Do $$$AssertEquals(tLost, "", "no tool's confirm query loses the namespace its proposal read: " _ tLost)
     Do $$$AssertEquals(tProblems, "", "every tool outside the exemptions could be asked, and every exemption holds: " _ tProblems)
 }

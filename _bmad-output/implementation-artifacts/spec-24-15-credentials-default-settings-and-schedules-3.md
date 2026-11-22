@@ -78,7 +78,7 @@ deferred:
 
 ## Spec Change Log
 
-- 2026-11-21, implement: the orchestrator ordered the roster guard test added to this pass (Task `ConfirmNamespaceRoster`, one acceptance bullet, a fourth mutation). Because the test reads every tool's declared namespace field, the inference in Design Notes › Roster ("carries" assumes each read answers its declared field) is retired for the tools it covers.
+- 2026-11-21, implement: the orchestrator ordered the roster guard test added to this pass (Task `ConfirmNamespaceRoster`, one acceptance bullet, a fourth mutation). The test supplies each tool's declared namespace field in the read it merges, so the inference in Design Notes › Roster ("carries" assumes each read answers its declared field) still stands.
 
 ## Review Triage Log
 
@@ -96,6 +96,23 @@ deferred:
   - `[false]` `[reject]` The table leg does not assert the two tables' `Modified` stamps match — the stamp is read in `USER` and the fixed confirm acts in `USER`; `HSCUSTOM`'s stamp plays no part, and the leg's assertions are the rows.
   - `[false]` `[reject]` The roster test reaches other ports' tools — it only reads them and edits none; ordered by the orchestrator and recorded in the Spec Change Log.
 
+### 2026-11-21 — Code review (three layers)
+
+- verdicts: 12 findings — high 0, medium 2, low 4, false 6, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` An exemption is accepted on instance scope alone, so a port line can drop tools that carry the namespace (`SqlPrivilegePort`) and an exempt port that starts reading the request scope stays green — `ExemptionProblem` now also refuses a port that names the request scope in any method it compiles, and the main test asserts at least `CHECKEDFLOOR` (115) tools are asked.
+  - `[medium]` `[patch]` `Carries` accepted the mint's namespace under any query key — it now reads only the port's `NAMESPACEKEY` (else `NAMESPACEQUERY`) and reports a port that declares neither.
+  - `[low]` `[patch]` The class header and the Spec Change Log claimed the roster proves the stored payload of a real read; both now say the test supplies the read's namespace field, and the inference stands.
+  - `[low]` `[patch]` The main roster test passed on an empty walk; the floor now sits in it.
+  - `[low]` `[patch]` The size test's documented mutation and AC3 had no observed mutation — both run and recorded under Mutations.
+  - `[low]` `[reject]` No registry-wide check that a no-subject tool's real port read answers its namespace field — pre-existing, needs a mint per port; wontfix-accepted, reopen_if a confirm of a no-subject tool from another namespace acts in the confirming namespace.
+  - `[false]` `[reject]` A proposal minted before the upgrade closes target-changed — intended and named under Shared surfaces; nothing is written and the person proposes again.
+  - `[false]` `[reject]` A pre-upgrade partner remove's copy-out script renders `Set $NAMESPACE = ""` — it did so for every such proposal before this change, which fixes it for new ones; old proposals expire.
+  - `[false]` `[reject]` A malformed `Exemptions` line raises `<SUBSCRIPT>` — the test errors loudly, which is the wanted outcome.
+  - `[false]` `[reject]` A duplicate `Exemptions` line with a bumped count passes the size test — needs a deliberate duplicate and count edit; no realistic path.
+  - `[false]` `[reject]` `Carries` leaves the scope set when called directly — only `Walk` calls it, and `Walk` restores the scope on every path.
+  - `[false]` `[reject]` Missing QA tests for the three tools — conditions (a)-(d) are covered: `InteropConfirmNamespace` (cross-namespace, other row untouched, mutations runs 41/44/45) and the same-namespace legs `InteropPartnerControl.TestTheAgentsRemoveConfirmsOverHttp`, `InteropLookupControl.TestTheAgentsRemoveConfirmsOverHttp` and `TestTheAgentsDeleteConfirmsOverHttp`.
+
 ## Design Notes
 
 **Roster** (Task 0, measured 2026-11-21 on `ocupilot-b-ci`, namespace `HSCUSTOM`).
@@ -109,6 +126,8 @@ Method: a scratch class (`OcuScratch.NsRoster`, deleted afterwards) listed `OcuP
 | Carry the namespace | 111 | 75 through the fingerprint subject, 17 through the merged read, 19 creates whose `ComposeCreate` stores the mint's scope |
 | Person-only | 3 | `explorer.classmethod.run`, `explorer.command.run`, `explorer.unittests.run` (`ADVERTISED` 0, `PERSONGATE`): they mint no proposal, so nothing is stored |
 | **Lose the namespace** | **3** | `interop.businesspartners.remove` (`InteropPartnerRemove`, Story 20.26), `interop.lookupentries.remove` (`InteropLookupEntryRemove`, Story 20.5) and `interop.lookuptables.delete` (`InteropLookupTableDelete`, Story 20.5). All three are `InteropPort` tools of Epic 20. |
+
+The committed roster test exempts 220 and asks 115, one fewer exempt than this table: `security.auditing.copy` (`AuditCopy`, `AuditPort`) is counted namespace-free here, since its port never reads the request scope, but it names a namespace in its query (`CopyNamespace`), so the test asks it rather than exempt it (read from the roster class and `ocupilot-b-ci`, 2026-11-21; `logs.applicationerrors.delete` stays exempt through `LogSourcePort`).
 
 "Carries" assumes each port's read answers the namespace field its `READANSWERS` declares (inference). It is measured end to end only for `interop.defaultsettings.remove`. The losers are exactly DW-2827's three, so the stop rule's first branch applies.
 
@@ -143,6 +162,15 @@ Method: a scratch class (`OcuScratch.NsRoster`, deleted afterwards) listed `OcuP
 - mutation: exempt a tool as a person's alone with no person's gate (`person|interop.businesspartners.remove|mutation`) -> observed (run 17): the same test reds, "declares no person's gate".
 - mutation: drop `RestServiceCreate` from `MINTARGUMENT` -> observed (run 18): the same test reds alone, naming `webapp.restapis.create`.
 - mutation: add `AnalyticsListingAdd` to `MINTARGUMENT` -> observed (run 19): `TestEveryExemptionNamesARegisteredWriteTool` reds alone, naming `analytics.listinggrouplistings.add`. Each reverted byte-identical (md5), green on run 20.
+- mutation (review): exempt `port|OcuPilot.Port.SqlPrivilegePort` with `EXEMPTIONCOUNT` 43 -> observed (run 877): the main roster test reds alone on the floor, "at least 115 write tools are asked: 111".
+- mutation (review): drop the `WalletPort` line from `Exemptions` -> observed (run 878): the size test reds, and the main test names the wallet tools, whose port declares no namespace key.
+- mutation (review): add a `WalletPort` method that returns `Kernel.Scope.Current()` -> observed (run 880): the main test reds alone, "its port OcuPilot.Port.WalletPort reads the request scope".
+- mutation (review): `InteropAction.PortQuery` sends the namespace as `Namespace`, not `namespace` -> observed (run 881): the main test reds alone, naming the Interop tools; the earlier any-key check stayed green on it.
+- mutation (review, AC3): take `Namespace` out of `InteropLookupEntryRemove.FINGERPRINTSUBJECT` -> observed (run 884): `InteropLookupDescriptor.TestTheFourWriteToolsAreDeclaredAsThePlanPlacesThem` reds alone; the card rows come from `REMOVALROWS`, which the diff leaves as it was. Each review mutation was made on the throwaway's source copy only and reverted (`diff -rq` identical); green after on runs 882, 883 and 885.
+
+### QA
+
+- No test added: the QA layer found every orchestrator condition covered (see the code review triage).
 
 ## Auto Run Result
 
@@ -164,4 +192,4 @@ Blocking condition: none
 
 **Verification.** On the rebuilt `ocupilot-b-ci`: both new classes green on their first run (runs 1 and 2), then forward and reverse; `InteropLookupDescriptor`, `InteropLookupControl`, `InteropLookupEdges`, `InteropLookupRefusals`, `InteropLookupGate`, `InteropPartnerControl`, `InteropPartnerRefusals`, `InteropPartnerGate`, `InteropDefaultSettingEdges` and `DraftRegistry` green; the Rule 29 sweep, shards 1-17 of 17, 0 failed, no flake; `check-objectscript.py` 0 problems; `npm run test:tools` 2385 passed; `lint-docs.sh` 0 problems. Nine mutations observed, each reverted byte-identical.
 
-**Residual risks.** The exemption reasons for the 37 ports rest on the planning grep that found only 8 ports reading the request scope, and the test checks only that each exempt tool declares instance scope. `ci-timings.json` is not refreshed here; the merge gate does it.
+**Residual risks.** The test checks that each exempt tool declares instance scope and that no method its port compiles from an OcuPilot class names the request scope; a helper outside the port that reads it is not seen. `ci-timings.json` is not refreshed here; the merge gate does it.
