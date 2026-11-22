@@ -13312,6 +13312,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-8-remote-instance-profiles-and-environment-diff.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: AD-62: InteropPort is the only reader of interoperability configuration; its default-settings read is built by Story 24.15
 - 2026-11-16T06:26:31Z status=routed owner=24-15-credentials-default-settings-and-schedules by=harvest note=ruled at 24.8 spec gate: 24.15 compares its read per namespace
+- 2026-11-22T00:34:39Z status=resolved-by:24-15-credentials-default-settings-and-schedules by=epic-24-runner note=24.15 Batch 1 (26d996850, review fc4a22869): Compare default settings lists the settings only here, only there or differing between two namespaces, each read through InteropPort behind its own gate (AC4)
 
 ### DW-2641: epics.md Epic 21 implementation notes (about line 957) still say DT-11 lands before DT-09 and DT-10; after U-45 DT-11 is not planned and DT-09/DT-10 are same-instance
 - source: spec-24-8-remote-instance-profiles-and-environment-diff.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -14395,6 +14396,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Kernel/Secret/Ladder.cls: the wallet rung reads a %Wallet.KeyValue secret from the IRIS wallet for the provider key (doc lines 14-17, WALLETKEYVALUETYPE); Screen/Tool ships WalletSecretDelete and WalletSecretUpdate
 - 2026-11-21T18:36:21Z status=routed owner=burndown by=epic-24-runner note=Epic 24 burn-down; do not widen 24.15 Batch 2 to cover it (orchestrator)
 
+### DW-2827: Wrong-namespace remove: InteropPartnerRemove, InteropLookupEntryRemove and InteropLookupTableDelete do not store the proposal's namespace, so a remove proposed in one namespace and confirmed from another deletes the same-named row in the confirming namespace (the defect Story 24.15 Batch 1 review fixed for the default-setting remove)
+- source: spec-24-15-credentials-default-settings-and-schedules.md (review fc4a22869) | severity: high | fix-risk: low | footprint: out-of-footprint
+- evidence: 24.15 review reproduced it for InteropDefaultSettingRemove with a test that deleted HSCUSTOM's identical setting instead of USER's before the fix; the three sibling tools share the pattern (Stories 20.26 and 20.5)
+- 2026-11-22T00:34:39Z status=routed owner=burndown by=epic-24-runner note=same fix as fc4a22869: Namespace becomes part of what the remove stores
+- 2026-11-22T00:58:36Z status=routed owner=24-15-credentials-default-settings-and-schedules by=epic-24-runner note=orchestrator ruling: data loss in shipped code; scheduled as 24.15 Batch 1b after Batch 1 merges and before Batch 2; sweep the whole registered write-tool set first and report the roster before any change outside InteropPort
+- 2026-11-22T01:25:51Z by=epic-24-runner note=evidence: the sweep (24.15 Batch 1b plan) found 3 of 335 write tools lose the namespace, exactly these three; for interop.lookuptables.delete the wrong delete itself was not reproducible (without the fix a cross-namespace confirm answers 409 target-changed, because the table's millisecond change stamp differs; inference: a table copied together with its global would be deleted), so its leg pins 409 -> success
+- 2026-11-22T04:33:22Z by=epic-24-runner note=correction of the earlier evidence line: the implement stage (86f4d75d8) measured that without the fix the lookup-table delete's cross-namespace confirm answers 200 and deletes HSCUSTOM's table; it is not a 409, so the wrong delete was reproduced for tables too
+
+### DW-2828: Kernel: Confirm ignores the mint namespace that every namespace-scoped proposal already records in its target reference, so a tool whose stored payload omits its namespace confirms in the request's namespace (the DW-2827 defect class)
+- source: Story 24.15 Batch 1b plan sweep; orchestrator ruling | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: 24.15 Batch 1b roster: 335 write tools, 3 lost the namespace (fixed per tool); the new confirm-namespace roster test over every registered write tool is the mitigation
+- 2026-11-22T01:25:51Z status=decision-pending owner=burndown by=epic-24-runner note=a decision in the burn-down, not a fix now: per-tool fingerprint fields (today) or confirm reading the target reference's namespace
+
+### DW-2831: No cross-namespace confirm test for the three namespace-in-mint creates (explorer.classes.create, explorer.routines.create, webapp.restapis.create): ConfirmNamespaceRoster supplies Namespace to them itself, as their mints do, so a mint that stopped adding it would not be caught
+- source: spec-24-15-credentials-default-settings-and-schedules-3.md (implement review 86f4d75d8) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: 24.15 Batch 1b implement-stage review, deferred low; orchestrator accepted it as a burn-down DW
+- 2026-11-22T04:34:03Z status=routed owner=burndown by=epic-24-runner note=add a mint-in-USER, confirm-from-HSCUSTOM leg per create
 ### DW-2829: The Screen/Tool rule classes keep their own copies of the violation loop (14, plus nine interoperability one-liners), outside DW-2499's Area scope
 - source: spec-21-38-shared-rules-helpers-the-source-control-follow-up-and-escala.md | severity: low | fix-risk: low | footprint: cross-story
 - evidence: Story 21.38 plan measured the copies; DW-2499 names only the Area screen-editor Rules classes

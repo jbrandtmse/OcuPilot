@@ -27,8 +27,9 @@ Parameter CHANGEACTION = "deleted";
 Parameter CONSEQUENCECODE = "INTEROP.PARTNER.REMOVE";
 
 /// <p>The fourteen fields of the partner and how many items name it: what the removal reviewed, so a partner edited or newly named
-/// since the review closes the proposal target-changed.</p>
-Parameter FINGERPRINTSUBJECT = "Name,Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes,NamedBy";
+/// since the review closes the proposal target-changed; and its namespace, which the stored payload keeps so the confirm and the script
+/// form act where the proposal read.</p>
+Parameter FINGERPRINTSUBJECT = "Name,Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes,NamedBy,Namespace";
 
 Parameter PRECONDITIONFIELD = "NamedBy";
 

@@ -26,7 +26,9 @@ Parameter CHANGEACTION = "deleted";
 /// <p>One static sentence: it also covers the table taken with a last entry.</p>
 Parameter CONSEQUENCECODE = "INTEROP.LOOKUP.REMOVE";
 
-Parameter FINGERPRINTSUBJECT = "Key,Value";
+/// <p>The entry's key and value: what the removal reviewed, so an entry changed since the review closes the proposal target-changed; and
+/// its namespace, which the stored payload keeps so the confirm and the script form act where the proposal read.</p>
+Parameter FINGERPRINTSUBJECT = "Key,Value,Namespace";
 
 Parameter PRECONDITIONFIELD = "Value";
 

@@ -674,3 +674,27 @@
 2026-11-21T23:27:34Z	Story 24.15	stage_spawned	stage=qa spawn_at=2026-11-21T23:27:34Z model=sonnet agent_name=24-15-qa-batch1 cycle_iteration=1
 2026-11-21T23:53:53Z	Story 24.15	stage_completed	stage=qa scope=batch1 commit=8df352529 product_fix=empty/absent_value_now_422_INTEROP.DEFAULTSETTING.VALUE(InteropPort.DefaultSettingViolations) tests=InteropDefaultSettingEdges(2)+3_browser_legs mutations=2_hardening_legs+reason_for_1 fresh=first_run_green
 2026-11-21T23:53:53Z	Story 24.15	stage_spawned	stage=code-review spawn_at=2026-11-21T23:53:53Z model=opus agent_name=24-15-review-batch1 cycle_iteration=1 range=3dca9873a..8df352529
+2026-11-22T00:34:39Z	Story 24.15	stage_completed	stage=code-review scope=batch1 commit=fc4a22869 findings=21(high2_patched:vendor_validate_before_gate,multiline_secret_audit;med4_patched:remove_namespace,edge_bar,item/hostclass,held-key) rejected=10 deferred=1
+2026-11-22T00:34:39Z	Story 24.15	ledger_adjudicated	scope=batch1 resolved=DW-2636 new=DW-2827(high,burndown,sibling_remove_tools_namespace)
+2026-11-22T00:34:56Z	Story 24.15	fresh_check_started	scope=batch1 tree=b92af7d65(code=fc4a22869)
+2026-11-22T00:57:55Z	Story 24.15	fresh_check_passed	scope=batch1 tree=b92af7d65 forward=7cls_43tests_first_run reverse+rosters+siblings=21cls_198tests browser=default-settings+partners+lookups+audit+log-hub+a11y_38/38 smoke=PASSED
+2026-11-22T00:57:55Z	Story 24.15	code_head_pushed	scope=batch1 sha=fc4a22869 run=44969124924 note=feature_4cd1a974c_bookkeeping-only_merged_after(b92af7d65)
+2026-11-22T00:58:09Z	Story 24.15	stage_spawned	stage=plan spawn_at=2026-11-22T00:58:09Z model=opus agent_name=24-15-plan-batch2 cycle_iteration=2 scope=batch2_credentials
+2026-11-22T00:58:45Z	Story 24.15	ruling	source=orchestrator DW-2827=batch1b(after_B1_merge,before_B2) owner=24-15 scope=sweep_all_write_tools_first;report_roster;stop_at_plan_if_cross-epic_or_kernel
+2026-11-22T01:10:32Z	Story 24.15	story_created	spawn_at=2026-11-22T00:57:00Z model=opus path=2026-11-22T01:10:32Z build_status=ready-for-dev scope=batch2_credentials gate=held_for_orchestrator(refusal_sentence)+batch1b_first
+2026-11-22T01:10:32Z	Story 24.15	stage_spawned	stage=plan spawn_at= model=opus agent_name=24-15-plan-batch1b cycle_iteration=3 scope=batch1b_DW-2827
+2026-11-22T01:11:16Z	Story 24.15	ruling	source=orchestrator scope=batch2 refusal_sentence=reworded code=PROHIBITED.PROVIDERCREDENTIAL ns=own_only(+USER_allowed_leg) named_limit=accepted others=kept_as_recommended category=veto(joins_U-135)
+2026-11-22T01:11:16Z	Story 24.15	spec_validated	scope=batch2 implement_after=batch1b
+2026-11-22T01:25:10Z	Epic 24	epic_context_compiled	reason=stale(recompiled_by_24.15_1b_plan_subagent)
+2026-11-22T01:25:10Z	Story 24.15	story_created	spawn_at=2026-11-22T01:12:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-15-credentials-default-settings-and-schedules-3.md build_status=ready-for-dev scope=batch1b_DW-2827 roster=335_writes(218_ns-free,111_carry,3_person-only,3_lose:InteropPartnerRemove,InteropLookupEntryRemove,InteropLookupTableDelete)
+2026-11-22T01:25:10Z	Story 24.15	spec_validated	scope=batch1b stop_rule=branch1(only_the_three_interop_tools) strings=none
+2026-11-22T01:25:10Z	Story 24.15	stage_spawned	stage=implement spawn_at=2026-11-22T01:25:10Z model=sonnet agent_name=24-15-implement-batch1b cycle_iteration=3 story_base=ff966594a
+2026-11-22T01:25:52Z	Story 24.15	ruling	source=orchestrator scope=batch1b roster_accepted kernel_option=not_now guard_test=ConfirmNamespaceRoster(relayed_to_implement) DW-2827_evidence_appended kernel_DW=DW-2828
+2026-11-22T01:49:10Z	Story 24.15	ci_green	scope=batch1 sha=fc4a22869 run=44969124924
+2026-11-22T01:53:11Z	Story 24.15	merged_to_feature	scope=batch1 feature=108879ecf(code-equal_a7879b77c) integrate_before_1b_push=yes
+2026-11-22T04:22:05Z	Story 24.15	note	feature=1d3cc3a3b(21.37) integrate_target_for_1b=1d3cc3a3b rosters_rederive_from_base
+2026-11-22T04:33:22Z	Story 24.15	stage_completed	stage=implement scope=batch1b commit=86f4d75d8 fix=Namespace_in_FINGERPRINTSUBJECT(3_tools) tests=InteropConfirmNamespace(3_legs)+ConfirmNamespaceRoster(335_writes:220_exempt,115_asked;42-entry_roster) mutations=3_legs_alone+partner_reds_roster_alone+4_roster_guards sweep=17/17_green review=9(1_med_patched,1_low_deferred,7_rejected) table_leg=200_deletes_HSCUSTOM_without_fix(plan_inference_corrected)
+2026-11-22T04:33:22Z	Story 24.15	stage_spawned	stage=qa+code-review(combined,small_batch) spawn_at=2026-11-22T04:33:22Z model=opus agent_name=24-15-review-batch1b cycle_iteration=3
+2026-11-22T04:34:03Z	Story 24.15	ruling	source=orchestrator scope=batch1b roster_count_reconciliation=relayed_to_review deferred_low=DW-2831(burndown)
+2026-11-22T04:54:15Z	Story 24.15	stage_completed	stage=qa+code-review scope=batch1b commit=ec4287322 findings=12(med2_patched:exemption_scope_read+ns_key,low3_patched,7_rejected) qa_additions=none_needed moved_tool=security.auditing.copy(not_logs.applicationerrors.delete)
+2026-11-22T04:54:15Z	Story 24.15	ledger_adjudicated	scope=batch1b new=DW-2831(low,burndown)

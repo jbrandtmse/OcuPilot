@@ -565,6 +565,9 @@ services:
       # compares probe settings between the two namespaces. The edges class refuses an empty value for PoolSize and reads
       # the vendor's audit rows of a secret-named setting through the Logs audit screen.
       # classes: InteropDefaultSettingControl, InteropDefaultSettingDiff, InteropDefaultSettingEdges, InteropDefaultSettingRefusals
+      # The confirm namespace class holds a probe business partner, lookup entry and lookup table in USER and in HSCUSTOM and confirms
+      # the agent's remove of each from a request scoped to HSCUSTOM, so each acts in USER, where its proposal read (Story 24.15).
+      # classes: InteropConfirmNamespace
       # The host test classes compile and run the same probe production in USER, with a request class of their own and an
       # operation that echoes it (Story 20.6): the test class reads an item's Test tab and sends a request from both callers,
       # the refusals class meets every refusal and violation, a production started without testing and a disabled item, and

@@ -36,7 +36,9 @@ Parameter CHANGEACTION = "deleted";
 /// <p>The table read the confirm's stored payload carries and a call's arguments do not.</p>
 Parameter STATEMARKER = "Modified";
 
-Parameter FINGERPRINTSUBJECT = "Name,Entries,Modified";
+/// <p>The table's name, entry count and stamp: what the delete reviewed, so a table changed since the review closes the proposal
+/// target-changed; and its namespace, which the stored payload keeps so the confirm and the script form act where the proposal read.</p>
+Parameter FINGERPRINTSUBJECT = "Name,Entries,Modified,Namespace";
 
 Parameter PRECONDITIONFIELD = "Entries";
 
