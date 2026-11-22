@@ -953,3 +953,4 @@
 2026-11-22T06:28:25Z	Story 21.38	stage_spawned	stage=implement pass=3(B7-B10) spawn_at=2026-11-22T06:28:25Z model=sonnet agent_name=21-38-impl3 prior_lines_ended=verified(a0ef5f04b)
 2026-11-22T06:29:56Z	Story 21.38	stage_complete	stage=implement pass=3 agent=afe6be3b2 result=blocked(protocol:git_-C_epic-24_status_read-only) cause=runner_rule_conflict(stage-common.md_contended-paths_line_named_-C_main_checkout_and_epic-24) fix=stage-common.md_reconciled(origin_refs_from_epic-21_only) tree=clean
 2026-11-22T06:29:56Z	Story 21.38	stage_spawned	stage=implement pass=3 cycle_iteration=2 spawn_at=2026-11-22T06:29:56Z model=sonnet agent_name=21-38-impl3b prior_lines_ended=verified(afe6be3b2)
+2026-11-22T07:25:31Z	Story 21.38	ci_resolved	sha=fd137868f run=44993824287 result=success scope=B1-B6+lead_patch
