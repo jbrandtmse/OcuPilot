@@ -2,13 +2,16 @@
 title: 'Story 24.15: Credentials, default settings and schedules (Batch 2: credentials)'
 type: 'feature'
 created: '2026-11-21'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '598ed823244044bfaba7b396219265a986754af6'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-15-credentials-default-settings-and-schedules.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - 'medium, out-of-footprint: the agent can propose explorer.globals.delete or replace of ^Ens.SecondaryData.Password or ^Ens.Conf.CredentialsD in its own namespace, which removes or overwrites the provider credential that PROHIBITED.PROVIDERCREDENTIAL protects from the credential tools; PROTECTEDGLOBAL covers only OcuPilot''s own and the system databases. Mitigated: the three tools ship off and a person confirms. Sibling of DW-2822 (wallet parity); the binding conditions say not to widen this batch.'
+  - 'low, product call: a refused New credential clears the typed password, so a corrected second Save adds the credential with no password and no warning. Keeping the password across a refusal loosens "outlives no submit"; warning needs a new string.'
 ---
 
 <intent-contract>
@@ -106,6 +109,44 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `3ae1d87a3`; 
 
 ## Review Triage Log
 
+### 2026-11-21 — Review pass
+
+- verdicts: 13 findings — high 0, medium 2, low 8, false 3, maybe-false 0
+- findings:
+  - `[medium]` `patch` Roster `AdminStateWrite.Reads("Agent")` lacks the new public `GuardedCredentialNamedByEnabled` (verification-gap) — shown red by removing the row, row added, green.
+  - `[medium]` `patch` The password legs of `InteropCredentialControl` arranged the credential with a password already stored, so `stored` after a write could not tell a write from none (intent-alignment) — both legs re-arrange the credential with no password first and assert `0` before the write; skipping `PasswordSet` now reddens both.
+  - `[low]` `patch` Stale test comment: AC3 control test claimed `DraftRegistry` reddens under the snippet mutation — comment corrected.
+  - `[low]` `patch` Stale browser-spec comment on the AC5 mutation outcome — now says the dialog never closes.
+  - `[false]` `reject` The page's Set password could leave the password in `InteropCredentialStore` — the page resets the form on close, so a retained copy cannot be observed after the answer; the proposed assertion stayed green under the very mutation it names (tried, reverted), so it was not added.
+  - `[low]` `reject` AC2 gate, partner and name-limit mutation comments are prescriptions, not runs — one demonstrated mutation per AC is the rule and AC2 has one.
+  - `[low]` `reject` The update and password tools' `FINGERPRINTSUBJECT` has no target-changed test — the remove tool's test pins the shared mechanism and `ConfirmNamespaceRoster` pins the stored subject; a fix is a new leg for little gain.
+  - `[low]` `reject` The dialog spec's empty-Password assertion passes when the field is absent — the host keeps the dialog mounted, so it is load-bearing; no named harm.
+  - `[false]` `reject` The refusal runs at proposal only, not at confirm (verification-gap, intent-alignment) — the ruled binding condition and the plan say proposal time; by design.
+  - `[false]` `reject` The refusal does not live in `Prohibits` (intent-alignment, reading R2) — the spec places it in the tools' `RefusedBeforeState`; by design.
+  - `[low]` `reject` The provider test mints through `Mint` rather than a full agent turn (intent-alignment) — the mint is the one place the refusal acts and `Caller.IsTurn()` is its condition; the loop's own `Caller.Set` is covered by its own tests.
+  - `[low]` `reject` The agent's add can set a password only at the confirm (intent-alignment, descriptive) — the composed secret by design (AD-54).
+  - `[low]` `reject` Governance keys ship `add`, `update`, `password` on and `remove` off (intent-alignment, descriptive) — as the spec states.
+
+### 2026-11-22 — Code review (Batch 2, four layers)
+
+- verdicts: 28 findings — high 0, medium 4, low 23, false 1
+- patched:
+  - `[medium]` A confirm judged an add's or edit's partner and user name in the confirming namespace: the credential tools now mint through `InteropCredentialMint`, which stores `Namespace` in the arguments (as `InteropItemMint`); shown red by the kernel mint.
+  - `[medium]` An edit re-judged the partner it already held, so a credential naming a removed or free-text partner could not have its user name edited: `CredentialMoves` judges only the fields that change; shown red by answering the body whole.
+  - `[medium]` The Password cell read the raw `stored` / `not stored`: `VALUE_WORDS` draws the ruled "Stored" / "Not stored"; the browser spec now asserts the exact word.
+  - `[low]` A fetch error in `GuardedIdsWhere` read as "no definition names it": the loop now returns `%Next`'s status, so a failed read refuses (footprint extension, `Kernel/State/Base.cls`).
+  - `[low]` An edit compared against a read taken before the lock, and a row deleted between `%ExistsId` and `%OpenId` raised `<NULL VALUE>`: compared under the lock; the facts say absent.
+  - `[low]` The "names no caller" exemption is a helper that removes only the whole phrase "agent definition", with a test that other mentions of the agent still fail.
+  - `[low]` Five prescribed or missing mutations run (QA below); `Decided in-stage (implement)` 6 corrected from the instance.
+- deferred: the globals tools' route to the provider credential (medium, frontmatter); a refused add clearing the typed password (low, product call).
+- rejected (low unless named): an unused `interopCredentialRemoveTitle` key whose text renders as ruled; `ToolWrite`'s count message (the line Epic 21 edits); the tool descriptions' wording; untested rung and letter-case legs (fail-closed); `VendorRows` with no positive control (Task 0 (a) measured one); the page spec's store assertion (closed in the first review); an empty-name leg nothing observes; `IsOwnNamespace` answering `%SYS` (`Admit` refuses a namespace without interoperability (inference)); a concurrent add race; `||`, blank and `none` names; an unlogged partner read; the partner picker's own pair; three port helpers called after the request's gated read (AD-29, as the sibling families); `Prohibited.cls` word-diff removes one doc word, `forty-one` to `forty-two`, and no logic token; `[false]` the browser `settled` wait (`dialogClosed` resolves only after an applied answer).
+
+## Decisions
+
+- QA and review, 2026-11-22: the confirm-namespace fix extends `InteropItemMint`'s stamp as its own single-part mint, since that mint composes a production-scoped id.
+- QA and review, 2026-11-22: the "Stored" word reuses `analyticsColumnStored`, whose text is "Stored", because `strings.test.mjs` refuses a second key with the same value.
+- QA and review, 2026-11-22: `sslTabCredentials` reads "Credentials" and `x509DeleteConsequence` reads "Anything that names this credential can no longer use it. This cannot be undone.", with no X.509 word; both read true here and are kept.
+
 ## Design Notes
 
 **Veto items (recommended option first).**
@@ -133,6 +174,15 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `3ae1d87a3`; 
 3. Disabled definitions do not count; the binding names enabled ones.
 4. No harvest: no plan exists for the MCP suite's `CredentialManage`, and AD-62 confines the vendor calls to `InteropPort` (AD-23 not engaged).
 5. Side-bar position 14, after Compare default settings.
+
+**Measured (Task 0, `ocupilot-b-ci`, USER and HSCUSTOM, 2026-11-22; every probe row, node, role and user removed after).**
+
+- (a) With auditing on (a control default-setting save and delete in the same window wrote its two `ModifyDefaultSetting` rows), a credential save, a password set, an edit and a delete wrote no audit row in USER or HSCUSTOM: the vendor records nothing, so OcuPilot's own `ConfigChange` is the record. No read wrote a row.
+- (b) A principal holding `%Ens_Portal:USE`, `%Ens_Credentials:READ` and `%DB_USER:R` lists rows (`%ExecDirectNoPriv`) and opens one (`%OpenId`); its `%Save` raises `<PROTECT>` on `Ens.Config.Credentials` and its `%DeleteId` answers #940. With `%DB_USER:RW` and no `%Ens_Credentials:WRITE` a save with no password succeeds, a password save and a delete answer #940 (`%SYS.Ensemble.SecondarySet`/`SecondaryDelete` check `%Ens_Credentials:W`). With `%Ens_Credentials:RW` and `%DB_USER:R` the save raises `<PROTECT>`. With both write pairs, add, password and delete succeed. No further pair is needed. `^Ens.SecondaryData.Password` and `^Ens.Conf.CredentialsD` map to the namespace's own globals database (`%SYS.Namespace.GetGlobalDest`: USER `user`, HSCUSTOM `HSCUSTOM`).
+- (c) Names differing only in letter case are two rows; `%OpenId` and `%ExistsId` of another case match nothing, so the provider match is exact; the vendor's adapter lookup (`GetCredentialsObj`) folds case.
+- (d) `SystemName` takes the default `%String` limit: 50 characters save, 51 do not (#7201). A control character (1, 9, 10, 13, 31, 127) in a name saves, so the port's refusal is its own.
+- (e) The secondary node `^Ens.SecondaryData.Password(name)`: absent after an add with no password; written (non-empty) by a password set and kept by a username edit; removed by a delete. `PasswordSet("")` writes the node with length 0, so the stored test is existence and non-empty length (`$Length($Get(node)) > 0`), and an empty password is never sent to the vendor.
+- (f) `Kernel/Secret/Ladder.Credential` tests `%ExistsId` and opens by the exact name in the process's own namespace.
 
 **Governing ADs (Rule 6):** AD-3, AD-4, AD-5, AD-6, AD-8, AD-10, AD-13, AD-14, AD-15, AD-16, AD-22, AD-29, AD-34, AD-35, AD-36, AD-44, AD-51, AD-52, AD-53, AD-54, AD-55, AD-56, AD-58, AD-59, AD-60, AD-62. Not engaged: AD-21, AD-23, AD-63, AD-65, AD-66.
 
@@ -167,9 +217,65 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `3ae1d87a3`; 
 - mutation: AC5, the page's Set password sends no password (bundle rebuilt and redeployed) -> browser spec red on `stored`.
 - mutation: AC6, the fixture's credential drop removes nothing -> `InteropCredentialControl` red on its `none survives` leg.
 
+**Demonstrated (implement, `ocupilot-b-ci`; each reverted byte-identical by file digest and recompiled with every changed class).**
+
+- mutation: AC1, `PerformCredential` drops `BusinessPartner` on a set -> `InteropCredentialControl.TestThePersonsEditPasswordAndRemoveChangeOnlyWhatTheyCarry` red on `and the partner is cleared`.
+- mutation: AC1 password, `PerformCredential` skips `PasswordSet` on a password write (the credential re-arranged with no password first) -> `InteropCredentialControl.TestThePersonsEditPasswordAndRemoveChangeOnlyWhatTheyCarry` and `TestTheAgentsUpdatePasswordAndRemoveConfirmOverHttp` red on `stored`.
+- mutation: roster, `AdminStateWrite` without the `GuardedCredentialNamedByEnabled` row -> `AdminStateWrite.TestTheAdministratorStoresAreDeclared` red.
+- mutation: AC2, `CredentialWriteToken`'s add compares the name exactly -> `InteropCredentialRefusals.TestAHeldNameIsTakenInAnyCaseAndAMissingOneIsNotFound` red on the other-case Save and port legs.
+- mutation: AC3, `CredentialSnippet` renders the body's password -> `InteropCredentialControl.TestNoPasswordAppearsInAReadOrAScript` red on the add and password script legs. `DraftRegistry.TestNoSecretReachesAnyRenderedScript` stays green under it: the draft masks every declared secret before the port's snippet sees the body, so the leak is only reachable by a caller that hands the snippet a real value, which the control leg does.
+- mutation: binding 1, `InteropCredentialRemove.RefusedBeforeState` answers 0 -> `InteropCredentialProvider` red on the agent-remove test, the provider-only test and the renamed-provider test.
+- mutation: binding 2, `InteropCredentialPassword.RefusedBeforeState` answers 0 -> red on the agent-password test and the renamed-provider test.
+- mutation: binding 3, `InteropCredentialAction.RefusedForProvider` without its `Caller.IsTurn()` line -> red on `TestThePersonsChangeOfTheProvidersCredentialIsNotRefused` (Set password and Remove through the screen) and on the no-turn leg of the provider-only test.
+- mutation: binding 4, `Prohibited.ProviderCredential` answers 1 for any name -> red on the disabled-definition legs of the provider-only test, the renamed-provider test and `TestAFailedReadOfTheDefinitionsRefuses`.
+- mutation: binding 5, `Prohibited.ProviderCredential` reads a value captured once per process -> red on the renamed-provider test.
+- mutation: AC5, the page's Set password sends `{}` (bundle rebuilt and redeployed) -> `interop-credentials.browser-spec.mjs` AC5 test red (the dialog never closes: a `TimeoutError` after 30 s), not on a `stored` assertion.
+- mutation: AC6, `InteropLookupFixture.DropCredentials` returns at once -> `InteropCredentialControl` red on `none survives, with its password node` in `OnAfterOneTest`, and every test with it.
+
+Not demonstrated: the test comments that name a mutation of `CredentialNameOK` (control characters), `CredentialPartnerHeld`, `CREDENTIALWRITEPAIR` and the `Password` of the screen's page are prescriptions, not runs.
+
+**Verified (implement, `ocupilot-b-ci`).** `InteropCredentialControl` (7), `InteropCredentialRefusals` (4) and `InteropCredentialProvider` (6) green forward and in reverse order, no probe credential, password node, agent definition or script class left; `DraftRegistry`, `Prohibited`, `GovernanceBaseline`, `SurfaceCoverage`, `ReadTool`, `Descriptor`, `StageTwoTools`, `ToolRoundTrip`, `ToolEmit`, `InteropFloor`, `ToolWrite`, `ToolDispatch`, `SaveHoldCoverage`, `EndpointCoverage`, `Navigation`, `InteropDescriptor`, `InteropHostDescriptor`, `InteropMessageDescriptor`, `ConfirmNamespaceRoster` and `InteropDefaultSettingControl` green after the roster rows above; `npm run test:tools` 2388 of 2388; `npm run test:components` 320 files, 3820 tests; `npm run build` clean; `interop-credentials.browser-spec.mjs` 2 of 2 and `interop-default-settings.browser-spec.mjs` 5 of 5; `check-objectscript` and `lint-docs` clean. The full ObjectScript sweep, the a11y spec and the fresh rebuild are not run here.
+
+**Decided in-stage (implement).**
+
+1. The vendor's `UsernameIsValid` judges a user name (a transient object cannot, because the vendor's id key is empty); it is the "vendor refuses" leg, and the port's own length limit (3,640,873) answers first for the one value that reaches it.
+2. `Password` is a settable field of the add tool and one of the type's reviewed create fields (as the wallet secret's `Secret` is), because the add tool's `SettableFields` lists its composed secret; no payload, row, diff or audit payload carries it.
+3. The label of the screen is the existing "Credentials" key (`sslTabCredentials`) and the remove sentence the existing `x509DeleteConsequence`: `strings.test.mjs` refuses a second key with the same value.
+4. `Set password` is the page's own dialog mode, not the shell's `VALUE_ACTIONS` dialog, whose change-on-login box and account password policy are the Users list's.
+5. `interop.credentials.add` has no `Classification` entry: a classified entry would replace its declared `READBACKFIELDS` with the entry's rows and leave the read-back `unchecked`. The password tool's entry carries the authored `Password` secret, which is all the descriptor's `secretArguments` needs.
+6. `InteropFloor` holds the credentials screen and its read tool in the Operator roster, as the default settings screens are: on `ocupilot-b-ci`, `%EnsRole_Operator` holds `%Ens_Credentials:R`, and `%EnsRole_Administrator` holds `%Ens_Credentials:W` and is granted `%EnsRole_Operator`.
+7. `self-protection.test.mjs`'s "names no caller" rule ignores the phrase "agent definition", which names the stored definition and not the refused caller.
+8. `Prohibited.cls` takes one added term in the uncovered-type condition (`TYPEINTEROPCREDENTIAL`) and one entry in `Codes()`, as Batch 1 did for `TYPEDEFAULTSETTING`; no other logic changed.
+
+### QA
+
+Code review, `ocupilot-b-ci`; each mutation reverted byte-identical (`git diff` empty) and recompiled with its descendants.
+
+- mutation: AC2, `CredentialNameOK` without its control-character test -> `InteropCredentialRefusals.TestANameTheVendorCannotStoreIsRefusedBeforeAnythingIsStored` red on the `control` and `bell` legs and `and nothing was written`; the `long` legs stay green.
+- mutation: AC2, `CredentialPartnerHeld` answers 1 -> `TestAPartnerTheNamespaceDoesNotHoldIsRefused` red on the Save, port, mint and edit legs.
+- mutation: AC2, `CREDENTIALWRITEPAIR` names `%Ens_Credentials:READ` -> `TestTheGateRefusesEachPrincipalBeforeAnyVendorCall` red on the `OcuP2415CNoWrite` add, set, password and remove legs.
+- mutation: AC5, the page's Set password sends `{}` -> `interop-credential-list.page.spec.ts` red at :214, and, rebuilt and redeployed, `interop-credentials.browser-spec.mjs` AC5 red (`TimeoutError`, the dialog never closes).
+- mutation: binding (own namespace), `RefusedForProvider` without its `IsOwnNamespace` line -> `InteropCredentialProvider.TestOnlyTheProvidersOwnCredentialIsRefused` red on both "the provider's name in another namespace is proposed" legs.
+- mutation: binding (failed read), `ProviderCredential` starts from 0 -> `TestAFailedReadOfTheDefinitionsRefuses` red on "a read that fails answers that the name is the provider's".
+- mutation: binding (edit open), `InteropCredentialUpdate` overrides `RefusedBeforeState` with `RefusedForProvider` -> `TestOnlyTheProvidersOwnCredentialIsRefused` red on "the agent's edit of the provider's own user name is proposed".
+- mutation: AC1 (AD-52), `InteropCredentialAction.MintClass` answers the kernel's mint -> `InteropCredentialControl.TestAnAddConfirmedFromAnotherNamespaceIsJudgedWhereItRead` red (400 `TOOL.ARGUMENTS`, partner judged in HSCUSTOM).
+- mutation: AC2, `CredentialMoves` answers the body whole -> `TestAPartnerTheNamespaceDoesNotHoldIsRefused` red on the three kept-partner legs.
+- mutation: AC5 words, the Credentials entry of `VALUE_WORDS` keyed to another field -> `table-model.test.mjs` "the Password cell of a credential" red.
+- mutation: names no caller, `namesNoCaller` removes every "agent" -> `self-protection.test.mjs` "a refusal may name an agent definition" red.
+
+Verified after the patches, on a rebuilt `ocupilot-b-ci`, each class once on its first run: `InteropCredentialControl` 8, `InteropCredentialRefusals` 4, `InteropCredentialProvider` 6, `ConfirmNamespaceRoster` 3, `DraftRegistry` 9, `CompositeMintSweep` 5, `AdminStateWrite` 7, all green; `interop-credentials.browser-spec.mjs` 2 of 2; `npm run test:tools` 2390 of 2390; `npm run test:components` 320 files, 3820 tests, in four batches; `npm run build` clean; `check-objectscript` clean.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Implemented (pass 1).** Credentials through `InteropPort` (list, read, add, edit, set password, remove, script forms, `ConfigChange` audit), `InteropError` codes, four tools over `InteropCredentialAction`, `CredentialSave` and `POST /interop/credentials`, the `InteropCredentialList` descriptor (side bar 14), the `interop-credential` entity type, four baseline keys (`remove` ships off), the provider self-protection (`Prohibited.PROVIDERCREDENTIAL`, `ProviderCredential`, `Agent.GuardedCredentialNamedByEnabled`, refusal in the remove and password tools' `RefusedBeforeState` only for a turn in the process's own namespace), the client page, dialog and store, the EXPERIENCE.md row, the new tests and the roster rows. Task 0 results are under Design Notes, Measured; none halted the work.
+
+**Review.** Two layers: 13 findings, high 0, medium 2, low 8, false 3 (Review Triage Log). Patched: the `AdminStateWrite` roster row for the new `Agent` method (shown red without it), and the password legs of `InteropCredentialControl`, which now re-arrange the credential with no password so `stored` is discriminating (both legs go red when `PasswordSet` is skipped); two stale test comments corrected. Nothing deferred; `followup_review_recommended` false (two medium patches, one test-roster and one test-strength, no high).
+
+**Verification.** On a rebuilt `ocupilot-b-ci`: the three new classes and every changed roster class green on their first run, forward and in reverse (`SaveHoldCoverage` forward only, then inside the sweep); full ObjectScript sweep shards 1 to 17 all green; `interop-credentials` and `interop-default-settings` browser specs 7 of 7 forward and reverse; the a11y spec 13 of 13; `npm run test:tools` 2388 of 2388; `npm run test:components` 320 files and 3820 tests; `npm run build` clean; `check-objectscript` and `lint-docs` clean. No known flake reddened.
+
+**Residual risks.** The refusal is made at proposal time only (as ruled): a definition changed between proposal and confirm is not re-checked. The AC2 control-character, partner and gate legs and the page's Password mutation comments are prescriptions, not runs (Rule 19 asks one demonstrated mutation per AC). `InteropFloor` places the credentials screen in the Operator roster by the test's answer, not by an independent check of which role holds the pair.
 
 **Plan.** Batch 2 of three: Credentials (list, add, edit, set password, remove) through `InteropPort`, with the agent's remove and password change of an enabled agent definition's credential refused when proposed (the orchestrator's binding conditions, copied under Boundaries). Veto items: Design Notes 1 to 7, the refusal sentence first. Epic context reused as committed (orchestrator instruction); the 24.15 block, the EXPERIENCE.md rows, AD-10, AD-35, AD-56, AD-59 and AD-62 were read at their current commits. Read-only probes on `ocupilot-b-ci` (identity checked, 52777): USER holds no credentials; `Ens.Config.Credentials` declares `SystemName` with the default length, `Username` 3640873, `BusinessPartner` 255. Nothing was written to the instance; no scratch class or row was left.

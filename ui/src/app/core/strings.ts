@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:666 */
+  /** EXPERIENCE.md:667 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -9399,6 +9399,41 @@ export const STRINGS = {
   interopDefaultSettingsDiffPrompt2: 'Which differing settings would change how a production runs?',
   /** EXPERIENCE.md:624 */
   interopDefaultSettingsDiffPrompt3: 'Which settings exist in only one namespace?',
+  /** EXPERIENCE.md:625 */
+  interopCredentialBusinessPartner: 'Business partner',
+  /** EXPERIENCE.md:625 */
+  interopCredentialNotStored: 'Not stored',
+  /** EXPERIENCE.md:625 */
+  interopCredentialAddAction: 'New credential',
+  /** EXPERIENCE.md:625 */
+  interopCredentialEditTitle: 'Edit <name>',
+  /** EXPERIENCE.md:625 */
+  interopCredentialRemoveTitle: 'Remove <name>',
+  /** EXPERIENCE.md:625 */
+  interopCredentialHelp: 'Production settings name a credential to sign in to other systems. Its password is never shown here.',
+  /** EXPERIENCE.md:625 */
+  interopCredentialChangeConsequence: 'Anything that signs in with this credential uses the change from its next connection.',
+  /** EXPERIENCE.md:625 */
+  interopCredentialRefusalTaken: 'This namespace already has a credential with that name, in some letter case.',
+  /** EXPERIENCE.md:625 */
+  interopCredentialRefusalName: 'A credential name is 1 to 50 characters and holds no control characters.',
+  /** EXPERIENCE.md:625 */
+  interopCredentialRefusalPartner: 'This namespace has no business partner with that name.',
+  /** EXPERIENCE.md:625 */
+  interopCredentialRefusalValue: 'The instance did not accept this user name.',
+  /** EXPERIENCE.md:625 */
+  interopCredentialsEmpty: 'This namespace has no credentials.',
+  /** EXPERIENCE.md:625 */
+  interopCredentialsEmptyAgent: 'add a credential',
+  /** EXPERIENCE.md:625 */
+  interopCredentialsPrompt1: 'Which credentials does this namespace hold?',
+  /** EXPERIENCE.md:625 */
+  interopCredentialsPrompt2: 'Which credentials have no password stored?',
+  /** EXPERIENCE.md:625 */
+  interopCredentialsPrompt3: 'Add a credential for a business partner.',
+  /** EXPERIENCE.md:625 */
+  credentialRefusalProvider:
+    'An enabled agent definition reads its provider key from this credential, so only a person can remove it or change its password, on the Credentials screen.',
 } as const;
 
 /**

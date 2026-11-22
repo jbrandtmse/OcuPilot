@@ -1607,6 +1607,13 @@ XData Entries
     "authored": {
       "AuthPassword": "secret"
     }
+  },
+  "interop.credentials.password": {
+    "fieldList": "Process",
+    "classification": {},
+    "authored": {
+      "Password": "secret"
+    }
   }
 }
 }

@@ -338,6 +338,9 @@ const KERNEL_REFUSALS = [
   // Story 21.5: a global that holds OcuPilot's own data or the instance's protected system data, which either caller is refused changing or
   // deleting, and which the Globals list and the node page draw on the action before a click for a global OcuPilot's own name begins.
   ['PROTECTEDGLOBAL', 'globalRefusalProtected'],
+  // Story 24.15: the credential an enabled agent definition reads its provider key from, whose remove and password change the agent is refused
+  // when proposed and a person is not.
+  ['PROVIDERCREDENTIAL', 'credentialRefusalProvider'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -351,7 +354,28 @@ test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings
     assert.ok(experience.includes(`"${kernel[1]}"`), `${code}REASON is published in EXPERIENCE.md's Fixed strings table`);
     assert.equal(kernel[1], stringValue(key), `${code}REASON and ${key} are one published sentence`);
     assert.ok(prohibited.includes(`If pCode = ..#${code} Quit ..#${code}REASON`), `ReasonFor answers ${code} with its parameter`);
-    assert.ok(!kernel[1].toLowerCase().includes('agent'), `${code}REASON names no caller: ${kernel[1]}`);
+    assert.ok(namesNoCaller(kernel[1]), `${code}REASON names no caller: ${kernel[1]}`);
+  }
+});
+
+/**
+ * Whether a refusal sentence names no caller (AD-53): the whole phrase "agent definition" names a stored definition, never the caller that was
+ * refused, and any other "agent" names the caller.
+ */
+function namesNoCaller(sentence) {
+  return !sentence.toLowerCase().replace(/\bagent definitions?\b/g, '').includes('agent');
+}
+
+test('Story 24.15, AD-53: a refusal may name an agent definition, and any other mention of the agent still names a caller', () => {
+  // Mutation (Rule 19): widen the phrase `namesNoCaller` removes to the word "agent" -> the refused sentences go red.
+  assert.ok(namesNoCaller(stringValue('credentialRefusalProvider')), 'the provider credential refusal names the definition, not the caller');
+  for (const sentence of [
+    'The agent cannot remove this credential.',
+    'An enabled agent definition reads its key here, so the agent is refused.',
+    "The agent's definition reads its provider key from this credential.",
+    'A subagent definition reads its provider key from this credential.',
+  ]) {
+    assert.ok(!namesNoCaller(sentence), `still names a caller: ${sentence}`);
   }
 });
 

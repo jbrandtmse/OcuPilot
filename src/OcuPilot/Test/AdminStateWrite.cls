@@ -338,7 +338,7 @@ ClassMethod PlanKinds(pTest As %String) As %List
 ClassMethod Reads(pStore As %String) As %List
 {
     If ..IsInstallStore(pStore) Quit ##class(OcuPilot.Test.InstallRecordWrite).Reads(pStore)
-    If pStore = "Agent" Quit $ListBuild("GuardedByName", "GuardedCredentialOwned", "GuardedIdsByCredentialName", "GuardedIsEnabled", "GuardedList", "GuardedRetentions", "GuardedScreenRows", "GuardedVersion", "ResolveDefault", "ResolveFor", "ScreenRow", "SecurityFields", "SnapshotSecurityFields", "Timestamp")
+    If pStore = "Agent" Quit $ListBuild("GuardedByName", "GuardedCredentialNamedByEnabled", "GuardedCredentialOwned", "GuardedIdsByCredentialName", "GuardedIsEnabled", "GuardedList", "GuardedRetentions", "GuardedScreenRows", "GuardedVersion", "ResolveDefault", "ResolveFor", "ScreenRow", "SecurityFields", "SnapshotSecurityFields", "Timestamp")
     If pStore = "Switch" Quit $ListBuild("GuardedVersion", "Resolve", "Timestamp")
     If pStore = "Hold" Quit $ListBuild("GuardedForUser", "GuardedIdForUser", "GuardedList", "GuardedScreenRows", "ScreenRow", "Timestamp")
     If pStore = "Egress" Quit $ListBuild("GuardedVersion", "Resolve")

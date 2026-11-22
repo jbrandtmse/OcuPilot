@@ -291,6 +291,15 @@ Parameter PROVIDERSSL = "PROHIBITED.PROVIDERSSL";
 /// <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
 Parameter PROVIDERSSLREASON = "Provider calls are made through this SSL/TLS configuration, so while Switches names it, or while it is OcuPilot's own, it cannot be deleted, created, or have its type, peer verification, trusted certificates, minimum TLS version, cipher list or enablement changed.";
 
+/// <p>The agent's remove or password change of a credential an enabled agent definition of the <code>creds</code> rung names in its
+/// <code>CredentialName</code>, in OcuPilot's own namespace, where that rung opens it (<method>ProviderCredential</method>): proposed, it is refused
+/// and nothing is stored. A person's change on the Credentials screen is not refused, and neither is the agent's add or its edit of another field
+/// (Story 24.15, AD-10).</p>
+Parameter PROVIDERCREDENTIAL = "PROHIBITED.PROVIDERCREDENTIAL";
+
+/// <p>The one sentence <parameter>PROVIDERCREDENTIAL</parameter> carries, published and pinned as <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
+Parameter PROVIDERCREDENTIALREASON = "An enabled agent definition reads its provider key from this credential, so only a person can remove it or change its password, on the Credentials screen.";
+
 /// <p>The effect <method>WeakensByEffect</method> answers for an SSL/TLS configuration that is not
 /// OcuPilot's own whose peer verification a write turns off: the server's certificate is no longer
 /// checked. It is also the proposal's consequence code.</p>
@@ -308,7 +317,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,analytics-setting,analytics-worklist,security-recommendation,task-mail-setting,analytics-runtime-variable,analytics-user-icon,sql-statement,system-alerts,pmml-definition,pmml-model,page-resource,default-setting";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,analytics-setting,analytics-worklist,security-recommendation,task-mail-setting,analytics-runtime-variable,analytics-user-icon,sql-statement,system-alerts,pmml-definition,pmml-model,page-resource,default-setting,interop-credential";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -855,6 +864,12 @@ Parameter TYPEBUSINESSPARTNER = "business-partner";
 /// passes the reviewed-few sweep and nothing else.</p>
 Parameter TYPEDEFAULTSETTING = "default-setting";
 
+/// <p>A credential of a namespace (AD-62, Story 24.15). AD-10 names one effect on it: the remove and password change of the credential an enabled
+/// agent definition reads its provider key from, which the tools refuse when proposed (<parameter>PROVIDERCREDENTIAL</parameter>). A create sets its
+/// name, user name and business partner, a change the user name and business partner, and a write passes the reviewed-few sweep and nothing else;
+/// the password is never a field of a payload.</p>
+Parameter TYPEINTEROPCREDENTIAL = "interop-credential";
+
 /// <p>A backup task and a database on the backup database list (Story 21.2). AD-10 names no effect on either, and the freeze's bound is the
 /// port's: OcuPilot owns no backup, so a write passes the reviewed-few sweep and nothing else.</p>
 Parameter TYPEBACKUPTASK = "backup-task";
@@ -1254,10 +1269,10 @@ Parameter READTYPE = "GET";
 /// <method>Mapping</method> adds, the one <method>Database</method> adds, and the one
 /// <method>Lock</method> adds, and the one <method>Code</method> adds, and the one
 /// <method>SqlStatement</method> adds, the key arm's and the encryption start arm's, and the two
-/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last, and the one <method>OwnRoutineApplication</method> arm adds after it, and the one <method>AgentReachable</method> judges, and the one <method>ProviderSsl</method> judges, and the start arm's journal and KMIP codes, and the one <method>Mirror</method> judges, and the one <parameter>PERSONONLY</parameter> adds, and the one <parameter>PROTECTEDGLOBAL</parameter> adds last -- forty-one in all.</p>
+/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last, and the one <method>OwnRoutineApplication</method> arm adds after it, and the one <method>AgentReachable</method> judges, and the one <method>ProviderSsl</method> judges, and the start arm's journal and KMIP codes, and the one <method>Mirror</method> judges, and the one <parameter>PERSONONLY</parameter> adds, and the one <parameter>PROTECTEDGLOBAL</parameter> adds, and the one <parameter>PROVIDERCREDENTIAL</parameter> adds last -- forty-two in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP, ..#ALLOWLISTAGENT, ..#PROVIDERSSL, ..#STARTUPJOURNAL, ..#STARTUPKMIP, ..#MIRRORDATABASES, ..#PERSONONLY, ..#PROTECTEDGLOBAL)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP, ..#ALLOWLISTAGENT, ..#PROVIDERSSL, ..#STARTUPJOURNAL, ..#STARTUPKMIP, ..#MIRRORDATABASES, ..#PERSONONLY, ..#PROTECTEDGLOBAL, ..#PROVIDERCREDENTIAL)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -1310,6 +1325,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#MIRRORDATABASES Quit ..#MIRRORDATABASESREASON
     If pCode = ..#PERSONONLY Quit ..#PERSONONLYREASON
     If pCode = ..#PROTECTEDGLOBAL Quit ..#PROTECTEDGLOBALREASON
+    If pCode = ..#PROVIDERCREDENTIAL Quit ..#PROVIDERCREDENTIALREASON
     Quit ""
 }
 
@@ -1456,6 +1472,8 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEBUSINESSPARTNER Quit $ListFromString("Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes")
     ; Story 24.15: a system default setting change sets its value, description and deployable flag.
     If pType = ..#TYPEDEFAULTSETTING Quit $ListFromString("Value,Description,Deployable")
+    ; Story 24.15: a credential change sets its user name and business partner; its password is a declared secret and never a payload field.
+    If pType = ..#TYPEINTEROPCREDENTIAL Quit $ListFromString("Username,BusinessPartner")
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDESCALATIONONLY, ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
     If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames")
     If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
@@ -1643,6 +1661,8 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPEBUSINESSPARTNER Quit $ListFromString("Name,Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes")
     ; Story 24.15: a system default setting add sets its name and three fields; its production, item and host class are the id's and its namespace the payload's.
     If pType = ..#TYPEDEFAULTSETTING Quit $ListFromString("Setting,Value,Description,Deployable")
+    ; Story 24.15: a credential add sets its name, user name and business partner; its password is a declared secret, supplied at the confirm, and its namespace is the payload's.
+    If pType = ..#TYPEINTEROPCREDENTIAL Quit $ListFromString("Name,Username,BusinessPartner,Password")
     Quit ""
 }
 
@@ -1727,7 +1747,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPEFOLDERITEM) && '..IsListingGroupType(tType) && '..IsQualityMeasureType(tType) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) && (tType '= ..#TYPENLSDEFAULT) && (tType '= ..#TYPELOCALE) && (tType '= ..#TYPELOCALEPROPERTY) && (tType '= ..#TYPEGLOBAL) && (tType '= ..#TYPEGLOBALNODE) && (tType '= ..#TYPESYSTEMSECURITYSETTING) && (tType '= ..#TYPEPHONEPROVIDER) && (tType '= ..#TYPESECURITYRECOMMENDATION) && (tType '= ..#TYPETASKMAILSETTING) && (tType '= ..#TYPESQLSTATEMENT) && (tType '= ..#TYPESYSTEMALERTS) && (tType '= ..#TYPEDEFAULTSETTING) && '..IsAnalyticsSettingType(tType) && '..IsPmmlDefinitionType(tType) && (tType '= ..#TYPEPAGERESOURCE) {
+        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPEFOLDERITEM) && '..IsListingGroupType(tType) && '..IsQualityMeasureType(tType) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) && (tType '= ..#TYPENLSDEFAULT) && (tType '= ..#TYPELOCALE) && (tType '= ..#TYPELOCALEPROPERTY) && (tType '= ..#TYPEGLOBAL) && (tType '= ..#TYPEGLOBALNODE) && (tType '= ..#TYPESYSTEMSECURITYSETTING) && (tType '= ..#TYPEPHONEPROVIDER) && (tType '= ..#TYPESECURITYRECOMMENDATION) && (tType '= ..#TYPETASKMAILSETTING) && (tType '= ..#TYPESQLSTATEMENT) && (tType '= ..#TYPESYSTEMALERTS) && (tType '= ..#TYPEDEFAULTSETTING) && (tType '= ..#TYPEINTEROPCREDENTIAL) && '..IsAnalyticsSettingType(tType) && '..IsPmmlDefinitionType(tType) && (tType '= ..#TYPEPAGERESOURCE) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1945,6 +1965,13 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             }
             ; Story 24.15: a system default setting add carries the namespace it was composed in beside its fields, as an entry add does.
             If tType = ..#TYPEDEFAULTSETTING {
+                Set tEntryPayload = ..ParsedObject(pPayload)
+                If tEntryPayload.%GetTypeOf("Namespace") '= "unassigned" Do tEntryPayload.%Remove("Namespace")
+                Set tSC = ..Created(tType, 0, tEntryPayload, .pProhibits, .pCode, tId)
+                Quit
+            }
+            ; Story 24.15: a credential add carries the namespace it was composed in beside its fields, as a default setting add does.
+            If tType = ..#TYPEINTEROPCREDENTIAL {
                 Set tEntryPayload = ..ParsedObject(pPayload)
                 If tEntryPayload.%GetTypeOf("Namespace") '= "unassigned" Do tEntryPayload.%Remove("Namespace")
                 Set tSC = ..Created(tType, 0, tEntryPayload, .pProhibits, .pCode, tId)
@@ -2240,6 +2267,12 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; A system default setting (Story 24.15): AD-10 names no effect on one, so a write passes the reviewed-few sweep and nothing else.
         If tType = ..#TYPEDEFAULTSETTING {
             Set tSC = ..ReviewedFewOnly(..#TYPEDEFAULTSETTING, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A credential (Story 24.15): the agent's remove and password change of the provider's own are refused when proposed, so a write passes the
+        ; reviewed-few sweep and nothing else here.
+        If tType = ..#TYPEINTEROPCREDENTIAL {
+            Set tSC = ..ReviewedFewOnly(..#TYPEINTEROPCREDENTIAL, .tChanged, .pProhibits, .pCode)
             Quit
         }
         ; The authentication and web session options (Story 18.8): OcuPilot's own sign-in and start are not cut.
@@ -7113,6 +7146,29 @@ ClassMethod AgentReachable(pToolName As %String) As %Boolean
         Set tReachable = 1
     }
     Quit tReachable
+}
+
+/// <p>Whether the credential <var>pName</var> is one an enabled agent definition of the <code>creds</code> rung names (Story 24.15): the stored
+/// definitions are read at each call, and the name is matched exactly. <b>A read that fails answers 1</b>, so a question the instance cannot answer is
+/// refused rather than passed.</p>
+ClassMethod ProviderCredential(pName As %String) As %Boolean
+{
+    Set tNamed = 1
+    Try {
+        Set tSC = $ClassMethod(..AgentStateClass(), "GuardedCredentialNamedByEnabled", pName, .tFound)
+        If $$$ISERR(tSC) Quit
+        Set tNamed = ''tFound
+    } Catch {
+        Set tNamed = 1
+    }
+    Quit tNamed
+}
+
+/// <p>The class whose guarded reads answer the stored agent definitions, which <method>ProviderCredential</method> reads. Overridable so a test
+/// can arm a read that fails; production never overrides it.</p>
+ClassMethod AgentStateClass() As %String
+{
+    Quit "OcuPilot.Kernel.State.Agent"
 }
 
 /// <p>The class whose <code>Resolve</code> answers the instance's outbound settings, which

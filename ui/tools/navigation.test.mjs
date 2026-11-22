@@ -482,6 +482,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 24.15: System default settings and Compare default settings, listed last.
       'interoperability/default-settings',
       'interoperability/default-settings-diff',
+      // Story 24.15: Credentials, listed after them.
+      'interoperability/credentials',
       // Story 20.11: Analytics' four unlisted screens (a cube's three tabs and a term list's entries), then Cubes, Term lists and Folder items.
       'analytics/cubes/dimensions',
       'analytics/cubes/document',
@@ -1133,9 +1135,9 @@ test('Story 20.8: the Productions name cell still opens Production items, the di
   assert.equal(screenForUrl(`/${viewer.route}?ns=USER`)?.route, viewer.route);
   assert.equal(screenForUrl(`/${viewer.route}/x?ns=USER`), null, 'a route id after it names no screen');
   const listed = listedScreensForArea('interoperability').map((screen) => screen.route);
-  assert.equal(listed.at(-4), viewer.route, 'listed before Messages (Story 20.9) and the two default settings screens (Story 24.15), which close the area\'s side bar');
-  assert.equal(listed.at(-3), 'interoperability/messages', 'Messages follows it');
-  assert.deepEqual(listed.slice(-2), ['interoperability/default-settings', 'interoperability/default-settings-diff'], 'and System default settings and Compare default settings close the side bar');
+  assert.equal(listed.at(-5), viewer.route, 'listed before Messages (Story 20.9), the two default settings screens and Credentials (Story 24.15), which close the area\'s side bar');
+  assert.equal(listed.at(-4), 'interoperability/messages', 'Messages follows it');
+  assert.deepEqual(listed.slice(-3), ['interoperability/default-settings', 'interoperability/default-settings-diff', 'interoperability/credentials'], 'and System default settings, Compare default settings and Credentials close the side bar');
 });
 
 test('parentIdSegment reads a parent-scoped screen\'s route id, encoded twice, and answers \'\' for any screen that is not', () => {
