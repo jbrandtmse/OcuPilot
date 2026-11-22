@@ -923,3 +923,10 @@
 2026-11-22T00:22:14Z	Story 21.37	ruling	question=DW-2823 via=orchestrator choice=orchestrator's_call;routed_to_21-38(wording_batch)
 2026-11-22T00:22:14Z	Story 21.37	code_head_pushed	sha=e70e535d7 run=44966266106 missing=none includes=7a6bd1a3e(review)
 2026-11-22T00:22:14Z	Story 21.37	gate_step	step=fresh_check+full_sweep+smoke head=e70e535d7 started=2026-11-22T00:22:14Z dir=e21u/21-37/gate
+2026-11-22T03:10:52Z	Story 21.37	ci_resolved	story=21.37 sha=e70e535d7 runs=44966266106 result=success
+2026-11-22T03:10:52Z	Story 21.37	fresh_check	env=recipe(ci-throwaway_rebuild) tests=24_classes+2_specs result=pass order=forward,reverse(specs) head=e70e535d7
+2026-11-22T03:10:52Z	Story 21.37	sweep	shards=20/20_green head=e70e535d7
+2026-11-22T03:10:52Z	Story 21.37	smoke	container=ocupilot-ci executed=49 passed=49 failed=0 skipped=1(agentswitches:switches_written_by_an_earlier_test_on_this_instance,the_check's_own_rule)
+2026-11-22T03:10:52Z	Story 21.37	integrated_forward	feature=108879ecf(24.15_B1) merge=M=ca78cffc5 conflicts=8(EntityType,Prohibited,Test/Prohibited_unions;Descriptor_113;Test/Prohibited_101_types;ReadTool_573;ToolRoundTrip+strings.ts_unions;screens.generated.ts_regenerated) verified=screen-mirror(263/113),test:tools_2388,check-objectscript_0,LOADERRORS=0,15_roster_classes_green(ToolWrite,ReadTool,ToolEmit,CompositeMintSweep,ToolDispatch,Descriptor,Prohibited,ToolRoundTrip,GovernanceBaseline,Navigation,SurfaceCoverage,DraftRegistry,StageTwoTools,RemovalRowsSweep,MappingDescriptor)
+2026-11-22T03:10:52Z	Story 21.37	code_head_pushed	sha=ca78cffc5 run=44979425183 missing=none note=integrate-only_M
+2026-11-22T03:10:52Z	Story 21.37	story_complete	head=e70e535d7(gates)+M=ca78cffc5 run=44966266106(+44979425183) fresh=pass sweep=20/20 smoke=49/49+1_skip vetoes=U-128,U-134,U-136 spine=2fd24558e(AD-15)
