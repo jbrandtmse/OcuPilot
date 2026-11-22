@@ -919,3 +919,7 @@
 2026-11-21T23:02:17Z	Story 21.37	ci_red_classified	run=44950309360 sha=9e79177c4 defects=RemovalRowsSweep,StageTwoTools,ToolEmit,ToolRoundTrip(rosters)
 2026-11-21T23:02:17Z	Story 21.37	rework_opened	cycle_iteration=2 iteration=1 trigger=high(ci_defect) items=4_rosters scope_baseline=7a6bd1a3e
 2026-11-21T23:02:17Z	Story 21.37	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-21T23:02:17Z model=sonnet agent_name=21-37-implement-rework-1 cycle_iteration=2 prior_lines_ended=verified(aa5ec9204)
+2026-11-22T00:22:14Z	Story 21.37	dev_complete	scope=rework1(4_rosters;PageResourceClear_REMOVALROWS) build_sha=e70e535d7 followup_review_recommended=false
+2026-11-22T00:22:14Z	Story 21.37	ruling	question=DW-2823 via=orchestrator choice=orchestrator's_call;routed_to_21-38(wording_batch)
+2026-11-22T00:22:14Z	Story 21.37	code_head_pushed	sha=e70e535d7 run=44966266106 missing=none includes=7a6bd1a3e(review)
+2026-11-22T00:22:14Z	Story 21.37	gate_step	step=fresh_check+full_sweep+smoke head=e70e535d7 started=2026-11-22T00:22:14Z dir=e21u/21-37/gate

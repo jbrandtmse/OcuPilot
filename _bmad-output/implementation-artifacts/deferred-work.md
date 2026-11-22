@@ -14369,6 +14369,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-37-page-resources.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: ScreensDeclaringPage counts a write tool's CLASSICPAGES (e.g. %CSP.UI.Portal.Dialog.ExportResource -> Resources) while Gate.RequiredPairs unions only the descriptor's own pages; the ruled sentences then overstate the effect
 - 2026-11-21T21:37:02Z status=decision-pending owner=burndown by=cr note=wording or a split of the declaring set is the owner's: ruled strings (U-128) and AC4's derivation are spec-bound
+- 2026-11-22T00:21:48Z status=routed owner=21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=orchestrator note=wording_and_derivation:a_page_declared_only_by_a_write_tool's_CLASSICPAGES_gets_a_line_saying_what_the_resource_gates(that_action,_name_from_the_tool's_own_label);a_page_declared_both_ways_keeps_the_screen-open_line_and_adds_the_action_line;exact_sentences_in_21.38's_plan_wording_batch
 
 ### DW-2824: Test fixtures repeat the replace-a-user block (Security.Users Delete and Create in %SYS) with no shared helper; PageResourceFixture.EnsureUser copies ScreenAccessFixture.EnsureSecurity (Rule 31)
 - source: spec-21-37-page-resources.md | severity: med | fix-risk: med | footprint: out-of-footprint
