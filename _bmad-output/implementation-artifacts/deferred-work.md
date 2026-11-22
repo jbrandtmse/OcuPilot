@@ -8487,6 +8487,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-21T01:35:50Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=orchestrator note=occurrence:24.14-2b_head_73c758917(server-only)_run44845372336_browser_1/5_a11y_AC5_settle_/agent/governance_720px_light;fifth_today;21-23_moved_ahead_of_21-37
 - 2026-11-21T11:38:26Z status=routed owner=burndown by=orchestrator note=awaiting_a_CI_red_with_the_shipped_diagnostics(21.23_stall_report,346d580fe);resolve_or_wontfix_at_burn-down
 - 2026-11-21T17:49:21Z by=epic-24-runner note=occurrence after 21.23 merged: CI run 44927449204 (24.14 Batch 4 integrate head 84f1ad5c9, which carries feature de0df01f9), browser shard 1/5, a11y-structural-invariants failed whole on a settle timeout at /ocupilot/agent/governance?ns=HSCUSTOM (1280px light, 60 s, retried light then dark); the same specs plus 20 others passed 132/132 forward and reverse on ocupilot-b-ci built from the same tree
+- 2026-11-22T06:23:35Z status=routed owner=21-39-ci-health-the-governance-renderer-stall-and-the-journal-reve by=orchestrator note=fix_forward_21.39(CI_health,Rule_27): DW-1822 2 of last 5 runs, DW-2517 two consecutive runs
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -12715,6 +12716,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-13T08:40:40Z status=resolved-by:23-10-the-range-end-cleanup-part-9-two-sweeps by=adjudication note=cd679de0: second page sends maxRows 10; red not observed (23.4 s vs 0.33 s at 10.4M records); structural pin
 - 2026-11-22T03:54:36Z status=routed owner=burndown by=orchestrator note=reopen_reason=recurrence; recurred after the 23-10 fix (cd679de0), run 44979425183 job 137076439199 on ca78cffc5 (instance shard 1/8, PORT.TIMEOUT on the reverse-order read); an AdminPort BackgroundTask 500 ERROR #9509 Failed to send signal to job came earlier in the same shard
 - 2026-11-22T05:34:51Z status=routed owner=burndown by=lead note=recurred again: run 44986244257 job 137097327539 on 83879c118 (instance shard 2/8), PORT.TIMEOUT on the reverse-order read; second recurrence in consecutive runs
+- 2026-11-22T06:23:35Z status=routed owner=21-39-ci-health-the-governance-renderer-stall-and-the-journal-reve by=orchestrator note=fix_forward_21.39(CI_health,Rule_27): DW-1822 2 of last 5 runs, DW-2517 two consecutive runs
 
 ### DW-2526: flake: LogHubErrors.TestASeededErrorReadsInTheHubsForm read a row other than its seeded error as the newest (CI instance shard 8/8)
 - source: CI run 43332030735 (Story 20.39 head 8d7fa08a) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -13197,6 +13199,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-15T18:29:29Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=orchestrator note=flake_classified; unchanged rerun
 - 2026-11-19T11:02:54Z status=routed owner=21-23-test-hygiene-and-contended-client-fixes by=runner note=same_family_as_DW-1822(a11y_governance_settle;reopened_and_routed_to_21-23_2026-11-18);not_in_21.10's_scope
 - 2026-11-21T11:38:26Z status=routed owner=burndown by=orchestrator note=awaiting_a_CI_red_with_the_shipped_diagnostics(21.23_stall_report,346d580fe);resolve_or_wontfix_at_burn-down
+- 2026-11-22T06:23:36Z status=routed owner=21-39-ci-health-the-governance-renderer-stall-and-the-journal-reve by=orchestrator note=fix_forward_21.39(CI_health,Rule_27): DW-1822 2 of last 5 runs, DW-2517 two consecutive runs
 ### DW-2601: A screen action whose write landed but whose after-write step failed answers an error, so the client publishes no change event and the list keeps the old value
 - source: spec-21-4-nls-locales-and-sql-settings.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Operation.ApplyAt returns AfterWrite's error after the write; ScreenAction.cls:422-426 answers Fault and skips readBack/target; screen-action-handler.ts:1750 publishes nothing on error (its comment says a refused write changed nothing). Reached by ConfigSettingSet's failed purge and UserPassword's flag re-apply.

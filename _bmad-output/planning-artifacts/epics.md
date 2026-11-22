@@ -9811,6 +9811,26 @@ So that no area has a remaining gap.
 - **When** each is worked
 - **Then** it is fixed, or closed with its reason, without changing a product behavior its story ruled, and every new sentence is one the orchestrator ruled.
 
+### Story 21.39: CI health: the governance renderer stall and the journal reverse-read timeout
+
+[ADDED 2026-11-22, Story 21.38 CI, orchestrator ruling: fix-forward, Rule 27] Inserted after Story 21.38 because two CI-health flakes went red too often to wait for burn-down: DW-1822 in 2 of the last 5 runs across Epics 21 and 24, and DW-2517 in two consecutive runs after Story 23.10's fix. It takes DW-1822, DW-2517 and DW-2600, and DW-2821 if it recurs, and runs right after Story 21.38 merges, before Story 21.6.
+
+As the builder,
+I want the governance renderer stall and the journal reverse-read timeout fixed at their causes,
+So that a red CI run means a real defect again.
+
+**Acceptance Criteria:**
+
+- **Given** shard 1/5's spec order from run 44927449204 or 44986244257 on one throwaway
+- **When** the governance page stalls
+- **Then** its response and a CPU profile at the stall are captured, and the cause is fixed, with no deadline changed.
+- **Given** a journal the size CI's throwaway holds
+- **When** the agent's journal tool reads in reverse order
+- **Then** the read's measured cost explains the timeout, the cause is fixed, and the ERROR #9509 signal failure that preceded it in run 44979425183 is explained.
+- **Given** a cause that a real reproduction attempt cannot find
+- **When** the plan or build reaches that point
+- **Then** the evidence goes to the orchestrator before any mitigation, and no retry stands in for a cause.
+
 ---
 
 ## Epic 22: Stage 6 - the long tail, on demand
