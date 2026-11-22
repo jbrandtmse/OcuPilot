@@ -746,3 +746,6 @@
 2026-11-22T16:56:54Z	Story 24.16	ruling	question=batches,gate,limits,strings choice=keep category=veto inbox=U-142 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-22T16:56:54Z	Story 24.16	spec_validated	scope=batch1 owned_ledger=none
 2026-11-22T16:56:54Z	Story 24.16	stage_spawned	stage=implement spawn_at=2026-11-22T16:56:54Z model=sonnet agent_name=24-16-implement-batch1 cycle_iteration=1 story_base=98abd23ca
+2026-11-22T16:58:06Z	Story 24.16	coordinator_conditions_relayed	scope=batch1 to=implement conditions=contain_vendor_%All($ROLES_restore_all_paths+test+mutation),PURGEBITMAP_clause_if_measured,ConfigChange+counts_written_after_vendor_return(named_limit_names_Logs>Audit),days0_meaning_in_PURGERUN
+2026-11-22T18:46:41Z	Story 24.16	note	feature=c655a65bd(21.39) integrate_target=c655a65bd no_shared_rosters
+2026-11-22T21:39:40Z	Story 24.16	stage_completed	stage=implement scope=batch1 commit=4120ae6d8 task0=no_vendor_audit,completed-sessions_rule_true,bodies_rule_true,days0=all_to_end_of_today_except_todays_alerts,partial_purge_without_SQL_rights,bitmap_roles_unchanged review=16(6_med_patched,10_rejected) sweep=17/17 test_tools=2395 components=3881 a11y=13/13 for_ruling=check-objectscript_rule6_allowlist(New_$ROLES_PurgeFrame),new_agent_phrase_change_a_purge_setting,days_clamped_above_~67000 protocol=sed_-i_once,git_add_-N_once(undone)
