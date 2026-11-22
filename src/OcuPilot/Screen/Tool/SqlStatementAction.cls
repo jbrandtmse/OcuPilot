@@ -7,7 +7,7 @@
 /// entries. The fingerprint covers <parameter>FINGERPRINTSUBJECT</parameter>, which names the namespace so that a confirm reaches the namespace
 /// the proposal read (<method>PortQuery</method>); a statement that changed after its proposal is closed target-changed.</p>
 /// <p><b>Its rules are the tool's.</b> <method>Holds</method> decides whether the fresh read still meets the action's precondition, and
-/// <method>StateDiff</method> refuses an unmet one with the sentence <parameter>REFUSALCODE</parameter> carries, for both callers. A statement
+/// <method>StateDiff</method> refuses an unmet one with the sentence <method>RefusalCode</method> names, for both callers. A statement
 /// any of whose tables is OcuPilot's own is refused by the kernel's own-statement arm for both callers, before any write
 /// (<class>OcuPilot.Kernel.Proposal.Prohibited</class>).</p>
 /// <p><b>Its pairs</b> are its screen's, which hold the custom resource of the classic SQL page the screen replaces, and WRITE on the namespace's
@@ -152,9 +152,16 @@ ClassMethod Holds(pFresh As %DynamicObject) As %Boolean
     Quit 1
 }
 
+/// <p>The code whose sentence refuses the fresh read <var>pFresh</var>, which does not meet the precondition: <parameter>REFUSALCODE</parameter>
+/// here, for a write whose refusals state one reason.</p>
+ClassMethod RefusalCode(pFresh As %DynamicObject) As %String
+{
+    Quit ..#REFUSALCODE
+}
+
 /// <p>The one state row this proposal's card shows, from the fresh read <var>pFresh</var>: <parameter>STATEFIELD</parameter> moving from
 /// what the instance holds to <parameter>STATEAFTER</parameter>. A read that does not meet the precondition (<method>Holds</method>) is
-/// <var>pProblem</var>, the sentence <parameter>REFUSALCODE</parameter> carries.</p>
+/// <var>pProblem</var>, the sentence <method>RefusalCode</method> names.</p>
 ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, Output pProblem As %String) As %Status
 {
     Set pRows = []
@@ -162,7 +169,7 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
     Set tSC = $$$OK
     Try {
         If '$IsObject(pFresh) || '..Holds(pFresh) {
-            Set pProblem = ##class(OcuPilot.Port.SqlPort).ReasonFor(..#REFUSALCODE)
+            Set pProblem = ##class(OcuPilot.Port.SqlPort).ReasonFor(..RefusalCode(pFresh))
             Quit
         }
         Set tRow = {}

@@ -77,6 +77,7 @@ ClassMethod Remove(pNamespace As %String) As %Status
                 Set tHash = ..HashOf(pNamespace, tToken, tRelation)
                 If tHash = "" Continue
                 If $Extract(..Facts(pNamespace, tHash).PlanState, 1, 7) = "Frozen/" Do $SYSTEM.SQL.Statement.UnfreezeStatement(tHash)
+                If ..Facts(pNamespace, tHash).PlanState = "Unfrozen/Parallel" Do ..SetPlanFlag(tHash, pNamespace, 0)
                 Do UpdateSQLIndex^%SYS.SQLSRV(tHash, "")
                 Do $SYSTEM.SQL.Statement.ClearStatement(tHash)
             }
@@ -168,6 +169,21 @@ ClassMethod SetStatistics(pHash As %String, pNamespace As %String = "")
     Try {
         Set $NAMESPACE = pNamespace
         Set ^rINDEXSQL("sqlidx", 5, pHash, "stat") = $ListBuild(3, 0.3, 0, +$Horolog, 3, 30)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+}
+
+/// <p>Put the plan-state flag of <var>pHash</var> in <var>pNamespace</var> at <var>pFlag</var>, <code>3</code> for <code>Unfrozen/Parallel</code>, in
+/// the statement index's own node (the first element of its plan information, which the information schema's <code>Frozen</code> reads). The
+/// throwaway's optimizer does not choose a parallel plan for the probe's statements, so a test that needs the state writes the flag.</p>
+ClassMethod SetPlanFlag(pHash As %String, pNamespace As %String, pFlag As %Integer)
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        If $Data(^rINDEXSQL("sqlidx", 1, pHash, "planinfo")) Set $List(^rINDEXSQL("sqlidx", 1, pHash, "planinfo"), 1) = pFlag
         Set $NAMESPACE = tOrigNS
     } Catch {
         Set $NAMESPACE = tOrigNS

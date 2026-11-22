@@ -351,6 +351,11 @@ Parameter STATEMENTALREADYFROZEN = "SQL.STATEMENT.ALREADYFROZEN";
 
 Parameter REASONSTATEMENTALREADYFROZEN = "This statement's plan is already frozen.";
 
+/// <p>A plan in the <code>Unfrozen/Parallel</code> state, for which the classic statement dialog disables its Freeze Plan button.</p>
+Parameter STATEMENTPARALLEL = "SQL.STATEMENT.PARALLEL";
+
+Parameter REASONSTATEMENTPARALLEL = "This statement's plan uses parallel processing and cannot be frozen.";
+
 Parameter STATEMENTNOTFROZEN = "SQL.STATEMENT.NOTFROZEN";
 
 Parameter REASONSTATEMENTNOTFROZEN = "This statement's plan is not frozen.";
@@ -387,7 +392,7 @@ Parameter REASONSTATEMENTCLEARERROR = "The plan error is removed from the statem
 
 Parameter STATEMENTCLEAN = "SQL.STATEMENT.CLEAN";
 
-Parameter REASONSTATEMENTCLEAN = "Statements that no class or routine in this namespace still holds are removed from its statement index.";
+Parameter REASONSTATEMENTCLEAN = "Removes every statement in this namespace's index that no class or routine still holds. A statement whose plan is frozen stays.";
 
 Parameter CACHEDQUERYPURGE = "SQL.CACHEDQUERY.PURGE";
 
@@ -399,6 +404,7 @@ ClassMethod SqlReasonFor(pCode As %String) As %String
 {
     If pCode = ..#STATEMENTVENDOR Quit ..#REASONSTATEMENTVENDOR
     If pCode = ..#STATEMENTALREADYFROZEN Quit ..#REASONSTATEMENTALREADYFROZEN
+    If pCode = ..#STATEMENTPARALLEL Quit ..#REASONSTATEMENTPARALLEL
     If pCode = ..#STATEMENTNOTFROZEN Quit ..#REASONSTATEMENTNOTFROZEN
     If pCode = ..#STATEMENTNOERROR Quit ..#REASONSTATEMENTNOERROR
     If pCode = ..#STATEMENTNOSTALE Quit ..#REASONSTATEMENTNOSTALE

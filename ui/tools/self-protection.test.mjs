@@ -747,6 +747,7 @@ const ATELIER_REFUSALS = [
   // Story 21.6: the statement writes' vendor and precondition refusals, and the sentences their cards and dialogs state.
   ['REASONSTATEMENTVENDOR', 'sqlStatementRefusalVendor'],
   ['REASONSTATEMENTALREADYFROZEN', 'sqlStatementRefusalAlreadyFrozen'],
+  ['REASONSTATEMENTPARALLEL', 'sqlStatementRefusalParallel'],
   ['REASONSTATEMENTNOTFROZEN', 'sqlStatementRefusalNotFrozen'],
   ['REASONSTATEMENTNOERROR', 'sqlStatementRefusalNoError'],
   ['REASONSTATEMENTNOSTALE', 'sqlStatementRefusalNoStale'],

@@ -186,6 +186,26 @@ Method TestAPlanIsFrozenAndUnfrozenOnBothCallers()
     Do $$$AssertEquals(..Verdict(tStatus, tAnswer) _ "|" _ $Select($IsObject(tAnswer) && $IsObject(tAnswer.detail): tAnswer.detail.problem, 1: ""), "400 TOOL.ARGUMENTS|" _ ##class(OcuPilot.Api.AtelierError).#REASONSTATEMENTNOTFROZEN, "the screen's unfreeze of an unfrozen plan is refused with its sentence")
 }
 
+/// <p>AC2. A plan in the <code>Unfrozen/Parallel</code> state is refused by the screen's freeze and by the agent's proposal with the parallel
+/// plan's own sentence, not the already-frozen one, before any write, and the statement is unchanged. The state is written into the statement
+/// index by the probe, since the throwaway's optimizer does not choose a parallel plan for the probe's statements (<code>%PARALLEL</code> over
+/// 8,192 rows read <code>Unfrozen</code>); the refusal is keyed on what the fresh read answers.</p>
+/// <p>Mutation (Rule 19): the freeze tool's <code>RefusalCode</code> answers its <code>REFUSALCODE</code> for every plan -> both sentence assertions go
+/// red; <code>SqlTuningProbe.Remove</code> skips the reset of the plan-state flag -> the last assertion goes red.</p>
+Method TestAParallelPlanIsRefusedItsOwnSentenceOnBothCallers()
+{
+    Set tHash = ..Hash()
+    Do $ClassMethod(..#PROBE, "SetPlanFlag", tHash, ..#NAMESPACE, 3)
+    Do $$$AssertEquals(..State(tHash), "Unfrozen/Parallel||3", "the probe statement's plan is in the Unfrozen/Parallel state")
+    Set tStatus = ..Act("freeze", tHash, , .tAnswer)
+    Do $$$AssertEquals(..Verdict(tStatus, tAnswer) _ "|" _ ..State(tHash), "400 TOOL.ARGUMENTS|Unfrozen/Parallel||3", "the screen's freeze is refused before any write")
+    Do $$$AssertEquals($Select($IsObject(tAnswer) && $IsObject(tAnswer.detail): tAnswer.detail.problem, 1: ""), ##class(OcuPilot.Api.AtelierError).#REASONSTATEMENTPARALLEL, "with the parallel plan's sentence")
+    Set tConfirm = ..Agent(..#FREEZE, tHash, , , .tProposal, .tResult)
+    Do $$$AssertEquals(tConfirm _ "|" _ ..State(tHash), "mint 400 " _ ##class(OcuPilot.Api.AtelierError).#REASONSTATEMENTPARALLEL _ "|Unfrozen/Parallel||3", "and so is the agent's, and the plan is unchanged")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", ..#NAMESPACE), "the probe's removal puts the plan-state flag back")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Facts", ..#NAMESPACE, tHash).PlanState, "Unfrozen", "so the statement reads Unfrozen again")
+}
+
 /// <p>AC3. A statement's statistics are cleared by the agent's confirmed proposal and its plan error by the screen's action, each reading blank
 /// afterwards while its plan state is unchanged; a clear of the plan error of a statement that has none is refused with its sentence on both
 /// callers, and the clear of statistics has no precondition.</p>
