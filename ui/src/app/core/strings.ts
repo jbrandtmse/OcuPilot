@@ -5535,6 +5535,26 @@ export const STRINGS = {
   explorerSqlStatementListPrompt1: 'Which statements take the longest on average?',
   explorerSqlStatementListPrompt2: 'Is any plan frozen, and does a newer plan exist?',
   explorerSqlStatementListPrompt3: 'Which statements have a plan error?',
+  // Story 21.6: the statement and cached-query actions, the sentences their dialogs and cards state, and the refusals the instance answers.
+  // Purge on one query reuses auditDatabasePurgeConfirm.
+  sqlStatementFreezeAction: 'Freeze plan',
+  sqlStatementUnfreezeAction: 'Unfreeze plan',
+  sqlStatementClearStatisticsAction: 'Clear statistics',
+  sqlStatementClearErrorAction: 'Clear plan error',
+  sqlStatementCleanAction: 'Clean stale statements',
+  sqlCachedQueryPurgeTableAction: 'Purge this table\'s cached queries',
+  sqlCachedQueryPurgeAllAction: 'Purge all cached queries in this namespace',
+  sqlStatementFreezeConsequence: 'This statement keeps its current plan until it is unfrozen, even when its indices or table statistics change.',
+  sqlStatementUnfreezeConsequence: 'This statement takes the plan the optimizer chooses the next time it is prepared.',
+  sqlStatementClearStatisticsConsequence: 'This statement\'s run statistics are removed, and counting starts again at its next run.',
+  sqlStatementClearErrorConsequence: 'The plan error is removed from the statement index. The plan itself is unchanged.',
+  sqlStatementCleanConsequence: 'Statements that no class or routine in this namespace still holds are removed from its statement index.',
+  sqlCachedQueryPurgeConsequence: 'The purged queries are prepared again the next time each one runs.',
+  sqlStatementRefusalAlreadyFrozen: 'This statement\'s plan is already frozen.',
+  sqlStatementRefusalNotFrozen: 'This statement\'s plan is not frozen.',
+  sqlStatementRefusalNoError: 'This statement has no plan error.',
+  sqlStatementRefusalNoStale: 'This namespace\'s statement index holds no stale statements.',
+  sqlStatementRefusalVendor: 'The instance did not apply this change to the statement.',
   // Story 18.6: License key and License servers -- their titles, License key's twelve field labels
   // beyond License usage's "License units", the authorization-key line, the activate dialog's
   // labels, validity, restart and reduction sentences and consequence, Print and its printed-by

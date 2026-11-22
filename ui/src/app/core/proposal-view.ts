@@ -487,6 +487,13 @@ export const CONSEQUENCE_ANALYTICSCUBESYNCHRONIZE = 'ANALYTICS.CUBE.SYNCHRONIZE'
 /** Story 21.2: a backup run's and a freeze's cards; each is one published sentence. */
 export const CONSEQUENCE_BACKUPRUN = 'BACKUP.RUN';
 export const CONSEQUENCE_BACKUPFREEZE = 'BACKUP.FREEZE';
+/** Story 21.6: the SQL statement writes' and the cached-query purges' cards; each is one published sentence. */
+export const CONSEQUENCE_SQLSTATEMENTFREEZE = 'SQL.STATEMENT.FREEZE';
+export const CONSEQUENCE_SQLSTATEMENTUNFREEZE = 'SQL.STATEMENT.UNFREEZE';
+export const CONSEQUENCE_SQLSTATEMENTCLEARSTATISTICS = 'SQL.STATEMENT.CLEARSTATISTICS';
+export const CONSEQUENCE_SQLSTATEMENTCLEARERROR = 'SQL.STATEMENT.CLEARERROR';
+export const CONSEQUENCE_SQLSTATEMENTCLEAN = 'SQL.STATEMENT.CLEAN';
+export const CONSEQUENCE_SQLCACHEDQUERYPURGE = 'SQL.CACHEDQUERY.PURGE';
 /** Story 24.2: the term list editor's delete and entry remove; each is one published sentence. */
 export const CONSEQUENCE_ANALYTICSTERMLISTDELETE = 'ANALYTICS.TERMLIST.DELETE';
 export const CONSEQUENCE_ANALYTICSTERMLISTREMOVE = 'ANALYTICS.TERMLIST.REMOVE';
@@ -748,6 +755,13 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 21.2: a backup run's note and a freeze's warning, each published once.
   if (code === CONSEQUENCE_BACKUPRUN) return STRINGS.backupRunNote;
   if (code === CONSEQUENCE_BACKUPFREEZE) return STRINGS.backupFreezeConsequence;
+  // Story 21.6: the statement writes' and the purges' sentences, each published once.
+  if (code === CONSEQUENCE_SQLSTATEMENTFREEZE) return STRINGS.sqlStatementFreezeConsequence;
+  if (code === CONSEQUENCE_SQLSTATEMENTUNFREEZE) return STRINGS.sqlStatementUnfreezeConsequence;
+  if (code === CONSEQUENCE_SQLSTATEMENTCLEARSTATISTICS) return STRINGS.sqlStatementClearStatisticsConsequence;
+  if (code === CONSEQUENCE_SQLSTATEMENTCLEARERROR) return STRINGS.sqlStatementClearErrorConsequence;
+  if (code === CONSEQUENCE_SQLSTATEMENTCLEAN) return STRINGS.sqlStatementCleanConsequence;
+  if (code === CONSEQUENCE_SQLCACHEDQUERYPURGE) return STRINGS.sqlCachedQueryPurgeConsequence;
   // Story 24.2: the term list editor's delete and entry remove sentences, each published once.
   if (code === CONSEQUENCE_ANALYTICSTERMLISTDELETE) return STRINGS.analyticsTermListDeleteConsequence;
   if (code === CONSEQUENCE_ANALYTICSFOLDERITEMDELETE) return STRINGS.analyticsFolderItemDeleteConsequence;

@@ -73,6 +73,12 @@ const {
   CONSEQUENCE_JOURNALSWITCHFILE,
   CONSEQUENCE_BACKUPRUN,
   CONSEQUENCE_BACKUPFREEZE,
+  CONSEQUENCE_SQLSTATEMENTFREEZE,
+  CONSEQUENCE_SQLSTATEMENTUNFREEZE,
+  CONSEQUENCE_SQLSTATEMENTCLEARSTATISTICS,
+  CONSEQUENCE_SQLSTATEMENTCLEARERROR,
+  CONSEQUENCE_SQLSTATEMENTCLEAN,
+  CONSEQUENCE_SQLCACHEDQUERYPURGE,
   CONSEQUENCE_CONFIGSETTINGRESTART,
   CONSEQUENCE_CONFIGMAPPINGDELETE,
   CONSEQUENCE_CONFIGNLSRELOAD,
@@ -1357,6 +1363,29 @@ test('Story 21.2: a backup run and a freeze state their consequence on the card'
   const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
   assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('BackupRun'))?.[1], CONSEQUENCE_BACKUPRUN, 'BackupRun.cls declares the run code the card reads');
   assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('BackupFreeze'))?.[1], CONSEQUENCE_BACKUPFREEZE, 'BackupFreeze.cls declares the freeze code the card reads');
+});
+
+// Story 21.6: each statement write and the three purges state their ruled sentence on the card, each tool declaring the code the card reads.
+// Mutation (Rule 19): swap two returns in `consequenceSentence`'s SQL branches -> the sentence assertion goes red naming the code.
+test('Story 21.6: the SQL statement writes and the cached-query purges state their consequence on the card', () => {
+  const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
+  const rows = [
+    ['ExplorerSqlStatementFreeze', 'SQL.STATEMENT.FREEZE', CONSEQUENCE_SQLSTATEMENTFREEZE, STRINGS.sqlStatementFreezeConsequence],
+    ['ExplorerSqlStatementUnfreeze', 'SQL.STATEMENT.UNFREEZE', CONSEQUENCE_SQLSTATEMENTUNFREEZE, STRINGS.sqlStatementUnfreezeConsequence],
+    ['ExplorerSqlStatementClearStatistics', 'SQL.STATEMENT.CLEARSTATISTICS', CONSEQUENCE_SQLSTATEMENTCLEARSTATISTICS, STRINGS.sqlStatementClearStatisticsConsequence],
+    ['ExplorerSqlStatementClearError', 'SQL.STATEMENT.CLEARERROR', CONSEQUENCE_SQLSTATEMENTCLEARERROR, STRINGS.sqlStatementClearErrorConsequence],
+    ['ExplorerSqlStatementClean', 'SQL.STATEMENT.CLEAN', CONSEQUENCE_SQLSTATEMENTCLEAN, STRINGS.sqlStatementCleanConsequence],
+    ['SqlCachedQueryPurge', 'SQL.CACHEDQUERY.PURGE', CONSEQUENCE_SQLCACHEDQUERYPURGE, STRINGS.sqlCachedQueryPurgeConsequence],
+  ];
+  for (const [name, code, constant, sentence] of rows) {
+    assert.equal(constant, code, `${name}'s code is the constant the card reads`);
+    assert.equal(consequenceSentence(constant), sentence, `${code} states its ruled sentence`);
+    assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool(name))?.[1], code, `${name}.cls declares the code the card reads`);
+  }
+  // Each of the three purge tools inherits the one purge code.
+  for (const name of ['ExplorerSqlCachedQueryPurge', 'ExplorerSqlCachedQueryPurgeTable', 'ExplorerSqlCachedQueryPurgeNamespace']) {
+    assert.ok(/Extends OcuPilot\.Screen\.Tool\.SqlCachedQueryPurge\b/.test(tool(name)), `${name} inherits the purge code`);
+  }
 });
 
 // Story 21.3: a startup, memory or compatibility setting that takes effect only at the next restart states the reused restart sentence on the

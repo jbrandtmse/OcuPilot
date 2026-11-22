@@ -744,6 +744,18 @@ const ATELIER_REFUSALS = [
   ['REASONCOMMANDOWNCODE', 'explorerCommandOwnCodeReason'],
   ['REASONCLASSMETHODOWNCODE', 'explorerClassMethodOwnCodeReason'],
   ['REASONCLASSMETHODNOTFOUND', 'explorerClassMethodNotFoundReason'],
+  // Story 21.6: the statement writes' vendor and precondition refusals, and the sentences their cards and dialogs state.
+  ['REASONSTATEMENTVENDOR', 'sqlStatementRefusalVendor'],
+  ['REASONSTATEMENTALREADYFROZEN', 'sqlStatementRefusalAlreadyFrozen'],
+  ['REASONSTATEMENTNOTFROZEN', 'sqlStatementRefusalNotFrozen'],
+  ['REASONSTATEMENTNOERROR', 'sqlStatementRefusalNoError'],
+  ['REASONSTATEMENTNOSTALE', 'sqlStatementRefusalNoStale'],
+  ['REASONSTATEMENTFREEZE', 'sqlStatementFreezeConsequence'],
+  ['REASONSTATEMENTUNFREEZE', 'sqlStatementUnfreezeConsequence'],
+  ['REASONSTATEMENTCLEARSTATISTICS', 'sqlStatementClearStatisticsConsequence'],
+  ['REASONSTATEMENTCLEARERROR', 'sqlStatementClearErrorConsequence'],
+  ['REASONSTATEMENTCLEAN', 'sqlStatementCleanConsequence'],
+  ['REASONCACHEDQUERYPURGE', 'sqlCachedQueryPurgeConsequence'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {
