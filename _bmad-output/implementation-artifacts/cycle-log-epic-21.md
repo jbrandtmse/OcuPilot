@@ -944,3 +944,4 @@
 2026-11-22T04:42:50Z	Story 21.38	integrated_forward	feature=1d3cc3a3b merge=M=83879c118 conflicts=0 verified=screen-mirror,test:tools_2391,check-objectscript_0
 2026-11-22T04:42:50Z	Story 21.38	code_head_pushed	sha=83879c118 run=44986244257 missing=none
 2026-11-22T04:43:39Z	Story 21.38	stage_spawned	stage=implement pass=2(B4-B6) spawn_at=2026-11-22T04:43:39Z model=sonnet agent_name=21-38-impl2 prior_lines_ended=verified(a4950ebab)
+2026-11-22T05:34:52Z	Story 21.38	ci_red	run=44986244257 sha=83879c118 reds=browser_shard_3/5(interop-item-test_AC3:B1_regression,arrow-name_prefix_lacks_<label>,fix_after_pass2_returns),browser_shard_1/5(a11y-structural-invariants:DW-1822_stall_evidence#2,held_for_burndown),instance_shard_2/8(JournalRecords:DW-2517_recurrence#2)

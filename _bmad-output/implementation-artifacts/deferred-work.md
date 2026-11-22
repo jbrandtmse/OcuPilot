@@ -12714,6 +12714,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-12T17:08:40Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI-health flake; first priority in 23.10 with DW-2513 (Rule 27)
 - 2026-11-13T08:40:40Z status=resolved-by:23-10-the-range-end-cleanup-part-9-two-sweeps by=adjudication note=cd679de0: second page sends maxRows 10; red not observed (23.4 s vs 0.33 s at 10.4M records); structural pin
 - 2026-11-22T03:54:36Z status=routed owner=burndown by=orchestrator note=reopen_reason=recurrence; recurred after the 23-10 fix (cd679de0), run 44979425183 job 137076439199 on ca78cffc5 (instance shard 1/8, PORT.TIMEOUT on the reverse-order read); an AdminPort BackgroundTask 500 ERROR #9509 Failed to send signal to job came earlier in the same shard
+- 2026-11-22T05:34:51Z status=routed owner=burndown by=lead note=recurred again: run 44986244257 job 137097327539 on 83879c118 (instance shard 2/8), PORT.TIMEOUT on the reverse-order read; second recurrence in consecutive runs
 
 ### DW-2526: flake: LogHubErrors.TestASeededErrorReadsInTheHubsForm read a row other than its seeded error as the newest (CI instance shard 8/8)
 - source: CI run 43332030735 (Story 20.39 head 8d7fa08a) | severity: med | fix-risk: low | footprint: out-of-footprint
