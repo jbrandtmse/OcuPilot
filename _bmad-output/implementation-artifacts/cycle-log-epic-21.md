@@ -939,3 +939,4 @@
 2026-11-22T03:33:54Z	Story 21.38	stage_spawned	stage=implement pass=1(B1-B3+Task0) spawn_at=2026-11-22T03:33:54Z model=sonnet agent_name=21-38-impl prior_lines_ended=verified(a068311fa)
 2026-11-22T03:54:36Z	Story 21.37	ci_red	run=44979425183 sha=ca78cffc5 job=instance_shard_1/8 test=JournalRecords.TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap cause=DW-2517_recurrence(PORT.TIMEOUT) touched=none action=orchestrator_rerun_--failed push_hold=until_rerun_lands
 2026-11-22T04:18:59Z	Story 21.37	ci_resolved	story=21.37 sha=ca78cffc5 runs=44979425183(attempt2_--failed) result=success flake=DW-2517(reopened,burndown)
+2026-11-22T04:22:04Z	Story 21.37	merged	feature=1d3cc3a3b by=orchestrator
