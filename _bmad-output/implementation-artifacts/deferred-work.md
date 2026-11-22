@@ -14375,3 +14375,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-15-credentials-default-settings-and-schedules.md (review fc4a22869) | severity: high | fix-risk: low | footprint: out-of-footprint
 - evidence: 24.15 review reproduced it for InteropDefaultSettingRemove with a test that deleted HSCUSTOM's identical setting instead of USER's before the fix; the three sibling tools share the pattern (Stories 20.26 and 20.5)
 - 2026-11-22T00:34:39Z status=routed owner=burndown by=epic-24-runner note=same fix as fc4a22869: Namespace becomes part of what the remove stores
+- 2026-11-22T00:58:36Z status=routed owner=24-15-credentials-default-settings-and-schedules by=epic-24-runner note=orchestrator ruling: data loss in shipped code; scheduled as 24.15 Batch 1b after Batch 1 merges and before Batch 2; sweep the whole registered write-tool set first and report the roster before any change outside InteropPort

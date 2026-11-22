@@ -104,6 +104,7 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `928133dd
 ## Spec Change Log
 
 - 2026-11-21, spec gate (runner, veto item U-135): Question 1 three batches kept; Question 2 the separate Compare default settings screen kept; Question 3 ruled the stricter option for Batch 2 (refuse the agent's remove or password change of the credential the provider configuration names; the screen is not refused), since the agent must not disable itself; Question 4 the audit masking kept in Batch 1 with its proposed AD-35 line; Question 5 the proposed strings kept.
+- 2026-11-21, split amended (runner, orchestrator ruling on DW-2827): a Batch 1b runs after Batch 1 merges and before Batch 2. It fixes a confirmed remove that deletes the same-named row in the confirming namespace instead of the proposal's. It first sweeps the whole registered write-tool set (remove, delete, clear and update forms) for a stored proposal that can lose its namespace, and reports that roster before any change outside `InteropPort`. If the roster spans other epics' ports, or the fix belongs in the kernel's confirm, it stops at plan.
 
 ## Review Triage Log
 
