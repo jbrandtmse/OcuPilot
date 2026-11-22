@@ -962,3 +962,4 @@
 2026-11-22T09:11:48Z	Story 21.38	code_head_pushed	sha=26828c057 run=45006300417 missing=none scope=review_patches
 2026-11-22T09:11:48Z	Story 21.38	ledger_closed	resolved-by=DW-2369,2405,2442,2474,2499,2823 remaining_owned=0
 2026-11-22T09:11:48Z	Story 21.38	gate_step	step=fresh_check+full_sweep+smoke head=26828c057 started=2026-11-22T09:11:48Z dir=e21u/21-38/gate
+2026-11-22T09:13:13Z	Story 21.38	ledger_note	id=DW-2834 evidence=screens.generated.ts_gated_green_263/263 status_stands=wontfix-accepted(skew_only)
