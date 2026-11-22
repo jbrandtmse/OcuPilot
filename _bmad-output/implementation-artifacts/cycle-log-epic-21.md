@@ -1021,3 +1021,5 @@
 2026-11-22T23:43:55Z	Story 21.6	sweep	shards=20/20_green head=47363d553
 2026-11-22T23:43:55Z	Story 21.6	smoke	container=ocupilot-ci executed=50 passed=50 failed=0 skipped=0
 2026-11-22T23:43:55Z	Story 21.6	story_complete	head=47363d553(gates,contains_feature_c655a65bd;no_M_needed) run=45070444672 fresh=pass sweep=20/20 smoke=50/50 vetoes=U-83,U-143,U-144 ledger_owned=0
+2026-11-22T23:44:21Z	Story 21.25	story_started	base=47363d553(+bookkeeping) doctrine=3d11cec9 policy=b9ff703e hold=none spec=ready-for-dev(planned_2026-11-16;ruling_U-146)
+2026-11-22T23:44:21Z	Story 21.25	stage_spawned	stage=implement spawn_at=2026-11-22T23:44:21Z model=sonnet agent_name=21-25-impl prior_lines_ended=verified(a455605c6)

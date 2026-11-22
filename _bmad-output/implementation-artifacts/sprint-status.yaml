@@ -409,7 +409,7 @@ development_status:
   21-22-ci-flake-hardening: done
   21-23-test-hygiene-and-contended-client-fixes: done
   21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit: done
-  21-25-index-rebuild-and-tune-table: ready-for-dev
+  21-25-index-rebuild-and-tune-table: in-progress
   21-26-runtime-statistics: backlog
   21-27-the-index-analyzer-and-its-advice: backlog
   21-28-alternate-show-plans: backlog
