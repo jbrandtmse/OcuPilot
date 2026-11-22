@@ -405,7 +405,9 @@ export class ConfigSettingsPage {
       reloads,
       secret,
       saves,
-      multiline: this.screen?.descriptor === TASK_MAIL_SETTING_LIST && text(row['Name']).startsWith(TASK_MAIL_MESSAGE_PREFIX),
+      multiline:
+        (this.screen?.descriptor === TASK_MAIL_SETTING_LIST && text(row['Name']).startsWith(TASK_MAIL_MESSAGE_PREFIX)) ||
+        (this.screen?.descriptor === INTEROP_PURGE_SETTING_LIST && text(row['Kind']) === 'text'),
       title: '',
       fieldOnly: false,
       statement:

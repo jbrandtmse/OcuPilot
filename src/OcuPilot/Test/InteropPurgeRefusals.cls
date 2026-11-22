@@ -3,7 +3,8 @@
 /// already running in the namespace, the classic page's lock held by a child job this class starts and ends, is 409 <code>INTEROP.PURGE.RUNNING</code> and deletes
 /// nothing. The gate runs as real principals in a child process: a caller without <code>%Ens_Purge:USE</code>, one without <code>%Ens_PurgeSettings:WRITE</code>, one who
 /// cannot write the database and one who cannot read it, each refused by name before any vendor call and before any value is judged. A purge with the bitmap cleanup on gives the
-/// process's roles back, on the way out of the vendor call and on a raised error, and no log line carries a description or a vendor status text.</p>
+/// process's roles back, on the way out of the vendor call and on a raised error, and no log line carries a description or a vendor status text. A principal without
+/// the SQL delete rights gets the vendor's failure, never a 200, and days at the edge of the calendar reach the vendor as a purge of nothing.</p>
 /// <p><b>What it needs from the environment:</b> interoperability-enabled <code>USER</code> and <code>HSCUSTOM</code> namespaces, the HTTP test account and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it creates and deletes users and roles named <code>OcuP2416*</code>. It removes every probe record,
 /// principal and role it creates, ends the lock-holding job it starts, and puts both namespaces' setting nodes back exactly as it found them.</p>
@@ -29,6 +30,9 @@ Parameter PRINCIPALS = "OcuP2416Exact:%Development:U,%Ens_Portal:U,%Ens_Purge:U,
 
 /// <p>The one principal the roles legs run as: it holds no administrative role.</p>
 Parameter ROLESPRINCIPAL = "OcuP2416Roles:%Development:U,%Ens_Portal:U,%Ens_Purge:U,%DB_USER:RW";
+
+/// <p>The principal of the partial purge: the database's WRITE and the purge's pairs, and no SQL delete rights on the Ensemble tables.</p>
+Parameter PARTIALPRINCIPAL = "OcuP2416Partial:%Development:U,%Ens_Portal:U,%Ens_Purge:U,%DB_USER:RW";
 
 /// <p>The legs a probe runs, in order, <code>&lt;name&gt;|&lt;type&gt;|&lt;endpoint&gt;</code>.</p>
 Parameter LEGS = "counts|LIST|Purge,state|PURGESTATE|Purge,purge|PURGE|Purge,settings|LIST|PurgeSettings,set|SETTINGSET|PurgeSettings";
@@ -64,6 +68,7 @@ Method OnAfterAllTests() As %Status
     Set tSC = $$$OK
     If ..PreparedSettings '= "" Set tSC = $ClassMethod(..#FIXTURE, "RestoreSettings", ..PreparedSettings)
     Set tSC = $$$ADDSC(tSC, $ClassMethod(..#GENERATOR, "DeletePrincipals", ..#PRINCIPALS))
+    Set tSC = $$$ADDSC(tSC, $ClassMethod(..#GENERATOR, "DeletePrincipals", ..#PARTIALPRINCIPAL))
     Quit $$$ADDSC(tSC, $ClassMethod(..#GENERATOR, "DeletePrincipals", ..#ROLESPRINCIPAL))
 }
 
@@ -237,7 +242,8 @@ Method TestNoLogLineCarriesADescriptionOrAVendorStatusText()
         Set tVerdict = ..Verdict("3650", .tFault, ..#SEAM)
         Do $$$AssertEquals($Extract(tVerdict, 1, 3), "500", tMode _ ": the purge answers 500: " _ tVerdict)
         Do $$$AssertTrue('..LockHeld(), tMode _ ": a purge that failed lets go of the lock")
-        If tMode = "status" Do $$$AssertEquals($ClassMethod(..#CONTROL, "OwnRows", tSince), 1, "status: a purge the vendor answered with an error is still recorded, as a partial purge may have deleted")
+        If tMode = "status" Do $$$AssertEquals($ClassMethod(..#CONTROL, "OwnRows", tSince, .tData), 1, "status: a purge the vendor answered with an error is still recorded, as a partial purge may have deleted")
+        If tMode = "status" Do $$$AssertTrue($Get(tData) [ """completed"":false", "status: and the row says the purge did not complete: " _ $Get(tData))
         Set tLog = $ClassMethod(..#SEAM, "LoggedText")
         Do $$$AssertTrue(tLog '= "", tMode _ ": the failure is logged")
         Do $$$AssertTrue(tLog '[ tMarker, tMode _ ": the log carries no vendor status text: " _ tLog)
@@ -247,10 +253,12 @@ Method TestNoLogLineCarriesADescriptionOrAVendorStatusText()
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Counts", "USER"), ..#ARRANGED, "a purge the vendor did not run deleted nothing")
 }
 
-/// <p>The two legs of the roles test: a purge with the bitmap cleanup on, as a process holding no administrative role, over back-dated probes, and the same
-/// with a vendor call that raises after the process has changed its roles. In each the roles the process holds before and after the port's call are equal; in the
-/// second the process held other roles inside the call, so the test cannot pass for want of a change.</p>
-/// <p>Mutation (Rule 19): remove <code>New $ROLES</code> from <method>OcuPilot.Port.InteropPort.PurgeFrame</method> -- the raised-error leg goes red.</p>
+/// <p>The three legs of the roles test, each in a child process with the bitmap cleanup on: (a) a purge over back-dated probes as a principal holding no
+/// administrative role; (b) the same principal's purge raising after the vendor's purge and bitmap cleanup have run; (c) <code>_SYSTEM</code>'s purge raising after the
+/// process has added a role to its own inside the call. In each the roles the process holds after the port's call are exactly those it held before, no more and no
+/// fewer; in (c) the process held other roles inside the call, so that leg cannot pass for want of a change. A principal cannot change its own roles, so (a) and (b) hold
+/// whether or not the frame gives them back, and (c) is the leg the frame's removal reddens.</p>
+/// <p>Mutation (Rule 19): remove <code>New $ROLES</code> from <method>OcuPilot.Port.InteropPort.PurgeFrame</method> -- leg (c) goes red.</p>
 Method TestTheProcessRolesAreGivenBackOnSuccessAndOnAnError()
 {
     Set tSC = $ClassMethod(..#GENERATOR, "CreatePrincipals", ..#ROLESPRINCIPAL, ..PreparedPassword, "the purge roles")
@@ -266,18 +274,72 @@ Method TestTheProcessRolesAreGivenBackOnSuccessAndOnAnError()
     If $IsObject(tOut) && (tOut.%Get("error") = "") {
         Do $$$AssertTrue(tOut.loggedIn, "the principal logged in")
         Do $$$AssertEquals(tOut.http, 200, "the purge with the bitmap cleanup on ran and answered 200: " _ tOut.%ToJSON())
-        Do $$$AssertTrue(..BitmapRuns("USER") > tRuns, "and the vendor's bitmap cleanup ran over USER")
-        Do $$$AssertEquals(tOut.after, tOut.before, "the process's roles after the call are the roles before it: " _ tOut.before)
+        Do $$$AssertTrue(..BitmapRuns("USER") > tRuns, "(a) and the vendor's bitmap cleanup ran over USER")
+        Do $$$AssertTrue(tOut.before '[ "%All", "(a) the principal holds no administrative role: " _ tOut.before)
+        Do $$$AssertEquals(tOut.after, tOut.before, "(a) the process's roles after the call are the roles before it: " _ tOut.before)
     }
-    ; The raised-error leg runs in this process, which holds roles it may add to (a principal may not change its roles at all).
-    Set ^IRIS.Temp.OcuProbe2416Mode = "roles"
-    Set tBefore = $ROLES
-    Set tVerdict = ..Verdict("3650", .tFault, ..#SEAM)
-    Set tAfter = $ROLES
-    Do $$$AssertEquals($Extract(tVerdict, 1, 3), "500", "the purge that raised answered 500: " _ tVerdict)
-    Do $$$AssertEquals(tAfter, tBefore, "the process's roles after the call are the roles before it: " _ tBefore)
-    Do $$$AssertTrue($Get(^IRIS.Temp.OcuProbe2416Mode("inside")) '= $Get(^IRIS.Temp.OcuProbe2416Mode("before")), "and inside the call the process held other roles: " _ $Get(^IRIS.Temp.OcuProbe2416Mode("inside")))
+    Set tRuns = ..BitmapRuns("USER")
+    Set tOut = ..ProbeAs("OcuP2416Roles", "after")
+    Do $$$AssertTrue($IsObject(tOut) && (tOut.%Get("error") = ""), "(b) the raised-error probe ran: " _ $Select($IsObject(tOut): tOut.%Get("error"), 1: tOut))
+    If $IsObject(tOut) && (tOut.%Get("error") = "") {
+        Do $$$AssertEquals(tOut.http, 500, "(b) the purge that raised after the vendor's call answered 500: " _ tOut.%ToJSON())
+        Do $$$AssertTrue(..BitmapRuns("USER") > tRuns, "(b) after the vendor's bitmap cleanup had run over USER")
+        Do $$$AssertTrue(tOut.before '[ "%All", "(b) the principal holds no administrative role: " _ tOut.before)
+        Do $$$AssertEquals(tOut.after, tOut.before, "(b) the process's roles after the call are the roles before it: " _ tOut.before)
+    }
+    Set tOut = ..ProbeAs("_SYSTEM", "roles")
+    Do $$$AssertTrue($IsObject(tOut) && (tOut.%Get("error") = ""), "(c) the probe as _SYSTEM ran: " _ $Select($IsObject(tOut): tOut.%Get("error"), 1: tOut))
+    If $IsObject(tOut) && (tOut.%Get("error") = "") {
+        Do $$$AssertTrue(tOut.loggedIn, "(c) _SYSTEM logged in")
+        Do $$$AssertEquals(tOut.http, 500, "(c) the purge that raised answered 500: " _ tOut.%ToJSON())
+        Do $$$AssertTrue(tOut.before [ "%All", "(c) the process holds the administrative role: " _ tOut.before)
+        Do $$$AssertEquals(tOut.after, tOut.before, "(c) the process's roles after the call are exactly the roles before it: " _ tOut.before)
+        Do $$$AssertTrue($Get(^IRIS.Temp.OcuProbe2416Mode("inside")) '= tOut.before, "(c) and inside the call the process held other roles: " _ $Get(^IRIS.Temp.OcuProbe2416Mode("inside")))
+    }
     Do $$$AssertStatusOK($ClassMethod(..#GENERATOR, "DeletePrincipals", ..#ROLESPRINCIPAL), "the principal is removed")
+}
+
+/// <p>A purge by a principal holding the database's WRITE but not the SQL delete rights on the Ensemble tables is partial: the vendor answers an error status and
+/// the port answers it as a failed purge, never a 200, and records it as one that did not complete.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.PerformPurge</method> ignore the vendor's status -- this goes red.</p>
+Method TestAPurgeWithoutTheSqlDeleteRightsAnswersTheVendorsFailure()
+{
+    Set tSC = $ClassMethod(..#GENERATOR, "CreatePrincipals", ..#PARTIALPRINCIPAL, ..PreparedPassword, "the partial purge")
+    Do $$$AssertStatusOK(tSC, "the principal is created")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertTrue($ClassMethod(..#CONTROL, "Arrange"), "the probe records are arranged")
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tOut = ..ProbeAs("OcuP2416Partial", "success")
+    Do $$$AssertTrue($IsObject(tOut) && (tOut.%Get("error") = ""), "the probe ran: " _ $Select($IsObject(tOut): tOut.%Get("error"), 1: tOut))
+    If $IsObject(tOut) && (tOut.%Get("error") = "") {
+        Do $$$AssertTrue(tOut.loggedIn, "the principal logged in")
+        Do $$$AssertEquals(tOut.http, 500, "the partial purge answers the vendor's failure, never 200: " _ tOut.%ToJSON())
+    }
+    Do $$$AssertEquals($ClassMethod(..#CONTROL, "OwnRows", tSince, .tData), 1, "it is recorded")
+    Do $$$AssertTrue($Get(tData) [ """completed"":false", "as a purge that did not complete: " _ $Get(tData))
+    Do $$$AssertTrue('..LockHeld(), "and lets go of the lock")
+    Do $$$AssertStatusOK($ClassMethod(..#GENERATOR, "DeletePrincipals", ..#PARTIALPRINCIPAL), "the principal is removed")
+}
+
+/// <p>The days the port hands the vendor at the edge of the instance's calendar: below <code>+$Horolog - 2</code> as asked, from there on <code>+$Horolog - 2</code>,
+/// a cut-off two days after the calendar's first, which no record predates; the vendor's own call answers both edges and deletes no probe.</p>
+/// <p>Mutation (Rule 19): change the clamp in <method>OcuPilot.Port.InteropPort.PerformPurge</method> to <code>+$Horolog - 1</code> -- the second leg goes red.</p>
+Method TestDaysAtTheEdgeOfTheCalendarReachTheVendorAsAPurgeOfNothing()
+{
+    Do $$$AssertTrue($ClassMethod(..#CONTROL, "Arrange"), "the probe records are arranged")
+    Set tEdge = +$Horolog - 2
+    For tCase = $ListBuild(tEdge - 1, tEdge - 1), $ListBuild(tEdge, tEdge), $ListBuild(tEdge + 1, tEdge), $ListBuild(99999, tEdge), $ListBuild(0, 0) {
+        Set tAsked = $List(tCase, 1)
+        Set ^IRIS.Temp.OcuProbe2416Mode = "status"
+        Kill ^IRIS.Temp.OcuProbe2416Mode("days")
+        Set tVerdict = ..Verdict(tAsked, .tFault, ..#SEAM)
+        Do $$$AssertEquals($Get(^IRIS.Temp.OcuProbe2416Mode("days")), $List(tCase, 2), "days " _ tAsked _ " reach the vendor as " _ $List(tCase, 2) _ " (" _ tVerdict _ ")")
+    }
+    Kill ^IRIS.Temp.OcuProbe2416Mode
+    For tAsked = tEdge, tEdge + 1 {
+        Do $$$AssertEquals(..Verdict(tAsked, .tFault), "200 ", "days " _ tAsked _ ": the vendor's own purge answers")
+        Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Counts", "USER"), ..#ARRANGED, "days " _ tAsked _ ": and deletes no probe")
+    }
 }
 
 /// <p>AC3: the gate, as real principals in a child process, refuses before any vendor call and before any value is judged: a caller without <code>%Ens_Purge:USE</code> is
@@ -360,8 +422,8 @@ Method ProbeAs(pUser As %String, pMode As %String) As %DynamicObject
 }
 
 /// <p>The child process <method>ProbeAs</method> starts: log in as <var>pUsername</var> and, in mode <code>gate</code>, run each of <parameter>LEGS</parameter> through
-/// <class>OcuPilot.Port.InteropPort</class> and signal <code>{loggedIn, "&lt;leg&gt;": {http, code, failedPair}}</code>; in mode <code>success</code> or <code>fault</code> run the purge through
-/// <class>OcuPilot.Test.InteropPurgeSeam</class> and signal <code>{loggedIn, http, before, after}</code>, the roles the process held either side of the call. Signals
+/// <class>OcuPilot.Port.InteropPort</class> and signal <code>{loggedIn, "&lt;leg&gt;": {http, code, failedPair}}</code>; in any other mode, the seam's, run the purge through
+/// <class>OcuPilot.Test.InteropPurgeSeam</class> and signal <code>{loggedIn, http, code, before, after}</code>, the roles the process held either side of the call. Signals
 /// <code>{error}</code> to process <var>pParent</var> when something raised.</p>
 ClassMethod Probe(pParent As %Integer, pUsername As %String, pMode As %String)
 {
@@ -381,6 +443,7 @@ ClassMethod Probe(pParent As %Integer, pUsername As %String, pMode As %String)
             Set tQuery("days") = "3650"
             Set tSC = $ClassMethod(..#SEAM, "Invoke", "Purge", "PURGE", .tQuery, "", .tResult, .tHttp, .tFault)
             Do tOut.%Set("http", +$Get(tHttp), "number")
+            Do tOut.%Set("code", ..CodeOf(.tFault))
             Do tOut.%Set("before", tBefore)
             Do tOut.%Set("after", $ROLES)
         } Else {

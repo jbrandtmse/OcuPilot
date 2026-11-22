@@ -173,7 +173,13 @@ test('AC5: Purge management data reviews the purge, asks for the days and the na
       'the dialog shows the three settings the purge will use and the consequence, and holds Purge'
     );
     await fill(page, '[data-interop-purge-days]', '3650');
+    assert.equal(
+      await page.evaluate(() => document.querySelector('[data-interop-purge-confirm]')?.getAttribute('aria-disabled')),
+      'true',
+      'Purge is held until the namespace is typed'
+    );
     await page.click('[data-interop-purge-confirm]');
+    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 300)));
     assert.equal(actions.length, 0, 'Purge sends nothing until the namespace is typed');
     await fill(page, '[data-interop-purge-typed]', 'USER');
     await page.click('[data-interop-purge-confirm]');

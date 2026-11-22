@@ -84,6 +84,7 @@ Method TestTheSettingSetIsConfirmedInTheNamespaceItWasReadIn()
     If '$IsObject($Get(tProposal)) Quit
     Set tSC = $ClassMethod(..#ITEMCONTROL, "ConfirmHttp", tProposal.proposalId, .tStatus, .tRaw, .tAnswer, ..#OTHERNAMESPACE)
     Do $$$AssertEquals(tStatus, 200, "the proposal confirms from a request scoped to HSCUSTOM: " _ $Extract($Get(tRaw), 1, 300))
+    Do $$$AssertEquals($Select($IsObject($Get(tAnswer)) && $IsObject(tAnswer.%Get("readBack")): tAnswer.readBack.verdict, 1: ""), ##class(OcuPilot.Kernel.Proposal.ReadBack).#MATCHES, "whose read-back, taken in USER, matches")
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "SettingsText", "USER"), "<absent>|<absent>|<absent>|usr agent", "USER holds the value")
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "SettingsText", ..#OTHERNAMESPACE), "1|<absent>|<absent>|hsc own", "and HSCUSTOM's settings are as they were")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tTurn))
@@ -116,6 +117,46 @@ Method TestThePurgeIsConfirmedInTheNamespaceItWasReadIn()
     } Catch ex {
         Do $$$AssertStatusOK(ex.AsStatus(), "the agent leg raised")
     }
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tPolicy), "the policy found before the test is put back")
+}
+
+/// <p>AC4: the lock test at the confirm runs in the proposal's namespace: with USER's purge lock held by a child job, the agent's purge minted in USER and confirmed
+/// from HSCUSTOM, whose lock is free, is refused and deletes nothing in either namespace.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.PurgeFacts</method> and <method>OcuPilot.Port.InteropPort.PerformPurge</method> take the lock in the
+/// request's namespace -- this goes red. Either alone stays green: the fingerprint and the write each refuse a held lock.</p>
+Method TestThePurgeConfirmedElsewhereIsRefusedWhileItsOwnNamespaceIsPurging()
+{
+    Do $$$AssertTrue($ClassMethod(..#CONTROL, "Arrange", "USER"), "USER's probe records are arranged")
+    Do $$$AssertTrue($ClassMethod(..#CONTROL, "Arrange", ..#OTHERNAMESPACE), "and HSCUSTOM's")
+    Set tUserBefore = $ClassMethod(..#FIXTURE, "Counts", "USER")
+    Set tOtherBefore = $ClassMethod(..#FIXTURE, "Counts", ..#OTHERNAMESPACE)
+    Set tSC = $ClassMethod(..#CONTROL, "EnableKey", .tPolicy)
+    Do $$$AssertStatusOK(tSC, "the purge's governance key is turned on")
+    Kill ^IRIS.Temp.OcuProbe2416Hold
+    Try {
+        Do $$$AssertEquals($ClassMethod(..#CONTROL, "Mint", "3650", .tProposal, .tTurn, .tReason), "minted", "the purge mints in USER: " _ tReason)
+        If '$IsObject($Get(tProposal)) Quit
+        Job ##class(OcuPilot.Test.InteropPurgeFixture).HoldLock("USER")::10
+        Do $$$AssertTrue($Test, "the lock-holding job starts")
+        For tI = 1:1:100 {
+            If $Get(^IRIS.Temp.OcuProbe2416Hold) = 1 Quit
+            Hang 0.1
+        }
+        Do $$$AssertEquals($Get(^IRIS.Temp.OcuProbe2416Hold), 1, "it holds USER's lock")
+        Set tSC = $ClassMethod(..#ITEMCONTROL, "ConfirmHttp", tProposal.proposalId, .tStatus, .tRaw, .tAnswer, ..#OTHERNAMESPACE)
+        Do $$$AssertTrue(tStatus '= 200, "the confirm from HSCUSTOM is refused while USER is purging: " _ $Extract($Get(tRaw), 1, 300))
+        Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Counts", "USER"), tUserBefore, "USER's probe records are as they were")
+        Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Counts", ..#OTHERNAMESPACE), tOtherBefore, "and so are HSCUSTOM's")
+        Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tTurn))
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the agent leg raised")
+    }
+    Set ^IRIS.Temp.OcuProbe2416Hold = "stop"
+    For tI = 1:1:100 {
+        If $Get(^IRIS.Temp.OcuProbe2416Hold) = 2 Quit
+        Hang 0.1
+    }
+    Kill ^IRIS.Temp.OcuProbe2416Hold
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tPolicy), "the policy found before the test is put back")
 }
 

@@ -215,6 +215,20 @@ describe('the Purge management data page', () => {
     expect(events).toEqual([]);
   });
 
+  // Mutation (Rule 19): close the dialog on any answer -> the dialog assertion goes red.
+  it('keeps the dialog open with the answer\'s sentence when the purge failed, and publishes nothing', async () => {
+    const reason = 'The request failed inside the instance.';
+    const { fixture, host, actions, events } = mount([review({}), { kind: 'error', status: 500, code: 'INTERNAL', reason } as JsonResult<unknown>]);
+    await openDialog(fixture, actions);
+    typeInto(fixture, host, '[data-interop-purge-days]', '3650');
+    typeInto(fixture, host, '[data-interop-purge-typed]', 'USER');
+    confirm(host).click();
+    await settle(fixture);
+    expect(host.querySelector('app-interop-purge-dialog')).not.toBeNull();
+    expect(host.querySelector('[data-interop-purge-refusal]')?.textContent?.trim()).toBe(reason);
+    expect(events).toEqual([]);
+  });
+
   it('closes on Cancel, sending nothing more and publishing nothing', async () => {
     const { fixture, host, actions, calls, events } = mount([review({})]);
     await openDialog(fixture, actions);

@@ -242,6 +242,23 @@ Method TestABadValueOrNameIsRefusedAndNothingIsSet()
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "SettingsText", "USER"), "<absent>|<absent>|<absent>|" _ tFull, "and stored whole")
 }
 
+/// <p>AC1: a description keeps its line breaks, as the classic page's text area does: one of two lines is set by the person's Set value, reads back as sent and
+/// mints for the agent; any other control character is still refused.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.PerformPurgeSetting</method> judge the value by <class>OcuPilot.Area.OsMgmt.ConfigSettingRules</class>
+/// -- the first leg goes red.</p>
+Method TestADescriptionKeepsItsLineBreaks()
+{
+    Set tTwo = "OcuProbe2416 first line" _ $Char(13, 10) _ "second line" _ $Char(10) _ "third"
+    Set tText = ..Act(..#DESCRIPTION, tTwo, .tAnswer)
+    Do $$$AssertEquals(tText, "200 ", "the person's Set value of a description of three lines answers 200: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
+    Do $$$AssertEquals($Select($IsObject(tAnswer) && $IsObject(tAnswer.%Get("readBack")): tAnswer.readBack.verdict, 1: ""), ##class(OcuPilot.Kernel.Proposal.ReadBack).#MATCHES, "whose read-back matches")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "SettingsText", "USER"), "<absent>|<absent>|<absent>|" _ tTwo, "the global holds the lines as sent")
+    Do $$$AssertEquals(..MintVerdict(..#DESCRIPTION, tTwo _ " again", .tReason, .tProposal, .tTurn), "minted", "the agent's set of such a description mints: " _ tReason)
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tTurn))
+    Do $$$AssertEquals(..Verdict("SETTINGSET", ..#DESCRIPTION, {"Value": ("tab" _ $Char(9) _ "bed")}), "400 CONFIG.SETTING.VALUE", "a tab is still refused")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "SettingsText", "USER"), "<absent>|<absent>|<absent>|" _ tTwo, "and sets nothing")
+}
+
 /// <p>AC1: the script form of the write names the namespace and renders the one global set the port makes, the value as a string literal and a boolean as 0 or
 /// 1, and runs nothing; a value or a name the port would refuse renders no script.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.PurgeSettingSnippet</method> render the <code>KeepIntegrity</code> node for every setting -- this goes

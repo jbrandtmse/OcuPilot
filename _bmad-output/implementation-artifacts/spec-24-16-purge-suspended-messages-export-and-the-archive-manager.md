@@ -10,7 +10,28 @@ owned_ledger: ''
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-15-credentials-default-settings-and-schedules-4.md'
 warnings: ['oversized', 'multiple-goals']
-deferred: []
+deferred:
+  - summary: >-
+      An agent's purge that the vendor answers with an error status after deleting part carries no AD-15 agent marker.
+    evidence: |-
+      Confirm.cls treats any port error as a write that did not happen, so RecordAgentWrite is skipped; OcuPilot's own ConfigChange row (now with completed false) is the only record. Changing that is a kernel confirm rule shared by every tool.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Confirm.cls (the applied test after the port's answer)
+    severity: medium
+  - summary: >-
+      AD-9 in the spine does not yet name the second `New $ROLES` (InteropPort.PurgeFrame) the guard now admits.
+    evidence: |-
+      The orchestrator ruled the allowlist entry on 2026-11-22; the spine line is a story-end edit (Design Notes, proposed AD-9 line), so the guard and AD-9 must land together at the story's end.
+    location: >-
+      _bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md (AD-9)
+    severity: low
+  - summary: >-
+      The EXPERIENCE.md row and several one-line rosters this batch appends to are appended to at the same lines by Epic 21.
+    evidence: |-
+      Epic 21's 595d8a352 inserts its own Fixed strings row after EXPERIENCE.md :626 and both branches renumber strings.ts taskCreate; the same-line rosters are listed in the review triage. Each conflict is a union plus a recount at the merge.
+    location: >-
+      _bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md (:627), ui/src/app/core/strings.ts (EXPERIENCE.md:627 citations)
+    severity: low
 ---
 
 <intent-contract>
@@ -126,6 +147,32 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `98abd23ca`).
   - `[medium]` `[patch]` verification-gap: the browser spec judged the list's Messages count against a literal 1 — patched: it reads the vendor's own total after arranging and expects it minus one; its settings save and restore also became the fixture's JSON `SaveSettings`/`RestoreSettings`, because a fresh instance holds a description over several lines that the one-line text could not carry (first run on a fresh instance failed to restore).
   - `[low]` `[reject]` verification-gap: the after-test equality of saved settings can fail only if the restore does — it does, under the AC6 mutation.
 
+### 2026-11-22 — QA and code review (four layers: AD-9, correctness, namespace and verification, strings and contention)
+
+- verdicts: 27 findings — high 0, medium 6 (6 patched, one with a deferred part), low 21 (12 patched, 6 rejected, 3 deferred).
+- findings:
+  - `[medium]` `[patch]` no partial-purge test (orchestrator item 6) — the item holds (500, never 200); pinned by a principal without SQL delete rights (### QA).
+  - `[medium]` `[patch]` the days clamp was not pinned at its boundary — named limit with the measured value, test at the boundary (### QA).
+  - `[medium]` `[patch]` the roles test lacked the principal's raised-error leg and did not pin `_SYSTEM` — three legs (### QA).
+  - `[medium]` `[patch]` a description of several lines (the fresh instance's own) was refused, and flattened by the one-line field — the purge rules accept CR and LF in text and the settings page draws a text area.
+  - `[medium]` `[patch]` + `[defer]` a failed or partial purge's audit row read as a full one — `completed` added; the missing agent marker deferred (frontmatter).
+  - `[medium]` `[patch]` `interop.test.mjs`'s sentence roster lacked the four purge sentences — four rows added.
+  - `[low]` `[patch]` `PurgeFrame`'s doc said the vendor keeps `%All`; the KeepIntegrity parity claim; the stale rule-6 and page comments; the draft script passed unclamped days; the cross-namespace set's read-back unasserted; the lock's namespace at confirm unpinned; the browser spec's held-Purge check could not fail; a `## Verification` line overstated; the harness lacked a method and a trigger after `PurgeFrame`, and the checker admitted a trigger after it (member reset added); no failed-purge client case.
+  - `[low]` `[reject]` the Catch switches back to release the lock before restoring — every path ends restored and no OcuPilot class runs switched.
+  - `[low]` `[reject]` a vendor `<PROTECT>` after partial deletes answers 403 — the measured partial purge answers 500; 403 needs an Ensemble global outside the gated database (inference); never 200.
+  - `[low]` `[reject]` a state read probing the lock can collide with a write's `:0` — the contract says "taken at once", as the classic page's own probe.
+  - `[low]` `[reject]` the screen's Purge is not bound to the settings its dialog showed — the contract reads them at the write, as the classic Start Purge.
+  - `[low]` `[reject]` the client spec's 422 mock — the violation branch serves the port's 422; the failed-purge case was added.
+  - `[low]` `[reject]` `navigation.test.mjs` rewrite and `ReadTool.cls`'s half-bumped prose count — correct and contended (Epic 21) respectively; no assertion depends on the prose.
+  - `[low]` `[defer]` AD-9's spine line; the Epic 21 same-line rosters and EXPERIENCE.md row (frontmatter).
+- AD-9 containment: contained on every exit; the rule-6 entry admits one method of one file. Clamp: safe. Sed hunk: `strings.ts` `taskCreate`'s `EXPERIENCE.md:668` to `:669`, the one substitution, correct.
+
+## Decisions
+
+- QA and review, 2026-11-22: the purge rules accept CR and LF in a description, as the classic page's text area stores them, and still refuse every other control character.
+- QA and review, 2026-11-22: the audit row of a purge carries `completed`, the vendor status's verdict; no user-facing text changes.
+- QA and review, 2026-11-22: the draft script passes `+$Horolog - 2` for days past the calendar, as the port does.
+
 ## Design Notes
 
 **Veto items (recommended option first).**
@@ -176,7 +223,7 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `98abd23ca`).
 2. **A lost answer.** Past the gateway timeout the `ConfigChange` row and the purge's counts are written in the request process after the vendor call returns, connected or not. The named limit's wording says the person finds the outcome in the audit log, under Logs, Audit, as that screen is named.
 3. **Days 0 is accepted** and measured: see Measured (g); `PURGERUN` states it.
 4. **Partial purge without SQL delete rights** (Task 0 (b)) is a named limit, not a refusal: the vendor answers an error status after deleting only part, the port reports it as a failed purge and still audits it, and no new string is added. The roles test's principal holds the Ensemble administrator role for that reason.
-5. **Implement-stage choices, each for the lead to confirm.** (a) The Purge action is a declared **row action** (`rowActions` `purge`, no primary action): `POST /screens/:screen/action` admits only a row action (`Descriptor.RowActionIds`), so the plan's primary action cannot reach the tool; the page registers it and it purges the namespace whichever count row is selected. (b) The settings screen is archetype `list` (the shared settings page draws it as the other settings screens), not `detail`: it has no tab group. (c) A person's Purge first asks `POST /screens/:screen/dryrun` (the tool declares `DRYRUN`; `DryRunReview` answers the three settings and the description), so the dialog shows the settings before the days are asked and a running purge refuses it there; the review's value is 0 days, which writes nothing. (d) The agent-facing empty-state phrase of Purge data settings is "change a purge setting", beside the published one for Purge. (e) The purge's target id is the namespace name; the mint refuses a `Name` that is not the request's namespace with a one-sentence argument problem built from the argument name and the namespace, as `AuditPurge`'s date problem is. (f) Days are accepted to 99999 as published, but the vendor errors on a cut-off before the instance's first day (days above about 67,000 measured: 500); the port gives the vendor no more days than the instance's calendar holds, which keeps every record as the days say, and the audit row records the days asked. (g) The `$ROLES` frame is `InteropPort.PurgeFrame`; `scripts/check-objectscript.py` rule 6 refused `New $ROLES` there, so its method allowlist gained `InteropPort.cls` `PurgeFrame` beside the installer's `AsAdministrator`, with four harness tests: this is a change to AD-9's mechanical guard and needs the lead's or the owner's ruling. (h) A caught vendor exception reaches the log as its error codes alone, as a vendor status does.
+5. **Implement-stage choices, each for the lead to confirm.** (a) The Purge action is a declared **row action** (`rowActions` `purge`, no primary action): `POST /screens/:screen/action` admits only a row action (`Descriptor.RowActionIds`), so the plan's primary action cannot reach the tool; the page registers it and it purges the namespace whichever count row is selected. (b) The settings screen is archetype `list` (the shared settings page draws it as the other settings screens), not `detail`: it has no tab group. (c) A person's Purge first asks `POST /screens/:screen/dryrun` (the tool declares `DRYRUN`; `DryRunReview` answers the three settings and the description), so the dialog shows the settings before the days are asked and a running purge refuses it there; the review's value is 0 days, which writes nothing. (d) The agent-facing empty-state phrase of Purge data settings is "change a purge setting", beside the published one for Purge. (e) The purge's target id is the namespace name; the mint refuses a `Name` that is not the request's namespace with a one-sentence argument problem built from the argument name and the namespace, as `AuditPurge`'s date problem is. (f) Days are accepted to 99999 as published, but the vendor errors on a cut-off before the instance's first day (see the named limit below); the port gives the vendor no more days than the instance's calendar holds, which keeps every record as the days say, and the audit row records the days asked. (g) The `$ROLES` frame is `InteropPort.PurgeFrame`; `scripts/check-objectscript.py` rule 6 refused `New $ROLES` there, so its method allowlist gained `InteropPort.cls` `PurgeFrame` beside the installer's `AsAdministrator`, scoped to that one method of that one file (orchestrator ruling, 2026-11-22), with six harness tests. (h) A caught vendor exception reaches the log as its error codes alone, as a vendor status does.
 
 **Measured (Task 0, `ocupilot-b-ci`, 2026-11-22, auditing on, probe records marked `OcuProbe2416` back-dated 7,300 days, `DaysToKeep` 3650; probe class, probe user and role removed after; both namespaces' `PurgeSettings` nodes as found; HSCUSTOM and USER hold no other interoperability records).**
 
@@ -189,6 +236,12 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `98abd23ca`).
 - (f) Probe purges took 0.01 to 0.30 s; with bitmap cleanup 0.06 s over USER and 0.27 s over HSCUSTOM, both nearly empty; no measure of a large namespace.
 - (g) Cutoffs for `DaysToKeep` 7 on 2026-11-22: messages, logs and the other kinds through `GetDoNotDeleteDate` at local midnight 2026-11-16 00:00; managed alerts at 2026-11-15 00:00 (their own arithmetic keeps one day more). `DaysToKeep` 0: the message cutoff is the next local midnight, so today's messages, logs, I/O and rule log rows were deleted; managed alerts used today's midnight, so today's alerts survived. No string states a date.
 - Not probed: business process records (the table was empty and a probe host class was not built; source: completed records only, always integrity-kept).
+
+**Named limits (review, orchestrator ruling 2026-11-22).**
+
+- **Days past the calendar.** The vendor's `GetDoNotDeleteDate` raises `<VALUE OUT OF RANGE>` from `+$Horolog + 2` days on (measured on `ocupilot-b-ci` 2026-11-22: 67,897 answered, 67,898 raised). The port passes at most `+$Horolog - 2` days (67,894 that day), a cut-off of 1841-01-03 that predates any record OcuPilot or the vendor could hold, so the outcome is the one the days ask: nothing is old enough to delete. `InteropPurgeRefusals.TestDaysAtTheEdgeOfTheCalendarReachTheVendorAsAPurgeOfNothing` pins it at the boundary: `+$Horolog - 3` and `- 2` reach the vendor as asked, `- 1` and 99999 as `- 2`, and the vendor's own purge answers 200 at `- 2` and `- 1` with no probe deleted. No user-facing wording.
+- **Business process records.** Not measured; no production runs on the throwaway.
+- **A running production's deleted queue entries.** Not measured; no production runs on the throwaway.
 
 **Governing ADs (Rule 6):** AD-3, AD-6, AD-7, AD-8, AD-10, AD-11, AD-13, AD-14, AD-15, AD-16, AD-21, AD-22, AD-29, AD-34, AD-36, AD-44, AD-51, AD-52, AD-53, AD-56, AD-58, AD-59, AD-60, AD-62. Not engaged: AD-23 (no harvest), AD-35 (no secret), AD-54 (no create), AD-63, AD-65, AD-66.
 
@@ -213,14 +266,25 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `98abd23ca`).
 **Mutations** (each AC's pinning test shown red on `ocupilot-b-ci`, `src` reloaded after each and reverted byte-identical, the client one on a rebuilt and redeployed bundle):
 
 - mutation: AC1, the port's `SETTINGSET` stores the value under the `KeepIntegrity` node whatever the setting -> `InteropPurgeSettingControl` red (the set-from-either-caller and the 2,000-character legs).
-- mutation: AC2, `PurgeAll` called with Include message bodies 0 always -> `InteropPurgeControl` red (the bodies leg and the agent's purge); `DaysToKeep` passed as 0 -> `InteropPurgeControl` red (the kept-current-row leg and the audit leg).
+- mutation: AC2, `PurgeAll` called with Include message bodies 0 always -> `InteropPurgeControl` red (the bodies leg and the agent's purge); `DaysToKeep` passed as 0 -> `InteropPurgeControl` red (the kept-current-row leg).
 - mutation: AC3, the write's lock test answers held 1 whatever the lock says -> `InteropPurgeRefusals` red (the lock leg); the days rule accepts a leading minus -> `InteropPurgeRefusals` red (the `-1` leg and nothing-deleted).
 - mutation: AC4, `InteropPurgeRun`'s `FINGERPRINTSUBJECT` without `Namespace` -> `InteropPurgeElsewhere` red (the purge leg); without `BodiesToo` -> `InteropPurgeControl` red (the moved leg).
 - mutation: AC5, the dialog emits `DaysToKeep` 0 -> `interop-purge.browser-spec.mjs` red (the purge test).
 - mutation: AC6, `InteropPurgeFixture.RestoreSettings` restores nothing -> `InteropPurgeSettingControl` red (the settings-unchanged leg of every test).
-- mutation: `$ROLES` containment, `New $ROLES` removed from `PurgeFrame` -> `InteropPurgeRefusals` red (the roles leg, on the roles equality).
+- mutation: `$ROLES` containment, `New $ROLES` removed from `PurgeFrame` -> `InteropPurgeRefusals` red (leg (c), `_SYSTEM`'s raised error, on the roles equality; legs (a) and (b), a principal without `%All`, hold either way because a principal cannot change its own roles).
 - mutation: AC4, `PerformPurge` reads the settings of HSCUSTOM instead of the proposal's namespace -> `InteropPurgeElsewhere` red (the purge leg, USER's old body kept).
 - mutation: AC3, the lock release removed from `PerformPurge`'s Catch -> `InteropPurgeRefusals` red (the fault leg, and the class's leaked-lock check); the audit call moved below the vendor-error quit -> `InteropPurgeRefusals` red (the status leg).
+
+### QA
+
+Added in the code review, each run on `ocupilot-b-ci` (mutations on the pre-rebuild instance, `InteropPort` recompiled with its subclasses; the client one in the component runner), then reverted and every class green on its first run on the rebuilt instance:
+
+- `InteropPurgeRefusals.TestTheProcessRolesAreGivenBackOnSuccessAndOnAnError`: legs (a) principal success, (b) principal raising after the vendor's purge and bitmap cleanup, (c) `_SYSTEM` raising with a role added inside. mutation: `New $ROLES` removed -> leg (c) red, alone.
+- `InteropPurgeRefusals.TestAPurgeWithoutTheSqlDeleteRightsAnswersTheVendorsFailure`: a principal with `%DB_USER:RW` and no SQL delete rights gets 500, never 200, and a row with `completed` false. mutation: `PerformPurge` ignores the vendor's status -> red (answered 200).
+- `InteropPurgeRefusals.TestDaysAtTheEdgeOfTheCalendarReachTheVendorAsAPurgeOfNothing`: the clamp at its boundary. mutation: the clamp at `+$Horolog - 1` -> red (67,895 and 99999 reached the vendor as 67,895).
+- `InteropPurgeElsewhere.TestThePurgeConfirmedElsewhereIsRefusedWhileItsOwnNamespaceIsPurging`, and the setting leg's read-back verdict. mutation: `PurgeFacts` and `PerformPurge` take the lock in the request's namespace -> red (the purge ran in USER while USER's lock was held).
+- `InteropPurgeSettingControl.TestADescriptionKeepsItsLineBreaks` and the component spec's purge description case. mutation: `PerformPurgeSetting` judges by `ConfigSettingRules` -> red (400 `CONFIG.SETTING.VALUE`); the page's purge `multiline` clause never matching -> the component case red.
+- `InteropPurgeControl`: the success row's `completed` true and the script form's clamped days at 99999; the component spec's failed-purge case; `interop.test.mjs`'s four purge sentence rows; the browser spec's held-Purge check; two harness tests (a method and a trigger after `PurgeFrame`). mutation: the checker's member reset removed -> the trigger test red.
 
 ## Auto Run Result
 
@@ -233,7 +297,8 @@ Blocking condition: none
 - Review: 16 findings (medium 6, low 10): 6 patched and each proved by a mutation run, 10 rejected with reasons in the log; none deferred.
 - `followup_review_recommended: true`, because two or more medium findings were patched: the patched test legs (lock release after each outcome, settings read in the proposal's namespace, audit row on an error status, the person's days refusal, the roles leg's principal, the browser spec's count and settings restore) have not been read by a second reviewer.
 - Verification on a throwaway rebuilt fresh (`ocupilot-b-ci`): the four new classes green on first run forward and in reverse; the browser pair `interop-purge` and `interop-schedules` green forward and in reverse on the first run of the rebuild; the `(once)` sweep, shards 1 to 17 of 17, green (no known flake fired); the a11y structural spec 13 of 13; `npm run test:tools` 2,395 and `npm run test:components` 3,881; `check-objectscript.py` 0 problems; `lint-docs.sh` clean.
-- Residual risks: the AD-9 guard allowlist for `InteropPort.PurgeFrame` and its proposed AD-9 line await the orchestrator's ruling (veto-window item, Design Notes); a purge by a principal without SQL delete rights is partial (named limit); business process records and a running production's queue entry were not probed (Measured).
+- Residual risks: the AD-9 spine line for `InteropPort.PurgeFrame` lands at story end (deferred); a purge by a principal without SQL delete rights is partial (named limit); business process records and a running production's queue entry were not probed (named limits).
+- QA and code review (2026-11-22): 27 findings, see the triage log; patched and verified on a rebuilt `ocupilot-b-ci`: the four purge classes, `ConfirmNamespaceRoster` and `DraftRegistry` green on their first run (7, 3, 8, 6, 3, 9 tests); browser `interop-purge` and `config-settings` green; components 3,883 in four runs; `test:tools` 2,395; the checker 0 problems, its harness 182.
 
 **Implement (Batch 1).** Built on `ocupilot-b-ci` as the Task list says. Verified: the four new classes and the fixture's two seams green on a first full run each (`InteropPurgeSettingControl` 5, `InteropPurgeControl` 8, `InteropPurgeRefusals` 5, `InteropPurgeElsewhere` 2 tests), every mutation above red and reverted, and the rosters the sweep named green (`Descriptor`, `GovernanceBaseline`, `Governance`, `Prohibited`, `DraftRegistry`, `ToolWrite`, `ReadTool`, `SurfaceCoverage`, `StageTwoTools`, `InteropFloor`, `ToolRoundTrip`, `ToolEmit`, `Navigation`, `InteropDescriptor`, `InteropHostDescriptor`, `SaveHoldCoverage`, `ConfirmNamespaceRoster`, `CompositeMintSweep`, `ClassicPageGate`, `MappingDescriptor`, `ToolDispatch`). Client: `npm run build` (2.25 MB initial), `npm run test:tools` (2,395) and `npm run test:components` (3,881) green; the browser pair `interop-purge` and `interop-schedules` green on the rebuilt bundle. `check-objectscript.py` and its harness (180) and `lint-docs.sh` clean. The choices are in Design Notes, Decided in-stage (implement) 5.
 

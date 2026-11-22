@@ -840,6 +840,27 @@ class TestEscalationContainmentAdmitsThePurgeFrame(FixtureTreeCase):
         problems = self.port("    New $ROLES", path="src/OcuPilot/Port/OtherPort.cls")
         self.assertTrue(any("OtherPort.cls" in p for p in problems), f"expected a refusal, got {problems}")
 
+    def after_the_frame(self, member: str) -> list[str]:
+        self.write(
+            self.PORT,
+            "Class OcuPilot.Port.InteropPort Extends %RegisteredObject\n{\n\n"
+            "ClassMethod PurgeFrame() As %Status\n{\n    New $ROLES\n    Quit $$$OK\n}\n\n"
+            f"{member}\n{{\n    New $ROLES\n    Quit $$$OK\n}}\n\n}}\n",
+        )
+        problems: list[str] = []
+        co.check_escalation_containment(problems)
+        return problems
+
+    def test_new_roles_in_a_method_after_the_purge_frame_is_refused(self):
+        problems = self.after_the_frame("ClassMethod PerformPurge() As %Status")
+        self.assertEqual(len(problems), 1, f"expected one refusal, on the second method, got {problems}")
+        self.assertIn("InteropPort.cls:12:", problems[0])
+
+    def test_new_roles_in_a_trigger_after_the_purge_frame_is_refused(self):
+        problems = self.after_the_frame("Trigger PurgeLog [ Event = INSERT ]")
+        self.assertEqual(len(problems), 1, f"expected one refusal, on the trigger, got {problems}")
+        self.assertIn("InteropPort.cls:12:", problems[0])
+
 
 class TestHandlerWireTestRule(FixtureTreeCase):
     """Consistency Conventions: "every handler gets an HTTP integration test asserting status,

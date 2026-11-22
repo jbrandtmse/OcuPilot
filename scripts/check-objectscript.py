@@ -654,18 +654,22 @@ ESCALATION_RE = re.compile(
     re.IGNORECASE,
 )
 
-# AD-9's one use of `New $ROLES` outside Base: the installer's `AsAdministrator` adds the administrative role
-# to its own process around one install step. The exception is the token `New $ROLES` in that one method of that
-# one file; `AddRoles` is refused there as everywhere else.
+# AD-9's two uses of `New $ROLES` outside Base, each the token `New $ROLES` in one method of one file; `AddRoles`
+# is refused there as everywhere else. Any other class member ends the method, so a trigger or a computed
+# property after an admitted method is not admitted with it.
 ESCALATION_METHOD_ALLOWED = {
+    # The installer's `AsAdministrator` adds the administrative role to its own process around one install step.
     "src/OcuPilot/Install/Installer.cls": "AsAdministrator",
-    # Story 24.16: the interoperability port's purge frame gives the process's roles back on every exit, a raised error included, because
-    # the vendor's bitmap cleanup adds `%All` for itself. It contains an escalation it does not make.
+    # Story 24.16: the interoperability port's purge frame gives the process's roles back on every exit of the vendor
+    # purge, a raised error included. It contains an escalation it does not make.
     "src/OcuPilot/Port/InteropPort.cls": "PurgeFrame",
 }
 NEW_ROLES_RE = re.compile(r"\bn(?:ew)?\s+\$roles\b", re.IGNORECASE)
 ADD_ROLES_RE = re.compile(r"[$%]system\.security\)?\.addroles", re.IGNORECASE)
 METHOD_DECLARATION_RE = re.compile(r"^(?:Class)?Method\s+([A-Za-z0-9_%]+)", re.IGNORECASE)
+MEMBER_DECLARATION_RE = re.compile(
+    r"^(?:Property|Parameter|Query|Index|ForeignKey|Trigger|XData|Storage|Relationship|Projection)\s", re.IGNORECASE
+)
 
 # The one OcuPilot package folder that must never contain a storage class escalating outside
 # the two files above; kept as its own constant so this rule cannot silently drift from the
@@ -829,6 +833,8 @@ def check_escalation_containment(problems: list[str]) -> None:
             declaration = METHOD_DECLARATION_RE.match(raw)
             if declaration:
                 method = declaration.group(1)
+            elif MEMBER_DECLARATION_RE.match(raw):
+                method = ""
             if not ESCALATION_RE.search(raw) or rel in ESCALATION_ALLOWED:
                 continue
             is_new_roles_only = NEW_ROLES_RE.search(raw) is not None and ADD_ROLES_RE.search(raw) is None

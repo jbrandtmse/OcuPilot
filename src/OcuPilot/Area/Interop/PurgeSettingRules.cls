@@ -13,6 +13,16 @@ ClassMethod SentenceFor(pEndpoint As %String, pRow As %DynamicObject, pValue As 
     Quit ##class(OcuPilot.Api.ConfigError).ReasonFor(tCode)
 }
 
+/// <p>Whether <var>pValue</var> is one the limits <var>pLimits</var> accept, as <class>OcuPilot.Area.OsMgmt.ConfigSettingRules</class> judges it, except that a
+/// description keeps its line breaks, as the classic page's text area does: a carriage return and a line feed are accepted in text, and every other control
+/// character is refused. Pure.</p>
+ClassMethod ValueHolds(pLimits As %List, pValue As %String) As %Boolean
+{
+    If $ListGet(pLimits, 1) '= "text" Quit ##super(pLimits, pValue)
+    If $Length(pValue) > $ListGet(pLimits, 5) Quit 0
+    Quit ##super(pLimits, $Translate(pValue, $Char(13, 10)))
+}
+
 /// <p>The limits of the setting <var>pName</var>.</p>
 ClassMethod Limits(pEndpoint As %String, pName As %String, pRow As %DynamicObject = "") As %List
 {

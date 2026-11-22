@@ -23,6 +23,7 @@ import {
   DDL_MAPPING_ADD_ACTION,
   DDL_SYSTEM_MAPPING_LIST,
   DDL_USER_MAPPING_LIST,
+  INTEROP_PURGE_SETTING_LIST,
   ISQL_SETTING_LIST,
   MEMORY_SETTING_LIST,
   NLS_DEFAULT_LIST,
@@ -743,5 +744,34 @@ describe('the settings page over the analytics General tab (Story 24.13)', () =>
     const flag = mount([UPDATED_SETTING], ANALYTICS_SETTING_LIST, unstored);
     await open(flag.fixture, flag.store, flag.actions, ANALYTICS_SETTING_LIST, 'Worklist');
     expect(flag.host.querySelector('[data-interop-setting-consequence]')?.textContent).not.toContain(STRINGS.analyticsSettingSaveConsequence);
+  });
+});
+
+describe('the settings page over Purge data settings (Story 24.16)', () => {
+  // Mutation (Rule 19): drop the purge settings clause from the page's `multiline` -> the text area assertion goes red.
+  it("draws a purge description as a text area that keeps its line breaks, and a purge switch as a checkbox", async () => {
+    const purgeRows = [
+      row('Include message bodies', { Value: '0', Kind: 'boolean', Accepts: '0 (off) or 1 (on).', Stored: false }),
+      row('Description', { Value: 'First line\nSecond line', Kind: 'text', Accepts: 'Text of up to 2000 characters.', Stored: true }),
+    ];
+    const updated: JsonResult<unknown> = {
+      kind: 'ok',
+      status: 200,
+      body: { action: 'updated', target: { type: 'interop-purge-setting', scope: 'namespace', id: 'Description' }, readBack: { verdict: 'matches' } },
+    };
+    const description = mount([updated], INTEROP_PURGE_SETTING_LIST, purgeRows);
+    await open(description.fixture, description.store, description.actions, INTEROP_PURGE_SETTING_LIST, 'Description');
+    const field = description.host.querySelector('textarea[data-interop-setting-value]') as HTMLTextAreaElement | null;
+    expect(field).not.toBeNull();
+    field!.value = 'First line\nSecond line, edited';
+    field!.dispatchEvent(new Event('input'));
+    description.fixture.detectChanges();
+    confirm(description.host);
+    await settle(description.fixture);
+    expect(JSON.parse(description.calls[0].body).values).toEqual({ Value: 'First line\nSecond line, edited' });
+    const flag = mount([], INTEROP_PURGE_SETTING_LIST, purgeRows);
+    await open(flag.fixture, flag.store, flag.actions, INTEROP_PURGE_SETTING_LIST, 'Include message bodies');
+    expect(flag.host.querySelector('textarea[data-interop-setting-value]')).toBeNull();
+    expect(flag.host.querySelector('[data-interop-setting-checkbox]')).not.toBeNull();
   });
 });

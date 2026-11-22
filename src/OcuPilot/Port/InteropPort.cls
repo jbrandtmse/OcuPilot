@@ -9633,7 +9633,7 @@ ClassMethod PerformPurgeSetting(pNamespace As %String, pName As %String, pBody A
     If tEntry = "" Quit ..PurgeConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND, .pHttpStatus, .pFault)
     If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") || (pBody.%GetTypeOf("Value") '= "string") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.ConfigPort).#REASONBODY, .pHttpStatus, .pFault)
     Set tValue = pBody.%Get("Value")
-    If '##class(OcuPilot.Area.OsMgmt.ConfigSettingRules).ValueHolds(..PurgeSettingLimits(pName), tValue) Quit ..PurgeConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGVALUE, .pHttpStatus, .pFault)
+    If '##class(OcuPilot.Area.Interop.PurgeSettingRules).ValueHolds(..PurgeSettingLimits(pName), tValue) Quit ..PurgeConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGVALUE, .pHttpStatus, .pFault)
     Set tCaught = ""
     Set tOrigNS = $NAMESPACE
     Try {
@@ -9804,7 +9804,8 @@ ClassMethod PurgeVendorStatus(pStatus As %Status) As %Status
 }
 
 /// <p>The vendor's purge of the current namespace, which the caller has already switched, run in a frame of its own that saves the process's roles and gives them back on
-/// every exit, a thrown error included, because the vendor's bitmap cleanup adds <code>%All</code> for itself (<method>VendorPurge</method>).</p>
+/// every exit, a thrown error included (<method>VendorPurge</method>). The vendor's bitmap cleanup adds <code>%All</code> in a frame of its own and drops it when it
+/// returns; this frame keeps any vendor path that does not from reaching the request's later code or the pooled process's next request.</p>
 ClassMethod PurgeFrame(pDays As %Integer, pKeepIntegrity As %Boolean, pBodiesToo As %Boolean, pBitmap As %Boolean, Output pDeleted) As %Status
 {
     New $ROLES
@@ -9823,7 +9824,8 @@ ClassMethod VendorPurge(pDays As %Integer, pKeepIntegrity As %Boolean, pBodiesTo
 /// <ol>
 /// <li>The days are judged (<method>PurgeDaysOK</method>), 422 <code>INTEROP.PURGE.DAYS</code>, before any vendor call.</li>
 /// <li>In the namespace the classic page's lock is taken at once and held for the whole of the vendor call; a purge already running is 409
-/// <code>INTEROP.PURGE.RUNNING</code> and deletes nothing. The three settings are read at this moment, so a purge uses what is stored when it runs.</li>
+/// <code>INTEROP.PURGE.RUNNING</code> and deletes nothing. The three settings are read at this moment, so a purge uses what is stored when it runs. An unset
+/// Purge only completed sessions is used as 1, as both classic pages display it; the classic Start Purge passes 0 for it.</li>
 /// <li>The vendor's <code>PurgeAll</code> runs (<method>PurgeFrame</method>) with no transaction; the lock is let go, the namespace restored, and OcuPilot's own audit row recorded
 /// (<method>AuditRuntime</method>) whatever the vendor answered, because the vendor records none: it names the namespace, the days, the three settings and the count the
 /// vendor deleted of each kind, never the description.</li>
@@ -9887,6 +9889,7 @@ ClassMethod PerformPurge(pNamespace As %String, pDays As %String, Output pResult
     Do tDeletedRow.%Set("hostMonitor", +$Get(tDeleted("Host Monitor Data")), "number")
     Do tDeletedRow.%Set("managedAlerts", +$Get(tDeleted("Managed Alerts")), "number")
     Do tEffects.%Set("deleted", tDeletedRow)
+    Do tEffects.%Set("completed", $$$ISOK(tVendorSC), "boolean")
     Do ..AuditRuntime(..#VERBPURGE, ..#ENTITYPURGE, pNamespace, tEffects)
     If $$$ISERR(tVendorSC) Quit ..Statused(..PurgeVendorStatus(tVendorSC), "the purge failed", .pHttpStatus, .pFault)
     Set tReadSC = ..ReadPurge(pNamespace, "", .tRow, .tReadHttp, .tReadFault)
@@ -9907,7 +9910,7 @@ ClassMethod PurgeSettingSnippet(pName As %String, pBody As %DynamicAbstractObjec
     Set tEntry = ..PurgeSettingEntry(pName)
     If (tEntry = "") || '$IsObject(pBody) || (pBody.%GetTypeOf("Value") '= "string") Quit ""
     Set tValue = pBody.%Get("Value")
-    If '##class(OcuPilot.Area.OsMgmt.ConfigSettingRules).ValueHolds(..PurgeSettingLimits(pName), tValue) Quit ""
+    If '##class(OcuPilot.Area.Interop.PurgeSettingRules).ValueHolds(..PurgeSettingLimits(pName), tValue) Quit ""
     Quit $Char(10) _ " Set ^Ens.Configuration(""PurgeSettings"", " _ ..Literal($List(tEntry, 2)) _ ") = " _ $Select($List(tEntry, 4) = "boolean": +tValue, 1: ..Literal(tValue))
 }
 
@@ -9922,7 +9925,9 @@ ClassMethod PurgeSnippet(pDays As %String) As %String [ Private ]
     Set tText = tText _ tNL _ " If 'tHeld Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONPURGERUNNING) _ ")"
     Set tText = tText _ tNL _ " If tHeld Set tBodies = +$Get(^Ens.Configuration(""PurgeSettings"", ""BodiesToo"")), tKeep = +$Get(^Ens.Configuration(""PurgeSettings"", ""KeepIntegrity""), 1), tBitmap = +$Get(^Ens.Configuration(""PurgeSettings"", ""NamespaceBitmapMaint""))"
     Set tText = tText _ tNL _ " If tHeld, tBitmap Set tOptions(""NamespaceBitmapMaint"") = 1"
-    Set tText = tText _ tNL _ " If tHeld Set tSC = ##class(Ens.Purge).PurgeAll(.tDeleted, " _ +pDays _ ", tKeep, tBodies, , .tOptions)"
+    ; The days the port itself would pass (PerformPurge): past the instance's calendar, the calendar's own count.
+    Set tDaysText = $Select(+pDays > (+$Horolog - 2): "+$Horolog - 2", 1: +pDays)
+    Set tText = tText _ tNL _ " If tHeld Set tSC = ##class(Ens.Purge).PurgeAll(.tDeleted, " _ tDaysText _ ", tKeep, tBodies, , .tOptions)"
     Set tText = tText _ tNL _ " If tHeld Lock -^IRIS.Temp.EnsPurgeAll($Namespace, ""lock"")"
     Quit tText
 }

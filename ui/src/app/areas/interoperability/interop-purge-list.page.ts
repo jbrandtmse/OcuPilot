@@ -12,7 +12,7 @@ import { InteropPurgeDialog, type PurgeSettingsView } from './interop-purge-dial
 /** The Purge management data screen's descriptor (Story 24.16). */
 export const INTEROP_PURGE_LIST = 'OcuPilot.Screen.Descriptor.InteropPurgeList';
 
-/** The declared primary action id: the command bar's Purge, which opens the dialog. */
+/** The declared row action id: Purge, which opens the dialog. */
 export const INTEROP_PURGE_ACTION = 'purge';
 
 /** The one value the action takes, under the name the tool declares (AD-56). */
