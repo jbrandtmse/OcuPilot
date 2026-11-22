@@ -18,6 +18,13 @@ deferred:
     location: >-
       src/OcuPilot/Test/InteropScheduleRefusals.cls (TestASourceControlledNamespaceRefusesEveryWrite)
     severity: medium
+  - summary: >-
+      At confirm, every Interop write tool's globals-database WRITE pair is taken from the confirming request's namespace, not the proposal's.
+    evidence: |-
+      InteropAction.PrivilegePairs reads Kernel.Scope.Current(); Confirm's gate runs it before the port's Admit judges the proposal's namespace, so a caller with the other database's WRITE passes the gate and is refused 403 by the port after the fresh read. No write lands; family-wide, predates this batch.
+    location: >-
+      src/OcuPilot/Screen/Tool/InteropAction.cls (PrivilegePairs, ArgumentPairs)
+    severity: medium
 ---
 
 <intent-contract>
@@ -133,6 +140,25 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `e6db2ed9f`).
   - `[maybe-false]` `[reject]` DW-2838 is outside the diff and cannot be checked - it is committed as `fab07a395` before the baseline; its test ran green in `test:components`.
   - `[false]` `[reject]` The Edit label reuses an agent-panel string - `agentPanelSecretWarningEdit` is the existing "Edit" key every sibling screen maps its Edit to; the spec lists "Edit" as reused.
 
+### 2026-11-22 - Code review (four layers)
+
+- verdicts: 16 findings - high 1, medium 3, low 9, maybe-false 1, false 1, informational 1
+- findings:
+  - `[high]` `[patch]` AD-59: the add's script had no free-name gate, so for a name held in another case it saved what the port refuses `TAKEN` - `InteropPort.FoldedFreeLines` opens the schedule and credential add scripts (same root cause, Batch 2) and every step is gated on `'tHeld`; run-the-script legs in `InteropScheduleControl` and `InteropCredentialControl`. Default settings and partners compare ids exactly, so the vendor's unique id already refuses a held one.
+  - `[medium]` `[patch]` A description-only update carried the `CHANGE` consequence - `InteropScheduleUpdate.Consequence` answers it only when the spec differs from the held one.
+  - `[medium]` `[patch]` Source control was pinned through the seam only (DW-2840) - every write reaches `%Save`/`%DeleteId` only inside `PerformSchedule`, after `ScheduleWriteRefusal`, so no path is unguarded; `Test/InteropScheduleSourceControl.cls` drives the Save, Edit, Remove, the three mints and two confirms with USER really under source control.
+  - `[medium]` `[defer]` The database WRITE pair at confirm is read in the confirming request's namespace - family-wide, no write lands; see `deferred:`.
+  - `[low]` `[patch]` `InteropScheduleAction.MintClass` and `clearPassword` doc comments said what the code does not do - replaced.
+  - `[low]` `[patch]` The gate was not shown to precede a 404 - `removeMissing` leg added to the principal probe.
+  - `[low]` `[reject]` AC2's rows lack their own `mutation:` lines - one mutation per AC is the rule; AC2's is recorded.
+  - `[low]` `[reject]` No regression test for the vendor's notification on a spec edit - needs a probe production; reopen if the write leaves `Ens.Util.Schedule.%Save`.
+  - `[maybe-false]` `[reject]` A `<PROTECT>` status text might carry the name - the gate refuses that caller first; would be low.
+  - `[low]` `[reject]` The vendor's validator accepts trailing text in a part - the vendor is the judge, as the classic page.
+  - `[false]` `[reject]` A name holding `||` answers 500 - measured on `ocupilot-b-ci`: it saves, opens and deletes.
+  - `[low]` `[reject]` Two concurrent adds differing only in case can both pass, and a lost race answers 500/503 not 404 - theoretical, as the credential family.
+  - `[low]` `[reject]` The update's AC3 leg has no mutation of its own - it has no tool-specific namespace code; the shared `PortQuery` mutation pins it.
+  - `[info]` `[reject]` `ToolWrite.cls:1326` and `GovernanceBaseline.DISABLED` will conflict with feature at merge - resolve then (inference: `ToolWrite` 161).
+
 ## Design Notes
 
 **Veto items (recommended option first).**
@@ -215,6 +241,18 @@ Each line takes the spine's `[AMENDED <its date>, Story 24.15, Rule 20]` tag whe
 - mutation: AD-15 audit of a remove, `PerformSchedule` skips `AuditRuntime` for `REMOVESCHEDULE` -> `InteropScheduleControl.TestThePersonsEditAndRemoveChangeOnlyWhatTheyCarry` and `TestTheAgentsUpdateAndRemoveConfirmOverHttp` red (reverted, `InteropPort.cls` diff byte-identical).
 - mutation: the REMOVE consequence's client branch, `consequenceSentence` drops the `INTEROP.SCHEDULE.REMOVE` branch -> `ui/tools/proposal-view.test.mjs` "a schedule spec's remove and change consequence codes resolve to their published sentences" red (reverted).
 - mutation: Task 2, `SCHEDULEVALIDATORFORMAL` with one more argument -> `InteropScheduleRefusals.TestTheValidatorsSignatureIsWhatThePortCalls` red on its formal-spec assertion.
+
+### QA
+
+Code review additions, run on a rebuilt `ocupilot-b-ci` (each mutation loaded from a scratch copy, reverted, recompiled with subclasses, class green again):
+
+- `Test/InteropScheduleSourceControl.cls` (new, armed by `OCUPILOT_ALLOW_NAMESPACE_CONFIG`): USER under `SourceControlProbe`; Save, Edit, Remove, the three mints, and an update and a remove minted before, all refused, nothing written.
+  - mutation: AC2 source control, `ScheduleWriteRefusal` without its `SourceControlled` line -> `TestEveryShippedWritePathIsRefusedUnderSourceControl` red on every leg.
+  - mutation: `InteropScheduleUpdate.READASKSACTION` 0 -> the same test red (the update's mint and its pre-minted confirm).
+- mutation: AD-59, `ScheduleSnippet`'s add without the `'tHeld` gate -> `InteropScheduleControl.TestTheScriptFormAndTheReadShowTheSpecAsText` red on its held-name run.
+- mutation: AD-59, `CredentialSnippet`'s add without the `'tHeld` gate -> `InteropCredentialControl.TestNoPasswordAppearsInAReadOrAScript` red on its held-name run.
+- mutation: `InteropScheduleUpdate.Consequence` answering the code for every payload -> `InteropScheduleControl.TestTheAgentsUpdateAndRemoveConfirmOverHttp` red on its unchanged-spec leg.
+- Green on the rebuilt instance: `InteropScheduleControl`, `InteropScheduleRefusals` (with the `removeMissing` leg), `InteropScheduleElsewhere`, `InteropCredentialControl`, `ConfirmNamespaceRoster`, `DraftRegistry`, `DraftPorts`; both browser specs after `npm run build` and `docker cp`.
 
 ## Auto Run Result
 

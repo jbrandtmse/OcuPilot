@@ -882,6 +882,9 @@ services:
       # classes: NamespaceInterop, NamespaceInteropGate
       # The source-control classes enable a probe source-control class on USER and remove it again.
       # classes: SourceControlProbe, SourceControlSave
+      # The schedule spec source-control class puts USER under the same probe class and meets each schedule spec write's refusal on the
+      # shipped paths, writing and removing probe schedule specs (Story 24.15).
+      # classes: InteropScheduleSourceControl
       OCUPILOT_ALLOW_NAMESPACE_CONFIG: "1"
       # Creates, edits and deletes database configurations and database files in this instance's own
       # configuration, with the %DB_* resources and directories a create makes, through the shipped

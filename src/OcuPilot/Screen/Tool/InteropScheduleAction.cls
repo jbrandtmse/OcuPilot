@@ -33,7 +33,9 @@ ClassMethod Endpoint() As %String
     Quit ##class(OcuPilot.Port.InteropPort).#ENDPOINTSCHEDULES
 }
 
-/// <p>The mint that stores the namespace in an add's or an edit's arguments, so a confirm judges their fields where the proposal read.</p>
+/// <p>The family's mint, which stores the namespace in an add's or an edit's arguments. The schedule spec rules do not depend on the namespace; the
+/// confirm acts where the proposal read because the payload carries it (the add's composed payload, the edit's fresh read, the remove's
+/// fingerprint subject).</p>
 ClassMethod MintClass() As %String
 {
     Quit "OcuPilot.Screen.Tool.InteropCredentialMint"

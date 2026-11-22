@@ -314,7 +314,7 @@ export class InteropCredentialDialog {
     this.added.emit(name);
   }
 
-  /** Empty the password field, so what was typed outlives neither a submit nor the dialog. */
+  /** Empty the password field after an accepted add, a Set password or a close, so what was typed never outlives the dialog. */
   private clearPassword(): void {
     const input = this.passwordInput()?.nativeElement;
     if (input !== undefined) input.value = '';

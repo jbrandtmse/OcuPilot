@@ -42,6 +42,22 @@ Parameter PRECONDITIONCODES = "INTEROP.SCHEDULE.SOURCECONTROL,INTEROP.NAMESPACE"
 /// <p>The edit always asks its read for the edit, so a namespace under source control is refused before anything is claimed.</p>
 Parameter READASKSACTION As BOOLEAN = 1;
 
+/// <p><parameter>CONSEQUENCECODE</parameter> when the payload's <code>ScheduleSpec</code> differs from the spec the schedule spec holds now, read as
+/// the caller through this tool's port in the payload's namespace, and <code>""</code> otherwise, since the vendor notifies a running production of a
+/// changed spec alone. A read that answers no spec keeps the code.</p>
+ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0, pEffect As %String = "") As %String
+{
+    If '$IsObject(pPayload) || (pPayload.%GetTypeOf("ScheduleSpec") '= "string") Quit ""
+    If pPayload.%GetTypeOf("Name") '= "string" Quit ..#CONSEQUENCECODE
+    Kill tQuery
+    Set tQuery(##class(OcuPilot.Port.InteropPort).#IDKEY) = pPayload.%Get("Name")
+    If pPayload.%GetTypeOf("Namespace") = "string" Set tQuery(##class(OcuPilot.Port.InteropPort).#NAMESPACEKEY) = pPayload.%Get("Namespace")
+    Set tSC = $ClassMethod(..PortClass(), "Invoke", ..Endpoint(), ..ReadType(), .tQuery, "", .tHeld, .tHttp, .tFault)
+    If $$$ISERR(tSC) || '$IsObject($Get(tHeld)) || (tHeld.%GetTypeOf("ScheduleSpec") '= "string") Quit ..#CONSEQUENCECODE
+    If tHeld.%Get("ScheduleSpec") = pPayload.%Get("ScheduleSpec") Quit ""
+    Quit ..#CONSEQUENCECODE
+}
+
 /// <p>The three fields an update may set.</p>
 Parameter FIELDS = "ScheduleSpec,Description,Deployable";
 

@@ -8976,30 +8976,45 @@ ClassMethod PerformCredential(pNamespace As %String, pType As %String, pName As 
     Quit $$$OK
 }
 
+/// <p>The two lines that open a create's script for a name compared ignoring letter case (AD-59): <code>tHeld</code> counts the rows of the SQL
+/// table <var>pTable</var> whose column <var>pColumn</var> equals the name <var>pName</var> in any letter case, the port's own taken-name rule, and
+/// is 1 when the count cannot be read; <code>tSC</code> is the refusal's sentence <var>pReason</var>, which only the create's own save replaces. Each
+/// step after them is gated on <code>'tHeld</code> on its own line.</p>
+ClassMethod FoldedFreeLines(pTable As %String, pColumn As %String, pName As %String, pReason As %String) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tCount = ..Literal("SELECT COUNT(*) FROM " _ pTable _ " WHERE LOWER(" _ pColumn _ ") = ?")
+    Set tText = tNL _ " Set tRS = ##class(%SQL.Statement).%ExecDirect(, " _ tCount _ ", $ZConvert(" _ ..Literal(pName) _ ", ""L"")), tHeld = $Select(tRS.%Next(): ''tRS.%GetData(1), 1: 1), tRS = """""
+    Quit tText _ tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal(pReason) _ ")"
+}
+
 /// <p>The lines <method>Snippet</method> adds for the credential write <var>pType</var> of the credential named <var>pName</var> (Story 24.15): the
-/// vendor's <code>%Save</code> of a new credential, of the credential opened at concurrency 4 with the fields <var>pBody</var> carries, or
-/// <code>%DeleteId</code>. Names and values are string literals; a password is never rendered as sent: its line takes the placeholder
-/// <code>&lt;Password&gt;</code> where the body carries one (AD-35, AD-59).</p>
+/// vendor's <code>%Save</code> of a new credential, each step gated on a free name in any letter case (<method>FoldedFreeLines</method>), of the
+/// credential opened at concurrency 4 with the fields <var>pBody</var> carries, or <code>%DeleteId</code>. Names and values are string literals; a
+/// password is never rendered as sent: its line takes the placeholder <code>&lt;Password&gt;</code> where the body carries one (AD-35, AD-59).</p>
 ClassMethod CredentialSnippet(pType As %String, pName As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
 {
     Set tNL = $Char(10)
     Set tName = ..Literal(pName)
     If pType = ..#TYPEREMOVECREDENTIAL Quit tNL _ " Set tSC = ##class(Ens.Config.Credentials).%DeleteId(" _ tName _ ")"
+    Set tGate = ""
     If pType = ..#TYPEADDCREDENTIAL {
-        Set tText = tNL _ " Set tCredential = ##class(Ens.Config.Credentials).%New()" _ tNL _ " Set tCredential.SystemName = " _ tName
+        Set tGate = "If 'tHeld "
+        Set tText = ..FoldedFreeLines("Ens_Config.Credentials", "SystemName", pName, ##class(OcuPilot.Api.InteropError).#REASONCREDENTIALTAKEN)
+        Set tText = tText _ tNL _ " " _ tGate _ "Set tCredential = ##class(Ens.Config.Credentials).%New(), tCredential.SystemName = " _ tName
     } Else {
         Set tText = tNL _ " Set tCredential = ##class(Ens.Config.Credentials).%OpenId(" _ tName _ ", 4)"
     }
     If pType '= ..#TYPEPASSWORDCREDENTIAL {
         For tField = "Username", "BusinessPartner" {
             Set tSupplied = $IsObject(pBody) && (pBody.%GetTypeOf(tField) = "string")
-            If tSupplied || (pType = ..#TYPEADDCREDENTIAL) Set tText = tText _ tNL _ " Set tCredential." _ tField _ " = " _ ..Literal($Select(tSupplied: pBody.%Get(tField), 1: ""))
+            If tSupplied || (pType = ..#TYPEADDCREDENTIAL) Set tText = tText _ tNL _ " " _ tGate _ "Set tCredential." _ tField _ " = " _ ..Literal($Select(tSupplied: pBody.%Get(tField), 1: ""))
         }
     }
     If (pType = ..#TYPEPASSWORDCREDENTIAL) || ((pType = ..#TYPEADDCREDENTIAL) && $IsObject(pBody) && (pBody.%GetTypeOf("Password") = "string")) {
-        Set tText = tText _ tNL _ " Set tSC = tCredential.PasswordSet(""<Password>"")"
+        Set tText = tText _ tNL _ " " _ tGate _ "Set tSC = tCredential.PasswordSet(""<Password>"")"
     }
-    Quit tText _ tNL _ " Set tSC = tCredential.%Save()" _ tNL _ " Set tCredential = """""
+    Quit tText _ tNL _ " " _ tGate _ "Set tSC = tCredential.%Save()" _ tNL _ " Set tCredential = """""
 }
 
 /// <p>The statement the schedule spec list reads: every schedule spec's name, description, spec and deployable flag, in name order (Story 24.15).</p>
@@ -9364,27 +9379,31 @@ ClassMethod PerformSchedule(pNamespace As %String, pType As %String, pName As %S
 }
 
 /// <p>The lines <method>Snippet</method> adds for the schedule spec write <var>pType</var> of the schedule spec named <var>pName</var> (Story 24.15):
-/// the vendor's <code>%Save</code> of a new schedule spec, of the schedule spec opened at concurrency 4 with the fields <var>pBody</var> carries, or
-/// <code>%DeleteId</code>. Names and values are string literals.</p>
+/// the vendor's <code>%Save</code> of a new schedule spec, each step gated on a free name in any letter case (<method>FoldedFreeLines</method>), of
+/// the schedule spec opened at concurrency 4 with the fields <var>pBody</var> carries, or <code>%DeleteId</code>. Names and values are string
+/// literals.</p>
 ClassMethod ScheduleSnippet(pType As %String, pName As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
 {
     Set tNL = $Char(10)
     Set tName = ..Literal(pName)
     If pType = ..#TYPEREMOVESCHEDULE Quit tNL _ " Set tSC = ##class(Ens.Util.Schedule).%DeleteId(" _ tName _ ")"
+    Set tGate = ""
     If pType = ..#TYPEADDSCHEDULE {
-        Set tText = tNL _ " Set tSchedule = ##class(Ens.Util.Schedule).%New()" _ tNL _ " Set tSchedule.Name = " _ tName
+        Set tGate = "If 'tHeld "
+        Set tText = ..FoldedFreeLines("Ens_Util.Schedule", "Name", pName, ##class(OcuPilot.Api.InteropError).#REASONSCHEDULETAKEN)
+        Set tText = tText _ tNL _ " " _ tGate _ "Set tSchedule = ##class(Ens.Util.Schedule).%New(), tSchedule.Name = " _ tName
     } Else {
         Set tText = tNL _ " Set tSchedule = ##class(Ens.Util.Schedule).%OpenId(" _ tName _ ", 4)"
     }
     For tField = "ScheduleSpec", "Description", "Deployable" {
         Set tType = $Select($IsObject(pBody): pBody.%GetTypeOf(tField), 1: "unassigned")
         If tType = "string" {
-            Set tText = tText _ tNL _ " Set tSchedule." _ tField _ " = " _ ..Literal(pBody.%Get(tField))
+            Set tText = tText _ tNL _ " " _ tGate _ "Set tSchedule." _ tField _ " = " _ ..Literal(pBody.%Get(tField))
         } ElseIf tType = "boolean" {
-            Set tText = tText _ tNL _ " Set tSchedule." _ tField _ " = " _ (''pBody.%Get(tField))
+            Set tText = tText _ tNL _ " " _ tGate _ "Set tSchedule." _ tField _ " = " _ (''pBody.%Get(tField))
         }
     }
-    Quit tText _ tNL _ " Set tSC = tSchedule.%Save()" _ tNL _ " Set tSchedule = """""
+    Quit tText _ tNL _ " " _ tGate _ "Set tSC = tSchedule.%Save()" _ tNL _ " Set tSchedule = """""
 }
 
 /// <p>The code prefix of a startup refusal: <code>INTEROP.STARTUP.</code> and the token <method>StartupRefusal</method> answers.</p>

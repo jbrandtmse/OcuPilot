@@ -296,8 +296,10 @@ Method TestTheAgentsAddConfirmsOverHttp()
 
 /// <p>AC1: the agent's update changes the spec and keeps the description and the flag, and the agent's remove is destructive and ships off: it is
 /// refused while the tool's key is off, closes target-changed when the schedule spec moved after the mint, and removes the schedule spec once it is on.
-/// The update's consequence says a running production follows a changed spec at once, and the remove's says what becomes of the items that name it.</p>
-/// <p>Mutation (Rule 19): turn the remove tool's baseline key on -- the refusal leg goes red.</p>
+/// The update's consequence says a running production follows a changed spec at once, an update that leaves the spec as it is carries none, and the
+/// remove's says what becomes of the items that name it.</p>
+/// <p>Mutation (Rule 19): turn the remove tool's baseline key on -- the refusal leg goes red; make
+/// <method>OcuPilot.Screen.Tool.InteropScheduleUpdate.Consequence</method> answer the code for every payload -- the unchanged-spec leg goes red.</p>
 Method TestTheAgentsUpdateAndRemoveConfirmOverHttp()
 {
     Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "PutSchedule", ..#NAME, ..#SPEC1, "one", 1), "the probe schedule spec is arranged")
@@ -311,6 +313,9 @@ Method TestTheAgentsUpdateAndRemoveConfirmOverHttp()
         If '$IsObject($Get(tUpdate)) Quit
         Do $$$AssertEquals(tUpdate.changed.%ToJSON(), "[{""field"":""ScheduleSpec"",""before"":""" _ ..#SPEC1 _ """,""after"":""" _ ..#SPEC2 _ """}]", "its card shows the one field it moves")
         Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tUpdate.proposalId, "Consequence"), "INTEROP.SCHEDULE.CHANGE", "its consequence says a running production follows the change at once")
+        Set tSC = ..Mint("InteropScheduleUpdate", ..ArgsFor(..#NAME, {"Description": "two"}), .tQuiet, .tFault, .tQuietTurn)
+        Do $$$AssertTrue($IsObject($Get(tQuiet)) && (##class(OcuPilot.Test.ProposalFixture).Field(tQuiet.proposalId, "Consequence") = ""), "an update that leaves the spec as it is carries no consequence, since nothing notifies the production")
+        Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tQuietTurn))
         Set tStatus = ..Confirm(tUpdate, .tAnswer, .tRaw)
         Do $$$AssertEquals(tStatus, 200, "the update confirms: " _ $Extract($Get(tRaw), 1, 300))
         Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("auditMarked") _ "|" _ tAnswer.action _ "|" _ tAnswer.readBack.verdict, 1: ""), "1|updated|" _ ##class(OcuPilot.Kernel.Proposal.ReadBack).#MATCHES, "marked (AD-15), whose read-back matches")
@@ -352,8 +357,10 @@ Method TestTheAgentsUpdateAndRemoveConfirmOverHttp()
 }
 
 /// <p>AC1: the script form of each write names the schedule spec and the fields the body carries, as string literals, and the list and the agent's read
-/// tool show the spec as text.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.ScheduleSnippet</method> drop the spec -- the script leg goes red.</p>
+/// tool show the spec as text. The add's script, run line by line, adds a free name and only sets the taken refusal for a name held in another
+/// letter case (AD-59).</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.ScheduleSnippet</method> drop the spec -- the script leg goes red; drop the
+/// <code>'tHeld</code> gate from its add -- the held-name run goes red.</p>
 Method TestTheScriptFormAndTheReadShowTheSpecAsText()
 {
     Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "PutSchedule", ..#NAME, ..#SPEC1, "reader", 1), "a schedule spec is arranged")
@@ -372,6 +379,17 @@ Method TestTheScriptFormAndTheReadShowTheSpecAsText()
         Do $$$AssertTrue((tText [ ..#NAME) && (tText [ "Ens.Util.Schedule"), tType _ ": the script form names the schedule spec and the vendor's class")
         If tType '= "REMOVESCHEDULE" Do $$$AssertTrue((tText [ ..#SPEC1) && (tText [ "Deployable = 1"), tType _ ": and carries the spec and the flag as the body had them: " _ tText)
     }
+    Set tRunner = "OcuPilot.Test.AnalyticsListingGroupBase"
+    For tCase = $ListBuild($ZConvert(..#NAME, "L"), 0), $ListBuild(..#NAME _ "Script", 1) {
+        Kill tScript
+        Set tScript("namespace") = "USER"
+        Set tScript("id") = $List(tCase, 1)
+        Set tSteps = $ClassMethod(..#PORT, "Snippet", "Schedules", "ADDSCHEDULE", .tScript, {"ScheduleSpec": (..#SPEC1)})
+        Do $$$AssertEquals($ClassMethod(tRunner, "RunScript", tSteps), $List(tCase, 2), $List(tCase, 1) _ ": the add's script " _ $Select($List(tCase, 2): "adds the free name", 1: "only sets the refusal for a name held in another case"))
+    }
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "ScheduleText", $ZConvert(..#NAME, "L")), "<absent>", "no schedule spec was added under the held name's other case")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "ScheduleText", ..#NAME _ "Script"), ..#SPEC1 _ "||0", "and the free name was added as the script had it")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "ScheduleCount"), 2, "and nothing else")
 }
 
 }

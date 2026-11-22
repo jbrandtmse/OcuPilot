@@ -406,8 +406,9 @@ Method TestAnAddConfirmedFromAnotherNamespaceIsJudgedWhereItRead()
 
 /// <p>AC3: no password appears in what a person or the agent reads: the list, the single-credential read and the agent's read tool say only
 /// <code>stored</code> or <code>not stored</code>, and the script form of each write renders the placeholder <code>&lt;Password&gt;</code> where the
-/// body carries one, never the value.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.CredentialSnippet</method> render the body's password -- the script leg goes red,
+/// body carries one, never the value. The add's script, run, only sets the taken refusal for a name held in another letter case (AD-59).</p>
+/// <p>Mutation (Rule 19): drop the <code>'tHeld</code> gate from the add in <method>OcuPilot.Port.InteropPort.CredentialSnippet</method> -- the
+/// held-name run goes red. Make it render the body's password -- the script leg goes red,
 /// (the draft masks a secret before the port sees it, so <method>OcuPilot.Test.DraftRegistry.TestNoSecretReachesAnyRenderedScript</method> stays green).</p>
 Method TestNoPasswordAppearsInAReadOrAScript()
 {
@@ -431,6 +432,13 @@ Method TestNoPasswordAppearsInAReadOrAScript()
         Do $$$AssertTrue((tText [ ..#NAME) && (tText '[ ..#PASSWORD), tType _ ": the script form names the credential and never the password")
         If (tType = "ADDCREDENTIAL") || (tType = "PASSWORDCREDENTIAL") Do $$$AssertTrue(tText [ "<Password>", tType _ ": and renders the placeholder: " _ tText)
     }
+    Set tBefore = $ClassMethod(..#FIXTURE, "CredentialCount", ..#NAME)
+    Kill tScript
+    Set tScript("namespace") = "USER"
+    Set tScript("id") = $ZConvert(..#NAME, "L")
+    Set tSteps = $ClassMethod(..#PORT, "Snippet", "Credentials", "ADDCREDENTIAL", .tScript, {"Username": "u", "BusinessPartner": ""})
+    Do $$$AssertEquals(##class(OcuPilot.Test.AnalyticsListingGroupBase).RunScript(tSteps), 0, "the add's script only sets the refusal for a name held in another letter case (AD-59)")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "CredentialCount", ..#NAME), tBefore, "and adds no credential")
 }
 
 }

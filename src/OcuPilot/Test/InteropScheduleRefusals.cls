@@ -36,7 +36,7 @@ Parameter PRINCIPALS = "OcuP2415SExact:%Development:U,%Ens_Portal:U,%Ens_Product
 
 /// <p>The legs a probe runs, in order, <code>&lt;name&gt;|&lt;type&gt;|&lt;schedule spec&gt;</code>. The held schedule spec is the one the set and the remove name;
 /// <code>addBad</code> carries a spec the vendor refuses, so a caller the gate admits is refused it and one it does not is refused the gate first.</p>
-Parameter LEGS = "list|LIST|,add|ADDSCHEDULE|OcuProbe2415SG,addBad|ADDSCHEDULE|OcuProbe2415SB,set|SETSCHEDULE|OcuProbe2415SH,remove|REMOVESCHEDULE|OcuProbe2415SH";
+Parameter LEGS = "list|LIST|,add|ADDSCHEDULE|OcuProbe2415SG,addBad|ADDSCHEDULE|OcuProbe2415SB,set|SETSCHEDULE|OcuProbe2415SH,remove|REMOVESCHEDULE|OcuProbe2415SH,removeMissing|REMOVESCHEDULE|OcuProbe2415SMissing";
 
 Property PreparedPassword As %String;
 
@@ -265,7 +265,8 @@ Method TestASourceControlledNamespaceRefusesEveryWrite()
 /// <p>AC2: the gate, as real principals in a child process, refuses before any vendor call and before any value is judged, and writes nothing: a caller
 /// without <code>%Ens_ProductionConfig:WRITE</code> is refused 403 naming that pair on each write, the remove included, and reads the list; one without
 /// the read pair is refused every leg naming it; one who cannot write the database is refused each write naming it and one who cannot read it the list.
-/// A caller the gate admits is refused the spec the vendor refuses, and the others are refused the gate first.</p>
+/// A caller the gate admits is refused the spec the vendor refuses, and the others are refused the gate first; so too a remove of a name not held,
+/// which is 404 only for the caller the gate admits.</p>
 /// <p>Mutation (Rule 19): drop <parameter>OcuPilot.Port.InteropPort.SCHEDULEWRITEPAIR</parameter> from the write pairs -- the
 /// <code>OcuP2415SNoWrite</code> caller's write legs go red.</p>
 Method TestTheGateRefusesEachPrincipalBeforeAnyVendorCall()
@@ -280,10 +281,10 @@ Method TestTheGateRefusesEachPrincipalBeforeAnyVendorCall()
     Set tRead = "403|" _ tDeny _ "|%Ens_ProductionConfig:READ"
     Set tUserWrite = "403|" _ tDeny _ "|%DB_USER:WRITE"
     Set tUserRead = "403|" _ tDeny _ "|%DB_USER:READ"
-    Set tExpected("OcuP2415SExact") = $ListBuild(tOk, tOk, tBad, tOk, tOk)
-    Set tExpected("OcuP2415SNoWrite") = $ListBuild(tOk, tWrite, tWrite, tWrite, tWrite)
-    Set tExpected("OcuP2415SNoRead") = $ListBuild(tRead, tRead, tRead, tRead, tRead)
-    Set tExpected("OcuP2415SNoUser") = $ListBuild(tUserRead, tUserWrite, tUserWrite, tUserWrite, tUserWrite)
+    Set tExpected("OcuP2415SExact") = $ListBuild(tOk, tOk, tBad, tOk, tOk, "404|PORT.NOTFOUND|")
+    Set tExpected("OcuP2415SNoWrite") = $ListBuild(tOk, tWrite, tWrite, tWrite, tWrite, tWrite)
+    Set tExpected("OcuP2415SNoRead") = $ListBuild(tRead, tRead, tRead, tRead, tRead, tRead)
+    Set tExpected("OcuP2415SNoUser") = $ListBuild(tUserRead, tUserWrite, tUserWrite, tUserWrite, tUserWrite, tUserWrite)
     Set tUser = ""
     For {
         Set tUser = $Order(tExpected(tUser))
