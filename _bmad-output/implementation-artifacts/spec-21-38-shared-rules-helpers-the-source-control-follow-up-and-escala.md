@@ -421,8 +421,10 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: batches-1-3-committed
 Blocking condition: none
+
+Implement pass 1 (2026-11-22): Task 0 measured no vendor audit event. Batches 1, 2 and 3 are committed locally (74936e41d, 8c5e63f6c, 6d9574a9b), each with its loop green and the pre-commit hook passing; nothing is pushed. Frontmatter `status` stays `in-progress`: Batches 4-10 are later passes. Batch 3's `Action` row also lists each opening screen as a bare descriptor entry (Design Notes, Decided in-stage); a Batch 3 subagent ran `git fetch` once from the main checkout, which updated only remote-tracking refs.
 
 Plan stage, 2026-11-21: three read-only research subagents, plus one measurement on `ocupilot-ci`. That measurement covered the source-control `ext` answers and `AfterUserAction` through `action/query`, using `SourceControlProbe` in `USER`. The probe, its class, the setting and `OcuProbe2138.New` were all removed and read back absent. Escalated for the spec gate: the strings batch S1-S20 and the structural items E1-E4. Implementation waits on them, batch by batch.
 
