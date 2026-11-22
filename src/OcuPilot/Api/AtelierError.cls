@@ -338,6 +338,74 @@ Parameter CLASSMETHODNOTFOUND = "EXPLORER.CLASSMETHOD.NOTFOUND";
 
 Parameter REASONCLASSMETHODNOTFOUND = "No compiled class method of that name is in this namespace.";
 
+/// <p>Envelope code: the instance answered an error status for a statement write -- a freeze, an unfreeze, a clear or a clean (Story 21.6). Rendered on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, the instance's message in <code>detail</code> alone and never logged
+/// (AD-39).</p>
+Parameter STATEMENTVENDOR = "SQL.STATEMENT.VENDOR";
+
+Parameter REASONSTATEMENTVENDOR = "The instance did not apply this change to the statement.";
+
+/// <p>Envelope codes: a statement write's precondition does not hold at the fresh read (Story 21.6). Each is the sentence a refused mint or screen
+/// action states.</p>
+Parameter STATEMENTALREADYFROZEN = "SQL.STATEMENT.ALREADYFROZEN";
+
+Parameter REASONSTATEMENTALREADYFROZEN = "This statement's plan is already frozen.";
+
+Parameter STATEMENTNOTFROZEN = "SQL.STATEMENT.NOTFROZEN";
+
+Parameter REASONSTATEMENTNOTFROZEN = "This statement's plan is not frozen.";
+
+Parameter STATEMENTNOERROR = "SQL.STATEMENT.NOERROR";
+
+Parameter REASONSTATEMENTNOERROR = "This statement has no plan error.";
+
+Parameter STATEMENTNOSTALE = "SQL.STATEMENT.NOSTALE";
+
+Parameter REASONSTATEMENTNOSTALE = "This namespace's statement index holds no stale statements.";
+
+/// <p>The consequence codes the proposal card and the dialog of each statement write and of the cached-query purges carry (Story 21.6).</p>
+Parameter STATEMENTFREEZE = "SQL.STATEMENT.FREEZE";
+
+Parameter REASONSTATEMENTFREEZE = "This statement keeps its current plan until it is unfrozen, even when its indices or table statistics change.";
+
+Parameter STATEMENTUNFREEZE = "SQL.STATEMENT.UNFREEZE";
+
+Parameter REASONSTATEMENTUNFREEZE = "This statement takes the plan the optimizer chooses the next time it is prepared.";
+
+Parameter STATEMENTCLEARSTATISTICS = "SQL.STATEMENT.CLEARSTATISTICS";
+
+Parameter REASONSTATEMENTCLEARSTATISTICS = "This statement's run statistics are removed, and counting starts again at its next run.";
+
+Parameter STATEMENTCLEARERROR = "SQL.STATEMENT.CLEARERROR";
+
+Parameter REASONSTATEMENTCLEARERROR = "The plan error is removed from the statement index. The plan itself is unchanged.";
+
+Parameter STATEMENTCLEAN = "SQL.STATEMENT.CLEAN";
+
+Parameter REASONSTATEMENTCLEAN = "Statements that no class or routine in this namespace still holds are removed from its statement index.";
+
+Parameter CACHEDQUERYPURGE = "SQL.CACHEDQUERY.PURGE";
+
+Parameter REASONCACHEDQUERYPURGE = "The purged queries are prepared again the next time each one runs.";
+
+/// <p>The sentence <var>pCode</var>, one of the <code>SQL.STATEMENT.*</code> and <code>SQL.CACHEDQUERY.*</code> codes above, carries, or <code>""</code>
+/// for any other code (Story 21.6).</p>
+ClassMethod SqlReasonFor(pCode As %String) As %String
+{
+    If pCode = ..#STATEMENTVENDOR Quit ..#REASONSTATEMENTVENDOR
+    If pCode = ..#STATEMENTALREADYFROZEN Quit ..#REASONSTATEMENTALREADYFROZEN
+    If pCode = ..#STATEMENTNOTFROZEN Quit ..#REASONSTATEMENTNOTFROZEN
+    If pCode = ..#STATEMENTNOERROR Quit ..#REASONSTATEMENTNOERROR
+    If pCode = ..#STATEMENTNOSTALE Quit ..#REASONSTATEMENTNOSTALE
+    If pCode = ..#STATEMENTFREEZE Quit ..#REASONSTATEMENTFREEZE
+    If pCode = ..#STATEMENTUNFREEZE Quit ..#REASONSTATEMENTUNFREEZE
+    If pCode = ..#STATEMENTCLEARSTATISTICS Quit ..#REASONSTATEMENTCLEARSTATISTICS
+    If pCode = ..#STATEMENTCLEARERROR Quit ..#REASONSTATEMENTCLEARERROR
+    If pCode = ..#STATEMENTCLEAN Quit ..#REASONSTATEMENTCLEAN
+    If pCode = ..#CACHEDQUERYPURGE Quit ..#REASONCACHEDQUERYPURGE
+    Quit ""
+}
+
 /// <p>The sentence <var>pCode</var>, one of the seven <code>EXPLORER.UNITTEST.*</code> codes above or one of the five
 /// <code>EXPLORER.COMMAND.*</code> and <code>EXPLORER.CLASSMETHOD.*</code> codes, carries, or <code>""</code> for any other
 /// code (Stories 24.5 and 24.6).</p>

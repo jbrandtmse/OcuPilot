@@ -2,7 +2,8 @@
 title: 'Story 21.6: The SQL tuning track'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '53619019bf2635717f16ab8ca38d45c8af15585c'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -236,13 +237,36 @@ deferred: []
 - `ConfigPort.cls`, `ConfigGateSeam.cls` and `EntityType.cls` show only a merge of feature, with no diff. `SqlPort.cls`, `AtelierPort.cls`, `Workflow.cls`, `WorkflowCatalog.cls`, `suggested-prompts.test.mjs` and the `ExplorerSql*` descriptors are untouched.
 - Epic 24's worktree also holds uncommitted count edits to `ReadTool`, `ToolEmit` and `ToolRoundTrip`, so expect a union at the merge.
 
+**Re-validated at implement, 2026-11-22** (775 commits on HEAD since the plan's base `09c93d033`; no clause of an AC, a ruled string, a code, an AD or the batch plan changed):
+
+- Line numbers in the Code Map have moved and are to be re-found by name: `AtelierPort` (`CATALOGSTATEMENTSQUERY` :228, `CATALOGSTATEMENTSCOLUMNS` :271, `CatalogRows` :1354, `CatalogQuery` :1450, `CatalogResolve` :1474, `CatalogRelation` :1505, `Pairs` :800, `NamespacePairs` :812, `WritePairs` :833), `ConfigPort` (`PurgeAfterSet` :1192, `PurgeSteps` :1217, `PurgeCachedQueries` :1226, still without an argument), `ConfigGateSeam.PurgeCachedQueries` :269, `Prohibited` (`COVEREDTYPES` :320, `OCUPILOTSQL` :1007, `Prohibits` :1747 and its branch list after it). `SqlPort`, `Workflow` and the `ExplorerSql*` descriptors are unchanged since the plan.
+- **Placement.** Story 21.5's Globals list is position 15, and Epics 21 and 24 have since taken 16 (`ExplorerNamespaceDiff`), 17 (`ExplorerUnitTests`), 18 (`ExplorerCommand`) and 19 (`ExplorerClassMethod`). The SQL statements list takes the next free position, 20, which is the spec's own rule ("the next free position at implement time").
+- `OCUPILOT_ALLOW_CONFIG_SETTINGS`'s `# classes:` line is at `scripts/ci-throwaway.sh:1002` and now lists thirteen classes after `SqlSettingWrite`. `SqlTuningWrite` is added to it. Epic 24's `ConfirmNamespaceRoster` is in HEAD.
+- Epic 24 has no commit on any path this story edits for the server classes listed in its footprint check (`git log origin/OCU-1-epic24 ^origin/feature/OCU-1_ocupilot-mvp` over `SqlPort`, `AtelierPort`, `ConfigPort`, `EntityType`, `Baseline`, `Prohibited`, `Workflow`, `AtelierError`: empty). Its uncommitted edits to `EntityType`, `Baseline` and `Prohibited` stay add-only here.
+- The spine's AD-10 and AD-51 entries for Story 21.6 are as the plan cites them (spine :411 and :1267).
+
 **Task 0, measured by the implement stage on `ocupilot-ci` before code** (each restored; record results here; until then each is an inference):
 
 - (a) As a principal holding only `AtelierPort.WritePairs`, freeze, unfreeze, clear statistics, clear plan error, clean and each purge succeed. The same principal without the routines database's WRITE is refused (`<PROTECT>` or a status). Record which.
+  - **Measured on `ocupilot-ci`, 2026-11-22.** A user holding one role of exactly the five `WritePairs('HSCUSTOM')` pairs (`%Development:USE`, READ on `%DB_HSCUSTOM`, `%DB_ENSLIB`, `%DB_HSLIB` and `%DB_IRISLIB`, WRITE on `%DB_HSCUSTOM`) froze, unfroze, set and cleared a plan error, cleaned and purged by table, class and namespace, each with its effect read back. The same user without WRITE on `%DB_HSCUSTOM` is refused by neither: the freeze, the unfreeze and the error update answer OK and change nothing, while a purge still takes effect. The pair is therefore the port's gate, and the read-back is what shows a silent no-op. No pair beyond `WritePairs` is needed.
 - (b) A probe statement whose cached query is purged has no location, and `Clean()` removes it. Whether `Clean()` removes any statement that still has a location. Its duration on `HSCUSTOM`. Whether `Clean()` or any of the calls writes to the current device (a write would reach the REST answer; if so, the port redirects output).
+  - **Measured.** Purging one statement's class leaves its row with no location, and `Clean()` removed it. `Clean()` removed exactly the statements with no location in the namespace (878 to 154, the 724 that had none) and no statement that still had one. It ran in 0.014 s on `HSCUSTOM`. With the current device redirected to a file, `Clean()` wrote 0 bytes. A freeze or unfreeze can drop the statement's location (inference: the vendor purges the cached query when the plan changes); `Clean()` clears the whole namespace's stale rows, not only the caller's.
 - (c) `PurgeQueries({"table":["Schema.Table"]})` with the SQL name removes that table's cached queries only, and `{"class":["%sqlcq.<NS>.cls<n>"]}` removes that class only. Whether the table name must be the internal form.
+  - **Measured.** `{"table":["OcuProbe216.T1"]}` and `{"table":["OCUPROBE216.T1"]}` each removed all of that table's cached queries and left the other table's; `{"class":["%sqlcq.HSCUSTOM.cls109"]}` removed that class and its statement's location only; `{}` purged the namespace's. After each purge the count of `%sqlcq.` locations for the target read 0. The SQL name works as typed or in upper case; a table whose name holds a dot was not measured (SQL refuses to create one). A cached-query class is not visible to `%Dictionary` and a purge deletes it; its count is read from `STATEMENT_LOCATIONS`, where a location reads `<class>.1`.
 - (d) `UpdateSQLIndex^%SYS.SQLSRV(hash, "probe")` sets `Error`, and `UpdateSQLIndex^%SYS.SQLSRV(hash, "")` clears it. That is the plan-error fixture.
+  - **Measured.** Both read as stated, from `INFORMATION_SCHEMA.STATEMENTS.Error`. On an absent hash the call answers OK and changes nothing.
 - (e) Freeze then unfreeze leaves `Frozen` 0. After `ClearStatement` the `Stat*` columns read empty or 0. Record which, since the read-back row says "blank".
+  - **Measured.** `Frozen` reads 1 after a freeze and 0 after the unfreeze. After `ClearStatement` the `Stat*` columns read empty (blank), not 0, and the statement's `stat` node of the statement index is gone. A statement run in a probe session, in a job and over the Atelier route recorded no statistics within the measured forty minutes (inference: the instance writes them on a later schedule), so `SqlTuningProbe` writes the node the instance writes (`SetStatistics`) to give a statement its three runs.
+
+**Decided at implement, 2026-11-22 (Batch 1):**
+
+- Each statement tool's subject and read name `Namespace`, and each purge tool's too, so a confirm reaches the namespace its proposal read (`ConfirmNamespaceRoster`); a tool declares `PRECONDITIONFIELD` (the plan state, the plan error, the stale count or the cached-query count) because the registry refuses a subject without one.
+- The tools declare no `CLASSICPAGES`: the descriptor's own classic page already adds its custom resource, and `ToolEmit` holds the pairs to the screen's plus WRITE as an argument pair (`ExplorerSave.CodeWritePairs`).
+- `ConfigPort.PurgeCachedQueries` takes a second, optional argument, the namespace it runs in, switched by save and restore around the vendor call alone: OcuPilot's classes are not visible from another namespace, so `SqlPort` cannot call it from inside one.
+- The id arguments are `Hash` (the statement tools, `*` for the clean), `CachedQuery`, `Table` and `Target` (`*`).
+- A statement the own-statement arm finds absent (404) is not judged: the fingerprint re-read closes the proposal. Any other failed read is an error status, and a read that answers no table list is refused `PROHIBITED.OCUPILOTSQL`.
+- `PermittedChangeFields` needs no entry: the state row's label is the tool's `STATEFIELD`, which the sweep skips, so both new types pass the reviewed-few sweep with nothing changed.
+- Strings not in the ruled list, taken from existing sentences or written as plain fragments, are listed for the gate in the stage report: the 404 reason for an absent statement or cached-query class (the table sentence), the 400 reason for a hostile id (the generic field-shape sentence), the two empty-state invitations the generator requires of a write-capable list (`explorerSqlStatementListEmptyAgent`, `explorerSqlCachedQueriesEmptyAgent`) and the tools' descriptions and id-shape messages, which only the agent reads.
 
 ## Verification
 

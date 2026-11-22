@@ -12,7 +12,13 @@
 /// through the information schema before it reads, and answers not found otherwise (AD-61 rule 7).
 /// Its privilege set is <parameter>OcuPilot.Port.AtelierPort.PAIRS</parameter>, beside READ on the
 /// namespace's code databases (AD-29). It replaces <code>%CSP.UI.Portal.SQL.Home</code>, whose
-/// custom resource also gates it (AD-44). No action and no refresh (AD-43).</p>
+/// custom resource also gates it (AD-44). It does not refresh (AD-43).</p>
+/// <p><b>Its entity type is <code>cached-query</code></b> (Story 21.6): a row's id is its <code>CachedQuery</code>, the class of one cached
+/// query, and the target of <code>purge</code>, carried out by <class>OcuPilot.Screen.Tool.ExplorerSqlCachedQueryPurge</class>. The page's own
+/// <code>purge-table</code>, on the tab's table, and <code>purge-namespace</code>, on <code>*</code>, are carried out by
+/// <class>OcuPilot.Screen.Tool.ExplorerSqlCachedQueryPurgeTable</class> and
+/// <class>OcuPilot.Screen.Tool.ExplorerSqlCachedQueryPurgeNamespace</class>. Each purge is a confirmed write for both callers (AD-53), and none is
+/// refused for a table of OcuPilot's own.</p>
 Class OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -28,13 +34,13 @@ XData Declaration
   "refreshes": false,
   "refreshRates": [],
   "privileges": [{"resource": "%Development", "permission": "USE"}],
-  "entityType": "class",
+  "entityType": "cached-query",
   "secondaryEntityTypes": [],
   "scope": "namespace",
   "parentScope": "system-explorer/sql-tables",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "purge", "selfProtection": ""}, {"id": "purge-table", "selfProtection": ""}, {"id": "purge-namespace", "selfProtection": ""}],
   "context": {"fields": ["CachedQuery", "Query", "Created", "Source", "QueryType", "Features"], "secretFields": []},
   "emptyStateKey": "explorerSqlCachedQueriesEmpty",
   "commandAliases": [],
@@ -67,8 +73,8 @@ XData Declaration
       {"field": "QueryType", "labelKey": "explorerSqlColumnQueryType", "kind": "text"},
       {"field": "Features", "labelKey": "explorerSqlColumnFeatures", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "explorerSqlCachedQueriesEmptyAgent"
   },
   "tab": {"group": "system-explorer/sql-tables/document", "position": 8, "labelKey": "explorerSqlTabCachedQueries"},
   "toolIdentifier": "explorer.sqlcachedqueries"

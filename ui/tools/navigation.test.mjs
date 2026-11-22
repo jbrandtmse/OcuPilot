@@ -435,6 +435,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 24.6: Command console and Class method console, after Unit tests.
       'system-explorer/command',
       'system-explorer/class-method',
+      // Story 21.6: SQL statements, after Class method console.
+      'system-explorer/sql-statements',
       // Story 20.3: the unlisted Production items list, reached from a Productions row, ahead of its area's listed lists.
       // Story 20.4: the item's tabs around it -- Jobs, Log, Messages, Queue, Item settings (Story 20.22) and the Status
       // head -- and Queue messages after them, all unlisted, in the descriptors' class order.

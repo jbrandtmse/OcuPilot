@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:668 */
+  /** EXPERIENCE.md:669 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5523,6 +5523,18 @@ export const STRINGS = {
   journalRecordListPrompt3: 'Are any of these records inside a transaction?',
   /** EXPERIENCE.md:596 */
   explorerSqlStatementsNote: 'Statistics are as of the instance\'s last aggregation, so a recently run statement can read blank.',
+  // Story 21.6: the SQL statements list's columns beyond the table's Statements tab, its empty state, the two empty-state invitations and
+  // the prompts.
+  explorerSqlColumnStatementHash: 'Statement hash',
+  explorerSqlColumnPlanError: 'Plan error',
+  explorerSqlColumnPlanSaved: 'Plan saved',
+  explorerSqlColumnPlanVersion: 'Plan version',
+  explorerSqlStatementListEmpty: 'No SQL statements are recorded in this namespace.',
+  explorerSqlStatementListEmptyAgent: 'freeze a statement\'s plan',
+  explorerSqlCachedQueriesEmptyAgent: 'purge cached queries',
+  explorerSqlStatementListPrompt1: 'Which statements take the longest on average?',
+  explorerSqlStatementListPrompt2: 'Is any plan frozen, and does a newer plan exist?',
+  explorerSqlStatementListPrompt3: 'Which statements have a plan error?',
   // Story 18.6: License key and License servers -- their titles, License key's twelve field labels
   // beyond License usage's "License units", the authorization-key line, the activate dialog's
   // labels, validity, restart and reduction sentences and consequence, Print and its printed-by

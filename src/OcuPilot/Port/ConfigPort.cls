@@ -1220,16 +1220,21 @@ ClassMethod PurgeSteps(pEndpoint As %String, pName As %String) As %DynamicArray
     Quit [(##class(OcuPilot.Port.AdminPort).ObjectScriptStep($ListBuild("Set tSC = $SYSTEM.SQL.PurgeQueries({""allNamespace"": 1})")))]
 }
 
-/// <p>Purge the cached queries of every namespace, as the classic SQL page does after one of the settings it names changes. A
-/// failed purge is the returned status. Overridable so a fixture can record the call or feed a failure; production never
-/// overrides it.</p>
-ClassMethod PurgeCachedQueries() As %Status
+/// <p>Purge cached queries with <var>pQualifiers</var>, <code>$SYSTEM.SQL.PurgeQueries</code>' qualifiers as a
+/// <class>%DynamicObject</class> and run in <var>pNamespace</var> when it is named, else in the current namespace;
+/// <code>""</code> purges the cached queries of every namespace (<code>{"allNamespace": 1}</code>), as the classic SQL page does
+/// after one of the settings it names changes. The namespace is switched by save and restore around the vendor call alone, since
+/// OcuPilot's own classes are not visible from another namespace. A failed purge is the returned status. Overridable so a fixture
+/// can record the call or feed a failure; production never overrides it.</p>
+ClassMethod PurgeCachedQueries(pQualifiers As %DynamicObject = "", pNamespace As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
-        Set tSC = $SYSTEM.SQL.PurgeQueries({"allNamespace": 1})
+        If pNamespace '= "" Set $NAMESPACE = pNamespace
+        Set tSC = $SYSTEM.SQL.PurgeQueries($Select($IsObject(pQualifiers): pQualifiers, 1: {"allNamespace": 1}))
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
