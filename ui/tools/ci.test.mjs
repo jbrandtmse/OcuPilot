@@ -3436,6 +3436,22 @@ test('each shard job reports every leg, and each roll-up checks its records and 
   }
 });
 
+// Mutation (Rule 19): rename the upload step's `path` folder -> this goes red.
+test("a failed browser leg uploads the folder the structural walk saves its stalled visit's CPU profile in", () => {
+  const steps = jobSteps(workflow, 'browser-shard');
+  const runner = steps.find((step) => step.run?.startsWith('npm run test:browser:shard'));
+  const folder = /\n {10}OCUPILOT_WALK_PROFILE_DIR: (.+)/.exec(runner?.text ?? '')?.[1];
+  assert.equal(folder, '${{ runner.temp }}/walk-profiles', 'the leg points the walk at a folder under runner.temp');
+  const uploads = steps.filter((step) => /uses:\s*actions\/upload-artifact@/.test(step.text) && step.text.includes('walk-profiles'));
+  assert.equal(uploads.length, 1, 'one upload step carries the profiles');
+  const [upload] = uploads;
+  assert.equal(upload.condition, '${{ failure() }}', 'it runs on a failed leg only');
+  assert.ok(upload.text.includes(`\n          path: ${folder}\n`), 'it uploads the folder the walk was pointed at');
+  assert.match(upload.text, /\n {10}retention-days: [1-7](\n|$)/, 'and keeps it for a week at most');
+  assert.match(upload.text, /\n {10}if-no-files-found: ignore(\n|$)/, 'a leg without a stall has no file to upload and does not fail for it');
+  assert.ok(steps.indexOf(upload) > steps.indexOf(runner), 'after the leg ran');
+});
+
 // Mutation (Rule 19): remove `if: ${{ matrix.shard == 1 }}` from the smoke step -> this goes red.
 test('the admin API drift check and smoke run once per CI run, in leg 1, around its share (AC6)', () => {
   const steps = jobSteps(workflow, 'instance-shard');

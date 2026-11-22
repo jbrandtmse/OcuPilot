@@ -232,7 +232,7 @@ Method TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap()
     Do $$$AssertTrue(tBulk >= (tFirstAsk + 2), "the first read's " _ (tFirstAsk + 2) _ " rows end inside the vendor's first bulk of " _ tBulk)
     Set tArgs = {"file": (..PreparedFile), "value": ($Parameter(..#PROBE, "PROBEGLOBAL")), "order": "1", "direction": "desc"}
     Do tArgs.%Set("maxRows", tFirstAsk, "number")
-    Set tSC =##class(OcuPilot.Screen.Tool.Read).View(..#SCREEN, tArgs, 10, .tFirst, .tHttp, .tFault)
+    Set tSC = ##class(OcuPilot.Screen.Tool.Read).View(..#SCREEN, tArgs, 10, .tFirst, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the tool reads in reverse order")
     If $$$ISERR(tSC) Quit
     Set tRows = tFirst.%Get("rows")

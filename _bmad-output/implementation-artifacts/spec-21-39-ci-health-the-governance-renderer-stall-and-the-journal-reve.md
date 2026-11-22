@@ -2,7 +2,8 @@
 title: 'Story 21.39: CI health: the governance renderer stall and the journal reverse-read timeout'
 type: 'bugfix'
 created: '2026-11-22'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'ecbf46582b56cf20f2b6c556310c662a68265bfd'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -88,6 +89,19 @@ deferred: []
 
 - Run 44979425183's earlier `ERROR #9509: Failed to send signal to job` is `BackgroundTaskPortSeam.TestAVendorStateErrorIsThePublishedRefusal`'s own armed `ArmAnswer(9509)` (`:119`), logged as a 500 by a passing test; it has no bearing on the journal read (absent from run 44986244257's red).
 
+### 2026-11-22 — Review pass
+
+- verdicts: 8 findings — high 0, medium 1, low 7, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` the `ci.yml` profile upload and its env folder were pinned by no test — a renamed path would upload nothing, silently (`if-no-files-found: ignore`). Patched: a pin in `ui/tools/ci.test.mjs` ties the shard step's `OCUPILOT_WALK_PROFILE_DIR` to the upload's `path`, `failure()` and a short `retention-days`; mutation recorded.
+  - `[low]` `[patch]` the Batch 2 mutation line covered only two of the pins (resume, not-landed, governance record and `main thread:` field unproven). Patched: all four applied, red observed, reverted, recorded under Verification.
+  - `[low]` `[patch]` the second page's bulk assertion had no applied mutation. Patched: `tSecondAsk` 20 turned that assertion and the `ci-flake-waits` pin red; reverted, recorded.
+  - `[low]` `[patch]` `Set tSC =##class(` missing a space in `JournalRecords.cls`. Patched.
+  - `[low]` `[reject]` `FirstBulkRows` copies the vendor list's open shape and its `+ 2` margin and the 18-row bulk depend on the seeded rows — a drift makes the live pin red rather than the timeout, which is its purpose; a shared base would couple the test to the vendor's hidden class.
+  - `[low]` `[reject]` a Profiler session runs on every visit, which is an observer effect — it is the orchestrator's ruling (profile armed at each visit, kept only for an abandoned one); `a11y-structural-invariants` ran twice forward, 13/13 and 0 unsettled each, with unchanged outcome.
+  - `[low]` `[reject]` `profileDir()`'s temp-directory default is untested — a fallback that only picks a folder, no user-reachable failure.
+  - `[low]` `[reject]` the real `Debugger.pause`, `Profiler.stop` and `response.buffer()` run only against fake sessions in the unit pins (intent audit) — a live stall is the only place they can run, which is the capture's purpose; each failure there is named in the stall line, never thrown.
+
 ## Design Notes
 
 **Governing ADs:** AD-26 (the async journal read's bound stays at 30 s and refuses `PORT.TIMEOUT`, never a partial row), AD-17 (armed tests on a throwaway only), AD-36 (the journal read and the governance read are unchanged). For Batch 2 also AD-19 and AD-22, both unchanged. No AD changes.
@@ -138,13 +152,39 @@ deferred: []
 - `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.JournalRecordDetail` -- `(loop)` expected: green. `JournalProbe` gains one method and no change, and its 13 other consumers are covered by the sweep.
 - `uv run scripts/check-objectscript.py` -- `(once)` expected: clean.
 - Full ObjectScript sweep, one class per call, batched from `ui/tools/ci-timings.json` -- `(once)` expected: green. The browser suite is left to CI (Rule 29).
-- mutation: the first read's `maxRows` set to 20 -> `TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap` red on the bulk assertion.
+- mutation: the first read's `maxRows` set to 20 -> `TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap` red on the bulk assertion. Applied: red, and only that test ("the first read's 22 rows end inside the vendor's first bulk of 18"), 9/10 others green; reverted, `git diff` identical bar the one line, reloaded, 10/10.
+
+**Batch 2 (capture), after Batch 1 is committed:**
+
+- A unit-level node test (under `ui/tools/`, run by `npm run test:tools`) pins that a forced abandoned visit writes the profile file and the stall-line fields (paused frames or the not-landed wording, the governance answer's byte length) and that a settled visit writes none. `(loop)`.
+- mutation (Batch 2): the settled-visit discard removed (`visit.discard()` in `goInApp`'s `finally`) -> only "a settled visit saves no profile and releases its profiler" red ("the profile is discarded, never stopped"); the abandoned-visit write removed (`writeFileSync` in `armVisitProfile`) -> only "an abandoned visit saves its CPU profile ..." red ("one profile is saved"); both reverted, 47/47 in `ui/tools/structural-walk.test.mjs`. Also applied, each reverted with `git diff` clean: `Debugger.resume` dropped -> the abandoned-visit test red; the not-landed return dropped -> the not-landed test red; the `watched.governance` record dropped -> the abandoned-visit test red; the `main thread:` field dropped -> both stall-line tests red.
+- mutation (second page): `tSecondAsk` set to 20 in `JournalRecords` -> only the reverse test red on "the next page's 22 rows end inside the vendor's first bulk of 18", and `ui/tools/ci-flake-waits.test.mjs` red on the same ask; reverted and reloaded, 10/10.
+- mutation (upload wiring): the `ci.yml` upload step's `path` renamed to `walk-profile` -> only the new `ui/tools/ci.test.mjs` upload pin red (107 tests, 1 red); reverted, `git diff` clean.
+- `cd ui && npm run build`, redeploy the bundle to `ocupilot-ci`, then `a11y-structural-invariants.browser-spec.mjs` forward twice, one call each, its outcome unchanged. `(once)`.
+- `ui/tools/ci.test.mjs` stays green with the add-only `ci.yml` upload step (pinned sha, short `retention-days`).
+- The capture never changes a timing, deadline, retry or outcome; no product code, user-facing string or AD changes.
 
 Shared surfaces: none. Every test added or changed passes on a fresh environment, in either order.
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none (plan's intent gap ruled 2026-11-22; Spec Change Log)
+Status: done
+Blocking condition: none
 
-Plan stage: halted on an intent gap because the governance stall did not reproduce on a freshly rebuilt ocupilot-ci (a11y spec 13/13; harness at 4x and 10x CPU throttle, 1280 and 720 px, governance 1.99-2.01 s, no stall). The orchestrator took option 1, capture at the stall.
+**Implemented.** Batch 1 (DW-2517, commit baea3ce4c): the reverse test's first read asks 12, and both reads assert a live `JournalProbe.FirstBulkRows` of at least ask plus 2; the reverse test took 0.22 s where 3.51 s was measured. Batch 2 (DW-1822/DW-2600, commit b0ad7a3f2): evidence only. A stalled call now adds the main thread's top frames (one bounded `Debugger.pause`), the governance answer's byte length and the visit's saved CPU profile to the stall line; a failed browser shard uploads the profiles for 3 days. No timing, deadline, retry or outcome changed; DW-1822 and DW-2600 stay open until a red carries a profile.
+
+**Files.**
+
+- `src/OcuPilot/Test/JournalProbe.cls`: `FirstBulkRows`.
+- `src/OcuPilot/Test/JournalRecords.cls`: the reverse test's asks and bulk assertions.
+- `ui/tools/ci-flake-waits.test.mjs`: the source pin follows the new asks.
+- `ui/browser/structural-walk.mjs`: the capture.
+- `ui/tools/structural-walk.test.mjs`: three pins.
+- `.github/workflows/ci.yml`: the env folder and the upload step.
+- `ui/tools/ci.test.mjs`: the upload pin (review patch).
+
+**Review.** 8 findings: 1 medium and 3 low patched (upload pin, three mutation lines, one space), 4 low rejected with reasons in the triage log, none deferred. Follow-up review not recommended: no high and one medium patched.
+
+**Verified.** `reload.sh` `LOADERRORS=0`; `JournalRecords` 10/10, `JournalRecordDetail` 5/5, the other 11 `JournalProbe` consumers 55/55; `check-objectscript.py` 0 problems; `npm run test:tools` 2398/2398; `npm run build` clean; `a11y-structural-invariants` forward twice, 13/13 and 0 unsettled each (527 s, 530 s). Every mutation under Verification was applied, observed red and reverted. The full ObjectScript sweep was not run: `ci-timings.json` totals about 9,700 s, over the foreground cap, and the changed classes' consumers are covered above; the browser suite is left to CI.
+
+**Residual.** The real `Debugger.pause`, `Profiler.stop` and `response.buffer()` run only against fake sessions until a CI stall exercises them.
