@@ -14479,3 +14479,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-38-shared-rules-helpers-the-source-control-follow-up-and-escala.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Code review 21.38: the exact-file admission is the ruled design; the refusals reach only a hand-crafted request the dialog never sends; the Action row label follows the Screen row's
 - 2026-11-22T09:02:08Z status=by-design owner=21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=cr note=spec rulings and the Screen row's precedent
+
+### DW-2846: An agent's partial purge (vendor error after some deletes) records its ConfigChange without the agent marker; adding it means changing the kernel confirm's rule that every tool shares
+- source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager.md (review 596600cc6) | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: 24.16 Batch 1 review, deferred
+- 2026-11-22T22:27:10Z status=routed owner=burndown by=epic-24-runner note=kernel: carry the agent marker on a failed confirmed write's audit row
