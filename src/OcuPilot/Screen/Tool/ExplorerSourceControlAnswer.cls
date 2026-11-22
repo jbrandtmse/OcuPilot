@@ -24,6 +24,10 @@ Parameter SCREENVALUES = "answer=step:answer";
 /// holds the document.</p>
 Parameter READTYPE = "ANSWERDOCS";
 
+/// <p>The step and the answer are held to their values (<method>ScreenActionDelta</method>) before the fresh read, so a bad
+/// value reaches no route.</p>
+Parameter READSVALUES As BOOLEAN = 1;
+
 Parameter WRITETYPE = "ANSWER";
 
 Parameter DESTRUCTIVE As BOOLEAN = 0;

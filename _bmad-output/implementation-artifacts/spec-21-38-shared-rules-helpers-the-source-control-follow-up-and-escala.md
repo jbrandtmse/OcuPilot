@@ -240,6 +240,29 @@ Batches 7-10 (DW-2499). Each adopter's methods keep their names and signatures a
 - AC9 (AD-39's ninth exception): Given a source-control question carrying markup or a newline, when it shows on the screen or the card, then it renders as plain text, and its text never reaches the tool result, the ledger, the audit payload or the screen context.
 - AC8 (DW-2499): Given every adopter, when its existing tests run, then each is green with unchanged sentences, statuses and taken verdicts, and the loop and probe exist once, in the helpers.
 
+### Review Findings
+
+Code review, 2026-11-22, over `ca78cffc5..e8f3e8ef3` without the two feature merges (full-opus, four layers). No HIGH. Patched, uncommitted:
+
+- [x] [Review][Patch] MED: `PageResourceProhibited.HasAction` answered true for any non-empty list (a `For` leaves its variable at the last value) [`Test/PageResourceProhibited.cls`]. Found flag and a negative leg; fix-risk low.
+- [x] [Review][Patch] MED: the `%Atelier` harness lacked the prefix-named file and the `Port/Atelier*/` directory cases [`scripts/test_check_objectscript.py`]. Both added; fix-risk low.
+- [x] [Review][Patch] MED: no test covered a screen that opens a page and carries a write declaring it [`page-resources-dialog.spec.ts`, `tools/proposal-view.test.mjs`]. Dialog, sentence and row-display cases; fix-risk low.
+- [x] [Review][Patch] MED: AC7, a bad step or answer was checked only after the answer's fresh read reached the vendor's `GetDocNames` [`Screen/Tool/ExplorerSourceControlAnswer.cls`]. `READSVALUES` 1, pinned in `SourceControlFollowUp`; fix-risk low (the check reads no fresh value).
+- [x] [Review][Patch] MED: AD-61 rule 1, the port took `ANSWERDOCS` on the read pairs alone [`Port/AtelierPort.cls`]. It takes the answer's WRITE pair; a port-direct leg pins it; fix-risk low.
+- [x] [Review][Patch] MED: AC5, no test held the panel's hand-off of a confirmed write's questions, list screen and namespace to its card [`shell/panel.spec.ts`]. Two cases; fix-risk low.
+- [x] [Review][Patch] LOW: the AC9 audit leg passed on an empty window [`Test/SourceControlFollowUp.cls`]. Floor assertion.
+- [x] [Review][Patch] LOW: the card's AC9 output-slot assertion could not fail [`shell/proposal-card.spec.ts`]. The card now carries output.
+- [x] [Review][Patch] LOW: the dialog's Cancel test named Escape and the scrim without pressing them [`source-control-question-dialog.spec.ts`]. Both legs added.
+- [x] [Review][Patch] LOW: AC1-AC4 had no `mutation:` line in `## Verification`. Written.
+- [x] [Review][Defer] LOW: the question dialog's lifecycle (a remounted card asks again, two cards can stack, leaving the list drops an open question, action 1 or 6 with empty text) -- DW-2832 `wontfix-accepted`.
+- [x] [Review][Defer] LOW: the answer's port edges (no pending-question record, a vendor query with no row answers 200, a create whose compile route fails loses its questions) -- DW-2833 `wontfix-theoretical`.
+- [x] [Review][Defer] LOW: Page resources reads the registry three times per review, and the card names nothing for a descriptor its mirror lacks -- DW-2834 `wontfix-accepted`.
+- [x] [Review][Defer] LOW: accepted test-strength limits (AC9 mint legs, the screen-context input, multi-violation adopters, the screen gate's WRITE pair alone, `reviewed()`'s `Opens`, the Routines answer end to end, `SourceControlFollowUp` past 500 lines) -- DW-2835 `wontfix-accepted`.
+- [x] [Review][Defer] LOW: by design (the whole-file `%Atelier` admission as ruled, two tool refusals no screen path sends, the card's `Action` row label) -- DW-2836 `by-design`.
+- Dismissed: the `SuperserverRules` type list against `$ListFind` (measured: `$ListFind($ListBuild(1),"1")` is 1).
+
+Measured on `ocupilot-ci` (conditions): a probe question carrying `<b>`, `<i>`, `<img onerror>` and a newline rendered in Chrome on the Classes list dialog with its text verbatim, no element child, and the line break kept (temporary probe edit, reverted, md5 equal); 473 tool classes walked, `ANSWERDOCS` named only by the answer family, the two answer tools walked by `ConfirmNamespaceRoster` at the port's namespace scope; `Error.cls` 0 removed words, 991 parameters, the `NAV.` line after `ReasonForNav`'s return; `ViolationsSentence` and `ReadTaken` equal to the `ca78cffc5` loop and tail over 4 and 24 inputs; no stale copy of S1-S5's old text; no `PROHIBITED.` literal in a story file, no quoted `OcuPilot.Kernel.Proposal.Confirm`.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -454,6 +477,13 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 - mutation: Batch 8, AC8, `ViolationsSentence` joins with `"; "` -> `AuditEventRules`, `TaskRules`, `ServiceUpdate` and `LdapUpdate` stay green (no adopter test of this batch pins a multi-violation sentence); it writes `"':: "` after the field -> `ServiceUpdate` and `SslUpdate` red in 1 test each. Reverted (md5 of `AgentRules.cls` equal, `git status --short` and `git diff --stat` as before), source reloaded.
 - mutation: Batch 9, AC8, `ViolationsSentence` writes `"':: "` after the field -> `JournalSettingsRules` red in 4 of 5 tests (through `JournalRules.Problem`); `DatabaseRefusals` and `DatabaseWrite` stay green (no assertion pins the exact sentence). Reverted (md5 of `AgentRules.cls` equal, `git status --short` and `git diff --stat` as before), source reloaded, `JournalSettingsRules` green again.
 
+- mutation: AC1, the navigator's `catch` -> `agent-navigator.spec.ts` load-failure case red; `NavigationViolation` accepts any code -> `TurnNavigate.TestAC10NavigationBodyVocabulary` red; the `NAV.` line removed -> `ToolNavigate.TestEveryNavCodeHasAWrittenSentence` red (implement pass 1, Batch 2 record).
+- mutation: AC2, `arrowName` drops `label` -> `interop-message-trace.browser-spec.mjs` label-in-name red; the template renders `label.toUpperCase()` -> `interop-item-test.browser-spec.mjs` arrow name red (Batch 1 record, lead patch).
+- mutation: AC3, `analyticsCubeDimensionsEmpty` reverted -> `strings.test.mjs` red in 3 tests (Batch 1 record).
+- mutation: AC4 (code review), `PageDeclarations` writes a wrong action id -> `PageResourceProhibited.TestPageDeclarationsSplitOpeningFromActions` red; the card drops an opening screen that also carries a write -> `proposal-view.test.mjs` page-resource case red; the dialog does the same -> `page-resources-dialog.spec.ts` same-screen case red alone. Each reverted (md5 equal), source reloaded.
+- mutation: code review, check-objectscript, the `%Atelier` admission matched by prefix -> the `AtelierPortX.cls` and `Port/AtelierPort/` cases red. Reverted (md5 equal).
+- mutation: code review, AC7, `READSVALUES` 0 on the answer base -> `SourceControlFollowUp.TestTheAnswerToolsArePersonOnlyAndShipDisabled` red; `ANSWERDOCS` out of `Invoke`'s write types -> `TestABadAnswerOrACallerWithoutWriteIsRefusedBeforeAnyRoute` red. Each reverted, source reloaded.
+- mutation: code review, AC5, the panel takes the question scope from the shell -> the `panel.spec.ts` Explorer-delete case red; the `explorer.` gate dropped -> the other-area case red. Reverted (md5 equal).
 - mutation: Batch 10, AC8, `ReadTaken` treats a 404 as taken -> `ResourceCreate` red in 2 tests (`TestAPrivilegedPublicPermissionIsGrantedAtTheStrongestConfirmationOnBothCallers`, `TestTheScreenAndTheConfirmSendOneBody`). Reverted (md5 of `ScreenSaveRules.cls` equal, `git status --short` and `git diff --stat` as before), source reloaded, `ResourceCreate` green again.
 
 ## Auto Run Result

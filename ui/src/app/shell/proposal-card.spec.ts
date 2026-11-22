@@ -1760,7 +1760,11 @@ describe('the proposal card and a source-control question (Story 21.38, AD-39\'s
     expect(text.textContent).toBe(HOSTILE);
     expect(text.children).toHaveLength(0);
     expect(view.host.querySelector('.ocu-dialog img, .ocu-dialog b, .ocu-dialog script')).toBeNull();
-    expect(view.host.querySelector('[data-slot="output"]')).toBeNull();
+    view.fixture.componentRef.setInput('output', ['Deleted Probe.Alpha.cls']);
+    await settled(view.fixture);
+    const output = view.host.querySelector('[data-slot="output"]');
+    expect(output?.textContent).toContain('Deleted Probe.Alpha.cls');
+    expect(output?.textContent).not.toContain('source control');
   });
 
   it('AC6: an alert on the card shows with Close and sends nothing', async () => {

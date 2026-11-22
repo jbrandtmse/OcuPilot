@@ -264,6 +264,18 @@ describe('the Page resources dialog (Story 21.37)', () => {
       );
     });
 
+    it('names the opening screen and a write on that same screen, each in its own sentence', () => {
+      openChange();
+      model.review.set(reviewOf(['Resources'], [EXPORT], 'ResB', 'PAGERESOURCE.CHANGED'));
+      fixture.detectChanges();
+      expect(line()).toBe(
+        "Resources follows this page's resource and will require it from the next request. This page's resource will be required from the next request for: Export on Resources."
+      );
+      expect(consequence()).toBe(
+        'Accounts that hold only the old resource can no longer open Resources. Accounts that hold only the old resource can no longer use: Export on Resources.'
+      );
+    });
+
     it('names a labeled tool and a tool with no label in one line, the second by the unnamed form', () => {
       openChange();
       model.review.set(reviewOf([], [EXPORT, IMPORT], 'ResB', 'PAGERESOURCE.CHANGED'));

@@ -114,6 +114,16 @@ describe('the source-control question dialog', () => {
     await cancel.press(cancel.cancel());
     expect(cancel.sends.map((send) => send.values)).toEqual([{ step: '7', answer: '2' }]);
     expect(cancel.finished()).toBe(1);
+    const escape = await mount([question({ step: 1 })]);
+    expect(TestBed.inject(OverlayStack).closeTop()).toBe(true);
+    await settle(escape.fixture);
+    expect(escape.sends.map((send) => send.values)).toEqual([{ step: '1', answer: '2' }]);
+    expect(escape.finished()).toBe(1);
+    const scrim = await mount([question({ step: 2 })]);
+    scrim.host.querySelector('.ocu-dialog-scrim')?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    await settle(scrim.fixture);
+    expect(scrim.sends.map((send) => send.values)).toEqual([{ step: '2', answer: '2' }]);
+    expect(scrim.finished()).toBe(1);
   });
 
   it('shows two questions in the order the class asked them, the second only once the first is answered', async () => {

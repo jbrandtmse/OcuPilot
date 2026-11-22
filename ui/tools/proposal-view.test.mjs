@@ -429,6 +429,22 @@ test("the page resource card names a tool-only page by its action, a both-ways p
     pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, 'Resources, Users', `${RESOURCES}#export,OcuPilot.Screen.Descriptor.UserList`)),
     'Accounts that hold only the old resource can no longer open Users. Accounts that hold only the old resource can no longer use: Export on Resources.'
   );
+  // Both ways on one screen: the screen opens the page and carries a write that declares it.
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, 'Resources', `${RESOURCES}#export,${RESOURCES}`)),
+    'Accounts that hold only the old resource can no longer open Resources. Accounts that hold only the old resource can no longer use: Export on Resources.',
+    'a screen that opens the page and carries a write that declares it is named in both sentences'
+  );
+  const sameScreen = {
+    targetType: 'page-resource',
+    changed: [{ field: 'Action', before: `${RESOURCES}#export,${RESOURCES}`, after: `${RESOURCES}#export,${RESOURCES}` }],
+    unchanged: [],
+  };
+  assert.deepEqual(
+    shownChangedRows(sameScreen).map((row) => [row.field, row.before, row.after]),
+    [['Action', 'Export on Resources', 'Export on Resources']],
+    'the bare opening-screen entry never prints, and no descriptor class or id does'
+  );
   // One labeled and one unlabeled tool on one page: one sentence, S11 and S12 in one line.
   assert.equal(
     pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, 'Resources', `${RESOURCES}#export,${RESOURCES}#import`)),

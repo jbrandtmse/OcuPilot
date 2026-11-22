@@ -387,7 +387,8 @@ Parameter TYPECREATE = "CREATE";
 Parameter TYPEANSWER = "ANSWER";
 
 /// <p>The read before an answer: <method>Docs</method>, with <code>step</code> and <code>answer</code> answered
-/// <code>null</code> beside it. It reads no presence, so it answers 200 for a document that is gone.</p>
+/// <code>null</code> beside it. It reads no presence, so it answers 200 for a document that is gone. It takes the
+/// answer's own pairs, WRITE on the routines database included.</p>
 Parameter TYPEANSWERDOCS = "ANSWERDOCS";
 
 /// <p>The one statement an answer sends to the <code>Query</code> route: the source-control class's
@@ -933,7 +934,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         Set tSetType = (pType = ..#TYPEDOCS) || (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT) || (pType = ..#TYPESAVEDOCS) || (pType = ..#TYPESAVE) || (pType = ..#TYPENEWDOC) || (pType = ..#TYPECREATE) || (pType = ..#TYPEANSWER) || (pType = ..#TYPEANSWERDOCS)
         Set tImportType = (pType = ..#TYPEIMPORTTARGET) || (pType = ..#TYPEPREVIEW) || (pType = ..#TYPEIMPORT)
-        Set tWrite = (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPESAVE) || (pType = ..#TYPECREATE) || (pType = ..#TYPEANSWER)
+        Set tWrite = (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPESAVE) || (pType = ..#TYPECREATE) || (pType = ..#TYPEANSWER) || (pType = ..#TYPEANSWERDOCS)
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If (tNamespace = "") && (tSetType || tImportType) Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         If '$Match(tNamespace, ..#NAMESPACEPATTERN) {

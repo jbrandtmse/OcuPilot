@@ -156,6 +156,26 @@ class TestVendorAtelierAdmittedInOneFile(FixtureTreeCase):
             f"expected the other file refused, got {problems}",
         )
 
+    def test_a_file_whose_name_extends_the_ports_is_refused(self):
+        self.write("src/OcuPilot/Port/AtelierPortX.cls", self.body("AtelierPortX"))
+        problems: list[str] = []
+        co.check_rename_tokens(problems)
+        self.assertTrue(
+            any("AtelierPortX.cls" in p and "%Atelier" in p for p in problems),
+            f"expected the prefix-named file refused, got {problems}",
+        )
+
+    def test_a_file_in_a_directory_named_like_the_port_is_refused(self):
+        self.write("src/OcuPilot/Port/AtelierPort/AtelierPort.cls", self.body("AtelierPort"))
+        self.write("src/OcuPilot/Port/AtelierTools/Helper.cls", self.body("Helper"))
+        problems: list[str] = []
+        co.check_rename_tokens(problems)
+        for rel in ("Port/AtelierPort/AtelierPort.cls", "Port/AtelierTools/Helper.cls"):
+            self.assertTrue(
+                any(rel in p and "%Atelier" in p for p in problems),
+                f"expected {rel} refused, got {problems}",
+            )
+
 
 class TestNamingCapScopedToStorageClasses(FixtureTreeCase):
     """The rescoped `MAX_CLASS_NAME_LENGTH` cap (Consistency Conventions, 2026-09-12): binds a

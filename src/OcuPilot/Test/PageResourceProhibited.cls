@@ -223,10 +223,11 @@ Method TestAChangeOrAClearOfADeclaredPageIsMintedDestructive()
 /// <p>Whether the pair list <var>pActions</var> holds <code>$ListBuild(pDescriptor, pAction)</code>.</p>
 ClassMethod HasAction(pActions As %List, pDescriptor As %String, pAction As %String) As %Boolean
 {
+    Set tFound = 0
     For tI = 1:1:$ListLength(pActions) {
-        If ($List($List(pActions, tI), 1) = pDescriptor) && ($List($List(pActions, tI), 2) = pAction) Quit
+        If ($List($List(pActions, tI), 1) = pDescriptor) && ($List($List(pActions, tI), 2) = pAction) Set tFound = 1 Quit
     }
-    Quit (tI <= $ListLength(pActions))
+    Quit tFound
 }
 
 /// <p>A page that a built screen opens and a write tool also declares, read from the registry's tools, or <code>""</code>.</p>
@@ -267,6 +268,7 @@ Method TestPageDeclarationsSplitOpeningFromActions()
     Do $$$AssertEquals($ListLength(tOpens), 0, "no screen opens the page only tools declare")
     Do $$$AssertTrue(..HasAction(tActions, tResources, "export"), "the export tool is an action on the Resources screen")
     Do $$$AssertTrue(..HasAction(tActions, tResources, "import"), "and so is the import tool")
+    Do $$$AssertTrue('..HasAction(tActions, tResources, "delete"), "and no action the page's tools do not carry")
     Set tScreens = ##class(OcuPilot.Screen.Registry).ScreensDeclaringPage(..#TOOLONLY, .tScreensResolved)
     Do $$$AssertEquals($ListToString(tScreens), tResources, "the screens declaring it are the tools' one screen, as before")
     Do $$$AssertTrue(tScreensResolved, "and the registry was read")
