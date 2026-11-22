@@ -689,3 +689,9 @@
 2026-11-22T01:25:10Z	Story 24.15	story_created	spawn_at=2026-11-22T01:12:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-15-credentials-default-settings-and-schedules-3.md build_status=ready-for-dev scope=batch1b_DW-2827 roster=335_writes(218_ns-free,111_carry,3_person-only,3_lose:InteropPartnerRemove,InteropLookupEntryRemove,InteropLookupTableDelete)
 2026-11-22T01:25:10Z	Story 24.15	spec_validated	scope=batch1b stop_rule=branch1(only_the_three_interop_tools) strings=none
 2026-11-22T01:25:10Z	Story 24.15	stage_spawned	stage=implement spawn_at=2026-11-22T01:25:10Z model=sonnet agent_name=24-15-implement-batch1b cycle_iteration=3 story_base=ff966594a
+2026-11-22T01:25:52Z	Story 24.15	ruling	source=orchestrator scope=batch1b roster_accepted kernel_option=not_now guard_test=ConfirmNamespaceRoster(relayed_to_implement) DW-2827_evidence_appended kernel_DW=DW-2828
+2026-11-22T01:49:10Z	Story 24.15	ci_green	scope=batch1 sha=fc4a22869 run=44969124924
+2026-11-22T01:53:11Z	Story 24.15	merged_to_feature	scope=batch1 feature=108879ecf(code-equal_a7879b77c) integrate_before_1b_push=yes
+2026-11-22T04:22:05Z	Story 24.15	note	feature=1d3cc3a3b(21.37) integrate_target_for_1b=1d3cc3a3b rosters_rederive_from_base
+2026-11-22T04:33:22Z	Story 24.15	stage_completed	stage=implement scope=batch1b commit=86f4d75d8 fix=Namespace_in_FINGERPRINTSUBJECT(3_tools) tests=InteropConfirmNamespace(3_legs)+ConfirmNamespaceRoster(335_writes:220_exempt,115_asked;42-entry_roster) mutations=3_legs_alone+partner_reds_roster_alone+4_roster_guards sweep=17/17_green review=9(1_med_patched,1_low_deferred,7_rejected) table_leg=200_deletes_HSCUSTOM_without_fix(plan_inference_corrected)
+2026-11-22T04:33:22Z	Story 24.15	stage_spawned	stage=qa+code-review(combined,small_batch) spawn_at=2026-11-22T04:33:22Z model=opus agent_name=24-15-review-batch1b cycle_iteration=3
