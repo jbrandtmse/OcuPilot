@@ -48,14 +48,14 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
   }
 }
 
-async function mount(answer: JsonResult<unknown>, mode: CredentialDialogMode = 'add', credential: string | null = null, initial: CredentialValues | null = null) {
+async function mount(answerOrNext: JsonResult<unknown> | (() => JsonResult<unknown>), mode: CredentialDialogMode = 'add', credential: string | null = null, initial: CredentialValues | null = null) {
   TestBed.resetTestingModule();
   const sent: { path: string; scope: string | null | undefined; body: string }[] = [];
   const api = {
     requestJson: async <T,>(path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
       sent.push({ path, scope: init.scope, body: typeof init.body === 'string' ? init.body : '' });
       if (path.includes('/screens/interop.businesspartners/read')) return { kind: 'ok', status: 200, body: { rows: [{ Name: 'PartnerA' }, { Name: 'PartnerB' }] } } as JsonResult<T>;
-      return answer as JsonResult<T>;
+      return (typeof answerOrNext === 'function' ? answerOrNext() : answerOrNext) as JsonResult<T>;
     },
   };
   TestBed.configureTestingModule({
@@ -129,6 +129,27 @@ describe('the New credential, Edit and Set password dialog', () => {
     expect(JSON.parse(posts[0].body)).toEqual({ Name: 'Probe', Username: 'probe', BusinessPartner: 'PartnerB', Password: 'OcuPw1' });
     expect(fixture.componentInstance.added).toEqual(['Probe']);
     // Mutation (Rule 19): leave the typed password in the field after the submit -> this goes red.
+    expect((field(host, 'Password') as HTMLInputElement | null)?.value ?? '').toBe('');
+  });
+
+  it('keeps the typed password after a refused add, and sends it again with the corrected Save', async () => {
+    const refusal: JsonResult<unknown> = { kind: 'error', status: 409, code: 'INTEROP.CREDENTIAL.TAKEN', reason: STRINGS.interopCredentialRefusalTaken, detail: null };
+    const accepted: JsonResult<unknown> = { kind: 'ok', status: 201, body: { id: 'Probe2', target: { type: 'interop-credential', scope: 'USER', id: 'Probe2' }, readBack: { verdict: 'matches' } } };
+    let posts = 0;
+    const { fixture, host, sent } = await mount(() => (posts++ === 0 ? refusal : accepted));
+    type(fixture, host, 'Name', 'Held');
+    type(fixture, host, 'Password', 'OcuPw3');
+    confirm(host).click();
+    await settle(fixture);
+    expect(fixture.componentInstance.added).toEqual([]);
+    // Mutation (Rule 19): clear the field whether or not the add was accepted -> this goes red.
+    expect((field(host, 'Password') as HTMLInputElement).value).toBe('OcuPw3');
+    type(fixture, host, 'Name', 'Probe2');
+    confirm(host).click();
+    await settle(fixture);
+    const bodies = sent.filter((entry) => entry.path.endsWith('/interop/credentials')).map((entry) => JSON.parse(entry.body) as Record<string, unknown>);
+    expect(bodies.map((body) => body['Password'])).toEqual(['OcuPw3', 'OcuPw3']);
+    expect(fixture.componentInstance.added).toEqual(['Probe2']);
     expect((field(host, 'Password') as HTMLInputElement | null)?.value ?? '').toBe('');
   });
 
