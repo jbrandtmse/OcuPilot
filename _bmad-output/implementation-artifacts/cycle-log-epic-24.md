@@ -757,3 +757,4 @@
 2026-11-22T22:40:22Z	Story 24.16	fresh_check_started	scope=batch1 tree=5a6823bd2
 2026-11-22T22:54:29Z	Story 24.16	fresh_check_passed	scope=batch1 tree=5a6823bd2 classes=15cls_142tests_first_run reverse=4cls_24tests browser=interop-purge+config-settings+a11y_26/26 smoke=PASSED test_tools=2400 harness=OK
 2026-11-22T22:54:29Z	Story 24.16	code_head_pushed	scope=batch1 sha=5a6823bd2 run=45080247136
+2026-11-22T22:54:41Z	Story 24.16	stage_spawned	stage=plan spawn_at=2026-11-22T22:54:41Z model=opus agent_name=24-16-plan-batch2 cycle_iteration=2 scope=batch2_suspended_messages
