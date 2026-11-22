@@ -994,3 +994,5 @@
 2026-11-22T17:13:51Z	Story 21.39	integrated_forward	feature=a4cf78378(24.15_B3+end) merge=M=ffa2a92e7 conflicts=1(sprint-status.yaml:last_updated;union_21-39_done+24-15_done) overlap_with_21.39_files=none(ci.yml,structural-walk,Journal*_untouched_by_24.15) counts=feature's_stand(21.39_adds_no_tool) verified=screen-mirror(265/115),check-objectscript_0,test:tools_2400,LOADERRORS=0,ConfirmNamespaceRoster,ReadTool,ToolWrite,JournalRecords,GovernanceBaseline_green
 2026-11-22T17:13:51Z	Story 21.39	code_head_pushed	sha=ffa2a92e7 run=45048213834 missing=none note=integrate-only_M
 2026-11-22T17:13:51Z	Story 21.39	story_complete	head=caaa772b3(gates)+M=ffa2a92e7 run=45032370635(+45048213834) fresh=pass sweep=20/20 smoke=50/50 ledger_owned=0 routed_out=DW-1822,DW-2600,DW-2839(burndown)
+2026-11-22T17:14:13Z	Story 21.6	story_started	base=M_ffa2a92e7 doctrine=3d11cec9 policy=b9ff703e hold=none spec=ready-for-dev(planned_2026-11-16,revalidate_at_implement)
+2026-11-22T17:14:13Z	Story 21.6	stage_spawned	stage=implement spawn_at=2026-11-22T17:14:13Z model=sonnet agent_name=21-6-impl prior_lines_ended=verified(a9f7feaad)
