@@ -901,3 +901,39 @@
 2026-11-21T16:52:03Z	Story 21.23	smoke	container=ocupilot-ci executed=50 passed=50 failed=0
 2026-11-21T16:52:03Z	Story 21.23	ledger	resolved=DW-2202,2225,2282,2459,2476,2714,2720,2761 closed=DW-2430(by_23-11),DW-2352(wontfix-theoretical),DW-2816,2817(wontfix-accepted) to_burndown=DW-1822,2600,2787,2535,2821 to_21.38=DW-2499,2405,2369,2442,2474 owned_by_21-23_routed=0
 2026-11-21T16:52:03Z	Story 21.23	story_complete	head=224854019 run=44911887727 ci=success fresh=pass sweep=20/20 smoke=50/50 split=21.38
+2026-11-21T16:52:18Z	Story 21.37	story_started	base=d783acd04 doctrine=3d11cec9 policy=b9ff703e hold=none carries=21.21_AC6-AC17+U-128_strings
+2026-11-21T16:52:18Z	Story 21.37	stage_spawned	stage=plan spawn_at=2026-11-21T16:52:18Z model=opus agent_name=21-37-plan cycle_iteration=1 prior_lines_ended=verified(a22c201bd)
+2026-11-21T17:25:11Z	Story 21.23	merged	feature=de0df01f9 via=orchestrator
+2026-11-21T17:25:11Z	Story 21.37	story_created	spawn_at=plan model=opus path=/Users/jbrandt/git/OcuPilot/.worktrees/epic-21/_bmad-output/implementation-artifacts/spec-21-37-page-resources.md build_status=ready-for-dev batches=3(~19,~18,~12_files) codes=Api/AccessError(ACCESS.PAGE.*) task0=URL-encoded_pages;vendor_checks_nothing;pairs_%Admin_Secure:USE+%DB_IRISSYS:READ;no_vendor_audit
+2026-11-21T17:25:11Z	Story 21.37	spec_validated	integration_ac=present adr_constrained_acs=AD-10,AD-44,AD-64,AD-22,AD-29,AD-51,AD-59 owned_ledger=none escalated=plural_replaces_line;person_write_audit_gap(AD-15) adjusted=AC1,AC2,AC3,AC4,AC5,AC10,AC11 model=claude-opus-5-5
+2026-11-21T17:26:35Z	Story 21.37	ruling	question=plural_line+AD-15+AC4 via=orchestrator choice=plural_capped_at_5(veto=U-134);AD-15_option_b(spine_2fd24558e;AC13);AC4_any_declared_page;rest_approved
+2026-11-21T17:26:35Z	Story 21.37	ad_amended	ad=AD-15 marker=[AMENDED_2026-11-21,Story_21.37_spec_gate,Rule_20] commit=2fd24558e lint_spine=ok(pre-existing_{id}) memlog=appended
+2026-11-21T17:26:54Z	Story 21.37	stage_spawned	stage=implement scope=batches1-3 spawn_at=2026-11-21T17:26:54Z model=sonnet agent_name=21-37-implement cycle_iteration=1 prior_lines_ended=verified(a4ac85185)
+2026-11-21T19:15:35Z	Epic 21	note	DW-1822_first_CI_red_with_stall_report(run_44927449204,Epic_24)_held_for_burn-down;24.14_merged(feature_4cd1a974c);queue=21.37,21.38,21.6,21.25,21.31;21.37_stage_bash_scan:sed_on_a_scratch_file+print-only_heredoc(no_tracked_edit)
+2026-11-21T21:12:28Z	Story 21.37	dev_complete	scope=B1(2a0e76e72),B2(8ae081047),B3(b6d0c462e),review(30157fa88) model=sonnet deferred=agent_assign_of_the_same_resource_not_refused(wording_for_owner) deviations=gate_code_PORT.ACCESSDENIED(as_ResourceTransferPort);dialog_review_on_blur;ToolWrite_148(types_in_AdminPort) note=PortGate_does_not_catch_PAIRS_drop;PageResourceRead_does
+2026-11-21T21:12:28Z	Story 21.37	integrated_forward	feature=4cd1a974c(24.14+spine) merge=9e79177c4 conflicts=2(ReadTool_568_from_base_564+3+1;sprint-status_timestamp) verified=screen-mirror(261/112),test:tools_2388,check-objectscript_0,LOADERRORS=0,ReadTool,ToolWrite,Descriptor,Navigation,GovernanceBaseline,Prohibited,SurfaceCoverage,DraftRegistry_green
+2026-11-21T21:12:28Z	Story 21.37	code_head_pushed	sha=9e79177c4 run=44950309360 missing=none
+2026-11-21T21:13:00Z	Story 21.37	stage_spawned	stage=code-review spawn_at=2026-11-21T21:13:00Z model=opus agent_name=21-37-code-review cycle_iteration=1 prior_lines_ended=verified(aef137fb2)
+2026-11-21T21:13:23Z	Story 21.37	ruling	question=same-resource_assign+deviations via=orchestrator choice=refuse(veto=U-136;mint_nothing;test+mutation);PORT.ACCESSDENIED_accepted(I/O_row_amended);dry_run_on_blur_with_Enter/Save_guard(component_test);ToolWrite_148;AC10_mutation_names_PageResourceRead
+2026-11-21T23:02:17Z	Story 21.37	review_complete	model=opus tier=full-opus entries=high0,med7,low10 patched=13(rulings:same-resource_refusal,Enter/Save_guard,AC10) commit=7a6bd1a3e deferred=DW-2823(owner,decision-pending),DW-2824(burndown),DW-2825,DW-2826
+2026-11-21T23:02:17Z	Story 21.37	ci_red_classified	run=44950309360 sha=9e79177c4 defects=RemovalRowsSweep,StageTwoTools,ToolEmit,ToolRoundTrip(rosters)
+2026-11-21T23:02:17Z	Story 21.37	rework_opened	cycle_iteration=2 iteration=1 trigger=high(ci_defect) items=4_rosters scope_baseline=7a6bd1a3e
+2026-11-21T23:02:17Z	Story 21.37	stage_spawned	stage=implement scope=rework1 spawn_at=2026-11-21T23:02:17Z model=sonnet agent_name=21-37-implement-rework-1 cycle_iteration=2 prior_lines_ended=verified(aa5ec9204)
+2026-11-22T00:22:14Z	Story 21.37	dev_complete	scope=rework1(4_rosters;PageResourceClear_REMOVALROWS) build_sha=e70e535d7 followup_review_recommended=false
+2026-11-22T00:22:14Z	Story 21.37	ruling	question=DW-2823 via=orchestrator choice=orchestrator's_call;routed_to_21-38(wording_batch)
+2026-11-22T00:22:14Z	Story 21.37	code_head_pushed	sha=e70e535d7 run=44966266106 missing=none includes=7a6bd1a3e(review)
+2026-11-22T00:22:14Z	Story 21.37	gate_step	step=fresh_check+full_sweep+smoke head=e70e535d7 started=2026-11-22T00:22:14Z dir=e21u/21-37/gate
+2026-11-22T03:10:52Z	Story 21.37	ci_resolved	story=21.37 sha=e70e535d7 runs=44966266106 result=success
+2026-11-22T03:10:52Z	Story 21.37	fresh_check	env=recipe(ci-throwaway_rebuild) tests=24_classes+2_specs result=pass order=forward,reverse(specs) head=e70e535d7
+2026-11-22T03:10:52Z	Story 21.37	sweep	shards=20/20_green head=e70e535d7
+2026-11-22T03:10:52Z	Story 21.37	smoke	container=ocupilot-ci executed=49 passed=49 failed=0 skipped=1(agentswitches:switches_written_by_an_earlier_test_on_this_instance,the_check's_own_rule)
+2026-11-22T03:10:52Z	Story 21.37	integrated_forward	feature=108879ecf(24.15_B1) merge=M=ca78cffc5 conflicts=8(EntityType,Prohibited,Test/Prohibited_unions;Descriptor_113;Test/Prohibited_101_types;ReadTool_573;ToolRoundTrip+strings.ts_unions;screens.generated.ts_regenerated) verified=screen-mirror(263/113),test:tools_2388,check-objectscript_0,LOADERRORS=0,15_roster_classes_green(ToolWrite,ReadTool,ToolEmit,CompositeMintSweep,ToolDispatch,Descriptor,Prohibited,ToolRoundTrip,GovernanceBaseline,Navigation,SurfaceCoverage,DraftRegistry,StageTwoTools,RemovalRowsSweep,MappingDescriptor)
+2026-11-22T03:10:52Z	Story 21.37	code_head_pushed	sha=ca78cffc5 run=44979425183 missing=none note=integrate-only_M
+2026-11-22T03:10:52Z	Story 21.37	story_complete	head=e70e535d7(gates)+M=ca78cffc5 run=44966266106(+44979425183) fresh=pass sweep=20/20 smoke=49/49+1_skip vetoes=U-128,U-134,U-136 spine=2fd24558e(AD-15)
+2026-11-22T03:11:08Z	Story 21.38	story_started	base=M_ca78cffc5 doctrine=3d11cec9 policy=b9ff703e hold=none inbox=DW-2499,2405,2369,2442,2474,2823
+2026-11-22T03:11:08Z	Story 21.38	stage_spawned	stage=plan spawn_at=2026-11-22T03:11:08Z model=opus agent_name=21-38-plan cycle_iteration=1 prior_lines_ended=verified(a72633f43)
+2026-11-22T03:30:13Z	Story 21.38	stage_complete	stage=plan agent=a068311fa result=ready-for-dev batches=10 escalated=S1-S20,E1-E4 ad39_ninth_exception=proposed(add-only) protocol=subagents_backgrounded(polled),one_git_fetch_from_main_checkout(remote_refs_only) bashedits=none lines_ended=verified
+2026-11-22T03:30:13Z	Story 21.38	ledger_routed	ids=DW-2829,DW-2830 owner=burndown source=plan(DW-2499_scope_remainder)
+2026-11-22T03:30:13Z	Story 21.38	escalation_sent	to=orchestrator items=S1-S20,E1-E4,AD-39_ninth at=2026-11-22T03:30:13Z
+2026-11-22T03:33:12Z	Story 21.38	spec_gate	result=pass rulings=S1-S20_approved(veto_U-138),E1=A(Error.cls_1_dispatch+1_doc,0_removed_words),E2=allowed+AD-61_record,E3=A,E4=approved ad53=batch1_task0_measure ad39_ninth=accepted(+plain_text_never_markup) spine=771a04cb3(AD-39,AD-61)
+2026-11-22T03:33:54Z	Story 21.38	stage_spawned	stage=implement pass=1(B1-B3+Task0) spawn_at=2026-11-22T03:33:54Z model=sonnet agent_name=21-38-impl prior_lines_ended=verified(a068311fa)

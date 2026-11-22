@@ -9287,6 +9287,60 @@ export const STRINGS = {
   taskOutputPrompt3: 'Summarize this task\'s output.',
   /** EXPERIENCE.md:613 */
   taskMailPasswordAction: 'Set mail password',
+  /** EXPERIENCE.md:613 */
+  pageResourcesLabel: 'Page resources',
+  /** EXPERIENCE.md:613 */
+  pageResourcesEmpty: 'No classic pages have a custom resource on this instance.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesEmptyAgent: 'assign a resource to a classic page',
+  /** EXPERIENCE.md:613 */
+  pageResourcesNote: 'A page\'s custom resource decides who may open it in the classic portal and in OcuPilot. The instance still checks every read and write.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesPrompt1: 'Which classic pages have a custom resource?',
+  /** EXPERIENCE.md:613 */
+  pageResourcesPrompt2: 'Which resource does the Users page require?',
+  /** EXPERIENCE.md:613 */
+  pageResourcesPrompt3: 'Which OcuPilot screens follow a page\'s custom resource?',
+  /** EXPERIENCE.md:613 */
+  accessRefusalPageUnknown: 'No classic portal page has that name.',
+  /** EXPERIENCE.md:613 */
+  accessRefusalPageResourceRequired: 'Name the resource to assign. To remove one, clear it instead.',
+  /** EXPERIENCE.md:613 */
+  accessRefusalPageNotAssigned: 'This page has no custom resource, so there is nothing to clear.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesAssignAction: 'Assign resource',
+  /** EXPERIENCE.md:613 */
+  pageResourcesChangeAction: 'Change resource',
+  /** EXPERIENCE.md:613 */
+  pageResourcesClearAction: 'Clear resource',
+  /** EXPERIENCE.md:613 */
+  pageResourcesAssignTitle: 'Assign a resource to a page',
+  /** EXPERIENCE.md:613 */
+  pageResourcesChangeTitle: 'Change the resource of <page>',
+  /** EXPERIENCE.md:613 */
+  pageResourcesPageHelp: 'Name a classic page by its class.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesResourceHelp: 'Name a resource this instance defines.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesLineOne: '<screen> follows this page\'s resource and will require it from the next request.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesLineMany: 'These <count> screens follow this page\'s resource and will require it from the next request: <titles>.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesMore: 'and <n> more',
+  /** EXPERIENCE.md:613 */
+  pageResourcesLineNone: 'No OcuPilot screen replaces this page, so only the classic portal uses this resource.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesConsequenceChanged: 'Accounts that hold only the old resource can no longer open <screen>.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesConsequenceCleared: 'More accounts may open <screen>. The instance still checks what they do there.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesClearWarning: 'After this, the page needs no custom resource.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesSummaryAssign: 'Assign <resource> to <page>',
+  /** EXPERIENCE.md:613 */
+  pageResourcesSummaryChange: 'Change the resource of <page> to <resource>',
+  /** EXPERIENCE.md:613 */
+  pageResourcesSummaryClear: 'Clear the resource of <page>',
   /** EXPERIENCE.md:624 */
   interopDefaultSettingsLabel: 'System default settings',
   /** EXPERIENCE.md:624 */

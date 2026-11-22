@@ -14366,6 +14366,26 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Outside 21.23's footprint (the spec imports nothing B1-B5 changed; 21.23 CR); green in run 44899945083 and twice locally; inferred cause: the local-file option clicked before the dialog's picker drew; the 21.23 review added the missing wait add-only (inference, not reproduced)
 - 2026-11-21T14:00:51Z status=routed owner=burndown by=runner note=resolve or wontfix at burn-down
 
+### DW-2823: Page resources: a page only a write tool's CLASSICPAGES declares gets the 'can no longer open <screen>' consequence and the 'will require it' line, though its resource gates that write, not opening the screen
+- source: spec-21-37-page-resources.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: ScreensDeclaringPage counts a write tool's CLASSICPAGES (e.g. %CSP.UI.Portal.Dialog.ExportResource -> Resources) while Gate.RequiredPairs unions only the descriptor's own pages; the ruled sentences then overstate the effect
+- 2026-11-21T21:37:02Z status=decision-pending owner=burndown by=cr note=wording or a split of the declaring set is the owner's: ruled strings (U-128) and AC4's derivation are spec-bound
+- 2026-11-22T00:21:48Z status=routed owner=21-38-shared-rules-helpers-the-source-control-follow-up-and-escala by=orchestrator note=wording_and_derivation:a_page_declared_only_by_a_write_tool's_CLASSICPAGES_gets_a_line_saying_what_the_resource_gates(that_action,_name_from_the_tool's_own_label);a_page_declared_both_ways_keeps_the_screen-open_line_and_adds_the_action_line;exact_sentences_in_21.38's_plan_wording_batch
+
+### DW-2824: Test fixtures repeat the replace-a-user block (Security.Users Delete and Create in %SYS) with no shared helper; PageResourceFixture.EnsureUser copies ScreenAccessFixture.EnsureSecurity (Rule 31)
+- source: spec-21-37-page-resources.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: 107 files under src/OcuPilot/Test call Security.Users).Create(; DeveloperFloorFixture has ResetRole and Composed but no user helper, so each fixture copies the block
+- 2026-11-21T21:37:06Z status=routed owner=burndown by=cr note=one parameterized helper in DeveloperFloorFixture, adopted fixture by fixture
+
+### DW-2825: A page resource proposal's card lists its Screen context row among the changed rows with before equal to after
+- source: spec-21-37-page-resources.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: PageResourceAction.ScreenRows pushes {field: Screen, before: X, after: X} into the card's changed rows; the card draws every changed row as before -> after
+- 2026-11-21T21:37:10Z status=wontfix-accepted owner=21-37-page-resources by=cr note=reopen_if=a reviewer or the owner reports a page resource card showing Screen as a change; moving it needs kernel unchanged-row support
+
+### DW-2826: EXPERIENCE.md carries Page resources inside the Resources list inventory row and its strings in the Global nodes microcopy row, not rows of its own
+- source: spec-21-37-page-resources.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Story 21.37 extended two existing rows of the contended EXPERIENCE.md instead of adding an inventory row and a microcopy row
+- 2026-11-21T21:37:13Z status=wontfix-accepted owner=21-37-page-resources by=cr note=reopen_if=strings.test.mjs or a later story needs the Page resources inventory row on its own line
 ### DW-2822: Self-protection parity: the agent can delete or update the IRIS wallet secret its own AI provider reads its key from (WalletSecretDelete, WalletSecretUpdate), the same self-disable path Story 24.15 Batch 2 refuses for the provider's credential
 - source: Story 24.15 spec gate, veto item U-135, orchestrator condition | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Kernel/Secret/Ladder.cls: the wallet rung reads a %Wallet.KeyValue secret from the IRIS wallet for the provider key (doc lines 14-17, WALLETKEYVALUETYPE); Screen/Tool ships WalletSecretDelete and WalletSecretUpdate
@@ -14388,3 +14408,12 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-15-credentials-default-settings-and-schedules-3.md (implement review 86f4d75d8) | severity: low | fix-risk: low | footprint: in-footprint
 - evidence: 24.15 Batch 1b implement-stage review, deferred low; orchestrator accepted it as a burn-down DW
 - 2026-11-22T04:34:03Z status=routed owner=burndown by=epic-24-runner note=add a mint-in-USER, confirm-from-HSCUSTOM leg per create
+### DW-2829: The Screen/Tool rule classes keep their own copies of the violation loop (14, plus nine interoperability one-liners), outside DW-2499's Area scope
+- source: spec-21-38-shared-rules-helpers-the-source-control-follow-up-and-escala.md | severity: low | fix-risk: low | footprint: cross-story
+- evidence: Story 21.38 plan measured the copies; DW-2499 names only the Area screen-editor Rules classes
+- 2026-11-22T03:30:13Z status=routed owner=burndown by=lead note=adopt ScreenSaveRules.ViolationsSentence once 21.38 lands
+
+### DW-2830: 23 identical Gate methods across the Area Rules classes, a shape DW-2499 does not name
+- source: spec-21-38-shared-rules-helpers-the-source-control-follow-up-and-escala.md | severity: low | fix-risk: low | footprint: cross-story
+- evidence: Story 21.38 plan counted them while measuring DW-2499
+- 2026-11-22T03:30:13Z status=routed owner=burndown by=lead note=candidate for a shared static gate on ScreenSaveRules

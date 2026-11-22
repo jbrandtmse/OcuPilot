@@ -227,6 +227,7 @@ XData Coverage
 <screen name="MftConnectionForm" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
 <screen name="PhoneProviderList" class="OcuPilot.Test.PhoneProviderRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="the list, its editor and the three tools are asserted together in one test"/>
 <screen name="SecurityAdvisorList" class="OcuPilot.Test.AdvisorRead" method="TestTheScreenAndToolsDeclareTheirPagePairsActionsAndKeys" corpus="the list and its two tools are asserted together in one test"/>
+<screen name="PageResourceList" class="OcuPilot.Test.PageResourceRead" method="TestTheScreenDeclaresItsPagePairsAndRead"/>
 <screen name="PhoneProviderForm" class="OcuPilot.Test.PhoneProviderRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="the list, its editor and the three tools are asserted together in one test"/>
 <screen name="DocDbAppList" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheListIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="DocDbAppForm" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
@@ -404,6 +405,8 @@ XData Coverage
 <tool name="permissions.resources.delete" class="OcuPilot.Test.ResourceDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="permissions.resources.export" class="OcuPilot.Test.ResourceTransferWrite" method="TestAnExportIsImportedBackOnBothCallersAndAChangedFileIsRefused"/>
 <tool name="permissions.resources.import" class="OcuPilot.Test.ResourceTransferWrite" method="TestAnImportThatOpensAnOwnResourceIsRefusedOnBothCallers"/>
+<tool name="permissions.pageresources.assign" class="OcuPilot.Test.PageResourceWrite" method="TestTheAgentAssignsChangesAndClears"/>
+<tool name="permissions.pageresources.clear" class="OcuPilot.Test.PageResourceWrite" method="TestTheGateFollowsThePageResourceOnTheNextCall"/>
 <tool name="security.x509.import" class="OcuPilot.Test.X509Import" method="TestTheSchemaAdvertisesNoSecretAndNoPath"/>
 <tool name="security.x509.update" class="OcuPilot.Test.X509Update" method="TestTheEditIsAMergeWriteOverTheTwoLists"/>
 <tool name="security.x509.delete" class="OcuPilot.Test.X509Delete" method="TestTheDeleteIsAnActionWriteOverTheCertificate"/>

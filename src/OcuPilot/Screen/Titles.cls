@@ -200,6 +200,7 @@ XData Titles
 "openApiViewerLabel": "OpenAPI document",
 "packageMappingFormLabel": "Package mapping",
 "packageMappingListLabel": "Package mappings",
+"pageResourcesLabel": "Page resources",
 "phoneProviderListLabel": "Mobile phone providers",
 "processColumnGlobals": "Globals",
 "processColumnRoutine": "Routine",

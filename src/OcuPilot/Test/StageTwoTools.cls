@@ -293,6 +293,7 @@ XData Elsewhere
 <screen name="OAuthServerForm"/>
 <screen name="OAuthServerTab"/>
 <screen name="OpenApiViewer"/>
+<screen name="PageResourceList"/>
 <screen name="ProcessDetails"/>
 <screen name="ProcessList"/>
 <screen name="ResourceList"/>

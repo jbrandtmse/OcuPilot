@@ -295,6 +295,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'permissions/roles',
       'permissions/resources',
       'permissions/services',
+      // Story 21.37: Page resources, the fifth Permissions entry.
+      'permissions/pageresources',
       // Story 18.30: the unlisted Doc DB application editor, reached from Doc DB applications.
       'web-applications/docdb-applications/edit',
       'web-applications/rest-apis/document',
@@ -2191,4 +2193,21 @@ test('Story 20.15: a screen-permission change event of any action re-reads the m
   bus.publish({ kind: 'changed', type: 'role', scope: 'instance', id: 'ProbeRole', action: 'updated' });
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(api.calls.length, 3, 'an unrelated entity is not a re-read');
+});
+
+test("Story 21.37: a page-resource change event of either verb re-reads the map, since a page's resource moves a screen's verdict", async () => {
+  // Mutation (Rule 19): drop the page-resource type from onChange -> both legs go red.
+  const bus = new ChangeBus();
+  const api = stubApi([ok(featureMap([])), ok(featureMap([])), ok(featureMap([])), ok(featureMap([]))]);
+  const service = new NavigationService({ api, namespace: () => 'HSCUSTOM', bus });
+  await service.load();
+  assert.equal(api.calls.length, 1);
+
+  bus.publish({ kind: 'changed', type: 'page-resource', scope: 'instance', id: '%CSP.UI.Portal.Resources', action: 'updated' });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(api.calls.length, 2, 'an assign or a change re-reads the verdicts');
+
+  bus.publish({ kind: 'changed', type: 'page-resource', scope: 'instance', id: '%CSP.UI.Portal.Resources', action: 'deleted' });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(api.calls.length, 3, 'and so does a clear');
 });

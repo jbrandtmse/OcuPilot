@@ -73,6 +73,8 @@ XData Keys [ MimeType = application/json ]
   "osmgmt.routinemappings.create": true,
   "osmgmt.routinemappings.delete": true,
   "osmgmt.routinemappings.update": true,
+  "permissions.pageresources.assign": true,
+  "permissions.pageresources.clear": true,
   "permissions.resources.create": true,
   "permissions.resources.delete": true,
   "permissions.resources.export": true,

@@ -171,6 +171,12 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
  * elsewhere, which is the whole reason this map is keyed by descriptor.
  */
 const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  // Story 21.37: Page resources' Assign resource, Change resource and Clear resource, each also the title of what it opens.
+  'OcuPilot.Screen.Descriptor.PageResourceList': {
+    assign: STRINGS.pageResourcesAssignAction,
+    change: STRINGS.pageResourcesChangeAction,
+    clear: STRINGS.pageResourcesClearAction,
+  },
   // Story 24.3: Productions' Start with the instance and Shutdown group each open a dialog that sets one production's startup setting.
   'OcuPilot.Screen.Descriptor.InteropProductionList': { autostart: STRINGS.interopProductionAutoStartAction, shutdowngroup: STRINGS.interopProductionColumnShutdownGroup },
   // Story 20.3: Production items' Add opens the dialog that adds one item, and its Remove deletes one; Copy (Story 20.40) opens the dialog that copies the selected item; Change class (Story 20.41) opens the one that picks its new class.
