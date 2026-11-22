@@ -213,9 +213,10 @@ Method TestNextRecordsContinuesInBothOrders()
 /// <code>direction</code> <code>desc</code> with order 1, and with it a context cap below the rows read
 /// keeps the newest ten, and the offset hint's next page continues at the twentieth, none skipped or
 /// repeated. Each read must end inside the vendor's first bulk of this run's records
-/// (<method>OcuPilot.Test.JournalProbe.FirstBulkRows</method>): a read that needs more rows makes the
-/// vendor fill a second bulk, which scans back to the start of a journal file that earlier classes made
-/// long.</p>
+/// (<method>OcuPilot.Test.JournalProbe.FirstBulkRows</method>), a bulk that ends by its size and not at
+/// the file's start: a read that needs more rows makes the vendor fill a second bulk, which scans back
+/// to the start of a journal file that earlier classes made long. A read of <code>maxRows</code> n
+/// takes n + 2 of the vendor's rows (measured).</p>
 /// <p>Mutation (Rule 19): drop the direction clause from the descriptor's <code>order</code> hint
 /// -&gt; this goes red on the hint; ask <code>maxRows</code> 20 in the first read -&gt; this goes red on
 /// the first bulk assertion.</p>
@@ -226,10 +227,11 @@ Method TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap()
     If $$$ISERR(tSC) Quit
     Do $$$AssertTrue(tDeclaration.read.criteria.fields.%Get(2).hint [ "with 1, also send direction desc", "the order hint names the direction to send with order 1")
     Set tFirstAsk = 12
-    Set tSC = $ClassMethod(..#PROBE, "FirstBulkRows", ..PreparedFile, 1, $Parameter(..#PROBE, "PROBEGLOBAL"), .tBulk)
+    Set tSC = $ClassMethod(..#PROBE, "FirstBulkRows", ..PreparedFile, 1, $Parameter(..#PROBE, "PROBEGLOBAL"), .tBulk, "", .tAtEnd)
     Do $$$AssertStatusOK(tSC, "the vendor's first bulk opens")
     If $$$ISERR(tSC) Quit
     Do $$$AssertTrue(tBulk >= (tFirstAsk + 2), "the first read's " _ (tFirstAsk + 2) _ " rows end inside the vendor's first bulk of " _ tBulk)
+    Do $$$AssertTrue('tAtEnd, "that bulk ends by its size, not at the file's start")
     Set tArgs = {"file": (..PreparedFile), "value": ($Parameter(..#PROBE, "PROBEGLOBAL")), "order": "1", "direction": "desc"}
     Do tArgs.%Set("maxRows", tFirstAsk, "number")
     Set tSC = ##class(OcuPilot.Screen.Tool.Read).View(..#SCREEN, tArgs, 10, .tFirst, .tHttp, .tFault)
@@ -239,10 +241,11 @@ Method TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap()
     Do $$$AssertEquals(tRows.%Size() _ " " _ ''tFirst.%Get("truncated") _ " " _ tRows.%Get(0).%Get("GlobalNode"), "10 1 ^OcuProbe185(30)", "the context cap keeps the ten newest, newest first")
     Do ..Bounds(tRows, .tLow, .tHigh)
     Set tSecondAsk = 10
-    Set tSC = $ClassMethod(..#PROBE, "FirstBulkRows", ..PreparedFile, 1, $Parameter(..#PROBE, "PROBEGLOBAL"), .tSecondBulk, tLow - 1)
+    Set tSC = $ClassMethod(..#PROBE, "FirstBulkRows", ..PreparedFile, 1, $Parameter(..#PROBE, "PROBEGLOBAL"), .tSecondBulk, tLow - 1, .tSecondAtEnd)
     Do $$$AssertStatusOK(tSC, "the vendor's first bulk opens at the next page's offset")
     If $$$ISERR(tSC) Quit
     Do $$$AssertTrue(tSecondBulk >= (tSecondAsk + 2), "the next page's " _ (tSecondAsk + 2) _ " rows end inside the vendor's first bulk of " _ tSecondBulk)
+    Do $$$AssertTrue('tSecondAtEnd, "that bulk ends by its size, not at the file's start")
     Do tArgs.%Set("offset", (tLow - 1) _ "", "string")
     Do tArgs.%Set("maxRows", tSecondAsk, "number")
     Set tSC = ##class(OcuPilot.Screen.Tool.Read).View(..#SCREEN, tArgs, 10, .tSecond, .tHttp, .tFault)

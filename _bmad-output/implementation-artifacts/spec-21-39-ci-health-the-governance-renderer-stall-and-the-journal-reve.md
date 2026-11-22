@@ -80,6 +80,34 @@ deferred: []
 
 - Given a CI browser shard whose structural walk abandons a visit, when the stall is reported, then the stall line carries the paused top frames (or says the pause did not land) and the governance answer's bytes, the visit's CPU profile is uploaded as a short-retention artifact, and no timing, retry or outcome changed. DW-1822 and DW-2600 stay open, routed to the Epic 21 burndown, until a red carries a profile.
 
+### Review Findings
+
+Code review 2026-11-22, range `488e3d87f..31eca4933`, full-opus tier. 20 entries from 36 rows: 0 high, 2 medium, 18 low; 7 patched, 13 rejected.
+
+- [x] [Review][Patch] (medium) On real Chrome the pause never ran while the thread was busy in JS: a new session's `Debugger.enable` went unanswered for 5 s, so the stall line read `main thread: unresponsive` (scratch harness on `ocupilot-ci`, forced busy-loop abandon). `Profiler.stop` on the visit's session did answer. Patched: the visit's session turns its debugger on when it is armed, and the stall pause goes through that session. The real run then read `paused after 0 ms in spinForStall`, saved a 423 KB profile holding the spin and read the governance answer's 39,351 bytes, and the page answered again once the spin ended. [ui/browser/structural-walk.mjs `armVisitProfile`, `mainThreadState`]
+- [x] [Review][Patch] (medium) No test pinned the rule that a capture changes no outcome once a session opens and then hangs or fails. Patched with two tests: a capture that answers nothing and has a failed body read is still abandoned as a protocol timeout and names each failed probe; a settled visit has the same answer and page calls as one whose capture cannot open. Mutations are under Verification. [ui/tools/structural-walk.test.mjs]
+- [x] [Review][Patch] (low) `FirstBulkRows` ignored `AtEnd`: a first bulk that scanned to the file's start still passed the size check. Patched: it answers `pAtEnd`, and both bulk assertions require that the bulk ended by its size. [src/OcuPilot/Test/JournalProbe.cls, JournalRecords.cls]
+- [x] [Review][Patch] (low) `ListClose` sat outside the `Try`. Patched: it is caught, and its status kept. [src/OcuPilot/Test/JournalProbe.cls]
+- [x] [Review][Patch] (low) A pause that landed in the next task read the same as one that interrupted a running loop. Patched: the line names `paused after <n> ms`. [ui/browser/structural-walk.mjs]
+- [x] [Review][Patch] (low) The `+ 2` read margin was not explained. Patched: one clause in the test's doc comment. [src/OcuPilot/Test/JournalRecords.cls]
+- [x] [Review][Patch] (low) The release of a saved profile's session was unpinned. Patched: release now always goes through `discard()`, and the abandoned-visit test asserts `Profiler.disable`. [ui/tools/structural-walk.test.mjs]
+
+Rejected:
+
+- low, by-design: the stall report adds time before the retry. Deadlines and the retry count are unchanged, and the ruling accepts bounded probes and a 10 s pause; the real run measured 12 s of report time. Saving the profile during the pause is deliberate.
+- low, by-design: profiles upload only from a failed leg (`failure()`), not from a stall the retry recovered or from a leg stopped at its timeout. That matches the Tasks and the ruling (DW-1822 stays open until a red carries a profile). Reopen if a browser leg stopped at its timeout shows a stall line.
+- low, by-design: the governance body is read for every governance answer. The read is not awaited and its failures are swallowed; the ruling asks for the length, and the body is only readable once the answer arrives.
+- low, by-design: a stall outside `goInApp` (detect, first row, theme) saves no profile, since the ruling arms the profiler at each `goInApp` visit.
+- low, wontfix-theoretical: arming that never answers leaves a pending session per visit. That only happens on a hung renderer, whose browser the retry closes.
+- low, wontfix-theoretical: profiler and debugger sessions overlap briefly between visits, and observe every visit. `a11y-structural-invariants` on the patched walk is under Verification.
+- low, wontfix-theoretical: pending probe timers can delay process exit by up to 5 s.
+- low, wontfix-theoretical: `ListExecute` throwing after it opens the file would leak the channel. The vendor's own query has the same shape.
+- low, wontfix-theoretical: the bulk pin's margin depends on row size and on the port's over-fetch. A drift turns the live pin red, which is its purpose.
+- low, wontfix-theoretical: if resume, disable and detach all go unanswered, the page stays paused. That only happens on a dead renderer.
+- low, rejected: no Node pin covers the bulk assertions. The instance mutation is the pin.
+- low, wontfix-accepted: `OCUPILOT_WALK_PROFILE_DIR` is not in the developer docs. The stall line prints the full path. Reopen if a stall's profile cannot be found from its line.
+- low, wontfix-accepted: the governance field carries no age. Reopen if a stall line on a non-governance visit is read as current.
+
 ## Spec Change Log
 
 - 2026-11-22, orchestrator ruling on the plan's intent gap: Batch 1 accepted as planned (test-only); DW-1822/DW-2600 take option 1, capture at the stall with no behavior change (options 2 and 3 declined); epics.md's first AC gains an add-only clause rather than moving out; the bulk-scan product behavior is a new burndown ledger entry, never changed in this story. The story closes on Batch 1 plus the capture.
@@ -161,6 +189,10 @@ deferred: []
 - mutation (second page): `tSecondAsk` set to 20 in `JournalRecords` -> only the reverse test red on "the next page's 22 rows end inside the vendor's first bulk of 18", and `ui/tools/ci-flake-waits.test.mjs` red on the same ask; reverted and reloaded, 10/10.
 - mutation (upload wiring): the `ci.yml` upload step's `path` renamed to `walk-profile` -> only the new `ui/tools/ci.test.mjs` upload pin red (107 tests, 1 red); reverted, `git diff` clean.
 - `cd ui && npm run build`, redeploy the bundle to `ocupilot-ci`, then `a11y-structural-invariants.browser-spec.mjs` forward twice, one call each, its outcome unchanged. `(once)`.
+- mutation (review, capture outcome): the `withinProbe` around `Profiler.stop` dropped -> only the new "capture answers nothing, or fails" case red (the stall report never returns); the `catch` around `governanceAnswer` dropped -> only that case red; a `page.evaluate` added to the arming -> the settled-visit comparison red; the pause through a new session, or the arming `Debugger.enable` dropped -> the abandoned-visit case red. Each reverted, 48/48.
+- mutation (review, bulk end): `pAtEnd` forced to 1 in `FirstBulkRows` -> only the reverse test red, on both "ends by its size" assertions; reverted and reloaded, 10/10. The first read's `maxRows` 20 is red again on the bulk assertion alone (re-applied in review, reverted).
+- Real CDP (review): a scratch harness on `ocupilot-ci` forced one abandoned governance visit with a busy loop. Result: protocol timeout; `main thread: paused after 0 ms in spinForStall`; `governance answer: 200, 39351 bytes`; a saved profile holding the spin; the page answered again after the loop. The harness was removed afterwards.
+- Review gates on the patched tree: `npm run test:tools` 2399/2399; `npm run test:components` 3848/3848; `a11y-structural-invariants` once on the rebuilt bundle with the debugger on at every visit: 13/13, 0 unsettled, no retry and no profile written. Governance took 1,939, 1,931 and 1,828 ms, against 1,938 and 1,932 ms before the change. `JournalRecords` 10/10, `JournalRecordDetail` 5/5, and the other 11 `JournalProbe` consumers green, one class per call. Those 11 ran before the `FirstBulkRows` patch, which only `JournalRecords` calls; `check-objectscript.py` 0 problems.
 - `ui/tools/ci.test.mjs` stays green with the add-only `ci.yml` upload step (pinned sha, short `retention-days`).
 - The capture never changes a timing, deadline, retry or outcome; no product code, user-facing string or AD changes.
 

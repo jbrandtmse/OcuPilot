@@ -332,11 +332,14 @@ ClassMethod SeedProbeDatabase(pArmed As %Boolean, Output pFile As %String, pCoun
 /// <p>How many rows the first bulk of <class>%SYS.Journal.Record</class>'s <code>List</code> holds
 /// (<var>pRows</var>), opened as the admin API's journal read opens it: the eight columns, the match
 /// <code>GlobalNode [ <var>pValue</var></code>, newest first when <var>pReverse</var>, from
-/// <var>pOffset</var> or, empty, from the file's end (or start). A read that needs more rows than the
-/// first bulk holds makes the vendor fill a second bulk, which scans on past this run's records.</p>
-ClassMethod FirstBulkRows(pFile As %String, pReverse As %Boolean, pValue As %String, Output pRows As %Integer, pOffset As %String = "") As %Status
+/// <var>pOffset</var> or, empty, from the file's end (or start). <var>pAtEnd</var> is 1 when the bulk
+/// ended because the scan reached the file's boundary rather than its size. A read that needs more rows
+/// than the first bulk holds makes the vendor fill a second bulk, which scans on past this run's
+/// records.</p>
+ClassMethod FirstBulkRows(pFile As %String, pReverse As %Boolean, pValue As %String, Output pRows As %Integer, pOffset As %String = "", Output pAtEnd As %Boolean) As %Status
 {
     Set pRows = 0
+    Set pAtEnd = 0
     Set tSC = $$$OK
     Set tOpen = 0
     Set tRecord = "%SYS.Journal.Record"
@@ -348,11 +351,17 @@ ClassMethod FirstBulkRows(pFile As %String, pReverse As %Boolean, pValue As %Str
         Set tOpen = 1
         Set tAtEnd = 0
         Set tSC = $ClassMethod(tRecord, "FetchRows", .tHandle, 0, .tRowSet, .tAtEnd)
-        If $$$ISOK(tSC) Set pRows = +$Get(tHandle("RecordBufferCount"))
+        If $$$ISOK(tSC) Set pRows = +$Get(tHandle("RecordBufferCount")), pAtEnd = +tAtEnd
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
-    If tOpen Do $ClassMethod(tRecord, "ListClose", .tHandle)
+    If tOpen {
+        Try {
+            Do $ClassMethod(tRecord, "ListClose", .tHandle)
+        } Catch exClose {
+            If $$$ISOK(tSC) Set tSC = exClose.AsStatus()
+        }
+    }
     Quit tSC
 }
 

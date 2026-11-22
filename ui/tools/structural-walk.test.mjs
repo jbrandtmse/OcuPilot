@@ -726,17 +726,27 @@ const SPIN_FRAMES = [
 const CPU_PROFILE = { nodes: [{ id: 1, callFrame: { functionName: '(root)' } }], samples: [1], timeDeltas: [1000] };
 
 /**
- * A page that records every DevTools session it opens. A session answers `Performance.getMetrics`,
- * `Profiler.stop` with `CPU_PROFILE`, and, unless `pauseLands` is false, `Debugger.pause` with a
- * `Debugger.paused` event over `SPIN_FRAMES`.
+ * A page that records every DevTools session it opens and every page call the walk makes on it
+ * (`page.calls`). A session answers `Performance.getMetrics`, `Profiler.stop` with `CPU_PROFILE`,
+ * and, unless `pauseLands` is false, `Debugger.pause` with a `Debugger.paused` event over
+ * `SPIN_FRAMES`; with `sendsHang` it opens, starts a profile, and then answers nothing; with
+ * `noSession` none opens.
  */
-function evidencePage({ pauseLands = true, settleHangs = false } = {}) {
+function evidencePage({ pauseLands = true, settleHangs = false, sendsHang = false, noSession = false } = {}) {
   const page = eventPage({ evaluate: undefined });
   const sessions = [];
+  const calls = [];
   let evaluates = 0;
-  page.evaluate = async () => (++evaluates === 2 && settleHangs ? hang() : evaluates === 1 ? undefined : true);
-  page.waitForFunction = async () => true;
+  page.evaluate = async () => {
+    calls.push('evaluate');
+    return ++evaluates === 2 && settleHangs ? hang() : evaluates === 1 ? undefined : true;
+  };
+  page.waitForFunction = async () => {
+    calls.push('waitForFunction');
+    return true;
+  };
   page.createCDPSession = async () => {
+    if (noSession) throw new Error('no DevTools session');
     const handlers = new Map();
     const sent = [];
     sessions.push(sent);
@@ -745,6 +755,7 @@ function evidencePage({ pauseLands = true, settleHangs = false } = {}) {
       on: (event, handler) => handlers.set(event, handler),
       send: async (method) => {
         sent.push(method);
+        if (sendsHang && method !== 'Profiler.enable' && method !== 'Profiler.start') return hang();
         if (method === 'Performance.getMetrics') return { metrics: [{ name: 'TaskDuration', value: (task += 1) }] };
         if (method === 'Profiler.stop') return { profile: CPU_PROFILE };
         if (method === 'Debugger.pause' && pauseLands) setImmediate(() => handlers.get('Debugger.paused')?.({ callFrames: SPIN_FRAMES }));
@@ -754,15 +765,44 @@ function evidencePage({ pauseLands = true, settleHangs = false } = {}) {
     };
   };
   page.sessions = sessions;
+  page.calls = calls;
   return page;
 }
 
-/** Emit the governance read answering with `bytes` bytes on `page`, then finish it. */
+/** Emit the governance read answering with `bytes` bytes (or a body read that fails, `bytes` null) on `page`, then finish it. */
 function answerGovernance(page, bytes) {
   const request = apiRequest('/api/ocupilot/agent/governance?ns=HSCUSTOM');
   page.emit('request', request);
-  page.emit('response', { request: () => request, status: () => 200, buffer: async () => Buffer.alloc(bytes) });
+  page.emit('response', { request: () => request, status: () => 200, buffer: async () => (bytes === null ? Promise.reject(new Error('body gone')) : Buffer.alloc(bytes)) });
   page.emit('requestfinished', request);
+}
+
+/** Drive `goInApp` on `page` to the governance screen under the mock clock until its settle check is abandoned; answers what it rejected with. */
+async function abandonGovernanceVisit(page, requests) {
+  mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  let outcome = 'still waiting';
+  try {
+    const running = goInApp(page, requests, '/ocupilot/agent/governance?ns=HSCUSTOM', 30_000).then(
+      () => {
+        outcome = 'resolved';
+      },
+      (error) => {
+        outcome = error;
+      }
+    );
+    await flush();
+    mock.timers.tick(500);
+    await flush();
+    mock.timers.tick(WALKCALLDEADLINE);
+    for (let step = 0; step < 60 && outcome === 'still waiting'; step += 1) {
+      await flush();
+      mock.timers.tick(1000);
+    }
+    await running;
+  } finally {
+    mock.timers.reset();
+  }
+  return outcome;
 }
 
 /** Run `work` with the walk's profile folder pointing at a fresh temporary directory, and remove it after. */
@@ -788,37 +828,16 @@ async function until(check) {
 // - drop `visit.discard()` from `goInApp`'s `finally` -> the settled-visit case red: its profiler session is never disabled.
 // - drop the `writeFileSync` in `armVisitProfile`'s save -> the abandoned-visit case red: no profile file.
 // - drop the `governance` record from `trackRequests`, or the `main thread:` field from `stallLine` -> the abandoned-visit case red.
+// - pause through a new session instead of the visit's, or drop the arming `Debugger.enable` -> the abandoned-visit case red.
 test('an abandoned visit saves its CPU profile and its stall line names the paused frames and the governance answer length', { timeout: 20_000 }, async () => {
   await withProfileDir(async (folder) => {
     const page = evidencePage({ settleHangs: true });
     const requests = trackRequests(page);
     requests.pass = '1280px light';
     answerGovernance(page, 39351);
-    mock.timers.enable({ apis: ['setTimeout', 'Date'] });
-    let outcome = 'still waiting';
-    try {
-      const running = goInApp(page, requests, '/ocupilot/agent/governance?ns=HSCUSTOM', 30_000).then(
-        () => {
-          outcome = 'resolved';
-        },
-        (error) => {
-          outcome = error;
-        }
-      );
-      await flush();
-      mock.timers.tick(500);
-      await flush();
-      mock.timers.tick(WALKCALLDEADLINE);
-      for (let step = 0; step < 40 && outcome === 'still waiting'; step += 1) {
-        await flush();
-        mock.timers.tick(1000);
-      }
-      await running;
-    } finally {
-      mock.timers.reset();
-    }
+    const outcome = await abandonGovernanceVisit(page, requests);
     assert.ok(outcome instanceof Error && isProtocolTimeout(outcome), 'still abandoned as a protocol timeout, so the pass retry runs');
-    assert.match(outcome.message, /main thread: paused in spin main-ABC\.js:10:5 < \(anonymous\) \(no script\):1:1; /, 'the paused frames, top first');
+    assert.match(outcome.message, /main thread: paused after \d+ ms in spin main-ABC\.js:10:5 < \(anonymous\) \(no script\):1:1; /, 'how long the pause took to land, and the paused frames, top first');
     assert.match(outcome.message, /; governance answer: 200, 39351 bytes; /, "the governance answer's byte length");
     const files = readdirSync(folder);
     assert.equal(files.length, 1, 'one profile is saved');
@@ -826,17 +845,44 @@ test('an abandoned visit saves its CPU profile and its stall line names the paus
     assert.ok(outcome.message.includes(`profile: ${join(folder, files[0])}; last 5 /api/ocupilot answers: `), 'and the stall line names the file');
     assert.deepEqual(JSON.parse(readFileSync(join(folder, files[0]), 'utf8')), CPU_PROFILE, 'holding what the profiler stopped with');
     const debuggerSession = page.sessions.find((sent) => sent.includes('Debugger.pause'));
+    assert.equal(page.sessions.indexOf(debuggerSession), 0, "the pause goes through the visit's own session, opened before the stall");
     assert.deepEqual(debuggerSession.filter((method) => method.startsWith('Debugger.')), ['Debugger.enable', 'Debugger.pause', 'Debugger.resume', 'Debugger.disable'], 'the paused thread is resumed and the debugger turned off');
+    await until(() => page.sessions[0]?.includes('Profiler.disable'));
+    assert.deepEqual(page.sessions[0].filter((method) => method.startsWith('Profiler.')), ['Profiler.enable', 'Profiler.start', 'Profiler.stop', 'Profiler.disable'], 'the saved profile releases its profiler');
   });
 });
 
-test('a settled visit saves no profile and releases its profiler', { timeout: 20_000 }, async () => {
+// Mutations (Rule 19):
+// - drop the `withinProbe` around `Profiler.stop` in `armVisitProfile`'s save -> this case red: the stall report never returns.
+// - drop the `catch` around `governanceAnswer` in `stallLine` -> this case red: the rejection is the body error, not the timeout.
+test('an abandoned visit whose capture answers nothing, or fails, is still abandoned as a protocol timeout and names each failed probe', { timeout: 20_000 }, async () => {
+  await withProfileDir(async (folder) => {
+    const page = evidencePage({ settleHangs: true, sendsHang: true });
+    const requests = trackRequests(page);
+    requests.pass = '1280px light';
+    answerGovernance(page, null);
+    const outcome = await abandonGovernanceVisit(page, requests);
+    assert.ok(outcome instanceof Error && isProtocolTimeout(outcome), 'the rejection is the same protocol timeout, so the pass retry runs as before');
+    assert.match(outcome.message, /; main thread: unresponsive \(no answer to Debugger\.enable within 5000 ms\); /, 'the debugger that does not answer is named');
+    assert.match(outcome.message, /; governance answer: unread \(body gone\); /, 'the body read that failed is named');
+    assert.match(outcome.message, /; profile: not saved \(no answer to Profiler\.stop within 5000 ms\); last 5 /, 'the profile that could not be stopped is named');
+    assert.equal(readdirSync(folder).length, 0, 'and no profile file is written');
+  });
+});
+
+// Mutation (Rule 19): a `page.evaluate` added to `armVisitProfile`'s arming -> this case red on the page calls.
+test('a settled visit answers and calls the page as it does with no capture, saves no profile and releases its profiler', { timeout: 20_000 }, async () => {
   await withProfileDir(async (folder) => {
     const page = evidencePage();
     const requests = trackRequests(page);
     requests.pass = '1280px light';
     const answer = await goInApp(page, requests, '/ocupilot/agent/governance?ns=HSCUSTOM', 30_000);
+    const bare = evidencePage({ noSession: true });
+    const bareRequests = trackRequests(bare);
+    bareRequests.pass = '1280px light';
+    const bareAnswer = await goInApp(bare, bareRequests, '/ocupilot/agent/governance?ns=HSCUSTOM', 30_000);
     assert.equal(answer.settled, true, 'the visit settles as it did');
+    assert.deepEqual([answer.settled, answer.why, page.calls], [bareAnswer.settled, bareAnswer.why, bare.calls], 'the same answer and the same page calls as a visit whose capture cannot open');
     await until(() => page.sessions[0]?.includes('Profiler.disable'));
     assert.equal(readdirSync(folder).length, 0, 'no profile file is written');
     assert.deepEqual(page.sessions[0].filter((method) => method.startsWith('Profiler.')), ['Profiler.enable', 'Profiler.start', 'Profiler.disable'], 'the profile is discarded, never stopped');

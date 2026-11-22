@@ -281,23 +281,32 @@ function scriptOf(url) {
 }
 
 /**
- * The renderer's main thread, from one `Debugger.pause` on a DevTools session of its own: the top
+ * The renderer's main thread, from one `Debugger.pause`: how long the pause took to land and the top
  * frames it stopped in, `not running JS` when no pause landed within `pauseMs` (the request is then
  * cancelled, never left armed), or `unresponsive` when the session does not answer within `probeMs`.
- * `duringPause`, when given, runs while the thread is stopped. The thread is always resumed and the
- * session detached; a failed probe is named, never thrown.
+ * The pause goes through `visitSession`, the visit's DevTools session whose debugger was turned on
+ * before the stall, when it answers within `probeMs`, else through a new session, which turns its
+ * debugger on first and is detached after. `duringPause`, when given, runs while the thread is
+ * stopped. The thread is always resumed and the debugger turned off; a failed probe is named, never
+ * thrown.
  */
-async function mainThreadState(page, pauseMs, probeMs, duringPause = null) {
+async function mainThreadState(page, pauseMs, probeMs, duringPause = null, visitSession = null) {
   let session = null;
+  let borrowed = false;
+  let resolveLanded = null;
   let paused = false;
   try {
-    session = await withinProbe(probeMs, page.createCDPSession(), 'a new DevTools session');
-    let resolveLanded;
+    if (visitSession !== null) {
+      session = await withinProbe(probeMs, visitSession, "the visit's DevTools session").catch(() => null);
+      borrowed = session !== null;
+    }
+    if (session === null) session = await withinProbe(probeMs, page.createCDPSession(), 'a new DevTools session');
     const landed = new Promise((resolve) => {
       resolveLanded = resolve;
     });
     session.on('Debugger.paused', resolveLanded);
-    await withinProbe(probeMs, session.send('Debugger.enable'), 'Debugger.enable');
+    if (!borrowed) await withinProbe(probeMs, session.send('Debugger.enable'), 'Debugger.enable');
+    const asked = Date.now();
     await withinProbe(probeMs, session.send('Debugger.pause'), 'Debugger.pause');
     let timer;
     const event = await Promise.race([
@@ -308,26 +317,30 @@ async function mainThreadState(page, pauseMs, probeMs, duringPause = null) {
     ]).finally(() => clearTimeout(timer));
     if (event === null) return `not running JS (no pause landed within ${pauseMs} ms)`;
     paused = true;
+    const landedMs = Date.now() - asked;
     if (duringPause !== null) await duringPause().catch(() => {});
     const frames = (event.callFrames ?? []).slice(0, STALL_FRAMES).map((frame) => `${frame.functionName || '(anonymous)'} ${scriptOf(frame.url)}:${(frame.location?.lineNumber ?? 0) + 1}:${(frame.location?.columnNumber ?? 0) + 1}`);
-    return `paused in ${frames.length === 0 ? 'no frames' : frames.join(' < ')}`;
+    return `paused after ${landedMs} ms in ${frames.length === 0 ? 'no frames' : frames.join(' < ')}`;
   } catch (error) {
     return error?.unanswered === true ? `unresponsive (${reasonOf(error)})` : `unread (${reasonOf(error)})`;
   } finally {
     if (session !== null) {
       if (paused) await withinProbe(probeMs, session.send('Debugger.resume'), 'Debugger.resume').catch(() => {});
       await withinProbe(probeMs, session.send('Debugger.disable'), 'Debugger.disable').catch(() => {});
-      await withinProbe(probeMs, session.detach(), 'detach').catch(() => {});
+      if (borrowed) session.off?.('Debugger.paused', resolveLanded);
+      else await withinProbe(probeMs, session.detach(), 'detach').catch(() => {});
     }
   }
 }
 
 /**
- * Record a CPU profile of the visit the page is making, on a DevTools session of its own.
- * `save(probeMs)` stops the profile and writes it under `profileDir()`, answering `profile: <file>` or
- * `profile: not saved (<why>)`; `discard()` throws the profile away. Either releases the session, once.
- * Recording never throws and is not waited for: a page that cannot open a session leaves a visit
- * with nothing to save.
+ * Record a CPU profile of the visit the page is making, on a DevTools session of its own, and turn
+ * that session's debugger on; `debuggable` answers the session once both are on, for a stall report's
+ * pause, since a renderer running JS does not answer `Debugger.enable` until it stops.
+ * `save(probeMs)` stops the profile and writes it under `profileDir()`, answering `profile: <file>`
+ * or `profile: not saved (<why>)`; `discard()` releases the session, once, saved or not. Recording
+ * never throws and is not waited for: a page that cannot open a session leaves a visit with nothing
+ * to save.
  */
 function armVisitProfile(page, label) {
   const armed = (async () => {
@@ -337,6 +350,11 @@ function armVisitProfile(page, label) {
     return session;
   })();
   armed.catch(() => {});
+  const debuggable = armed.then(async (session) => {
+    await session.send('Debugger.enable');
+    return session;
+  });
+  debuggable.catch(() => {});
   let released = false;
   let saved = null;
   const release = async (session, probeMs = STALL_PROBE_MS) => {
@@ -346,6 +364,7 @@ function armVisitProfile(page, label) {
     await withinProbe(probeMs, session.detach(), 'detach').catch(() => {});
   };
   return {
+    debuggable,
     save(probeMs = STALL_PROBE_MS) {
       saved ??= (async () => {
         try {
@@ -356,17 +375,15 @@ function armVisitProfile(page, label) {
           const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
           const file = join(folder, `${new Date().toISOString().replace(/[:.]/g, '-')}-${slug}.cpuprofile`);
           writeFileSync(file, JSON.stringify(profile));
-          armed.then((held) => release(held, probeMs), () => {});
           return `profile: ${file}`;
         } catch (error) {
-          armed.then((held) => release(held, probeMs), () => {});
           return `profile: not saved (${reasonOf(error)})`;
         }
       })();
       return saved;
     },
     discard() {
-      if (saved === null) armed.then((held) => release(held), () => {});
+      armed.then((held) => release(held), () => {});
     },
   };
 }
@@ -413,7 +430,7 @@ export async function stallLine(page, { busyWindowMs = STALL_BUSY_WINDOW_MS, pro
   let saved = null;
   let mainThread;
   try {
-    mainThread = await mainThreadState(page, pauseMs, probeMs, visit === undefined ? null : async () => void (saved = await visit.save(probeMs)));
+    mainThread = await mainThreadState(page, pauseMs, probeMs, visit === undefined ? null : async () => void (saved = await visit.save(probeMs)), visit?.debuggable ?? null);
   } catch (error) {
     mainThread = `unread (${reasonOf(error)})`;
   }
