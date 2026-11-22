@@ -1,7 +1,7 @@
 /// <p><class>OcuPilot.Port.InteropPort</class> whose <method>LogFault</method> keeps the text of each line the port would log, the message, the code and the status
 /// text, so a test reads what a refused or failed purge put in the log (Story 24.16), and whose <method>VendorPurge</method> answers what
 /// <code>^IRIS.Temp.OcuProbe2416Mode</code> says: <code>fault</code> to raise an error, <code>roles</code> to raise one after the process has added a role to its own, <code>after</code> to
-/// raise one after the vendor's own call has run, <code>status</code> to answer an error status that carries a marker text, anything else the vendor's own call. The days it
+/// raise one after the vendor's own call has run, <code>rolesafter</code> to raise one after the vendor's own call has run and the process has added a role to its own,<code>status</code> to answer an error status that carries a marker text, anything else the vendor's own call. The days it
 /// was given are kept under the global's <code>days</code> subscript. <method>ClearLog</method> forgets the lines. In <code>roles</code> mode the process adds a role before
 /// the error, which the port's frame must take back.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
@@ -48,8 +48,14 @@ ClassMethod VendorPurge(pDays As %Integer, pKeepIntegrity As %Boolean, pBodiesTo
     Set tMode = $Get(^IRIS.Temp.OcuProbe2416Mode)
     Set ^IRIS.Temp.OcuProbe2416Mode("before") = $ROLES
     Set ^IRIS.Temp.OcuProbe2416Mode("days") = pDays
-    If tMode = "after" {
+    If (tMode = "after") || (tMode = "rolesafter") {
         Set tSC = ##super(pDays, pKeepIntegrity, pBodiesToo, pBitmap, .pDeleted)
+        If tMode = "rolesafter" {
+            Try {
+                Set $ROLES = "%DB_USER"
+            } Catch {
+            }
+        }
         Set ^IRIS.Temp.OcuProbe2416Mode("inside") = $ROLES
         Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, ..#MARKER _ " raised after the vendor's purge"))
     }

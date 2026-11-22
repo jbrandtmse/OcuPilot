@@ -256,9 +256,10 @@ Method TestNoLogLineCarriesADescriptionOrAVendorStatusText()
 /// <p>The three legs of the roles test, each in a child process with the bitmap cleanup on: (a) a purge over back-dated probes as a principal holding no
 /// administrative role; (b) the same principal's purge raising after the vendor's purge and bitmap cleanup have run; (c) <code>_SYSTEM</code>'s purge raising after the
 /// process has added a role to its own inside the call. In each the roles the process holds after the port's call are exactly those it held before, no more and no
-/// fewer; in (c) the process held other roles inside the call, so that leg cannot pass for want of a change. A principal cannot change its own roles, so (a) and (b) hold
-/// whether or not the frame gives them back, and (c) is the leg the frame's removal reddens.</p>
-/// <p>Mutation (Rule 19): remove <code>New $ROLES</code> from <method>OcuPilot.Port.InteropPort.PurgeFrame</method> -- leg (c) goes red.</p>
+/// fewer; in (c) the process held other roles inside the call, so that leg cannot pass for want of a change. (d) is (c) after the vendor's purge and bitmap cleanup have run:
+/// <code>_SYSTEM</code> adds a role, then raises. A principal cannot change its own roles, so (a) and (b) hold whether or not the frame gives them back, and (c) and (d)
+/// are the legs the frame's removal reddens.</p>
+/// <p>Mutation (Rule 19): remove <code>New $ROLES</code> from <method>OcuPilot.Port.InteropPort.PurgeFrame</method> -- legs (c) and (d) go red.</p>
 Method TestTheProcessRolesAreGivenBackOnSuccessAndOnAnError()
 {
     Set tSC = $ClassMethod(..#GENERATOR, "CreatePrincipals", ..#ROLESPRINCIPAL, ..PreparedPassword, "the purge roles")
@@ -295,6 +296,17 @@ Method TestTheProcessRolesAreGivenBackOnSuccessAndOnAnError()
         Do $$$AssertTrue(tOut.before [ "%All", "(c) the process holds the administrative role: " _ tOut.before)
         Do $$$AssertEquals(tOut.after, tOut.before, "(c) the process's roles after the call are exactly the roles before it: " _ tOut.before)
         Do $$$AssertTrue($Get(^IRIS.Temp.OcuProbe2416Mode("inside")) '= tOut.before, "(c) and inside the call the process held other roles: " _ $Get(^IRIS.Temp.OcuProbe2416Mode("inside")))
+    }
+    Do $$$AssertTrue($ClassMethod(..#CONTROL, "Arrange"), "(d) the probe records are arranged again")
+    Set tRuns = ..BitmapRuns("USER")
+    Set tOut = ..ProbeAs("_SYSTEM", "rolesafter")
+    Do $$$AssertTrue($IsObject(tOut) && (tOut.%Get("error") = ""), "(d) the probe as _SYSTEM ran: " _ $Select($IsObject(tOut): tOut.%Get("error"), 1: tOut))
+    If $IsObject(tOut) && (tOut.%Get("error") = "") {
+        Do $$$AssertEquals(tOut.http, 500, "(d) the purge that raised after the vendor's call answered 500: " _ tOut.%ToJSON())
+        Do $$$AssertTrue(..BitmapRuns("USER") > tRuns, "(d) after the vendor's bitmap cleanup had run over USER")
+        Do $$$AssertTrue(tOut.before [ "%All", "(d) the process holds the administrative role: " _ tOut.before)
+        Do $$$AssertEquals(tOut.after, tOut.before, "(d) the process's roles after the call are exactly the roles before it: " _ tOut.before)
+        Do $$$AssertTrue($Get(^IRIS.Temp.OcuProbe2416Mode("inside")) '= tOut.before, "(d) and inside the call, after the vendor's purge, the process held other roles: " _ $Get(^IRIS.Temp.OcuProbe2416Mode("inside")))
     }
     Do $$$AssertStatusOK($ClassMethod(..#GENERATOR, "DeletePrincipals", ..#ROLESPRINCIPAL), "the principal is removed")
 }

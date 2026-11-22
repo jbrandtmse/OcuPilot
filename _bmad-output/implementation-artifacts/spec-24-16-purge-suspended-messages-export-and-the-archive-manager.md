@@ -165,6 +165,7 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `98abd23ca`).
   - `[low]` `[reject]` the client spec's 422 mock — the violation branch serves the port's 422; the failed-purge case was added.
   - `[low]` `[reject]` `navigation.test.mjs` rewrite and `ReadTool.cls`'s half-bumped prose count — correct and contended (Epic 21) respectively; no assertion depends on the prose.
   - `[low]` `[defer]` AD-9's spine line; the Epic 21 same-line rosters and EXPERIENCE.md row (frontmatter).
+  - `[medium]` `[patch]` (orchestrator condition) the roles test's `_SYSTEM` leg raised before the vendor's purge, so no leg raised after the purge and bitmap cleanup under a principal that can change its own roles — leg (d) added; removing `New $ROLES` reddens (c) and (d), runs 10 and 11 (### QA).
 - AD-9 containment: contained on every exit; the rule-6 entry admits one method of one file. Clamp: safe. Sed hunk: `strings.ts` `taskCreate`'s `EXPERIENCE.md:668` to `:669`, the one substitution, correct.
 
 ## Decisions
@@ -271,7 +272,7 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `98abd23ca`).
 - mutation: AC4, `InteropPurgeRun`'s `FINGERPRINTSUBJECT` without `Namespace` -> `InteropPurgeElsewhere` red (the purge leg); without `BodiesToo` -> `InteropPurgeControl` red (the moved leg).
 - mutation: AC5, the dialog emits `DaysToKeep` 0 -> `interop-purge.browser-spec.mjs` red (the purge test).
 - mutation: AC6, `InteropPurgeFixture.RestoreSettings` restores nothing -> `InteropPurgeSettingControl` red (the settings-unchanged leg of every test).
-- mutation: `$ROLES` containment, `New $ROLES` removed from `PurgeFrame` -> `InteropPurgeRefusals` red (leg (c), `_SYSTEM`'s raised error, on the roles equality; legs (a) and (b), a principal without `%All`, hold either way because a principal cannot change its own roles).
+- mutation: `$ROLES` containment, `New $ROLES` removed from `PurgeFrame` -> `InteropPurgeRefusals` red (legs (c) and (d), `_SYSTEM`'s raised error before and after the vendor's purge, on the roles equality; legs (a) and (b), a principal without `%All`, hold either way because a principal cannot change its own roles).
 - mutation: AC4, `PerformPurge` reads the settings of HSCUSTOM instead of the proposal's namespace -> `InteropPurgeElsewhere` red (the purge leg, USER's old body kept).
 - mutation: AC3, the lock release removed from `PerformPurge`'s Catch -> `InteropPurgeRefusals` red (the fault leg, and the class's leaked-lock check); the audit call moved below the vendor-error quit -> `InteropPurgeRefusals` red (the status leg).
 
@@ -279,7 +280,7 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `98abd23ca`).
 
 Added in the code review, each run on `ocupilot-b-ci` (mutations on the pre-rebuild instance, `InteropPort` recompiled with its subclasses; the client one in the component runner), then reverted and every class green on its first run on the rebuilt instance:
 
-- `InteropPurgeRefusals.TestTheProcessRolesAreGivenBackOnSuccessAndOnAnError`: legs (a) principal success, (b) principal raising after the vendor's purge and bitmap cleanup, (c) `_SYSTEM` raising with a role added inside. mutation: `New $ROLES` removed -> leg (c) red, alone.
+- `InteropPurgeRefusals.TestTheProcessRolesAreGivenBackOnSuccessAndOnAnError`: legs (a) principal success, (b) principal raising after the vendor's purge and bitmap cleanup, (c) `_SYSTEM` raising with a role added inside, (d) `_SYSTEM` adding a role and raising after the vendor's purge and bitmap cleanup (seam mode `rolesafter`). mutation: `New $ROLES` removed from `PurgeFrame` (throwaway source copy, reloaded with subclasses) -> legs (c) and (d) red, run 10; copy restored (`diff -rq` against `src/` identical), class green, runs 9 and 11. The days-edge test in the same class computes its cap from `+$Horolog` and was green in both.
 - `InteropPurgeRefusals.TestAPurgeWithoutTheSqlDeleteRightsAnswersTheVendorsFailure`: a principal with `%DB_USER:RW` and no SQL delete rights gets 500, never 200, and a row with `completed` false. mutation: `PerformPurge` ignores the vendor's status -> red (answered 200).
 - `InteropPurgeRefusals.TestDaysAtTheEdgeOfTheCalendarReachTheVendorAsAPurgeOfNothing`: the clamp at its boundary. mutation: the clamp at `+$Horolog - 1` -> red (67,895 and 99999 reached the vendor as 67,895).
 - `InteropPurgeElsewhere.TestThePurgeConfirmedElsewhereIsRefusedWhileItsOwnNamespaceIsPurging`, and the setting leg's read-back verdict. mutation: `PurgeFacts` and `PerformPurge` take the lock in the request's namespace -> red (the purge ran in USER while USER's lock was held).
