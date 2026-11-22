@@ -725,3 +725,9 @@
 2026-11-22T10:57:57Z	Story 24.15	stage_blocked	stage=implement scope=batch3 condition=intent_gap(Task0_f:remove_disables_and_stops_items_at_next_production_update;REMOVE_consequence_untrue) task0=a_no_audit,b_own_db_write,c_case_distinct(SQL_exact),d_50/256,e_confirmed,g_ValidateScheduleSpec_ok(signature:ClassMethod_Internal_&pScheduleSpec,&pScheduleErrors,*pLength->%Status)
 2026-11-22T10:58:37Z	Story 24.15	ruling	source=orchestrator scope=batch3 option=A REMOVE_sentence_replaced_in_place inbox=U-141 DW-2838_accepted
 2026-11-22T10:58:37Z	Story 24.15	stage_spawned	stage=implement spawn_at=2026-11-22T10:58:37Z model=sonnet agent_name=24-15-implement-batch3-r2 cycle_iteration=4 story_base=432dac98e
+2026-11-22T11:05:00Z	Story 24.15	ci_green	scope=batch2 sha=2e84d18d9 run=45012764267
+2026-11-22T11:09:22Z	Story 24.15	merged_to_feature	scope=batch2 feature=ccb170485 integrate_before_b3_push=yes
+2026-11-22T12:47:40Z	Story 24.15	note	feature=3e511e16c(21.38) integrate_target_for_b3=3e511e16c rosters_rederive_on_merged_tree
+2026-11-22T12:47:50Z	Story 24.15	note	correction:ConfirmNamespaceRoster_unchanged_ccb170485..3e511e16c(only_GovernanceBaseline,ToolRoundTrip_tests_changed)
+2026-11-22T15:07:16Z	Story 24.15	stage_completed	stage=implement scope=batch3 commit=05fd00c24 README=Eighty-two->Eighty-five(+3;pre-existing_gap:baseline_94_disabled_vs_README_85) consumers_run=6 sweep=17/17 test_tools=2391 components=3845 a11y=13/13 review=14(3_patched,1_deferred=DW-2840,10_rejected) protocol=subagent_sed_-i_once(.bak_deleted)
+2026-11-22T15:07:16Z	Story 24.15	stage_spawned	stage=qa+code-review(4_layers) spawn_at=2026-11-22T15:07:16Z model=opus agent_name=24-15-review-batch3 cycle_iteration=4

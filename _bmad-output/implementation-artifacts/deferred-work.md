@@ -14431,3 +14431,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 24.15 Batch 2 review layer; keeping the password weakens the rule that a secret outlives no submit; a warning needs a new string
 - 2026-11-22T10:17:30Z status=decision-pending owner=burndown by=epic-24-runner note=product call
 - 2026-11-22T10:32:37Z status=routed owner=24-15-credentials-default-settings-and-schedules by=orchestrator note=fix now as the first commit of 24.15 Batch 3: keep the typed password on a refused save, clear only on an accepted Save (precedent ldap-editor.store.ts, ssl-form.store.ts); no new string; component test refused-then-corrected save sends the password
+
+### DW-2840: Schedule specs: the source-control refusal is tested only through the port seam; no test drives a tool's mint or the save/remove routes in a source-controlled namespace
+- source: spec-24-15-credentials-default-settings-and-schedules-4.md (implement review 05fd00c24) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: 24.15 Batch 3 implement-stage review, deferred low
+- 2026-11-22T15:07:16Z status=routed owner=burndown by=epic-24-runner note=add a mint and a route leg under a source-controlled seam namespace
