@@ -1009,3 +1009,5 @@
 2026-11-22T20:27:40Z	Story 21.6	ci_resolved	sha=010f0f951 run=45062235807 result=success
 2026-11-22T20:36:06Z	Story 21.6	stage_complete	stage=code_review agent=a8d18616b result=done tier=full-opus high=1(AD-16/AD-61r4_StatementCall_switched,patched) med=4(patched) low=7 ledger=DW-2844(decision-pending,burndown),DW-2845(wontfix-accepted) strings=404s_applied(visibility_clause_dropped:measured),clean_description_+1_sentence(U-143_change) bashedits=none lines_ended=verified
 2026-11-22T20:36:07Z	Story 21.6	code_head_pushed	sha=71884f36a run=45067284861 missing=none scope=review_patches
+2026-11-22T20:37:27Z	Story 21.6	rework_opened	iteration=1 cause=orchestrator_ruling_DW-2844(in-story;veto_U-144)
+2026-11-22T20:37:27Z	Story 21.6	stage_spawned	stage=implement(rework1) spawn_at=2026-11-22T20:37:27Z model=sonnet agent_name=21-6-rework1 prior_lines_ended=verified(a8d18616b)

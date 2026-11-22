@@ -2,7 +2,7 @@
 title: 'Story 21.6: The SQL tuning track'
 type: 'feature'
 created: '2026-11-15'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '53619019bf2635717f16ab8ca38d45c8af15585c'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -164,6 +164,8 @@ deferred:
 
 ### Review Findings
 
+- [ ] [Review][HIGH] DW-2844, ruled in-story (Spec Change Log, second 2026-11-22 entry; veto U-144): the parallel-plan Freeze refusal on its own branch, Freeze's description refusal sentence, Clean's description sentence and Clean's consequence sentence, each verbatim as ruled; pinned (parallel-plan probe if the throwaway can make one, otherwise at the seam, said which), with a `mutation:` line; every consumer of the changed codes and strings grepped and run.
+
 Code review, 2026-11-22 (four layers, full-opus). Each entry: severity, fix-risk, footprint in-story.
 
 - [x] [Review][Patch] high, fix-risk low: `SqlPort.Applied` called `StatementCall`, an OcuPilot method, while switched to the target namespace, against AD-16 and AD-61 rule 4 (it worked only because the call stays inside loaded routines). `StatementCall` now takes the namespace and switches around the vendor call alone [src/OcuPilot/Port/SqlPort.cls StatementCall, Applied; Test/SqlTuningPortFixture.cls]
@@ -196,6 +198,11 @@ Rejected:
   - Accepted as written: the two empty-state invitation fragments "freeze a statement's plan" and "purge cached queries" (EXPERIENCE.md Fixed-strings row, add-only), the 400's reuse of the generic field-shape sentence, and the eight tool DESCRIPTIONs with their id-shape messages. Each description's factual claims are checked against the instance or source (freeze holds the plan across index and statistics changes until unfrozen; clear statistics leaves the plan unchanged; clean removes only statements no class or routine still holds; `%sqlcq.USER.cls12` is the form the read's CachedQuery column reports); a claim that measures false is corrected in its own sentence.
   - The 404 for an absent id gets its own sentences, not the table sentence: a statement hash "This namespace holds no SQL statement with that hash that this account can see." (the "that this account can see" clause only if the read filters statements by visibility; dropped if not), and a cached-query class "This namespace holds no cached query by that name." Both join EXPERIENCE.md beside the table sentence, add-only.
   - Page actions only on a selected row are accepted (the backup task list's precedent); the agent still offers all three without one.
+- 2026-11-22, orchestrator ruling on DW-2844 (in-story, veto U-144), after the code review:
+  - Freeze refuses a plan in the Unfrozen/Parallel state on its own branch keyed on the plan state, verbatim "This statement's plan uses parallel processing and cannot be frozen."; "This statement's plan is already frozen." stays for a frozen plan only. Cite the vendor source or the classic dialog's disable condition for the state; pin the branch on a parallel-plan probe if the throwaway can make one, otherwise at the seam, and say which.
+  - Freeze's DESCRIPTION refusal sentence becomes, verbatim, "A statement whose plan is already frozen is refused, and so is one whose plan uses parallel processing, and so is a statement over OcuPilot's own tables."
+  - Clean's DESCRIPTION gains "A statement whose plan is frozen stays." (measured at review). Clean's consequence sentence becomes "Removes every statement in this namespace's index that no class or routine still holds. A statement whose plan is frozen stays.", keeping any further content the current sentence carries.
+  - The table-statistics half of Freeze's claim stays labeled (inference); the sentence is the vendor's documented behavior.
 
 ## Review Triage Log
 
