@@ -710,3 +710,7 @@
 2026-11-22T09:28:16Z	Story 24.15	coordinator_conditions_relayed	scope=batch2 to=review conditions=no_intent-to-add_leftovers(git_status_clean_at_lead_check),file_set_belongs,self-protection_exact_phrase+test,x509DeleteConsequence_truth_or_halt,InteropFloor_by_instance_role,run_4_mutations
 2026-11-22T10:17:39Z	Story 24.15	stage_completed	stage=qa+code-review scope=batch2 commit=2e84d18d9 findings=28(med4:3_patched[cross-ns_confirm_partner/user,stale_partner_edit,Stored_word],1_deferred;low23:8_patched,1_deferred,14_rejected) self-protection=7/7_pass mutations=4_prescribed_red+provider_legs+new_tests footprint_ext=Kernel/State/Base.cls(GuardedIdsWhere_error,uncontended) operator_role=%EnsRole_Operator_holds_R(placement_correct)
 2026-11-22T10:17:39Z	Story 24.15	ledger_adjudicated	scope=batch2 new=DW-2837(med,decision-pending,globals_tools_on_provider_credential),DW-2838(low,decision-pending,password_cleared_after_refusal)
+2026-11-22T10:17:49Z	Story 24.15	integrated_feature	scope=batch2 feature=658744ffb(bookkeeping+timings) conflicts=0
+2026-11-22T10:17:49Z	Story 24.15	fresh_check_started	scope=batch2
+2026-11-22T10:31:02Z	Story 24.15	fresh_check_passed	scope=batch2 tree=874b3bd99(code=2e84d18d9+feature_timings) classes=21cls_217tests_first_run reverse=3cls_18tests browser=credentials+default-settings+partners+a11y_24/24 smoke=PASSED(1_skipped:agentswitches)
+2026-11-22T10:31:02Z	Story 24.15	code_head_pushed	scope=batch2 sha=2e84d18d9 run=45012764267
