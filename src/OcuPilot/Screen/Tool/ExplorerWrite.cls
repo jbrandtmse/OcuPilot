@@ -135,8 +135,9 @@ ClassMethod NamesShown(pFresh As %DynamicObject, pField As %String) As %String
 
 /// <p>What the screen and the proposal card show of the write the port answered <var>pWritten</var>
 /// for: its <code>output</code> -- a compile's <code>{lines, errors}</code> and a delete's
-/// <code>{documents}</code> -- or <code>""</code>. Never stored, logged or put on the ledger, and
-/// never sent to the model (AD-39).</p>
+/// <code>{documents}</code>, with the source-control class's <code>questions</code> where it asked
+/// any -- or <code>""</code>. Never stored, logged or put on the ledger, and never sent to the model
+/// (AD-39, its fifth and ninth exceptions).</p>
 ClassMethod WriteOutput(pWritten) As %DynamicObject
 {
     If '$IsObject($Get(pWritten)) || 'pWritten.%IsA("%Library.DynamicObject") Quit ""

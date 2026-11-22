@@ -869,7 +869,7 @@ services:
       # name, writing %SYS security objects, tasks and ^%SYS nodes directly to do so.
       # classes: NamespaceInterop, NamespaceInteropGate
       # The source-control classes enable a probe source-control class on USER and remove it again.
-      # classes: SourceControlProbe, SourceControlSave
+      # classes: SourceControlProbe, SourceControlSave, SourceControlFollowUp
       OCUPILOT_ALLOW_NAMESPACE_CONFIG: "1"
       # Creates, edits and deletes database configurations and database files in this instance's own
       # configuration, with the %DB_* resources and directories a create makes, through the shipped

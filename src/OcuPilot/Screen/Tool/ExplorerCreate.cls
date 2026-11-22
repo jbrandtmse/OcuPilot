@@ -139,8 +139,9 @@ ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output 
 }
 
 /// <p>What the screen shows of the create the port answered <var>pWritten</var> for: the save's
-/// (<class>OcuPilot.Screen.Tool.ExplorerSave</class>), its compile's <code>{lines, errors}</code>, or
-/// <code>""</code>. Never stored, logged or sent to the model (AD-39).</p>
+/// (<class>OcuPilot.Screen.Tool.ExplorerSave</class>), its compile's <code>{lines, errors}</code> and the
+/// source-control class's <code>questions</code>, or <code>""</code>. Never stored, logged or sent to the model
+/// (AD-39, its fifth and ninth exceptions).</p>
 ClassMethod WriteOutput(pWritten) As %DynamicObject
 {
     Quit ##class(OcuPilot.Screen.Tool.ExplorerSave).WriteOutput(.pWritten)

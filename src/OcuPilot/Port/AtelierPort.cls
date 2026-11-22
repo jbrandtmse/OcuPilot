@@ -382,6 +382,36 @@ Parameter TYPENEWDOC = "NEWDOC";
 /// flag): it sends no version and refuses a name the namespace holds before the PUT.</p>
 Parameter TYPECREATE = "CREATE";
 
+/// <p>The list endpoints' answer to a question the namespace's source-control class asked after a create or a
+/// delete (<method>AnswerSet</method>).</p>
+Parameter TYPEANSWER = "ANSWER";
+
+/// <p>The one statement an answer sends to the <code>Query</code> route: the source-control class's
+/// <code>AfterUserAction</code>, run as the caller, with every value bound (AD-61 rules 3 and 7).</p>
+Parameter USERACTIONANSWERQUERY = "SELECT * FROM %Atelier_v1_Utils.Extension_AfterUserAction(?,?,?,?,?)";
+
+/// <p>The query keys carrying an answer's step and the person's answer.</p>
+Parameter STEPKEY = "step";
+
+Parameter ANSWERKEY = "answer";
+
+/// <p>The steps a question follows, comma-separated: 1 a created document and 7 its first save (a create), 2 a deleted
+/// document. The vendor's order of a create's two is this one.</p>
+Parameter CREATESTEPS = "1,7";
+
+Parameter DELETESTEP = 2;
+
+/// <p>The steps an answer names, and the answers it carries (0 No, 1 Yes, 2 Cancel).</p>
+Parameter ANSWERSTEPS = "1,2,7";
+
+Parameter ANSWERVALUES = "0,1,2";
+
+/// <p>The source-control actions a question is shown for: 1 asks Yes, No or Cancel and 6 is an alert. Action 0 asks
+/// nothing, and any other action is one this port cannot show.</p>
+Parameter QUESTIONACTION = 1;
+
+Parameter ALERTACTION = 6;
+
 /// <p>The most characters one script step may carry. A longer step renders no script (AD-59).</p>
 Parameter SNIPPETMAXCHARACTERS As INTEGER = 1000000;
 
@@ -394,8 +424,8 @@ Parameter TAKINGROUTINETYPES = "mac,int,bas,mvi,mvb";
 /// <p>The writes whose vendor call this port composes from the caller's declared values, as
 /// <code>endpoint/type</code> (AD-51): a compile from its three booleans, a delete from the set
 /// alone, an export from the set and its file, an import from its file, and a save or a create from
-/// its text, its version and its compile choice.</p>
-Parameter COMPOSEDTYPES = "Classes/COMPILE,Routines/COMPILE,Classes/DELETE,Routines/DELETE,Classes/EXPORT,Routines/EXPORT,Globals/EXPORT,Classes/IMPORT,Routines/IMPORT,Globals/IMPORT,Classes/SAVE,Routines/SAVE,Classes/CREATE,Routines/CREATE";
+/// its text, its version and its compile choice, and an answer from its document, step and answer.</p>
+Parameter COMPOSEDTYPES = "Classes/COMPILE,Routines/COMPILE,Classes/DELETE,Routines/DELETE,Classes/EXPORT,Routines/EXPORT,Globals/EXPORT,Classes/IMPORT,Routines/IMPORT,Globals/IMPORT,Classes/SAVE,Routines/SAVE,Classes/CREATE,Routines/CREATE,Classes/ANSWER,Routines/ANSWER";
 
 /// <p>The query key carrying an import's target, and the one target it takes, compared without
 /// regard to case.</p>
@@ -815,7 +845,7 @@ ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}
     Set tImport = (pType = ..#TYPEIMPORTTARGET) || (pType = ..#TYPEPREVIEW) || (pType = ..#TYPEIMPORT)
     Set tExport = (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT)
     Set tSave = (pType = ..#TYPESAVEDOCS) || (pType = ..#TYPESAVE) || (pType = ..#TYPENEWDOC) || (pType = ..#TYPECREATE)
-    Set tRoutes = $Select(..IsCatalog(pEndpoint): $ListBuild("Query"), pEndpoint = ..#ENDPOINTSEARCH: $ListBuild("Search"), pEndpoint = ..#ENDPOINTMACRO: $ListBuild("GetDoc", "GetMacroDefinition", "GetMacroLocation"), (pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE): $ListBuild("Index", "GetDoc"), pType = ..#TYPEDOCS: $ListBuild("GetDocNames"), pType = ..#TYPECOMPILE: $ListBuild("GetDocNames", "Compile"), pType = ..#TYPEDELETE: $ListBuild("GetDocNames", "DeleteDocs"), tExport: $ListBuild("GetDocNames", "ExportToXMLFile"), tImport: $ListBuild("GetDocNames", "ListDocumentsInXMLFiles", "LoadXMLFiles", "PutDoc", "Compile"), tSave: $ListBuild("GetDocNames", "PutDoc", "Compile"), 1: $ListBuild("GetNamespace", "GetDocNames"))
+    Set tRoutes = $Select(..IsCatalog(pEndpoint): $ListBuild("Query"), pEndpoint = ..#ENDPOINTSEARCH: $ListBuild("Search"), pEndpoint = ..#ENDPOINTMACRO: $ListBuild("GetDoc", "GetMacroDefinition", "GetMacroLocation"), (pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE): $ListBuild("Index", "GetDoc"), pType = ..#TYPEDOCS: $ListBuild("GetDocNames"), pType = ..#TYPECOMPILE: $ListBuild("GetDocNames", "Compile"), pType = ..#TYPEDELETE: $ListBuild("GetDocNames", "DeleteDocs"), tExport: $ListBuild("GetDocNames", "ExportToXMLFile"), tImport: $ListBuild("GetDocNames", "ListDocumentsInXMLFiles", "LoadXMLFiles", "PutDoc", "Compile"), tSave: $ListBuild("GetDocNames", "PutDoc", "Compile"), pType = ..#TYPEANSWER: $ListBuild("Query"), 1: $ListBuild("GetNamespace", "GetDocNames"))
     Set tNeeded = 1
     For tI = 1:1:$ListLength(tRoutes) {
         Set tRoute = $List(tRoutes, tI)
@@ -863,7 +893,9 @@ ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}
 /// answers <method>ImportSet</method>'s, requiring <method>WritePairs</method>.</p>
 /// <p>And a save of one document, named in <code>names</code>: <parameter>TYPESAVEDOCS</parameter>
 /// answers <method>Docs</method>'s object, and <parameter>TYPESAVE</parameter> answers
-/// <method>SaveSet</method>'s, requiring <method>WritePairs</method>.</p>
+/// <method>SaveSet</method>'s, requiring <method>WritePairs</method>. <parameter>TYPECREATE</parameter> answers
+/// <method>SaveSet</method>'s too, and <parameter>TYPEANSWER</parameter> <method>AnswerSet</method>'s, each requiring
+/// <method>WritePairs</method>.</p>
 /// <p>Otherwise an error status is returned with <var>pResult</var> and <var>pDocument</var> empty,
 /// <var>pHttpStatus</var> the status to answer with and <var>pFault</var> the wire fault: 403
 /// <code>AUTH.NOPRIVILEGE</code> with <code>detail.failedPair</code>, before any vendor call; 501
@@ -895,9 +927,9 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
-        Set tSetType = (pType = ..#TYPEDOCS) || (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT) || (pType = ..#TYPESAVEDOCS) || (pType = ..#TYPESAVE) || (pType = ..#TYPENEWDOC) || (pType = ..#TYPECREATE)
+        Set tSetType = (pType = ..#TYPEDOCS) || (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT) || (pType = ..#TYPESAVEDOCS) || (pType = ..#TYPESAVE) || (pType = ..#TYPENEWDOC) || (pType = ..#TYPECREATE) || (pType = ..#TYPEANSWER)
         Set tImportType = (pType = ..#TYPEIMPORTTARGET) || (pType = ..#TYPEPREVIEW) || (pType = ..#TYPEIMPORT)
-        Set tWrite = (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPESAVE) || (pType = ..#TYPECREATE)
+        Set tWrite = (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPESAVE) || (pType = ..#TYPECREATE) || (pType = ..#TYPEANSWER)
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If (tNamespace = "") && (tSetType || tImportType) Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         If '$Match(tNamespace, ..#NAMESPACEPATTERN) {
@@ -992,6 +1024,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             }
             If pType = ..#TYPENEWDOC {
                 Set tSC = ..NewDocument(tVersion, tNamespace, pEndpoint, tNames, .pResult, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pType = ..#TYPEANSWER {
+                Set tSC = ..AnswerSet(tVersion, tNamespace, tNames, .pQuery, .pResult, .pHttpStatus, .pFault)
                 Quit
             }
             If pType = ..#TYPECOMPILE {
@@ -1949,6 +1985,8 @@ ClassMethod CompileSet(pVersion As %Integer, pNamespace As %String, pEndpoint As
 /// document the route answered, where a refused document carries its port-owned reason
 /// (<method>DeleteReason</method>) and its vendor text is logged, never sent (AD-39). A refused
 /// document is not a fault.</p>
+/// <p>When the namespace's source-control class asked a question after a deleted document, <var>pResult</var> also
+/// carries <code>questions</code> (<method>Questions</method>); it is absent otherwise.</p>
 ClassMethod DeleteSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, pNames As %List, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -1968,6 +2006,7 @@ ClassMethod DeleteSet(pVersion As %Integer, pNamespace As %String, pEndpoint As 
             Quit
         }
         Set tDocuments = []
+        Set tQuestions = []
         Set tIterator = tAnswer.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tItem) {
             If '$IsObject(tItem) || 'tItem.%IsA("%Library.DynamicObject") Continue
@@ -1977,10 +2016,15 @@ ClassMethod DeleteSet(pVersion As %Integer, pNamespace As %String, pEndpoint As 
             Do tDocument.%Set("deleted", (tStatus = ""), "boolean")
             Do tDocument.%Set("reason", ..DeleteReason(tStatus), "string")
             Do tDocuments.%Push(tDocument)
-            If tStatus '= "" Do ..LogFault("DeleteDocs refused one document", $$$ERROR($$$GeneralError, tItem.%Get("name") _ ": " _ tStatus))
+            If tStatus '= "" {
+                Do ..LogFault("DeleteDocs refused one document", $$$ERROR($$$GeneralError, tItem.%Get("name") _ ": " _ tStatus))
+            } Else {
+                Do ..Questions(tItem.%Get("ext"), tItem.%Get("name"), $ListBuild(..#DELETESTEP), tQuestions)
+            }
         }
         Set pResult = {}
         Do pResult.%Set("documents", tDocuments)
+        If tQuestions.%Size() > 0 Do pResult.%Set("questions", tQuestions)
         Set pHttpStatus = 200
     } Catch ex {
         Set pResult = ""
@@ -2663,6 +2707,8 @@ ClassMethod ImportSet(pVersion As %Integer, pNamespace As %String, ByRef pQuery,
 /// <p><var>pResult</var> is <code>{lines, errors}</code>, the compiler's console lines and whether it
 /// reported an error, when it compiled, and <code>{}</code> otherwise. A compile error is the compile's
 /// own result and does not undo the save. The text is never stored or logged.</p>
+/// <p>A create whose put the namespace's source-control class asked a question after also answers
+/// <code>questions</code> in <var>pResult</var> (<method>Questions</method>); a save asks none.</p>
 ClassMethod SaveSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, pNames As %List, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pCreate As %Boolean = 0) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -2712,6 +2758,11 @@ ClassMethod SaveSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %S
         Set tSC = ..Route(pVersion, pNamespace, "PutDoc", tName, .tNoParams, tDocument, .tAnswer, .pHttpStatus, .pFault, 0, , , $Select(pCreate: "", 1: tReadVersion))
         If $$$ISERR(tSC) Quit
         Set pResult = {}
+        If pCreate {
+            Set tQuestions = []
+            Do ..Questions($Select($IsObject(tAnswer): tAnswer.%Get("ext"), 1: ""), tName, $ListFromString(..#CREATESTEPS), tQuestions)
+            If tQuestions.%Size() > 0 Do pResult.%Set("questions", tQuestions)
+        }
         If tCompile {
             Kill tParams
             Set tParams("flags") = ..#IMPORTCOMPILEFLAGS
@@ -2859,6 +2910,94 @@ ClassMethod Violation(pCode As %String, pReason As %String, pField As %String, O
     Set tDetail = {}
     Do tDetail.%Set("violations", [(tViolation)])
     Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, pCode, pReason, .pHttpStatus, .pFault, tDetail)
+}
+
+/// <p>Push onto <var>pQuestions</var> what the source-control class's follow-up <var>pExt</var> asks for
+/// <var>pDocument</var>: one entry per step in <var>pSteps</var>, the entries of an array taken in that order and an
+/// object being the first step's. Action 0 asks nothing and is dropped. Actions
+/// <parameter>QUESTIONACTION</parameter> and <parameter>ALERTACTION</parameter> become
+/// <code>{document, step, action, target}</code>, <code>target</code> being the class's own text. Any other action
+/// becomes <code>{document, step, action, unsupported}</code> and carries no text. The class's
+/// <code>errorText</code> goes to the log at information severity and is never sent; the class's question is never
+/// logged (AD-39's ninth exception).</p>
+ClassMethod Questions(pExt, pDocument As %String, pSteps As %List, pQuestions As %DynamicArray) [ Private ]
+{
+    If '$IsObject(pExt) Quit
+    If pExt.%IsA("%Library.DynamicObject") {
+        Set tItems = [(pExt)]
+    } ElseIf pExt.%IsA("%Library.DynamicArray") {
+        Set tItems = pExt
+    } Else {
+        Quit
+    }
+    Set tIterator = tItems.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tItem) {
+        If tIndex >= $ListLength(pSteps) Quit
+        If '$IsObject(tItem) || 'tItem.%IsA("%Library.DynamicObject") Continue
+        Set tError = tItem.%Get("errorText")
+        If '$IsObject(tError) && (tError '= "") Do ..LogNote("the source-control class reported an error after a create or a delete", $$$ERROR($$$GeneralError, tError))
+        Set tAction = tItem.%Get("action")
+        Set tAction = $Select($IsObject(tAction): 0, 1: +tAction)
+        If tAction = 0 Continue
+        Set tQuestion = {}
+        Do tQuestion.%Set("document", pDocument, "string")
+        Do tQuestion.%Set("step", +$List(pSteps, tIndex + 1), "number")
+        Do tQuestion.%Set("action", tAction, "number")
+        If (tAction = ..#QUESTIONACTION) || (tAction = ..#ALERTACTION) {
+            Set tTarget = tItem.%Get("target")
+            Do tQuestion.%Set("target", $Select($IsObject(tTarget): "", 1: tTarget), "string")
+        } Else {
+            Do tQuestion.%Set("unsupported", 1, "boolean")
+        }
+        Do pQuestions.%Push(tQuestion)
+    }
+}
+
+/// <p>Send a person's answer to a question the namespace's source-control class asked about the one document
+/// <var>pNames</var> names, as the caller: <code>step</code> (1, 2 or 7) and <code>answer</code> (0, 1 or 2) of
+/// <var>pQuery</var> go, bound, into the one fixed statement <parameter>USERACTIONANSWERQUERY</parameter> through the
+/// <code>Query</code> route (AD-61 rules 3 and 7). A set that is not one document, a step or an answer outside those
+/// values is 400 <code>PORT.VALIDATION</code> before any route is called. The document is not read: a deleted one is
+/// gone. An answer whose <code>errorText</code> is not empty is 422 <code>EXPLORER.SOURCECONTROL.ANSWER</code>, its
+/// text logged at information severity and never sent. <var>pResult</var> is <code>{}</code>; the class's own reply
+/// is not read.</p>
+ClassMethod AnswerSet(pVersion As %Integer, pNamespace As %String, pNames As %List, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Set tStep = $Get(pQuery(..#STEPKEY))
+        Set tAnswer = $Get(pQuery(..#ANSWERKEY))
+        If ($ListLength(pNames) '= 1) || '$ListFind($ListFromString(..#ANSWERSTEPS), tStep) || '$ListFind($ListFromString(..#ANSWERVALUES), tAnswer) {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONVALIDATION, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tParameters = []
+        Do tParameters.%Push(1, "number")
+        Do tParameters.%Push(+tStep, "number")
+        Do tParameters.%Push($List(pNames, 1), "string")
+        Do tParameters.%Push(+tAnswer, "number")
+        Do tParameters.%Push("", "string")
+        Kill tParams
+        Set tParams("max") = 1
+        Set tSC = ..CatalogQuery(pVersion, pNamespace, ..#USERACTIONANSWERQUERY, tParameters, .tParams, "answer", .tContent, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tRow = tContent.%Get(0)
+        If $IsObject(tRow) && tRow.%IsA("%Library.DynamicObject") {
+            Set tText = tRow.%Get("errorText")
+            If '$IsObject(tText) && (tText '= "") {
+                Do ..LogNote("the source-control class reported an error for an answer", $$$ERROR($$$GeneralError, tText))
+                Set tSC = ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AtelierError).#SOURCECONTROLANSWER, ##class(OcuPilot.Api.AtelierError).#REASONSOURCECONTROLANSWER, .pHttpStatus, .pFault)
+                Quit
+            }
+        }
+        Set pResult = {}
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the answer failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
 }
 
 /// <p>The port-owned reason for a deleted document whose vendor status is <var>pStatus</var>:

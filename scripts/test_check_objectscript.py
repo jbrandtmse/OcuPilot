@@ -129,6 +129,34 @@ class TestVendorRootAdmittedInOneFile(FixtureTreeCase):
         )
 
 
+class TestVendorAtelierAdmittedInOneFile(FixtureTreeCase):
+    """`%Atelier` is a rename-checklist token, admitted in the source-code port alone (Story 21.38)."""
+
+    PORT = "src/OcuPilot/Port/AtelierPort.cls"
+    OTHER = "src/OcuPilot/Port/OtherPort.cls"
+
+    def body(self, name: str) -> str:
+        return (
+            f"Class OcuPilot.Port.{name} Extends %RegisteredObject\n"
+            '{\n\nParameter QUERY = "SELECT * FROM %Atelier_v1_Utils.Extension_AfterUserAction(?)";\n\n}\n'
+        )
+
+    def test_the_source_code_port_may_name_the_query(self):
+        self.write(self.PORT, self.body("AtelierPort"))
+        problems: list[str] = []
+        co.check_rename_tokens(problems)
+        self.assertEqual(problems, [], f"expected the port admitted, got {problems}")
+
+    def test_any_other_file_naming_it_is_refused(self):
+        self.write(self.OTHER, self.body("OtherPort"))
+        problems: list[str] = []
+        co.check_rename_tokens(problems)
+        self.assertTrue(
+            any("OtherPort.cls" in p and "%Atelier" in p for p in problems),
+            f"expected the other file refused, got {problems}",
+        )
+
+
 class TestNamingCapScopedToStorageClasses(FixtureTreeCase):
     """The rescoped `MAX_CLASS_NAME_LENGTH` cap (Consistency Conventions, 2026-09-12): binds a
     class that gets a data global -- extends `%Persistent`, directly or transitively through
