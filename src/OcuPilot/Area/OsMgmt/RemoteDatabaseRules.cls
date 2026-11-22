@@ -100,11 +100,7 @@ ClassMethod Problem(pIdValue As %String, pArgs As %DynamicObject, pMode As %Stri
         }
         Quit tSC
     }
-    For tI = 1:1:$Get(tViolations) {
-        Set tField = $List(tViolations(tI), 1)
-        Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation($List(tViolations(tI), 2))
-        Set pProblem = pProblem _ $Select(pProblem = "": "", 1: " ") _ "'" _ tField _ "': " _ tReason
-    }
+    Set pProblem = ##class(OcuPilot.Kernel.AgentRules).ViolationsSentence(.tViolations)
     Quit $$$OK
 }
 
