@@ -976,3 +976,4 @@
 2026-11-22T12:35:10Z	Story 21.39	escalation_sent	to=orchestrator items=DW-1822_option,AC_move,DW-2517_product_ledger at=2026-11-22T12:35:10Z
 2026-11-22T12:37:20Z	Story 21.39	spec_gate	result=pass rulings=batch1_accepted(test-only,mutation_20_red_alone),DW-1822/2600_option1_capture(no_behavior_change,ci.yml_artifact_short_retention),epics_AC1_amended_add-only,product_side=DW-2839(burndown,medium) routed=DW-1822,DW-2600->burndown
 2026-11-22T12:37:53Z	Story 21.39	stage_spawned	stage=implement spawn_at=2026-11-22T12:37:53Z model=sonnet agent_name=21-39-impl prior_lines_ended=verified(a57ca0e2d)
+2026-11-22T12:47:36Z	Story 21.38	merged	feature=3e511e16c by=orchestrator
