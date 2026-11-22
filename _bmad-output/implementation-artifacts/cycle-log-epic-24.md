@@ -683,3 +683,5 @@
 2026-11-22T00:58:45Z	Story 24.15	ruling	source=orchestrator DW-2827=batch1b(after_B1_merge,before_B2) owner=24-15 scope=sweep_all_write_tools_first;report_roster;stop_at_plan_if_cross-epic_or_kernel
 2026-11-22T01:10:32Z	Story 24.15	story_created	spawn_at=2026-11-22T00:57:00Z model=opus path=2026-11-22T01:10:32Z build_status=ready-for-dev scope=batch2_credentials gate=held_for_orchestrator(refusal_sentence)+batch1b_first
 2026-11-22T01:10:32Z	Story 24.15	stage_spawned	stage=plan spawn_at= model=opus agent_name=24-15-plan-batch1b cycle_iteration=3 scope=batch1b_DW-2827
+2026-11-22T01:11:16Z	Story 24.15	ruling	source=orchestrator scope=batch2 refusal_sentence=reworded code=PROHIBITED.PROVIDERCREDENTIAL ns=own_only(+USER_allowed_leg) named_limit=accepted others=kept_as_recommended category=veto(joins_U-135)
+2026-11-22T01:11:16Z	Story 24.15	spec_validated	scope=batch2 implement_after=batch1b

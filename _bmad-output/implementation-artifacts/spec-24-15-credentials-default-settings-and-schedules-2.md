@@ -102,13 +102,15 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `3ae1d87a3`; 
 
 ## Spec Change Log
 
+- 2026-11-22, spec gate (runner, orchestrator rulings, joins veto item U-135): (1) the refusal sentence is reworded to "An enabled agent definition reads its provider key from this credential, so only a person can remove it or change its password, on the Credentials screen.", code `PROHIBITED.PROVIDERCREDENTIAL`. (2) The refusal applies in OcuPilot's own namespace only. Task 0 (f)'s measurement is pinned in the evidence line, and one test leg is added: the agent removing a same-named credential in USER is allowed. (3) The named limit is accepted: a definition can change between proposal and confirm, and the confirm is a person's act. (4) Every other veto item is kept as recommended; the AD-10, AD-62, AD-15 and AD-22 lines are held for story end, add-only. Implements after Batch 1b.
+
 ## Review Triage Log
 
 ## Design Notes
 
 **Veto items (recommended option first).**
 
-1. **The self-protection refusal sentence** (Proposed string, the orchestrator rules it): "An enabled agent definition reads its provider key from this credential, so it is removed or given a new password on the Credentials screen alone." Caller-neutral, as `ALLOWLISTAGENTREASON`.
+1. **The self-protection refusal sentence** (Proposed string, the orchestrator rules it): "An enabled agent definition reads its provider key from this credential, so only a person can remove it or change its password, on the Credentials screen." Caller-neutral, as `ALLOWLISTAGENTREASON`.
 2. **Namespace scope of the refusal.** Recommended: only in the process's own namespace, where the `creds` rung opens the row (Task 0 (f)); a same-named credential elsewhere is not the provider's. Alternative: every namespace, which refuses with a sentence that is untrue there.
 3. **An add whose name differs only in case from an existing one is refused** (stricter than the classic page, which compares exactly), since the vendor's adapters resolve names ignoring case (`Credentials.cls:120`).
 4. **The business partner is empty or an existing partner** (stricter than the vendor's free text); the dialog offers the namespace's partners.
