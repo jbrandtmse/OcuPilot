@@ -452,6 +452,8 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 Status: batches-4-6-committed
 Blocking condition: none
 
+Lead patch after pass 2 (2026-11-22): pass 1's spec selection missed a consumer of a string it changed in place. CI run 44986244257 reddened `interop-item-test.browser-spec.mjs`, whose arrow-name prefix lacked `<label>`. The spec now fills `<label>` from the arrow's visible `.ocu-trace-label`. It and `interop-message-trace` are green on `ocupilot-ci`. mutation: the template renders `label.toUpperCase()`, and the arrow-name assertion reddens.
+
 Implement pass 2 (2026-11-22): Batches 4, 5 and 6 (DW-2405) are committed locally (e1e734071, af8603c49 and the Batch 6 commit), each with its loop green, `test:tools` and `test:components` green and the pre-commit hook passing; nothing is pushed. Frontmatter `status` stays `in-progress`: Batches 7-10 are pass 3. `scripts/check-objectscript.py` now admits `%Atelier` in `AtelierPort.cls` alone, for the answer's fixed statement. S16-S18 reuse existing keys with the ruled words. Subagents ran in the background despite `run_in_background: false`; this stage polled them with bounded waits.
 
 Implement pass 1 (2026-11-22): Task 0 measured no vendor audit event. Batches 1, 2 and 3 are committed locally (74936e41d, 8c5e63f6c, 6d9574a9b), each with its loop green and the pre-commit hook passing; nothing is pushed. Frontmatter `status` stays `in-progress`: Batches 4-10 are later passes. Batch 3's `Action` row also lists each opening screen as a bare descriptor entry (Design Notes, Decided in-stage); a Batch 3 subagent ran `git fetch` once from the main checkout, which updated only remote-tracking refs.

@@ -286,9 +286,11 @@ test('AC3 (Story 20.30): a sent test\'s answer links to its session\'s trace, wh
       heads: Array.from(document.querySelectorAll('app-interop-message-trace g.ocu-trace-participant title')).map((node) => node.textContent ?? ''),
       first: document.querySelector('app-interop-message-trace svg a')?.getAttribute('aria-label') ?? '',
       firstId: document.querySelector('app-interop-message-trace svg a .ocu-trace-id')?.textContent ?? '',
+      firstLabel: document.querySelector('app-interop-message-trace svg a .ocu-trace-label')?.textContent ?? '',
     }));
     assert.equal(drawn.firstId, sessionId, 'the first arrow\'s ID is the session id');
-    const prefix = STRINGS.interopTraceArrow.split(', <status>')[0].replace('<id>', sessionId).replace('<type>', 'Request').replace('<source>', 'EnsLib.Testing.Service').replace('<target>', 'EnsLib.Testing.Process');
+    assert.ok(drawn.firstLabel !== '', 'the first arrow draws a visible label');
+    const prefix = STRINGS.interopTraceArrow.split(', <status>')[0].replace('<id>', sessionId).replace('<label>', drawn.firstLabel).replace('<type>', 'Request').replace('<source>', 'EnsLib.Testing.Service').replace('<target>', 'EnsLib.Testing.Process');
     assert.ok(drawn.first.startsWith(`${prefix},`), `the first arrow runs from the testing service to the testing process: ${drawn.first}`);
     assert.deepEqual(drawn.heads.slice(0, 3), ['EnsLib.Testing.Service', 'EnsLib.Testing.Process', ECHO], 'the first three heads are the service, the process and the echo operation');
   } finally {
