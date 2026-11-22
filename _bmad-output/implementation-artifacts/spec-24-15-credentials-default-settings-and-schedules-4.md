@@ -2,8 +2,8 @@
 title: 'Story 24.15: Credentials, default settings and schedules (Batch 3: schedules)'
 type: 'feature'
 created: '2026-11-22'
-status: 'ready-for-dev'
-baseline_revision: 'e6db2ed9ffabf3e684c9121a0eb2e9c4013c40a9'
+status: 'blocked'
+baseline_revision: 'fab07a3951807de4ceadd4bc5d427251f9bb29a9'
 review_loop_iteration: 0
 followup_review_recommended: false
 owned_ledger: 'DW-2838'
@@ -87,6 +87,8 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `e6db2ed9f`).
 - [ ] The three tools, `ScheduleSave.cls`, the route, descriptor, entity type, baseline keys, `Prohibited.cls` terms, `InteropCredentialMint` doc sentence.
 - [ ] Client page, dialog, store, maps, strings, regenerated mirror and titles, EXPERIENCE.md row.
 - [ ] Tests: the matrix in the three new classes and the fixture, the browser spec, component specs, every roster.
+- [ ] **Task 2, signature pin (orchestrator relay, same rules as AD-61's `findmappings^%R` pin):** a test reads `Ens.ScheduleHandler.ValidateScheduleSpec`'s compiled formal spec and return type from the instance and asserts they match what the port calls; a vendor change turns it red. It carries a `mutation:` line (for example, the port's call with one argument more or less, or the asserted return type changed -> that test red). Model it on the existing AD-61 pin (grep `findmappings` under `src/OcuPilot/Test`).
+- [ ] **Task 3, README (the story's LAST task, after everything else is green):** read the Interoperability paragraph (README.md around :212) and the switched-off list first, keep their own sentence form (semicolon-separated items stay semicolon-separated), and add only the ruled clauses from Design Notes › README. The edit is add-only: `git diff --word-diff=porcelain <baseline> -- README.md` shows no removed words, except a stated count that the new items change, which shows as a one-word replacement; re-derive any count the README states over those lists and name it in the Auto Run Result, with the removed lines of that word-diff.
 
 **Acceptance Criteria:**
 
@@ -143,6 +145,16 @@ Each line takes the spine's `[AMENDED <its date>, Story 24.15, Rule 20]` tag whe
 7. The vendor's notification JOB runs in the confirm request; OcuPilot adds no spawn site, and no transaction wraps the write (no `TSTART` in the port or the confirm path).
 8. No harvest (AD-23 not engaged); side bar 15.
 
+**Measured (Task 0, `ocupilot-b-ci`, USER and HSCUSTOM, 2026-11-22; every probe row, item, production, role and user removed, final counts 0 in both namespaces).**
+
+- (a) Auditing on; an add, an edit and a remove of `Ens.Util.Schedule` wrote no audit row (a positive-control event appeared as exactly one row; the vendor sources name no audit).
+- (b) `^Ens.Util.ScheduleD` maps to the namespace's own database (`%DB_USER` in USER, `%DB_HSCUSTOM` in HSCUSTOM). A principal with `%Ens_Portal:USE`, `%Ens_ProductionConfig:READ` and the database's READ listed through `%ExecDirectNoPriv` and opened rows; its `%Save` and `%DeleteId` failed `<PROTECT>`. The only pair `%Save` and `%DeleteId` need is WRITE on the database holding the globals; no other pair. Reads wrote nothing.
+- (c) `OcuProbe2415SC` and `ocuprobe2415sc` both saved as two ids; `%OpenId` and `%DeleteId` of another case fail (#5809, #5810); SQL `Name=` equality is exact-case here. The Design Note 3 inference that the vendor's SQL lookup folds case is refuted; only `%OnAfterSave`'s item match folds case (`$zconvert(...,"U")`).
+- (d) A 50-character name and a 256-character description save; 51 and 257 fail (#7201, MAXLEN); an empty name fails (#5659); a name holding `$c(9)` or `$c(1)` saves.
+- (e) With a running item whose schedule is `@OcuProbe2415SR`: an add and an edit with the same spec wrote no `Ens.ScheduleHandler` row; an edit that changed the spec wrote `updating...`, `Stopping job`, `stopped in job`, `updated.` rows (and the item restarted on the edit back).
+- (f) **Measured otherwise than the spec expects.** A `%DeleteId` of that schedule wrote no log row and the item kept running. At the next production update the vendor logged `ErrInvalidScheduleEventSpec: '@OCUPROBE2415SR' ... is invalid` (`Ens.ScheduleHandler`), then `ConfigItem 'OcuPilotProbeOp' is disabled because its schedule string is invalid.`, and stopped the item's job; the item stayed stopped (Job 0) until the schedule was re-added and a production update ran. So a removed schedule does not leave its items "no longer started and stopped by it": they are stopped and disabled at the next production update.
+- (g) `ValidateScheduleSpec` refused `START:*-*-*T25:00:00` (segment 1), `FOO:*-*-*T08:00:00` and the empty spec, each `ErrInvalidScheduleEventSpec`, and accepted `START:*-*-*T08:00:00,STOP:*-*-*T17:00:00`; it wrote no `Ens_Util.Log` row, no audit row and no global; its text echoes the spec. Compiled signature: `ClassMethod`, `Internal`, `FormalSpec` `&pScheduleSpec,&pScheduleErrors,*pLength`, `ReturnType` `%Library.Status`.
+
 **Governing ADs (Rule 6):** AD-3, AD-4, AD-5, AD-6, AD-8, AD-10 (the covered type and its reviewed-few arms; no new prohibited effect), AD-13, AD-14, AD-15, AD-16, AD-21, AD-22, AD-29, AD-34, AD-36, AD-44, AD-51, AD-52, AD-53, AD-54, AD-55, AD-58, AD-59, AD-60, AD-62. Not engaged: AD-23, AD-35 (no secret), AD-63, AD-65, AD-66.
 
 **Integration and linkage (Rules 1, 2, 31).** Integration: AC3 (the kernel's confirm consumes the stored proposal in its own namespace) and AC1's agent leg (the derived read tool). Consumes: `InteropPort` (`Admit`, `AuditRuntime`, `SourceControlled`), `InteropCredentialMint`, `ItemSave`, the kernel's proposal, confirm, governance and audit. Consumed-by: Story 24.20's undo snapshots these writes. Extends: `InteropCredential*` (tools, save, port family), `InteropDefaultSetting*` (client).
@@ -175,7 +187,7 @@ Each line takes the spine's `[AMENDED <its date>, Story 24.15, Rule 20]` tag whe
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap: Task 0 (f) measured otherwise than the spec expects. After a schedule's remove, a running production's items that name it are not simply "no longer started and stopped by it": at the next production update the vendor logs an invalid-schedule error, disables each such item ("disabled because its schedule string is invalid") and stops its job, and the item stays stopped until the schedule is re-added and a production update runs (measured on `ocupilot-b-ci`, see Design Notes > Measured (f)). The ruled consequence string for `REMOVE` ("Items that name this schedule spec are no longer started and stopped by it, and it cannot be restored from OcuPilot.") is therefore not true, and the true wording is a new string: intent gap: new string <text of the REMOVE consequence that says the items are stopped and disabled at the next production update>. Also for the owner: the spec's inference that the vendor's name lookup folds case is refuted (Measured (c)); the TAKEN check ignoring case stays the stricter guard and needs no change. No product code was written for the schedules work; Task 1 (DW-2838) is committed as fab07a3951807de4ceadd4bc5d427251f9bb29a9. Tasks 2 (signature pin; formal spec measured in (g)) and 3 (README) are ready to run once (f) is ruled.
 
 **Plan.** Batch 3 of three, the story's last: DW-2838 first, as its own commit (orchestrator ruling relayed by the lead), then Schedule specs (list, add, edit, remove) through `InteropPort`, with every write's proposal keeping its namespace and every confirm judging there. Veto items: Design Notes 1 to 6. The story-end spine block and the README line are under Design Notes. Epic context reused as committed (dispatch instruction); AD-15, AD-22, AD-35, AD-59 and AD-62 read at HEAD. Read-only probes on `ocupilot-b-ci` (52777, identity checked, by a research subagent): `Ens.Util.Schedule` compiled (`Name` 50, `Description` 256, spec unlimited), no rows and no source-control class in USER or HSCUSTOM; `ValidateScheduleSpec` refuses an hour of 25, an unknown action and the empty spec, and accepts a lower-case valid spec; `ParseScheduleSpec` reads the matrix's spec as START until 17:00. Nothing was written to the instance; no scratch class or row was left.
