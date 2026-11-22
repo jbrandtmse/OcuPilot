@@ -703,3 +703,7 @@
 2026-11-22T05:06:27Z	Story 24.15	fresh_check_passed	scope=batch1b tree=ed96505b1 note=roster_guard_reddened_on_21.37_page-resource_writes->PortalResourcePort_exempted(43_entries)_ed96505b1 classes=16cls_149tests_first_run reverse=4cls smoke=PASSED
 2026-11-22T05:06:27Z	Story 24.15	code_head_pushed	scope=batch1b sha=ed96505b1 run=44987901711
 2026-11-22T05:06:44Z	Story 24.15	stage_spawned	stage=implement spawn_at=2026-11-22T05:06:44Z model=sonnet agent_name=24-15-implement-batch2 cycle_iteration=2 story_base=2d2b92d88 scope=batch2_credentials
+2026-11-22T05:47:46Z	Story 24.15	ci_green	scope=batch1b sha=ed96505b1 run=44987901711
+2026-11-22T05:48:43Z	Story 24.15	merged_to_feature	scope=batch1b feature=658744ffb
+2026-11-22T09:27:10Z	Story 24.15	stage_completed	stage=implement scope=batch2 commit=9ec1cc617 task0=vendor_no_audit(ConfigChange),name50,case_distinct,stored=$Length($Get(node))>0,provider_exact_name_own_ns review=13(2_patched) sweep=17/17 browser=7/7_both_orders,a11y13/13 test_tools=2388 components=320/3820 unrun_mutations=control-char,partner,gate,page_password guard_relaxed=self-protection.test.mjs(agent_definition_phrase) role_unconfirmed=InteropFloor_Operator
+2026-11-22T09:27:10Z	Story 24.15	stage_spawned	stage=qa+code-review(4_layers) spawn_at=2026-11-22T09:27:10Z model=opus agent_name=24-15-review-batch2 cycle_iteration=2
