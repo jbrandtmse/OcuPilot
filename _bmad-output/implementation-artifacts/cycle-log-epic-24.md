@@ -674,3 +674,5 @@
 2026-11-21T23:27:34Z	Story 24.15	stage_spawned	stage=qa spawn_at=2026-11-21T23:27:34Z model=sonnet agent_name=24-15-qa-batch1 cycle_iteration=1
 2026-11-21T23:53:53Z	Story 24.15	stage_completed	stage=qa scope=batch1 commit=8df352529 product_fix=empty/absent_value_now_422_INTEROP.DEFAULTSETTING.VALUE(InteropPort.DefaultSettingViolations) tests=InteropDefaultSettingEdges(2)+3_browser_legs mutations=2_hardening_legs+reason_for_1 fresh=first_run_green
 2026-11-21T23:53:53Z	Story 24.15	stage_spawned	stage=code-review spawn_at=2026-11-21T23:53:53Z model=opus agent_name=24-15-review-batch1 cycle_iteration=1 range=3dca9873a..8df352529
+2026-11-22T00:34:39Z	Story 24.15	stage_completed	stage=code-review scope=batch1 commit=fc4a22869 findings=21(high2_patched:vendor_validate_before_gate,multiline_secret_audit;med4_patched:remove_namespace,edge_bar,item/hostclass,held-key) rejected=10 deferred=1
+2026-11-22T00:34:39Z	Story 24.15	ledger_adjudicated	scope=batch1 resolved=DW-2636 new=DW-2827(high,burndown,sibling_remove_tools_namespace)

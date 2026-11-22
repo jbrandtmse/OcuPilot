@@ -13307,6 +13307,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-8-remote-instance-profiles-and-environment-diff.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: AD-62: InteropPort is the only reader of interoperability configuration; its default-settings read is built by Story 24.15
 - 2026-11-16T06:26:31Z status=routed owner=24-15-credentials-default-settings-and-schedules by=harvest note=ruled at 24.8 spec gate: 24.15 compares its read per namespace
+- 2026-11-22T00:34:39Z status=resolved-by:24-15-credentials-default-settings-and-schedules by=epic-24-runner note=24.15 Batch 1 (26d996850, review fc4a22869): Compare default settings lists the settings only here, only there or differing between two namespaces, each read through InteropPort behind its own gate (AC4)
 
 ### DW-2641: epics.md Epic 21 implementation notes (about line 957) still say DT-11 lands before DT-09 and DT-10; after U-45 DT-11 is not planned and DT-09/DT-10 are same-instance
 - source: spec-24-8-remote-instance-profiles-and-environment-diff.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -14369,3 +14370,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Story 24.15 spec gate, veto item U-135, orchestrator condition | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Kernel/Secret/Ladder.cls: the wallet rung reads a %Wallet.KeyValue secret from the IRIS wallet for the provider key (doc lines 14-17, WALLETKEYVALUETYPE); Screen/Tool ships WalletSecretDelete and WalletSecretUpdate
 - 2026-11-21T18:36:21Z status=routed owner=burndown by=epic-24-runner note=Epic 24 burn-down; do not widen 24.15 Batch 2 to cover it (orchestrator)
+
+### DW-2827: Wrong-namespace remove: InteropPartnerRemove, InteropLookupEntryRemove and InteropLookupTableDelete do not store the proposal's namespace, so a remove proposed in one namespace and confirmed from another deletes the same-named row in the confirming namespace (the defect Story 24.15 Batch 1 review fixed for the default-setting remove)
+- source: spec-24-15-credentials-default-settings-and-schedules.md (review fc4a22869) | severity: high | fix-risk: low | footprint: out-of-footprint
+- evidence: 24.15 review reproduced it for InteropDefaultSettingRemove with a test that deleted HSCUSTOM's identical setting instead of USER's before the fix; the three sibling tools share the pattern (Stories 20.26 and 20.5)
+- 2026-11-22T00:34:39Z status=routed owner=burndown by=epic-24-runner note=same fix as fc4a22869: Namespace becomes part of what the remove stores
