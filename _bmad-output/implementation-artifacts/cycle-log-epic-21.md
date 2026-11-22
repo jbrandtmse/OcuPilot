@@ -998,3 +998,4 @@
 2026-11-22T17:14:13Z	Story 21.6	stage_spawned	stage=implement spawn_at=2026-11-22T17:14:13Z model=sonnet agent_name=21-6-impl prior_lines_ended=verified(a9f7feaad)
 2026-11-22T17:48:26Z	Story 21.39	ci_red	run=45048213834 sha=ffa2a92e7 job=browser_shard_1/5 test=a11y-structural-invariants(whole-file) cause=DW-1822_recurrence_first_with_capture(renderer_deaf_to_all_CDP;no_profile) touched=21.39_capture_only_reports
 2026-11-22T18:09:44Z	Story 21.6	ledger_routed	id=DW-2842 by=orchestrator cause=gates_timeout_20min(run_45048213834_job_137287353314)
+2026-11-22T18:46:40Z	Story 21.39	merged	feature=c655a65bd by=orchestrator rerun=45048213834_attempt2_green
