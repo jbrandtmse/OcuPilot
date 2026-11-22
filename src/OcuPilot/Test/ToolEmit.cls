@@ -346,8 +346,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             }
             Set tWritePair = $ListBuild(tGlobalResource, "WRITE")
             If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
-        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropProductionAction") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropJobAction") || (tTool.class = "OcuPilot.Screen.Tool.InteropQueueAbort") || (tTool.class = "OcuPilot.Screen.Tool.InteropQueueMessageAbort") {
-            ; Story 20.2: the production actions declare %Ens_ProductionRun:USE and WRITE on the globals
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropProductionAction") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropJobAction") || (tTool.class = "OcuPilot.Screen.Tool.InteropQueueAbort") || (tTool.class = "OcuPilot.Screen.Tool.InteropQueueMessageAbort") || (tTool.class = "OcuPilot.Screen.Tool.InteropPurgeRun") || (tTool.class = "OcuPilot.Screen.Tool.InteropPurgeSettingSet") {
+            ; Story 24.16: the purge declares %Ens_Purge:USE and the purge setting set %Ens_PurgeSettings:WRITE, which its screen already declares, then WRITE on the
+            ; globals database, as the queue and job writes do. Story 20.2: the production actions declare %Ens_ProductionRun:USE and WRITE on the globals
             ; database of the request's namespace, here this one's, after their screen's pairs, each
             ; once (AD-8, AD-62). Story 20.23: the queue and job writes declare the vendor's own check
             ; (%Ens_Queues:WRITE, %Ens_Jobs:WRITE or %Ens_MessageSuspend:USE) in its place.

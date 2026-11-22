@@ -152,6 +152,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropCredentialList',
   // Story 24.15: Schedule specs, whose Remove types the schedule spec's name and whose New schedule spec and Edit its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropScheduleList',
+  // Story 24.16: Purge management data, whose Purge its own page's dialog sends, and Purge data settings, whose Set value the settings page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropPurgeList',
+  'OcuPilot.Screen.Descriptor.InteropPurgeSettingList',
   // Story 20.23: Queues, whose Abort all types the queue's name; Queue messages and an item's Queue tab, whose Abort types the
   // message id; and Jobs and an item's Jobs tab, whose Abort message types the job's process id and whose Suspend message and
   // Stop job warn first.
@@ -496,6 +499,8 @@ const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.ExplorerGlobalList': ['replace'],
   // Story 21.37: Page resources' dialogs state the screens that follow the page, and what a change or a clear does to them, before it is saved.
   [PAGE_RESOURCE_LIST]: [PAGE_RESOURCE_CHANGE, PAGE_RESOURCE_CLEAR],
+  // Story 24.16: Purge management data's Purge reads the three settings the purge will use before its dialog opens.
+  'OcuPilot.Screen.Descriptor.InteropPurgeList': ['purge'],
 };
 
 /**
@@ -633,6 +638,9 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropCredentialList': ['edit', 'password'],
   // Schedule specs' page registers Edit itself, whose dialog sends the schedule, the description and the flag (Story 24.15).
   'OcuPilot.Screen.Descriptor.InteropScheduleList': ['edit'],
+  // Purge management data's page registers Purge itself, whose dialog takes the days, and Purge data settings' page registers Set value itself (Story 24.16).
+  'OcuPilot.Screen.Descriptor.InteropPurgeList': ['purge'],
+  'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': ['set'],
   // An item's Test tab's page registers Send test itself, whose dialog sends the request class and its fields (Story 20.6).
   'OcuPilot.Screen.Descriptor.InteropItemTestTab': ['test'],
   // Data transformations' page registers Test itself, whose dialog sends the pasted message (Story 20.27).

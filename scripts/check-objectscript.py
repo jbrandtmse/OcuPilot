@@ -659,6 +659,9 @@ ESCALATION_RE = re.compile(
 # one file; `AddRoles` is refused there as everywhere else.
 ESCALATION_METHOD_ALLOWED = {
     "src/OcuPilot/Install/Installer.cls": "AsAdministrator",
+    # Story 24.16: the interoperability port's purge frame gives the process's roles back on every exit, a raised error included, because
+    # the vendor's bitmap cleanup adds `%All` for itself. It contains an escalation it does not make.
+    "src/OcuPilot/Port/InteropPort.cls": "PurgeFrame",
 }
 NEW_ROLES_RE = re.compile(r"\bn(?:ew)?\s+\$roles\b", re.IGNORECASE)
 ADD_ROLES_RE = re.compile(r"[$%]system\.security\)?\.addroles", re.IGNORECASE)

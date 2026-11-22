@@ -810,6 +810,37 @@ class TestEscalationContainmentAdmitsTheTargetKeyStep(FixtureTreeCase):
         self.assertIn("Installer.cls:12:", problems[0])
 
 
+class TestEscalationContainmentAdmitsThePurgeFrame(FixtureTreeCase):
+    """Story 24.16: `New $ROLES` is accepted in the interoperability port's `PurgeFrame` alone, which contains the roles the vendor's bitmap cleanup adds."""
+
+    PORT = "src/OcuPilot/Port/InteropPort.cls"
+
+    def port(self, body: str, method: str = "PurgeFrame", path: str = PORT) -> list[str]:
+        self.write(
+            path,
+            "Class OcuPilot.Port.InteropPort Extends %RegisteredObject\n{\n\n"
+            f"ClassMethod {method}() As %Status\n{{\n{body}\n    Quit $$$OK\n}}\n\n}}\n",
+        )
+        problems: list[str] = []
+        co.check_escalation_containment(problems)
+        return problems
+
+    def test_new_roles_in_the_purge_frame_is_accepted(self):
+        self.assertEqual(self.port("    New $ROLES"), [])
+
+    def test_new_roles_in_another_port_method_is_refused(self):
+        problems = self.port("    New $ROLES", method="PerformPurge")
+        self.assertTrue(any("InteropPort.cls" in p for p in problems), f"expected a refusal, got {problems}")
+
+    def test_add_roles_in_the_purge_frame_is_refused(self):
+        problems = self.port("    Set tSC = $SYSTEM.Security.AddRoles(\"OcuPilotState\")")
+        self.assertTrue(problems, "AddRoles is refused in the purge frame as it is everywhere else")
+
+    def test_new_roles_in_a_same_named_method_of_another_file_is_refused(self):
+        problems = self.port("    New $ROLES", path="src/OcuPilot/Port/OtherPort.cls")
+        self.assertTrue(any("OtherPort.cls" in p for p in problems), f"expected a refusal, got {problems}")
+
+
 class TestHandlerWireTestRule(FixtureTreeCase):
     """Consistency Conventions: "every handler gets an HTTP integration test asserting status,
     content type and body shape" -- a rule in a document until Story 1.17, and a route added with

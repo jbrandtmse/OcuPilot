@@ -334,6 +334,8 @@ XData Keys [ MimeType = application/json ]
   "interop.schedules.add": true,
   "interop.schedules.update": true,
   "interop.schedules.remove": false,
+  "interop.purgesettings.set": true,
+  "interop.purge.run": false,
   "osmgmt.backuptasks.run": false,
   "osmgmt.backuptasks.freeze": false,
   "osmgmt.backuptasks.thaw": false,

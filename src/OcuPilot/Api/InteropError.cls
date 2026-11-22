@@ -525,6 +525,24 @@ Parameter SCHEDULECHANGE = "INTEROP.SCHEDULE.CHANGE";
 
 Parameter REASONSCHEDULECHANGE = "A running production that uses this schedule spec follows a changed spec at once.";
 
+/// <p>The purge's refusals and consequences (Story 24.16). <code>DAYS</code> is 422 on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug and
+/// <code>RUNNING</code> is 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug.</p>
+Parameter PURGEDAYS = "INTEROP.PURGE.DAYS";
+
+Parameter REASONPURGEDAYS = "Older than (days) is a whole number from 0 to 99999.";
+
+Parameter PURGERUNNING = "INTEROP.PURGE.RUNNING";
+
+Parameter REASONPURGERUNNING = "A purge is already running in this namespace. Try again when it has finished.";
+
+Parameter PURGERUN = "INTEROP.PURGE.RUN";
+
+Parameter REASONPURGERUN = "Deletes this namespace's event log entries, messages, completed business process records, business rule log entries, I/O log entries, host monitor data and managed alerts older than the days to keep, and their message bodies when Include message bodies is on. When Purge only completed sessions is on, a session with a message still in progress is kept whole, and so is an open managed alert. With 0 days, everything up to the end of today is deleted, except managed alerts from today. It cannot be undone.";
+
+Parameter PURGEBITMAP = "INTEROP.PURGE.BITMAP";
+
+Parameter REASONPURGEBITMAP = "Deletes this namespace's event log entries, messages, completed business process records, business rule log entries, I/O log entries, host monitor data and managed alerts older than the days to keep, and their message bodies when Include message bodies is on. When Purge only completed sessions is on, a session with a message still in progress is kept whole, and so is an open managed alert. With 0 days, everything up to the end of today is deleted, except managed alerts from today. It cannot be undone. Bitmap cleanup then runs over every class in this namespace with full system rights, and can take a long time. Those rights end when it finishes.";
+
 /// <p>The startup settings' refusals, violations and consequences (Story 24.3): the auto-start production and a production's shutdown
 /// group. <code>SAME</code> is 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, <code>ALLNAMESPACES</code> is 403,
 /// <code>READONLY</code> is 409, and <code>PRIORITY</code>, <code>GROUP</code> and <code>NOPRIORITY</code> are 422.</p>
@@ -696,13 +714,13 @@ Parameter OUTCOMEFAILED = "not resent";
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..ScheduleCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..StartupCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..ScheduleCodes() _ ..PurgeCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..StartupCodes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -816,6 +834,20 @@ ClassMethod ScheduleCodes() As %List
 ClassMethod SchedulePreconditionCodes() As %List
 {
     Quit $ListBuild(..#SCHEDULETAKEN, ..#SCHEDULESOURCECONTROL)
+}
+
+/// <p>The purge codes (Story 24.16), as a <class>%List</class>: the refusal of days that are not a whole number from 0 to 99999 and of a purge
+/// that is already running. The two consequence codes are <method>ConsequenceCodes</method>'s.</p>
+ClassMethod PurgeCodes() As %List
+{
+    Quit $ListBuild(..#PURGEDAYS, ..#PURGERUNNING)
+}
+
+/// <p>The purge refusal a purge tool's fresh read answers when the action does not fit the namespace: a purge that is already running. The days,
+/// which the write alone judges, are not among them.</p>
+ClassMethod PurgePreconditionCodes() As %List
+{
+    Quit $ListBuild(..#PURGERUNNING)
 }
 
 /// <p>The startup codes (Story 24.3), as a <class>%List</class>: the three violations, the refusal of a value the production
@@ -1001,6 +1033,10 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#SCHEDULESOURCECONTROL Quit ..#REASONSCHEDULESOURCECONTROL
     If pCode = ..#SCHEDULEREMOVE Quit ..#REASONSCHEDULEREMOVE
     If pCode = ..#SCHEDULECHANGE Quit ..#REASONSCHEDULECHANGE
+    If pCode = ..#PURGEDAYS Quit ..#REASONPURGEDAYS
+    If pCode = ..#PURGERUNNING Quit ..#REASONPURGERUNNING
+    If pCode = ..#PURGERUN Quit ..#REASONPURGERUN
+    If pCode = ..#PURGEBITMAP Quit ..#REASONPURGEBITMAP
     If pCode = ..#STARTUPSAME Quit ..#REASONSTARTUPSAME
     If pCode = ..#STARTUPPRIORITY Quit ..#REASONSTARTUPPRIORITY
     If pCode = ..#STARTUPGROUP Quit ..#REASONSTARTUPGROUP

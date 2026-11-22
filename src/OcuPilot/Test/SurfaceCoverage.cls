@@ -270,6 +270,8 @@ XData Coverage
 <screen name="InteropDefaultSettingDiff" class="OcuPilot.Test.InteropDefaultSettingDiff" method="TestTheDiffListsEachDifferenceAndNotTheSameSetting"/>
 <screen name="InteropCredentialList" class="OcuPilot.Test.InteropCredentialControl" method="TestTheDeclarationRegisters"/>
 <screen name="InteropScheduleList" class="OcuPilot.Test.InteropScheduleControl" method="TestTheDeclarationRegisters"/>
+<screen name="InteropPurgeList" class="OcuPilot.Test.InteropPurgeControl" method="TestTheDeclarationRegisters"/>
+<screen name="InteropPurgeSettingList" class="OcuPilot.Test.InteropPurgeSettingControl" method="TestTheDeclarationRegisters"/>
 <screen name="InteropRuleEditor" class="OcuPilot.Test.InteropEditorDescriptor" method="TestTheThreeEditorScreensRegister" corpus="one declaration test pins all three Story 20.7 editor screens in one loop"/>
 <screen name="InteropProcessEditor" class="OcuPilot.Test.InteropEditorDescriptor" method="TestTheThreeEditorScreensRegister" corpus="one declaration test pins all three Story 20.7 editor screens in one loop"/>
 <screen name="InteropTransformEditor" class="OcuPilot.Test.InteropEditorDescriptor" method="TestTheThreeEditorScreensRegister" corpus="one declaration test pins all three Story 20.7 editor screens in one loop"/>
@@ -599,6 +601,8 @@ XData Coverage
 <tool name="interop.schedules.add" class="OcuPilot.Test.InteropScheduleControl" method="TestTheAgentsAddConfirmsOverHttp"/>
 <tool name="interop.schedules.update" class="OcuPilot.Test.InteropScheduleControl" method="TestTheAgentsUpdateAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update and the remove in turn"/>
 <tool name="interop.schedules.remove" class="OcuPilot.Test.InteropScheduleControl" method="TestTheAgentsUpdateAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update and the remove in turn"/>
+<tool name="interop.purgesettings.set" class="OcuPilot.Test.InteropPurgeSettingControl" method="TestASettingSetFromEitherCallerReadsBackAsSent"/>
+<tool name="interop.purge.run" class="OcuPilot.Test.InteropPurgeControl" method="TestAPurgeFromEitherCallerDeletesTheOldRecordsAndKeepsTheCurrentOne"/>
 <tool name="interop.lookuptables.delete" class="OcuPilot.Test.InteropLookupControl" method="TestTheAgentsDeleteConfirmsOverHttp"/>
 <tool name="interop.lookuptables.export" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsExportConfirmsOverHttp"/>
 <tool name="interop.lookuptables.import" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsImportConfirmsOverHttp"/>

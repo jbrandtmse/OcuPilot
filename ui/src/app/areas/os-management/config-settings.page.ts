@@ -38,8 +38,12 @@ const TASK_MAIL_MESSAGE_PREFIX = 'Message';
 /** Analytics' General settings (Story 24.13): the first tab of the Settings group, a detail screen, whose Set value this page sends. */
 export const ANALYTICS_SETTING_LIST = 'OcuPilot.Screen.Descriptor.AnalyticsSettingList';
 
+/** Interoperability's Purge data settings (Story 24.16): a list screen, whose Set value this page sends. */
+export const INTEROP_PURGE_SETTING_LIST = 'OcuPilot.Screen.Descriptor.InteropPurgeSettingList';
+
 const SERVED_LISTS: readonly string[] = [
   ANALYTICS_SETTING_LIST,
+  INTEROP_PURGE_SETTING_LIST,
   STARTUP_SETTING_LIST,
   MEMORY_SETTING_LIST,
   COMPATIBILITY_SETTING_LIST,
