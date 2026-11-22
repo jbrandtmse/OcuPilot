@@ -313,6 +313,14 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     edit: STRINGS.agentPanelSecretWarningEdit,
     remove: STRINGS.actionRemove,
   },
+  // Story 24.15: Credentials' New credential opens the dialog that adds one, its Edit the dialog that changes one, its Set password the dialog that
+  // gives one a password and its Remove deletes one.
+  'OcuPilot.Screen.Descriptor.InteropCredentialList': {
+    add: STRINGS.interopCredentialAddAction,
+    edit: STRINGS.agentPanelSecretWarningEdit,
+    password: STRINGS.userActionSetPassword,
+    remove: STRINGS.actionRemove,
+  },
   // Story 8.5: the X.509 list's Create imports a credential rather than typing one in.
   'OcuPilot.Screen.Descriptor.X509CredentialList': { create: STRINGS.actionImport },
   'OcuPilot.Screen.Descriptor.AgentSwitches': {

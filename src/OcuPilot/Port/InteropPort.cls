@@ -125,7 +125,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -190,6 +190,10 @@ Parameter ENDPOINTDEFAULTSETTINGS = "DefaultSettings";
 /// criterion names (Story 24.15): <code>LIST</code> only, read in each namespace through the same read as
 /// <parameter>ENDPOINTDEFAULTSETTINGS</parameter>' list.</p>
 Parameter ENDPOINTDEFAULTSETTINGSDIFF = "DefaultSettingsDiff";
+
+/// <p>The namespace's credentials (Story 24.15): <code>LIST</code>, one credential (<code>CREDENTIAL</code>) and the four writes, over
+/// <code>Ens.Config.Credentials</code>. The password is never read: a row says only whether one is stored.</p>
+Parameter ENDPOINTCREDENTIALS = "Credentials";
 
 /// <p>An item's host test (Story 20.6): <code>LIST</code> for the item <parameter>ITEMKEY</parameter> names (one row for each
 /// settable field of each request class it takes), <code>TESTTARGET</code> (the composed fresh read of the test about to be
@@ -285,6 +289,13 @@ Parameter DEFAULTSETTINGRESOURCEPREFIX = "%Ens_SystemDefaultSettings_";
 
 /// <p>The setting whose write also needs <parameter>ITEMRUNPAIR</parameter>, as the classic page asks.</p>
 Parameter DEFAULTSETTINGENABLED = "Enabled";
+
+/// <p>The pairs the Credentials endpoint requires (Story 24.15): the classic Interoperability menu's <code>%Ens_Portal:USE</code> and
+/// <code>EnsPortal.Credentials</code>' own resource. The vendor's reads check no privilege of their own beyond the database (measured).</p>
+Parameter CREDENTIALPAIRS = "%Ens_Portal:USE,%Ens_Credentials:READ";
+
+/// <p>The pair a credential write adds: the classic page's own edit resource, which the vendor's password calls check themselves.</p>
+Parameter CREDENTIALWRITEPAIR = "%Ens_Credentials:WRITE";
 
 /// <p>The pairs the ItemTest endpoint requires: the classic Interoperability menu's <code>%Ens_Portal:USE</code> and
 /// <code>EnsPortal.TestingService</code>'s own resource (Story 20.6). The vendor's <code>SendTestRequest</code> checks no
@@ -515,6 +526,23 @@ Parameter TYPESETDEFAULT = "SETDEFAULT";
 
 /// <p>Remove a default setting.</p>
 Parameter TYPEREMOVEDEFAULT = "REMOVEDEFAULT";
+
+/// <p>One credential (Story 24.15): <code>{Name, Username, BusinessPartner, Password, Namespace}</code>, the credential tools' fresh read;
+/// <code>Password</code> is <code>stored</code> or <code>not stored</code>. The id is the credential's name, kept exactly. With
+/// <parameter>ACTIONKEY</parameter> in the query it refuses what that action would be refused (<method>ReadCredential</method>).</p>
+Parameter TYPECREDENTIAL = "CREDENTIAL";
+
+/// <p>Add a credential. The body names <code>Username</code>, <code>BusinessPartner</code> and, optionally, <code>Password</code>; the name is the id.</p>
+Parameter TYPEADDCREDENTIAL = "ADDCREDENTIAL";
+
+/// <p>Store a new user name or business partner for a credential the namespace holds. The name cannot change.</p>
+Parameter TYPESETCREDENTIAL = "SETCREDENTIAL";
+
+/// <p>Store a new password for a credential the namespace holds. The body is the password alone.</p>
+Parameter TYPEPASSWORDCREDENTIAL = "PASSWORDCREDENTIAL";
+
+/// <p>Remove a credential, and its password with it.</p>
+Parameter TYPEREMOVECREDENTIAL = "REMOVECREDENTIAL";
 
 /// <p>The query key naming the table an entries list reads: its one criterion.</p>
 Parameter TABLEKEY = "table";
@@ -758,6 +786,28 @@ Parameter DIFFONLYHERE = "only here";
 Parameter DIFFONLYTHERE = "only there";
 
 Parameter DIFFDIFFERS = "differs";
+
+/// <p>What every credential refusal code begins with (<class>OcuPilot.Api.InteropError</class>).</p>
+Parameter CREDENTIALCODEPREFIX = "INTEROP.CREDENTIAL.";
+
+/// <p>The fields a credential row carries, in order, and the two an edit may set (Story 24.15).</p>
+Parameter CREDENTIALFIELDS = "Name,Username,BusinessPartner,Password";
+
+Parameter CREDENTIALSETFIELDS = "Username,BusinessPartner";
+
+/// <p>The most characters the vendor stores for a credential's name (measured: the default string length, 50).</p>
+Parameter CREDENTIALNAMEMAX = 50;
+
+/// <p>The most characters the vendor stores for a user name.</p>
+Parameter CREDENTIALUSERMAX = 3640873;
+
+/// <p>The words a row's <code>Password</code> takes.</p>
+Parameter CREDENTIALSTORED = "stored";
+
+Parameter CREDENTIALNOTSTORED = "not stored";
+
+/// <p>The entity type the audit row of a credential write names.</p>
+Parameter ENTITYCREDENTIAL = "interop-credential";
 
 /// <p>The entity types and verbs the audit row of a lookup write names (<method>AuditRuntime</method>, Story 20.5).</p>
 Parameter ENTITYLOOKUPTABLE = "lookup-table";
@@ -1062,6 +1112,13 @@ ClassMethod IsDefaultSettingWrite(pType As %String) As %Boolean
     Quit (pType = ..#TYPEADDDEFAULT) || (pType = ..#TYPESETDEFAULT) || (pType = ..#TYPEREMOVEDEFAULT)
 }
 
+/// <p>Whether <var>pType</var> is one of the credential writes this port carries (Story 24.15): a create, a merge, a password set or a
+/// delete over the <code>CREDENTIAL</code> read, needing WRITE on the namespace's globals database and no routines database.</p>
+ClassMethod IsCredentialWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADDCREDENTIAL) || (pType = ..#TYPESETCREDENTIAL) || (pType = ..#TYPEPASSWORDCREDENTIAL) || (pType = ..#TYPEREMOVECREDENTIAL)
+}
+
 /// <p>Whether <var>pType</var> is one of the Productions endpoint's two startup writes (Story 24.3): a merge over the
 /// <code>STARTUP</code> read, needing WRITE on the namespace's globals database and no routines database.</p>
 ClassMethod IsStartupWrite(pType As %String) As %Boolean
@@ -1072,7 +1129,7 @@ ClassMethod IsStartupWrite(pType As %String) As %Boolean
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
 ClassMethod IsAnyWrite(pType As %String) As %Boolean
 {
-    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
+    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
 }
 
 /// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads, Story 20.30's session trace and Story 24.4's three session reads. Each serves
@@ -1108,6 +1165,8 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
         Set tSpec = ..#LOOKUPPAIRS
     } ElseIf (pEndpoint = ..#ENDPOINTDEFAULTSETTINGS) || (pEndpoint = ..#ENDPOINTDEFAULTSETTINGSDIFF) {
         Set tSpec = ..#DEFAULTSETTINGPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTCREDENTIALS {
+        Set tSpec = ..#CREDENTIALPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
         Set tSpec = ..#TESTPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTITEMCLASSES {
@@ -1146,6 +1205,7 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     If ..IsLookupWrite(pType) Set tSpec = tSpec _ "," _ ..#LOOKUPWRITEPAIR
     If ..IsPartnerWrite(pType) Set tSpec = tSpec _ "," _ ..#PARTNERWRITEPAIR
     If ..IsDefaultSettingWrite(pType) Set tSpec = tSpec _ "," _ ..#DEFAULTSETTINGWRITEPAIR
+    If ..IsCredentialWrite(pType) Set tSpec = tSpec _ "," _ ..#CREDENTIALWRITEPAIR
     If pType = ..#TYPEAUTOSTART Set tSpec = tSpec _ "," _ ..#AUTOSTARTPAIR
     If pType = ..#TYPESHUTDOWNGROUP Set tSpec = tSpec _ "," _ ..#GROUPPAIR
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && ((pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)) Set tSpec = tSpec _ "," _ ..#DTLTESTPAIR
@@ -1174,6 +1234,7 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTBUSINESSPARTNERS Quit (pType = ..#TYPEPARTNER) || ..IsPartnerWrite(pType)
     If pEndpoint = ..#ENDPOINTDEFAULTSETTINGS Quit (pType = ..#TYPEDEFAULTSETTING) || ..IsDefaultSettingWrite(pType)
     If pEndpoint = ..#ENDPOINTDEFAULTSETTINGSDIFF Quit 0
+    If pEndpoint = ..#ENDPOINTCREDENTIALS Quit (pType = ..#TYPECREDENTIAL) || ..IsCredentialWrite(pType)
     If pEndpoint = ..#ENDPOINTITEMTEST Quit (pType = ..#TYPETESTTARGET) || (pType = ..#TYPESENDTEST)
     If pEndpoint = ..#ENDPOINTTRANSFORMS Quit (pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)
     If pEndpoint = ..#ENDPOINTMESSAGES Quit ..IsMessageType(pType)
@@ -1328,6 +1389,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If (pEndpoint = ..#ENDPOINTDEFAULTSETTINGS) || (pEndpoint = ..#ENDPOINTDEFAULTSETTINGSDIFF) {
             Set tSC = ..InvokeDefaultSetting(tNamespace, pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTCREDENTIALS {
+            Set tSC = ..InvokeCredential(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
         }
 
@@ -6299,6 +6364,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (..IsLookupWrite(pType) || (pType = ..#TYPEEXPORT)) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTBUSINESSPARTNERS) && ..IsPartnerWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTDEFAULTSETTINGS) && ..IsDefaultSettingWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTCREDENTIALS) && ..IsCredentialWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTITEMTEST) && ..IsTestWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && (pType = ..#TYPETRANSFORMTEST) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ..IsMessageWrite(pType) Quit "objectscript"
@@ -6330,6 +6396,8 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tText = tText _ ..PartnerSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf pEndpoint = ..#ENDPOINTDEFAULTSETTINGS {
         Set tText = tText _ ..DefaultSettingSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+    } ElseIf pEndpoint = ..#ENDPOINTCREDENTIALS {
+        Set tText = tText _ ..CredentialSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
         Set tText = tText _ ..TestSnippet($Get(pQuery(..#IDKEY)), .pQuery)
     } ElseIf pEndpoint = ..#ENDPOINTTRANSFORMS {
@@ -8437,6 +8505,431 @@ ClassMethod DefaultSettingSnippet(pType As %String, pId As %String, pBody As %Dy
         }
     }
     Quit tText _ tNL _ " Set tSC = tSetting.%Save()" _ tNL _ " Set tSetting = """""
+}
+
+/// <p>The statement the credential list reads: every credential's name, user name and business partner, in name order (Story 24.15). It names
+/// no password column, so the list never reads one.</p>
+Parameter CREDENTIALSQL = "SELECT TOP ? SystemName, Username, BusinessPartner FROM Ens_Config.Credentials ORDER BY SystemName";
+
+/// <p>Whether <var>pName</var> is a name the vendor stores for a credential (Story 24.15): 1 to <parameter>CREDENTIALNAMEMAX</parameter>
+/// characters with no control character. Pure.</p>
+ClassMethod CredentialNameOK(pName As %String) As %Boolean
+{
+    Quit (pName '= "") && ($Length(pName) <= ..#CREDENTIALNAMEMAX) && ($ZStrip(pName, "*C") = pName)
+}
+
+/// <p>Whether a password is stored for the credential <var>pName</var> in the current namespace, which the caller has already switched: the
+/// vendor's secondary node exists and is not empty (measured). The password is tested in one expression and never held, compared or returned.</p>
+ClassMethod CredentialStoredHere(pName As %String) As %Boolean [ Private ]
+{
+    If pName = "" Quit 0
+    Quit ($Length($Get(^Ens.SecondaryData.Password(pName))) > 0)
+}
+
+/// <p>The credential as the four values <parameter>CREDENTIALFIELDS</parameter> names, in that order, the last 1 when a password is stored. Runs
+/// while the credential's namespace is switched.</p>
+ClassMethod CredentialLine(pName As %String, pUsername As %String, pPartner As %String) As %List [ Private ]
+{
+    If pUsername = $Char(0) Set pUsername = ""
+    If pPartner = $Char(0) Set pPartner = ""
+    Quit $ListBuild(pName, pUsername, pPartner, ''..CredentialStoredHere(pName))
+}
+
+/// <p>The row a credential list and read answer, from the four values <var>pLine</var> (<method>CredentialLine</method>):
+/// <code>{Name, Username, BusinessPartner, Password}</code>, and with <var>pNamespace</var> <code>Namespace</code> too. <code>Password</code> is
+/// <parameter>CREDENTIALSTORED</parameter> or <parameter>CREDENTIALNOTSTORED</parameter> and never a value (AD-35, Story 24.15).</p>
+ClassMethod CredentialRow(pLine As %List, pNamespace As %String = "") As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("Name", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("Username", $List(pLine, 2) _ "", "string")
+    Do tRow.%Set("BusinessPartner", $List(pLine, 3) _ "", "string")
+    Do tRow.%Set("Password", $Select($List(pLine, 4): ..#CREDENTIALSTORED, 1: ..#CREDENTIALNOTSTORED), "string")
+    If pNamespace '= "" Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The credentials of the current namespace, which the caller has already switched, as <var>pFound</var>(n) = <method>CredentialLine</method>,
+/// at most <var>pMax</var>. Read with <code>%ExecDirectNoPriv</code> after the gate; nothing is written.</p>
+ClassMethod CredentialLinesHere(pMax As %Integer, Output pFound) [ Private ]
+{
+    Kill pFound
+    Set pFound = 0
+    Set tStatement = ##class(%SQL.Statement).%New()
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, ..#CREDENTIALSQL, pMax)
+    If '$IsObject(tResult) Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "the statement answered no result"))
+    If tResult.%SQLCODE < 0 Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message))
+    While tResult.%Next(.tNextSC) {
+        Set pFound($Increment(pFound)) = ..CredentialLine(tResult.%GetData(1), tResult.%GetData(2), tResult.%GetData(3))
+    }
+    If $$$ISERR($Get(tNextSC, $$$OK)) Throw ##class(%Exception.StatusException).CreateFromStatus(tNextSC)
+}
+
+/// <p>The namespace's credentials, one row per credential, at most <var>pMax</var> when it is above zero (Story 24.15):
+/// <method>CredentialRow</method>'s fields, in name order. Nothing is written and no password is read.</p>
+ClassMethod ListCredentials(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..CredentialLinesHere($Select(pMax > 0: pMax, 1: ..#SQLMAX), .tFound)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the credential list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Do pRows.%Push(..CredentialRow(tFound(tI)))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The facts about the credential <var>pName</var>, read in the current namespace, which the caller has already switched, and kept in
+/// <var>pFacts</var>: <code>exists</code> (held under exactly that name), <code>folded</code> (how many credentials hold that name in any letter
+/// case) and, when it exists, <code>line</code> (<method>CredentialLine</method>). A name the vendor cannot store is not held. Nothing is
+/// written.</p>
+ClassMethod CredentialFactsHere(pName As %String, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("exists") = 0
+    Set pFacts("folded") = 0
+    Set pFacts("line") = ""
+    If '..CredentialNameOK(pName) Quit
+    Set pFacts("exists") = ''##class(Ens.Config.Credentials).%ExistsId(pName)
+    Set tStatement = ##class(%SQL.Statement).%New()
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, "SELECT COUNT(*) FROM Ens_Config.Credentials WHERE LOWER(SystemName) = ?", $ZConvert(pName, "L"))
+    If '$IsObject(tResult) Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "the statement answered no result"))
+    If tResult.%SQLCODE < 0 Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message))
+    If tResult.%Next() Set pFacts("folded") = +tResult.%GetData(1)
+    Set tResult = ""
+    If 'pFacts("exists") Quit
+    Set tObject = ##class(Ens.Config.Credentials).%OpenId(pName)
+    If $IsObject(tObject) {
+        Set pFacts("line") = ..CredentialLine(pName, tObject.Username, tObject.BusinessPartner)
+    } Else {
+        Set pFacts("exists") = 0
+    }
+    Set tObject = ""
+}
+
+/// <p><method>CredentialFactsHere</method> in <var>pNamespace</var>; a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod CredentialFacts(pNamespace As %String, pName As %String, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..CredentialFactsHere(pName, .pFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>An edit's body <var>pBody</var> without the user name or business partner the credential <var>pName</var> in <var>pNamespace</var> already
+/// holds, so the edit's rules judge only what it changes: a partner removed since it was set, or one stored as free text elsewhere, does not
+/// refuse an edit of the user name (Story 24.15). A credential that cannot be read leaves the body whole; the write then answers for it.</p>
+ClassMethod CredentialMoves(pNamespace As %String, pName As %String, pBody As %DynamicObject) As %DynamicObject [ Private ]
+{
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit pBody
+    Do ..CredentialFacts(pNamespace, pName, .tFacts, .tCaught)
+    If $IsObject(tCaught) || ($Get(tFacts("line")) = "") Quit pBody
+    Set tMoves = ##class(%DynamicAbstractObject).%FromJSON(pBody.%ToJSON())
+    If (tMoves.%GetTypeOf("Username") = "string") && (tMoves.%Get("Username") = $List(tFacts("line"), 2)) Do tMoves.%Remove("Username")
+    If (tMoves.%GetTypeOf("BusinessPartner") = "string") && (tMoves.%Get("BusinessPartner") = $List(tFacts("line"), 3)) Do tMoves.%Remove("BusinessPartner")
+    Quit tMoves
+}
+
+/// <p>Whether <var>pNamespace</var> holds a business partner named exactly <var>pPartner</var>. A failed read answers 0, so a partner the
+/// instance cannot confirm is refused, never accepted (Story 24.15).</p>
+ClassMethod CredentialPartnerHeld(pNamespace As %String, pPartner As %String) As %Boolean
+{
+    Set tHeld = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tHeld = ''##class(Ens.Config.BusinessPartner).%ExistsId(pPartner)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tHeld = 0
+    }
+    Quit tHeld
+}
+
+/// <p>Whether the vendor accepts <var>pUsername</var> as a credential's user name, in <var>pNamespace</var>: the vendor's own datatype check of the
+/// property judges the value, and nothing is created or saved. The vendor's text is logged and never shown (Story 24.15).</p>
+ClassMethod CredentialAccepts(pNamespace As %String, pUsername As %String) As %Boolean
+{
+    Set tVendorSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tVendorSC = ##class(Ens.Config.Credentials).UsernameIsValid(pUsername)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tVendorSC = ex.AsStatus()
+    }
+    If $$$ISERR(tVendorSC) Do ..LogFault("a credential user name did not pass the vendor's validation", tVendorSC)
+    Quit $$$ISOK(tVendorSC)
+}
+
+/// <p>The 422 violations of a credential's name and fields, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field, code)</code>
+/// with the count in <code>pViolations</code> (Story 24.15): a name <method>CredentialNameOK</method> refuses is <code>NAME</code> (judged only when
+/// <var>pJudgeName</var>, which an add passes); a field that is not a string is <code>PORT.FIELD.SHAPE</code>; a user name past
+/// <parameter>CREDENTIALUSERMAX</parameter> is <code>VALUE</code>; and, with <var>pJudgeValue</var> and nothing else wrong, a business partner
+/// the namespace does not hold is <code>PARTNER</code> and a user name the vendor refuses is <code>VALUE</code>. A caller that has not yet passed
+/// the port's gate passes <var>pJudgeValue</var> 0, so no vendor call runs before it. <var>pFields</var> is the body: <code>Username</code>,
+/// <code>BusinessPartner</code> and <code>Password</code> strings.</p>
+ClassMethod CredentialViolations(pNamespace As %String, pName As %String, pFields As %DynamicObject, Output pViolations, pJudgeName As %Boolean = 1, pJudgeValue As %Boolean = 1) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    If pJudgeName && '..CredentialNameOK(pName) Set pViolations($Increment(pViolations)) = $ListBuild("Name", ##class(OcuPilot.Api.InteropError).#CREDENTIALNAME)
+    If '$IsObject(pFields) || 'pFields.%IsA("%Library.DynamicObject") Set pFields = {}
+    For tField = "Username", "BusinessPartner", "Password" {
+        Set tType = pFields.%GetTypeOf(tField)
+        If (tType '= "string") && (tType '= "unassigned") Set pViolations($Increment(pViolations)) = $ListBuild(tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+    }
+    If (pFields.%GetTypeOf("Username") = "string") && ($Length(pFields.%Get("Username")) > ..#CREDENTIALUSERMAX) Set pViolations($Increment(pViolations)) = $ListBuild("Username", ##class(OcuPilot.Api.InteropError).#CREDENTIALVALUE)
+    If pViolations || 'pJudgeValue Quit $$$OK
+    If (pFields.%GetTypeOf("BusinessPartner") = "string") && (pFields.%Get("BusinessPartner") '= "") && '..CredentialPartnerHeld(pNamespace, pFields.%Get("BusinessPartner")) {
+        Set pViolations($Increment(pViolations)) = $ListBuild("BusinessPartner", ##class(OcuPilot.Api.InteropError).#CREDENTIALPARTNER)
+    }
+    If (pFields.%GetTypeOf("Username") = "string") && '..CredentialAccepts(pNamespace, pFields.%Get("Username")) {
+        Set pViolations($Increment(pViolations)) = $ListBuild("Username", ##class(OcuPilot.Api.InteropError).#CREDENTIALVALUE)
+    }
+    Quit $$$OK
+}
+
+/// <p>The decision a credential write <var>pType</var> is refused with, as the last segment of its code (<code>TAKEN</code>) or
+/// <code>ABSENT</code> for a target that is not there, else <code>""</code> (Story 24.15): an add of a name the namespace holds in any letter case is
+/// <code>TAKEN</code> (the vendor's adapters resolve a name ignoring case); any other write of a name it does not hold exactly is <code>ABSENT</code>.
+/// <var>pExists</var> is whether the credential is held under exactly that name and <var>pFolded</var> how many hold it in any letter case. Pure.</p>
+ClassMethod CredentialWriteToken(pType As %String, pExists As %Boolean, pFolded As %Integer) As %String
+{
+    If pType = ..#TYPEADDCREDENTIAL Quit $Select(pExists || (pFolded > 0): "TAKEN", 1: "")
+    Quit $Select(pExists: "", 1: "ABSENT")
+}
+
+/// <p>One credential, fresh (Story 24.15): <method>CredentialRow</method>'s fields and <code>Namespace</code>. A credential not held under exactly
+/// that name, or a name the vendor cannot store, is 404 <code>PORT.NOTFOUND</code>, unlogged. With <var>pAction</var> an add (AD-54, which inverts the
+/// read) is <code>TAKEN</code> when the name is held in any letter case and otherwise the 404 a create expects.</p>
+ClassMethod ReadCredential(pNamespace As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If '..CredentialNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+    Do ..CredentialFacts(pNamespace, pName, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the credential read failed", .pHttpStatus, .pFault)
+    If pAction = ..#TYPEADDCREDENTIAL {
+        If ..CredentialWriteToken(pAction, tFacts("exists"), tFacts("folded")) '= "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#CREDENTIALTAKEN, .pHttpStatus, .pFault)
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    Set pRow = ..CredentialRow(tFacts("line"), pNamespace)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the Credentials endpoint's <code>LIST</code> and typed types after <method>Invoke</method>'s gate (Story 24.15): the
+/// <code>CREDENTIAL</code> read and the four writes, the credential named under <parameter>IDKEY</parameter> by its name, kept exactly (AD-13). An
+/// <parameter>ACTIONKEY</parameter> names the write the read is composed for.</p>
+ClassMethod InvokeCredential(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListCredentials(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tName = $Get(pQuery(..#IDKEY))
+        If tName = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsCredentialWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsCredentialWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsCredentialWrite(pType) {
+            Set tSC = ..PerformCredential(pNamespace, pType, tName, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadCredential(pNamespace, tName, tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the credential call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Run credential write <var>pType</var> on the credential <var>pName</var> in <var>pNamespace</var> and answer what it leaves (Story 24.15).
+/// The sequence:</p>
+/// <ol>
+/// <li>An add's or edit's fields are judged by <method>CredentialViolations</method> (422), and a password write needs a non-empty
+/// <code>Password</code> string; a name the vendor cannot store is 404 for any write but an add.</li>
+/// <li>In the namespace the credential is read again and judged by <method>CredentialWriteToken</method>, so a state that moved since the review is
+/// refused by its own code with no vendor call; then the vendor's <code>%Save</code> of a new credential (its password, when one is sent, set through
+/// the vendor's own <code>PasswordSet</code>), <code>%Save</code> of the opened credential (concurrency 4, the reference dropped right after) with
+/// each field that differs or its new password, or <code>%DeleteId</code>, which removes the password with it. An edit that moves no field calls
+/// nothing. A credential another process holds locked is 503.</li>
+/// <li>The namespace is restored, then OcuPilot's own audit row is recorded (<method>AuditRuntime</method>), because the vendor records none. It
+/// carries the namespace and the names of the fields written, never a value.</li>
+/// </ol>
+/// <p>The password is passed to the vendor and nowhere else: it is in no row, no audit payload, no log line and no refusal text. The answer is the
+/// credential's row read again (<method>ReadCredential</method>); after a remove <code>{Name, Namespace}</code>.</p>
+ClassMethod PerformCredential(pNamespace As %String, pType As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tPasswordType = pBody.%GetTypeOf("Password")
+    Set tPassword = $Select(tPasswordType = "string": pBody.%Get("Password"), 1: "")
+    If pType = ..#TYPEREMOVECREDENTIAL {
+        If '..CredentialNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+    } ElseIf pType = ..#TYPEPASSWORDCREDENTIAL {
+        If '..CredentialNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+        If tPassword = "" {
+            Set tViolations(1) = $ListBuild("Password", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+            Set tViolations = 1
+            Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+        }
+    } Else {
+        If (pType = ..#TYPESETCREDENTIAL) && '..CredentialNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+        Set tJudged = $Select(pType = ..#TYPESETCREDENTIAL: ..CredentialMoves(pNamespace, pName, pBody), 1: pBody)
+        Set tSC = ..CredentialViolations(pNamespace, pName, tJudged, .tViolations, (pType = ..#TYPEADDCREDENTIAL))
+        If $$$ISERR(tSC) Quit tSC
+        If tViolations Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tBusy = 0
+    Set tChanged = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..CredentialFactsHere(pName, .tFacts)
+        Set tToken = ..CredentialWriteToken(pType, tFacts("exists"), tFacts("folded"))
+        If tToken = "" {
+            If pType = ..#TYPEADDCREDENTIAL {
+                Set tObject = ##class(Ens.Config.Credentials).%New()
+                Set tObject.SystemName = pName
+                If pBody.%GetTypeOf("Username") = "string" Set tObject.Username = pBody.%Get("Username")
+                If pBody.%GetTypeOf("BusinessPartner") = "string" Set tObject.BusinessPartner = pBody.%Get("BusinessPartner")
+                If tPassword '= "" Set tVendorSC = tObject.PasswordSet(tPassword)
+                If $$$ISOK(tVendorSC) Set tVendorSC = tObject.%Save()
+            } ElseIf pType = ..#TYPEREMOVECREDENTIAL {
+                Set tVendorSC = ##class(Ens.Config.Credentials).%DeleteId(pName)
+            } Else {
+                Set tObject = ##class(Ens.Config.Credentials).%OpenId(pName, 4)
+                If '$IsObject(tObject) {
+                    Set tBusy = 1
+                } ElseIf pType = ..#TYPEPASSWORDCREDENTIAL {
+                    Set tVendorSC = tObject.PasswordSet(tPassword)
+                    If $$$ISOK(tVendorSC) Set tVendorSC = tObject.%Save()
+                } Else {
+                    Set tHeld = ..CredentialLine(pName, tObject.Username, tObject.BusinessPartner)
+                    If (pBody.%GetTypeOf("Username") = "string") && (pBody.%Get("Username") '= $List(tHeld, 2)) {
+                        Set tObject.Username = pBody.%Get("Username")
+                        Set tChanged = tChanged _ $ListBuild("Username")
+                    }
+                    If (pBody.%GetTypeOf("BusinessPartner") = "string") && (pBody.%Get("BusinessPartner") '= $List(tHeld, 3)) {
+                        Set tObject.BusinessPartner = pBody.%Get("BusinessPartner")
+                        Set tChanged = tChanged _ $ListBuild("BusinessPartner")
+                    }
+                    If tChanged '= "" Set tVendorSC = tObject.%Save()
+                }
+            }
+        }
+        ; The credential's lock is released in the namespace it was taken in.
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Try {
+            Set $NAMESPACE = pNamespace
+        } Catch {
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the credential write failed", .pHttpStatus, .pFault)
+    If tBusy Quit ..Unavailable(.pHttpStatus, .pFault)
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken '= "" Quit ..Conflict(..#CREDENTIALCODEPREFIX _ tToken, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the credential write failed", .pHttpStatus, .pFault)
+    If (pType '= ..#TYPESETCREDENTIAL) || (tChanged '= "") {
+        If pType = ..#TYPEADDCREDENTIAL {
+            For tField = "Username", "BusinessPartner" {
+                If (pBody.%GetTypeOf(tField) = "string") && (pBody.%Get(tField) '= "") Set tChanged = tChanged _ $ListBuild(tField)
+            }
+            If tPassword '= "" Set tChanged = tChanged _ $ListBuild("Password")
+        } ElseIf pType = ..#TYPEPASSWORDCREDENTIAL {
+            Set tChanged = $ListBuild("Password")
+        }
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        If pType '= ..#TYPEREMOVECREDENTIAL Do tEffects.%Set("fields", $ListToString(tChanged, ","), "string")
+        Do ..AuditRuntime($Case(pType, ..#TYPEADDCREDENTIAL: ..#VERBADD, ..#TYPEREMOVECREDENTIAL: ..#VERBREMOVE, : ..#VERBSET), ..#ENTITYCREDENTIAL, pName, tEffects)
+    }
+    If pType = ..#TYPEREMOVECREDENTIAL {
+        Set pResult = {}
+        Do pResult.%Set("Name", pName, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tReadSC = ..ReadCredential(pNamespace, pName, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Name", pName, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the credential write <var>pType</var> of the credential named <var>pName</var> (Story 24.15): the
+/// vendor's <code>%Save</code> of a new credential, of the credential opened at concurrency 4 with the fields <var>pBody</var> carries, or
+/// <code>%DeleteId</code>. Names and values are string literals; a password is never rendered as sent: its line takes the placeholder
+/// <code>&lt;Password&gt;</code> where the body carries one (AD-35, AD-59).</p>
+ClassMethod CredentialSnippet(pType As %String, pName As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tName = ..Literal(pName)
+    If pType = ..#TYPEREMOVECREDENTIAL Quit tNL _ " Set tSC = ##class(Ens.Config.Credentials).%DeleteId(" _ tName _ ")"
+    If pType = ..#TYPEADDCREDENTIAL {
+        Set tText = tNL _ " Set tCredential = ##class(Ens.Config.Credentials).%New()" _ tNL _ " Set tCredential.SystemName = " _ tName
+    } Else {
+        Set tText = tNL _ " Set tCredential = ##class(Ens.Config.Credentials).%OpenId(" _ tName _ ", 4)"
+    }
+    If pType '= ..#TYPEPASSWORDCREDENTIAL {
+        For tField = "Username", "BusinessPartner" {
+            Set tSupplied = $IsObject(pBody) && (pBody.%GetTypeOf(tField) = "string")
+            If tSupplied || (pType = ..#TYPEADDCREDENTIAL) Set tText = tText _ tNL _ " Set tCredential." _ tField _ " = " _ ..Literal($Select(tSupplied: pBody.%Get(tField), 1: ""))
+        }
+    }
+    If (pType = ..#TYPEPASSWORDCREDENTIAL) || ((pType = ..#TYPEADDCREDENTIAL) && $IsObject(pBody) && (pBody.%GetTypeOf("Password") = "string")) {
+        Set tText = tText _ tNL _ " Set tSC = tCredential.PasswordSet(""<Password>"")"
+    }
+    Quit tText _ tNL _ " Set tSC = tCredential.%Save()" _ tNL _ " Set tCredential = """""
 }
 
 /// <p>The code prefix of a startup refusal: <code>INTEROP.STARTUP.</code> and the token <method>StartupRefusal</method> answers.</p>

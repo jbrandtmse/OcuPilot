@@ -148,6 +148,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 24.15: System default settings, whose Remove types the setting's name and whose New default setting and Edit its own page's dialog
   // sends.
   'OcuPilot.Screen.Descriptor.InteropDefaultSettingList',
+  // Story 24.15: Credentials, whose Remove types the credential's name and whose New credential, Edit and Set password its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropCredentialList',
   // Story 20.23: Queues, whose Abort all types the queue's name; Queue messages and an item's Queue tab, whose Abort types the
   // message id; and Jobs and an item's Jobs tab, whose Abort message types the job's process id and whose Suspend message and
   // Stop job warn first.
@@ -625,6 +627,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': ['edit'],
   // System default settings' page registers Edit itself, whose dialog sends the value, the description and the flag (Story 24.15).
   'OcuPilot.Screen.Descriptor.InteropDefaultSettingList': ['edit'],
+  // Credentials' page registers Edit and Set password itself, whose dialogs send the user name and business partner and the password (Story 24.15).
+  'OcuPilot.Screen.Descriptor.InteropCredentialList': ['edit', 'password'],
   // An item's Test tab's page registers Send test itself, whose dialog sends the request class and its fields (Story 20.6).
   'OcuPilot.Screen.Descriptor.InteropItemTestTab': ['test'],
   // Data transformations' page registers Test itself, whose dialog sends the pasted message (Story 20.27).
@@ -825,6 +829,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': { remove: STRINGS.interopPartnerRemoveConsequence },
   // Story 24.15: a system default setting's Remove makes the items that took its value use their own setting or the class default again.
   'OcuPilot.Screen.Descriptor.InteropDefaultSettingList': { remove: STRINGS.interopDefaultSettingRemoveConsequence },
+  // Story 24.15: a credential's Remove makes anything that names it unable to use it.
+  'OcuPilot.Screen.Descriptor.InteropCredentialList': { remove: STRINGS.x509DeleteConsequence },
   // Story 20.23: an abort never delivers the messages it takes: all of a queue's, one waiting message, or the message a job keeps retrying.
   [INTEROP_QUEUE_LIST]: { abort: STRINGS.interopQueueAbortConsequence },
   [INTEROP_QUEUE_MESSAGE_LIST]: { abort: STRINGS.interopMessageAbortConsequence },
@@ -942,6 +948,8 @@ const TYPED_NAME_ROWS: Readonly<
   // Story 24.15: a system default setting is keyed by `[Production, Item, HostClass, Setting]`, whose separator no one can type, so its Remove
   // types the setting's name and sends the row key.
   'OcuPilot.Screen.Descriptor.InteropDefaultSettingList': { name: 'Setting', field: '', equals: '', advisory: '' },
+  // Story 24.15: a credential is keyed by its name, which its Remove types.
+  'OcuPilot.Screen.Descriptor.InteropCredentialList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 20.23: an abort types the queue's name, the message's id or the job's process id, which each list's name column shows.
   [INTEROP_QUEUE_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   [INTEROP_QUEUE_MESSAGE_LIST]: { name: 'MessageId', field: '', equals: '', advisory: '' },

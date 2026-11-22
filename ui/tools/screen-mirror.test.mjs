@@ -1862,6 +1862,11 @@ const CREDENTIAL_FLAG_FIELDS = new Set([
   'InteropDefaultSettingList.cls context.fields: Secret',
   'InteropDefaultSettingDiff.cls read.fields: Secret',
   'InteropDefaultSettingDiff.cls context.fields: Secret',
+  // The credentials list (Story 24.15) carries `Password`, `stored` or `not stored`: whether one is held, never a value; the password itself is the
+  // screen's one declared secret argument and is never read.
+  'InteropCredentialList.cls read.fields: Password',
+  'InteropCredentialList.cls table.columns: Password',
+  'InteropCredentialList.cls context.fields: Password',
 ]);
 
 test('AD-35: no production descriptor names a read, filter, sort, column or context field matching the credential pattern', () => {
@@ -2814,6 +2819,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm',
       'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
       'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList',
+      // Story 24.15: Credentials owns %Ens_Credentials:READ.
+      'OcuPilot.Screen.Descriptor.InteropCredentialList',
       // Story 24.15: System default settings and Compare default settings own %Ens_SystemDefaultConfig:READ.
       'OcuPilot.Screen.Descriptor.InteropDefaultSettingDiff',
       'OcuPilot.Screen.Descriptor.InteropDefaultSettingList',

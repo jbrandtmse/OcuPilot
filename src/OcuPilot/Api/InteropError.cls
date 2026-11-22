@@ -469,6 +469,32 @@ Parameter DEFAULTSETTINGPENDING = "INTEROP.DEFAULTSETTING.PENDING";
 
 Parameter REASONDEFAULTSETTINGPENDING = "A running production uses the new value once it is updated.";
 
+/// <p>The credentials' refusals, violations and consequences (Story 24.15). <code>TAKEN</code> is 409 on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, and <code>NAME</code>, <code>PARTNER</code> and <code>VALUE</code> are 422.</p>
+Parameter CREDENTIALTAKEN = "INTEROP.CREDENTIAL.TAKEN";
+
+Parameter REASONCREDENTIALTAKEN = "This namespace already has a credential with that name, in some letter case.";
+
+Parameter CREDENTIALNAME = "INTEROP.CREDENTIAL.NAME";
+
+Parameter REASONCREDENTIALNAME = "A credential name is 1 to 50 characters and holds no control characters.";
+
+Parameter CREDENTIALPARTNER = "INTEROP.CREDENTIAL.PARTNER";
+
+Parameter REASONCREDENTIALPARTNER = "This namespace has no business partner with that name.";
+
+Parameter CREDENTIALVALUE = "INTEROP.CREDENTIAL.VALUE";
+
+Parameter REASONCREDENTIALVALUE = "The instance did not accept this user name.";
+
+Parameter CREDENTIALREMOVE = "INTEROP.CREDENTIAL.REMOVE";
+
+Parameter REASONCREDENTIALREMOVE = "Anything that names this credential can no longer use it. This cannot be undone.";
+
+Parameter CREDENTIALCHANGE = "INTEROP.CREDENTIAL.CHANGE";
+
+Parameter REASONCREDENTIALCHANGE = "Anything that signs in with this credential uses the change from its next connection.";
+
 /// <p>The startup settings' refusals, violations and consequences (Story 24.3): the auto-start production and a production's shutdown
 /// group. <code>SAME</code> is 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, <code>ALLNAMESPACES</code> is 403,
 /// <code>READONLY</code> is 409, and <code>PRIORITY</code>, <code>GROUP</code> and <code>NOPRIORITY</code> are 422.</p>
@@ -640,13 +666,13 @@ Parameter OUTCOMEFAILED = "not resent";
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..StartupCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..StartupCodes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -732,6 +758,20 @@ ClassMethod DefaultSettingCodes() As %List
 ClassMethod DefaultSettingPreconditionCodes() As %List
 {
     Quit $ListBuild(..#DEFAULTSETTINGTAKEN, ..#DEFAULTSETTINGSECRET, ..#DEFAULTSETTINGSOURCECONTROL)
+}
+
+/// <p>The credential codes (Story 24.15), as a <class>%List</class>: the refusal of a name the namespace holds in some letter case and the
+/// three violations. The two consequence codes are <method>ConsequenceCodes</method>'s.</p>
+ClassMethod CredentialCodes() As %List
+{
+    Quit $ListBuild(..#CREDENTIALTAKEN, ..#CREDENTIALNAME, ..#CREDENTIALPARTNER, ..#CREDENTIALVALUE)
+}
+
+/// <p>The credential refusals a credential tool's fresh read answers when the action does not fit the credential, as a
+/// <class>%List</class>; the three violations, which the write alone judges, are not among them.</p>
+ClassMethod CredentialPreconditionCodes() As %List
+{
+    Quit $ListBuild(..#CREDENTIALTAKEN)
 }
 
 /// <p>The startup codes (Story 24.3), as a <class>%List</class>: the three violations, the refusal of a value the production
@@ -904,6 +944,12 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#DEFAULTSETTINGTOOMANY Quit ..#REASONDEFAULTSETTINGTOOMANY
     If pCode = ..#DEFAULTSETTINGREMOVE Quit ..#REASONDEFAULTSETTINGREMOVE
     If pCode = ..#DEFAULTSETTINGPENDING Quit ..#REASONDEFAULTSETTINGPENDING
+    If pCode = ..#CREDENTIALTAKEN Quit ..#REASONCREDENTIALTAKEN
+    If pCode = ..#CREDENTIALNAME Quit ..#REASONCREDENTIALNAME
+    If pCode = ..#CREDENTIALPARTNER Quit ..#REASONCREDENTIALPARTNER
+    If pCode = ..#CREDENTIALVALUE Quit ..#REASONCREDENTIALVALUE
+    If pCode = ..#CREDENTIALREMOVE Quit ..#REASONCREDENTIALREMOVE
+    If pCode = ..#CREDENTIALCHANGE Quit ..#REASONCREDENTIALCHANGE
     If pCode = ..#STARTUPSAME Quit ..#REASONSTARTUPSAME
     If pCode = ..#STARTUPPRIORITY Quit ..#REASONSTARTUPPRIORITY
     If pCode = ..#STARTUPGROUP Quit ..#REASONSTARTUPGROUP

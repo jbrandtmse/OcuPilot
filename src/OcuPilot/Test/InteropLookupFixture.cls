@@ -25,6 +25,10 @@ Parameter PARTNERPREFIX = "OcuProbe226";
 /// <parameter>NAMESPACE</parameter> or <parameter>OTHERNAMESPACE</parameter>; <method>Clear</method> removes each one in both.</p>
 Parameter DEFAULTPREFIX = "OcuProbe2415";
 
+/// <p>Every credential the credential tests (Story 24.15) create is named this and a suffix, in <parameter>NAMESPACE</parameter> or
+/// <parameter>OTHERNAMESPACE</parameter>; <method>Clear</method> removes each one in both, with its password node.</p>
+Parameter CREDENTIALPREFIX = "OcuProbe2415";
+
 /// <p>The second namespace a comparison of default settings reads.</p>
 Parameter OTHERNAMESPACE = "HSCUSTOM";
 
@@ -178,6 +182,7 @@ ClassMethod Clear() As %Status
         Set tSC = ex.AsStatus()
     }
     Set tSC = $$$ADDSC(tSC, ..DropPartners(..#PARTNERPREFIX))
+    Set tSC = $$$ADDSC(tSC, ..DropCredentials(..#CREDENTIALPREFIX))
     Quit $$$ADDSC(tSC, ..DropDefaults(..#DEFAULTPREFIX))
 }
 
@@ -433,6 +438,132 @@ ClassMethod PartnerEmail(pName As %String) As %String
         Set tText = "<error " _ ex.DisplayString() _ ">"
     }
     Quit tText
+}
+
+/// <p>Store the credential <var>pName</var> in <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty) with <var>pUsername</var> and
+/// <var>pPartner</var>, and the password <var>pPassword</var> when it is not empty, through the vendor's own calls (Story 24.15).</p>
+ClassMethod PutCredential(pName As %String, pUsername As %String = "", pPartner As %String = "", pPassword As %String = "", pNamespace As %String = "") As %Status
+{
+    Set tOrigNS = $NAMESPACE
+    Set tSC = $$$OK
+    Try {
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
+        Set tCredential = ##class(Ens.Config.Credentials).%New()
+        Set tCredential.SystemName = pName
+        Set tCredential.Username = pUsername
+        Set tCredential.BusinessPartner = pPartner
+        If pPassword '= "" Set tSC = tCredential.PasswordSet(pPassword)
+        If $$$ISOK(tSC) Set tSC = tCredential.%Save()
+        Set tCredential = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The credential <var>pName</var> of <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty) as
+/// <code>username|partner|stored</code>, the last 1 when the vendor's password node holds something and 0 when it does not, or
+/// <code>&lt;absent&gt;</code> when the namespace does not hold it exactly. It reads only whether the node is empty and never holds what it holds
+/// (Story 24.15).</p>
+ClassMethod CredentialText(pName As %String, pNamespace As %String = "") As %String
+{
+    Set tOrigNS = $NAMESPACE
+    Set tText = "<absent>"
+    Try {
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
+        Set tCredential = ##class(Ens.Config.Credentials).%OpenId(pName)
+        If $IsObject(tCredential) Set tText = tCredential.Username _ "|" _ tCredential.BusinessPartner _ "|" _ ($Length($Get(^Ens.SecondaryData.Password(pName))) > 0)
+        Set tCredential = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tText = "<error " _ ex.DisplayString() _ ">"
+    }
+    Quit tText
+}
+
+/// <p>Whether the vendor holds a password node, empty or not, for <var>pName</var> in <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when
+/// empty): what a removal must leave none of (Story 24.15).</p>
+ClassMethod PasswordNode(pName As %String, pNamespace As %String = "") As %Boolean
+{
+    Set tOrigNS = $NAMESPACE
+    Set tHeld = 1
+    Try {
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
+        Set tHeld = ''$Data(^Ens.SecondaryData.Password(pName))
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tHeld
+}
+
+/// <p>How many credentials and password nodes of <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty) are named with
+/// <var>pPrefix</var>, in any letter case (Story 24.15).</p>
+ClassMethod CredentialCount(pPrefix As %String, pNamespace As %String = "") As %Integer
+{
+    Set tOrigNS = $NAMESPACE
+    Set tCount = 0
+    Try {
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
+        Set tName = ""
+        For {
+            Set tName = $Order(^Ens.Conf.CredentialsD(tName))
+            If tName = "" Quit
+            If $ZConvert($Extract(tName, 1, $Length(pPrefix)), "U") = $ZConvert(pPrefix, "U") Set tCount = tCount + 1
+        }
+        Set tName = ""
+        For {
+            Set tName = $Order(^Ens.SecondaryData.Password(tName))
+            If tName = "" Quit
+            If $ZConvert($Extract(tName, 1, $Length(pPrefix)), "U") = $ZConvert(pPrefix, "U") Set tCount = tCount + 1
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tCount = -1
+    }
+    Quit tCount
+}
+
+/// <p>Remove every credential, and every password node, named with <var>pPrefix</var>, in any letter case, from <parameter>NAMESPACE</parameter>
+/// and <parameter>OTHERNAMESPACE</parameter>, as the vendor's own delete does; no other credential is touched (Story 24.15).</p>
+ClassMethod DropCredentials(pPrefix As %String) As %Status
+{
+    Set tOrigNS = $NAMESPACE
+    Set tSC = $$$OK
+    For tNamespace = ..#NAMESPACE, ..#OTHERNAMESPACE {
+        Try {
+            Set $NAMESPACE = tNamespace
+            Kill tIds
+            Set tName = ""
+            For {
+                Set tName = $Order(^Ens.Conf.CredentialsD(tName))
+                If tName = "" Quit
+                If $ZConvert($Extract(tName, 1, $Length(pPrefix)), "U") = $ZConvert(pPrefix, "U") Set tIds($Increment(tIds)) = tName
+            }
+            For tI = 1:1:$Get(tIds) {
+                Set tSC = $$$ADDSC(tSC, ##class(Ens.Config.Credentials).%DeleteId(tIds(tI)))
+            }
+            Kill tNodes
+            Set tName = ""
+            For {
+                Set tName = $Order(^Ens.SecondaryData.Password(tName))
+                If tName = "" Quit
+                If $ZConvert($Extract(tName, 1, $Length(pPrefix)), "U") = $ZConvert(pPrefix, "U") Set tNodes($Increment(tNodes)) = tName
+            }
+            For tI = 1:1:$Get(tNodes) {
+                Kill ^Ens.SecondaryData.Password(tNodes(tI))
+            }
+            Set $NAMESPACE = tOrigNS
+        } Catch ex {
+            Set $NAMESPACE = tOrigNS
+            Set tSC = $$$ADDSC(tSC, ex.AsStatus())
+        }
+    }
+    Quit tSC
 }
 
 /// <p>Everything the lookup and partner reads must leave alone, as one SHA-256: the whole of <code>^Ens.LookupTable</code>

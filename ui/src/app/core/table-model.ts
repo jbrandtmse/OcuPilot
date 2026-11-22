@@ -50,6 +50,10 @@ const VALUE_WORDS: Readonly<Record<string, Readonly<Record<string, Readonly<Reco
       strings: STRINGS.localeGroupStrings,
     },
   },
+  // Story 24.15: whether a credential's password is stored, which the read answers as the words the agent reads.
+  'OcuPilot.Screen.Descriptor.InteropCredentialList': {
+    Password: { stored: STRINGS.analyticsColumnStored, 'not stored': STRINGS.interopCredentialNotStored },
+  },
 };
 
 /** The word `descriptor`'s `field` draws for `value`, or `value` itself where none is declared. */
