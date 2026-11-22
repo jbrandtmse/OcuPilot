@@ -63,6 +63,8 @@ const {
   CONSEQUENCE_PAGERESOURCECHANGED,
   CONSEQUENCE_PAGERESOURCECLEARED,
   pageResourceSentence,
+  shownChangedRows,
+  shownUnchangedRows,
   CONSEQUENCE_RUNSASOTHER,
   CONSEQUENCE_SERVESOCUPILOT,
   CONSEQUENCE_SERVICEUNAUTHENTICATED,
@@ -394,6 +396,74 @@ test("the page resource consequence codes are the kernel's own and resolve to th
     'Accounts that hold only the old resource can no longer open Users, Roles.',
     'the card states it through the view-based sentence it already draws'
   );
+});
+
+// Story 21.38 (DW-2823), AC4: a page only a write tool declares is named by that action and never by the screen-open sentence; a page declared both
+// ways carries both sentences; a labeled tool and a tool with no label share one sentence, the second by the unnamed form. The `Action` row's
+// value is drawn as its phrases, never as a descriptor class or an id.
+//
+// Mutation (Rule 19): the `Action` row's bare entries are read as writes -> the both-ways leg goes red; the unlabeled form is dropped for the id
+// -> the labeled-and-unlabeled leg goes red; `shownChangedRows` returns the rows as they are -> the row-display leg goes red.
+test("the page resource card names a tool-only page by its action, a both-ways page by both, and draws the Action row as phrases", () => {
+  const RESOURCES = 'OcuPilot.Screen.Descriptor.ResourceList';
+  const named = (consequence, screen, action) => ({
+    consequence,
+    changed: [
+      { field: 'Screen', before: screen, after: screen },
+      { field: 'Action', before: action, after: action },
+    ],
+    unchanged: [],
+  });
+  // Tool-only: the Screen row names the tool's screen, the Action row only the writes.
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, 'Resources', `${RESOURCES}#export`)),
+    'Accounts that hold only the old resource can no longer use: Export on Resources.',
+    'a tool-only page never says a screen can no longer be opened'
+  );
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECLEARED, 'Resources', `${RESOURCES}#export`)),
+    'More accounts may use: Export on Resources. The instance still checks what they do there.'
+  );
+  // Both ways: the Action row lists the opening screen beside the write, and the Screen row keeps every declaring title.
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, 'Resources, Users', `${RESOURCES}#export,OcuPilot.Screen.Descriptor.UserList`)),
+    'Accounts that hold only the old resource can no longer open Users. Accounts that hold only the old resource can no longer use: Export on Resources.'
+  );
+  // One labeled and one unlabeled tool on one page: one sentence, S11 and S12 in one line.
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, 'Resources', `${RESOURCES}#export,${RESOURCES}#import`)),
+    'Accounts that hold only the old resource can no longer use: Export on Resources, changes on Resources.'
+  );
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, 'Resources', `${RESOURCES}#import,${RESOURCES}#`)),
+    'Accounts that hold only the old resource can no longer use: changes on Resources.',
+    'an unlabeled tool is named once however many declare the page'
+  );
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, 'Resources', 'Nope.Descriptor#export')),
+    '',
+    'a descriptor the mirror does not hold names nothing'
+  );
+  // The row display.
+  const view = {
+    targetType: 'page-resource',
+    changed: [
+      { field: 'Screen', before: 'Resources', after: 'Resources' },
+      { field: 'Action', before: `${RESOURCES}#export,${RESOURCES}#import`, after: `${RESOURCES}#export,${RESOURCES}#import` },
+    ],
+    unchanged: [{ field: 'Action', value: `${RESOURCES}#export` }],
+  };
+  assert.deepEqual(
+    shownChangedRows(view).map((row) => [row.field, row.after]),
+    [
+      ['Screen', 'Resources'],
+      ['Action', 'Export on Resources, changes on Resources'],
+    ]
+  );
+  assert.deepEqual(shownUnchangedRows(view).map((row) => row.value), ['Export on Resources']);
+  const other = { ...view, targetType: 'user' };
+  assert.equal(shownChangedRows(other), other.changed, 'another entity type keeps its rows as they are, even for a field named Action');
+  assert.equal(shownUnchangedRows(other), other.unchanged);
 });
 
 // Story 18.15: an enable of interoperability is destructive with its own consequence, the typed-name

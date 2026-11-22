@@ -30,6 +30,9 @@ Parameter ADJUSTABLE = "%CSP.UI.Portal.Resources";
 
 Parameter UNDECLARED = "OcuProbe.Page2137";
 
+/// <p>A page only write tools declare: the Resources screen's export and import.</p>
+Parameter TOOLONLY = "%CSP.UI.Portal.Dialog.ExportResource";
+
 /// <p>The two resources the seam defines.</p>
 Parameter FIRST = "OcuProbe2137ResA";
 
@@ -215,6 +218,114 @@ Method TestAChangeOrAClearOfADeclaredPageIsMintedDestructive()
     Set tSC = $ClassMethod(..#SEAM, "Invoke", "PortalResource", "GET", .tQuery, "", .tOther, .tOtherHttp, .tOtherFault)
     Set tReview = $ClassMethod(..#CLEARSEAM, "DryRunReview", tOther)
     Do $$$AssertEquals(tReview.%Get("Consequence") _ "|" _ tReview.%Get("Screens").%Size(), "|0", "a page nothing declares names no consequence and no screen")
+}
+
+/// <p>Whether the pair list <var>pActions</var> holds <code>$ListBuild(pDescriptor, pAction)</code>.</p>
+ClassMethod HasAction(pActions As %List, pDescriptor As %String, pAction As %String) As %Boolean
+{
+    For tI = 1:1:$ListLength(pActions) {
+        If ($List($List(pActions, tI), 1) = pDescriptor) && ($List($List(pActions, tI), 2) = pAction) Quit
+    }
+    Quit (tI <= $ListLength(pActions))
+}
+
+/// <p>A page that a built screen opens and a write tool also declares, read from the registry's tools, or <code>""</code>.</p>
+ClassMethod BothWaysPage() As %String
+{
+    Set tPage = ""
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
+    If $$$ISERR(tSC) Quit ""
+    Set tIterator = tTools.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tTool) {
+        If tTool.%Get("kind") '= "write" Continue
+        Set tPages = $Parameter(tTool.%Get("class"), "CLASSICPAGES")
+        For tI = 1:1:$Length(tPages, ",") {
+            Set tCandidate = $ZStrip($Piece(tPages, ",", tI), "<>W")
+            If tCandidate = "" Continue
+            Do ##class(OcuPilot.Screen.Registry).PageDeclarations(tCandidate, .tOpens, .tActions)
+            If $ListLength(tOpens) && $ListLength(tActions) {
+                Set tPage = tCandidate
+                Quit
+            }
+        }
+        If tPage '= "" Quit
+    }
+    Quit tPage
+}
+
+/// <p><b>What a page's resource gates (Story 21.38).</b> <code>PageDeclarations</code> splits the screens whose page it is, <code>pOpens</code>, from the
+/// write tools that declare it, <code>pActions</code>: <code>%CSP.UI.Portal.Dialog.ExportResource</code>, which only the Resources screen's tools declare,
+/// has no opening screen and one action per tool, and a page a screen opens and a tool declares has both. <code>ScreensDeclaringPage</code> answers the
+/// union, in descriptor order and each once. The review answers <code>Opens</code> and <code>Actions</code> beside <code>Screens</code>, and the card's
+/// <code>Action</code> row names the writes and, where it is there, the opening screens as bare descriptor entries.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Registry.PageDeclarations</method> puts a tool's screen in <code>pOpens</code> -> this goes red.</p>
+Method TestPageDeclarationsSplitOpeningFromActions()
+{
+    Set tResources = "OcuPilot.Screen.Descriptor.ResourceList"
+    Do ##class(OcuPilot.Screen.Registry).PageDeclarations(..#TOOLONLY, .tOpens, .tActions, .tResolved)
+    Do $$$AssertTrue(tResolved, "the registry is read")
+    Do $$$AssertEquals($ListLength(tOpens), 0, "no screen opens the page only tools declare")
+    Do $$$AssertTrue(..HasAction(tActions, tResources, "export"), "the export tool is an action on the Resources screen")
+    Do $$$AssertTrue(..HasAction(tActions, tResources, "import"), "and so is the import tool")
+    Set tScreens = ##class(OcuPilot.Screen.Registry).ScreensDeclaringPage(..#TOOLONLY, .tScreensResolved)
+    Do $$$AssertEquals($ListToString(tScreens), tResources, "the screens declaring it are the tools' one screen, as before")
+    Do $$$AssertTrue(tScreensResolved, "and the registry was read")
+
+    Set tBoth = ..BothWaysPage()
+    Do $$$AssertTrue(tBoth '= "", "a page a screen opens and a tool declares exists")
+    Do ##class(OcuPilot.Screen.Registry).PageDeclarations(tBoth, .tBothOpens, .tBothActions, .tBothResolved)
+    Do $$$AssertTrue($ListLength(tBothOpens) && $ListLength(tBothActions), "it has opening screens and actions: " _ tBoth)
+    Kill tUnion
+    For tI = 1:1:$ListLength(tBothOpens) Set tUnion($List(tBothOpens, tI)) = ""
+    For tI = 1:1:$ListLength(tBothActions) Set tUnion($List($List(tBothActions, tI), 1)) = ""
+    Set tBothScreens = ##class(OcuPilot.Screen.Registry).ScreensDeclaringPage(tBoth)
+    Set tCount = 0
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tUnion(tKey))
+        If tKey = "" Quit
+        Set tCount = tCount + 1
+        Do $$$AssertTrue($ListFind(tBothScreens, tKey) > 0, "the union holds " _ tKey)
+    }
+    Do $$$AssertEquals($ListLength(tBothScreens), tCount, "the screens declaring a both-ways page are the union, each once")
+
+    ; The review and the card's rows, over the seam's store.
+    For tCase = $ListBuild(..#TOOLONLY, 0), $ListBuild(tBoth, 1) {
+        Set tPage = $List(tCase, 1)
+        Do $ClassMethod(..#SEAM, "Page", tPage, ..#FIRST)
+        Kill tQuery
+        Set tQuery("id") = tPage
+        Set tSC = $ClassMethod(..#SEAM, "Invoke", "PortalResource", "GET", .tQuery, "", .tFresh, .tFreshHttp, .tFreshFault)
+        Do $$$AssertEquals(tFreshHttp, 200, tPage _ " reads")
+        Set tReview = $ClassMethod(..#ASSIGNSEAM, "DryRunReview", tFresh)
+        Do $$$AssertEquals(tReview.%Get("Opens").%Size() > 0, $List(tCase, 2), tPage _ ": the review names opening screens exactly when a screen opens it")
+        Do $$$AssertTrue(tReview.%Get("Actions").%Size() > 0, tPage _ ": and the actions")
+        Do $$$AssertEquals(tReview.%Get("Actions").%Get(0).%Get("screen") '= "", 1, tPage _ ": an action names its screen")
+        Do $$$AssertTrue(tReview.%Get("Screens").%Size() >= tReview.%Get("Opens").%Size(), tPage _ ": every opening screen is a declaring one")
+        Do $$$AssertEquals(tReview.%Get("Consequence"), ##class(OcuPilot.Kernel.Proposal.Prohibited).#EFFECTPAGERESOURCECHANGED, tPage _ ": the consequence code is as before")
+        Set tRows = $ClassMethod(..#ASSIGNSEAM, "ScreenRows", tFresh)
+        Set tAction = ""
+        Set tIterator = tRows.%GetIterator()
+        While tIterator.%GetNext(.tRowKey, .tRow) {
+            If tRow.%Get("field") = "Action" Set tAction = tRow.%Get("after")
+        }
+        Set tFirst = $Select($List(tCase, 2): $List(tBothActions, 1), 1: $List(tActions, 1))
+        Do $$$AssertTrue($Find("," _ tAction _ ",", "," _ $List(tFirst, 1) _ "#" _ $List(tFirst, 2) _ ",") > 0, tPage _ ": the Action row names the first tool as <descriptor>#<id>: " _ tAction)
+        If $List(tCase, 2) {
+            Set tOpener = $List(tBothOpens, 1)
+            Do $$$AssertTrue(("," _ tAction _ ",") [ ("," _ tOpener _ ","), tPage _ ": and an opening screen as a bare descriptor entry")
+        } Else {
+            Do $$$AssertEquals($Length(tAction, "#") - 1, $Length(tAction, ","), tPage _ ": a tool-only page's entries are all <descriptor>#<id>")
+        }
+    }
+    Do $ClassMethod(..#SEAM, "Page", ..#UNDECLARED, ..#FIRST)
+    Kill tQuery
+    Set tQuery("id") = ..#UNDECLARED
+    Set tSC = $ClassMethod(..#SEAM, "Invoke", "PortalResource", "GET", .tQuery, "", .tNone, .tNoneHttp, .tNoneFault)
+    Set tReview = $ClassMethod(..#ASSIGNSEAM, "DryRunReview", tNone)
+    Do $$$AssertEquals(tReview.%Get("Opens").%Size() + tReview.%Get("Actions").%Size(), 0, "a page nothing declares has neither")
+    Set tRows = $ClassMethod(..#ASSIGNSEAM, "ScreenRows", tNone)
+    Do $$$AssertEquals(tRows.%Size(), 0, "and its card carries neither row")
 }
 
 /// <p><b>An assignment of the held resource.</b> The agent's assign naming the resource the page already holds is refused at the mint, 400 with

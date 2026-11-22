@@ -3,7 +3,8 @@ import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { OverlayStack } from '../../core/overlay-stack';
-import { STRINGS } from '../../core/strings';
+import { SCREENS } from '../../core/screens.generated';
+import { STRINGS, stringFor } from '../../core/strings';
 import {
   PageResourcesDialog,
   replacesLine,
@@ -201,6 +202,102 @@ describe('the Page resources dialog (Story 21.37)', () => {
     model.review.set(review(['Users'], PAGE, 'ResB', ''));
     fixture.detectChanges();
     expect(consequence()).toBe('');
+  });
+
+  // Story 21.38 (DW-2823): a page a write tool declares names that action, never the screen-open line.
+  //
+  // Mutation (Rule 19): `Registry.PageDeclarations` puts tool pages in `pOpens` -> the review answers the tool's screen as an opening one, which the
+  // browser's export-page case and `PageResourceProhibited` pin; here, draw the action line from `screens` -> the tool-only leg goes red; join the two
+  // phrases with a paragraph of their own -> the one-line leg goes red.
+  describe('the action line', () => {
+    const RESOURCES = 'OcuPilot.Screen.Descriptor.ResourceList';
+    const EXPORT = { screen: RESOURCES, action: 'export' };
+    const IMPORT = { screen: RESOURCES, action: 'import' };
+    const NONE = { screen: RESOURCES, action: '' };
+    const reviewOf = (screens: readonly string[], actions: PageResourceReview['actions'], resource: string, code = ''): PageResourceReview => ({
+      page: PAGE,
+      resource,
+      screens,
+      actions,
+      consequence: code,
+    });
+    const openChange = (): void => {
+      mount((m) => {
+        m.mode.set('change');
+        m.page.set(PAGE);
+        m.current.set('ResA');
+      });
+      type('resource', 'ResB');
+    };
+
+    it('names the action on its screen for a page only a tool declares, and never says a screen is opened', () => {
+      openChange();
+      model.review.set(reviewOf([], [EXPORT], 'ResB', 'PAGERESOURCE.CHANGED'));
+      fixture.detectChanges();
+      expect(line()).toBe("This page's resource will be required from the next request for: Export on Resources.");
+      expect(consequence()).toBe('Accounts that hold only the old resource can no longer use: Export on Resources.');
+      expect(line()).not.toContain('follows this page');
+      expect(line()).not.toContain(STRINGS.pageResourcesLineNone);
+      expect(consequence()).not.toContain('open');
+    });
+
+    it('states the cleared consequence for the action', () => {
+      mount((m) => {
+        m.mode.set('clear');
+        m.page.set(PAGE);
+        m.current.set('ResA');
+      });
+      model.review.set(reviewOf([], [EXPORT], '', 'PAGERESOURCE.CLEARED'));
+      fixture.detectChanges();
+      expect(consequence()).toBe('More accounts may use: Export on Resources. The instance still checks what they do there.');
+    });
+
+    it('shows the screen-open line and the action line together for a page declared both ways', () => {
+      openChange();
+      model.review.set(reviewOf(['Users'], [EXPORT], 'ResB', 'PAGERESOURCE.CHANGED'));
+      fixture.detectChanges();
+      expect(line()).toBe(
+        "Users follows this page's resource and will require it from the next request. This page's resource will be required from the next request for: Export on Resources."
+      );
+      expect(consequence()).toBe(
+        'Accounts that hold only the old resource can no longer open Users. Accounts that hold only the old resource can no longer use: Export on Resources.'
+      );
+    });
+
+    it('names a labeled tool and a tool with no label in one line, the second by the unnamed form', () => {
+      openChange();
+      model.review.set(reviewOf([], [EXPORT, IMPORT], 'ResB', 'PAGERESOURCE.CHANGED'));
+      fixture.detectChanges();
+      expect(line()).toBe("This page's resource will be required from the next request for: Export on Resources, changes on Resources.");
+      expect(consequence()).toBe('Accounts that hold only the old resource can no longer use: Export on Resources, changes on Resources.');
+    });
+
+    it('names an unlabeled action once however many tools declare it', () => {
+      openChange();
+      model.review.set(reviewOf([], [IMPORT, NONE], 'ResB'));
+      fixture.detectChanges();
+      expect(line()).toBe("This page's resource will be required from the next request for: changes on Resources.");
+    });
+
+    it('caps the list at five and counts the rest', () => {
+      openChange();
+      const refs = SCREENS.filter((entry) => stringFor(entry.labelKey) !== '')
+        .filter((entry, index, all) => all.findIndex((other) => stringFor(other.labelKey) === stringFor(entry.labelKey)) === index)
+        .slice(0, 7)
+        .map((entry) => ({ screen: entry.descriptor, action: '' }));
+      model.review.set(reviewOf([], refs, 'ResB', 'PAGERESOURCE.CHANGED'));
+      fixture.detectChanges();
+      const named = refs.slice(0, 5).map((ref) => `changes on ${stringFor(SCREENS.find((entry) => entry.descriptor === ref.screen)?.labelKey ?? '')}`);
+      expect(line()).toBe(`This page's resource will be required from the next request for: ${named.join(', ')}, and 2 more.`);
+    });
+
+    it('says only the classic portal uses the resource when no screen and no action follows the page', () => {
+      openChange();
+      model.review.set(reviewOf([], [], 'ResB'));
+      fixture.detectChanges();
+      expect(line()).toBe(STRINGS.pageResourcesLineNone);
+      expect(consequence()).toBe('');
+    });
   });
 
   // Mutation (Rule 19): enable Save while the typed resource equals the held one, or while it is empty -> the matching leg goes red.

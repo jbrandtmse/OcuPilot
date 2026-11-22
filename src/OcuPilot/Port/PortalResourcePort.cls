@@ -325,7 +325,14 @@ ClassMethod ScreenTitles(pPage As %String) As %String [ Private ]
 /// tool identifier stands for a title the string source does not give. Empty when no screen declares the page.</p>
 ClassMethod TitleList(pPage As %String) As %List
 {
-    Set tScreens = ..Declaring(pPage)
+    Quit ..TitlesOf(..Declaring(pPage))
+}
+
+/// <p>The titles of the descriptors <var>pScreens</var> (a <class>%List</class> of descriptor class names), in their order, one per screen; the
+/// screen's tool identifier stands for a title the string source does not give.</p>
+ClassMethod TitlesOf(pScreens As %List) As %List
+{
+    Set tScreens = pScreens
     Set tTitles = ""
     For tI = 1:1:$ListLength(tScreens) {
         Set tDescriptor = $List(tScreens, tI)

@@ -9336,6 +9336,16 @@ export const STRINGS = {
   /** EXPERIENCE.md:613 */
   pageResourcesClearWarning: 'After this, the page needs no custom resource.',
   /** EXPERIENCE.md:613 */
+  pageResourcesActionLine: 'This page\'s resource will be required from the next request for: <actions>.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesActionConsequenceChanged: 'Accounts that hold only the old resource can no longer use: <actions>.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesActionConsequenceCleared: 'More accounts may use: <actions>. The instance still checks what they do there.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesActionItem: '<action> on <screen>',
+  /** EXPERIENCE.md:613 */
+  pageResourcesActionItemUnnamed: 'changes on <screen>',
+  /** EXPERIENCE.md:613 */
   pageResourcesSummaryAssign: 'Assign <resource> to <page>',
   /** EXPERIENCE.md:613 */
   pageResourcesSummaryChange: 'Change the resource of <page> to <resource>',

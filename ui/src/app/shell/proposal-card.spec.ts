@@ -832,6 +832,32 @@ describe('the proposal card', () => {
     expect(mount(EXAMPLE_PROPOSAL).card.querySelector('[data-slot="consequence"]')).toBeNull();
   });
 
+  it('Story 21.38: a page resource proposal draws its Action row as phrases and states the action sentence, never the screen-open one, for a tool-only page', () => {
+    // Mutation (Rule 19): `changedRows` answers the view's rows as they are -> the row leg goes red; `pageResourceSentence` reads the Screen row
+    // while an Action row names writes -> the sentence leg goes red.
+    const RESOURCES = 'OcuPilot.Screen.Descriptor.ResourceList';
+    const { card } = mount(
+      liveView({
+        targetType: 'page-resource',
+        consequence: 'PAGERESOURCE.CHANGED',
+        changed: [
+          { field: 'Resource', before: 'ResA', after: 'ResB' },
+          { field: 'Screen', before: 'Resources', after: 'Resources' },
+          { field: 'Action', before: `${RESOURCES}#export,${RESOURCES}#import`, after: `${RESOURCES}#export,${RESOURCES}#import` },
+        ],
+        unchanged: [],
+        maskedFields: [],
+      }),
+      { phase: 'live' }
+    );
+    const rows = Array.from(card.querySelectorAll('.ocu-diff-row')).map((row) => row.textContent ?? '');
+    expect(rows.some((row) => row.includes('Export on Resources, changes on Resources'))).toBe(true);
+    expect(card.textContent).not.toContain('OcuPilot.Screen.Descriptor');
+    const line = card.querySelector('[data-slot="consequence"]') as HTMLElement;
+    expect(line.textContent).toContain('Accounts that hold only the old resource can no longer use: Export on Resources, changes on Resources.');
+    expect(line.textContent).not.toContain('can no longer open');
+  });
+
   it('Story 18.16, AC5: a remote database proposal states the listing\u2019s bound and its data server before the confirm', () => {
     // Mutation (Rule 19): drop the remote list block from the template, or make `remoteListSentence`
     // answer '' -> this goes red.

@@ -27,6 +27,8 @@ import {
   offersRepropose,
   statusLineFor,
   cardTitleName,
+  shownChangedRows,
+  shownUnchangedRows,
 } from '../core/proposal-view';
 import { pickCount } from '../core/count-phrase';
 import { impactLine } from '../core/impact';
@@ -628,11 +630,11 @@ export class ProposalCard {
   }
 
   protected get changedRows(): readonly ProposalDiffRow[] {
-    return this.view().changed;
+    return shownChangedRows(this.view());
   }
 
   protected get unchangedRows(): readonly ProposalUnchangedRow[] {
-    return this.view().unchanged ?? [];
+    return shownUnchangedRows(this.view());
   }
 
   /**

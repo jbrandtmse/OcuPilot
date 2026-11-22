@@ -310,3 +310,36 @@ test('AC12: a page is assigned a resource, changed, cleared and refused as a Hom
     await context.close();
   }
 });
+
+/** The export page, which only the Resources screen's write tools declare. */
+const EXPORT_PAGE = '%CSP.UI.Portal.Dialog.ExportResource';
+
+// AC4 (Story 21.38). A page only a write tool declares: the review in the dialog names the actions the resource gates and never says a screen replaces the
+// page or that the classic portal alone uses it. Nothing is saved, so the store is untouched.
+//
+// Mutation (Rule 19): `Registry.PageDeclarations` puts a tool's screen in `pOpens` -> the review reads the screen-open line and this goes red, against
+// the ObjectScript reloaded into the throwaway; the dialog drops the action line -> this goes red, against a rebuilt and redeployed bundle.
+test('AC4: the review of a page only a write tool declares shows the action line and not the screen-open line', async () => {
+  const { context, page } = await signIn(LIST_URL);
+  try {
+    await bar(page, STRINGS.pageResourcesAssignAction);
+    await page.waitForSelector('app-page-resources-dialog [role="dialog"]', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.type('[data-field="page"]', EXPORT_PAGE);
+    await page.type('[data-field="resource"]', FIRST);
+    await page.keyboard.press('Tab');
+    const exportPhrase = STRINGS.pageResourcesActionItem.replace('<action>', () => STRINGS.taskExportAction).replace('<screen>', () => STRINGS.resourceListLabel);
+    const unnamedPhrase = STRINGS.pageResourcesActionItemUnnamed.replace('<screen>', () => STRINGS.resourceListLabel);
+    const prefix = STRINGS.pageResourcesActionLine.split('<actions>')[0];
+    await page.waitForFunction((wanted) => document.querySelector('.ocu-page-resources-line')?.textContent.trim().startsWith(wanted), { timeout: config.navigationTimeoutMs }, prefix);
+    const line = await dialogText(page, '.ocu-page-resources-line');
+    assert.ok(line.includes(exportPhrase), `the line names the labeled tool: ${line}`);
+    assert.ok(line.includes(unnamedPhrase), `and the tool with no label by the unnamed form: ${line}`);
+    assert.ok(!line.includes(STRINGS.pageResourcesLineOne.split('<screen>')[1]), `it says no screen follows the page's resource: ${line}`);
+    assert.ok(!line.includes(STRINGS.pageResourcesLineNone), `nor that only the classic portal uses it: ${line}`);
+    await page.click('app-page-resources-dialog .ocu-dialog-actions .ocu-button-secondary');
+    await dialogClosed(page);
+    assert.equal(heldBy(EXPORT_PAGE), '', 'nothing was stored');
+  } finally {
+    await context.close();
+  }
+});
