@@ -28,7 +28,7 @@ Parameter PROBENAME = "OcuProbeRoster";
 Parameter MINTARGUMENT = "OcuPilot.Screen.Tool.ExplorerClassCreate,OcuPilot.Screen.Tool.ExplorerRoutineCreate,OcuPilot.Screen.Tool.RestServiceCreate";
 
 /// <p>How many entries <code>Exemptions</code> holds.</p>
-Parameter EXEMPTIONCOUNT = 42;
+Parameter EXEMPTIONCOUNT = 43;
 
 /// <p>The fewest write tools the walk must ask, so an exemption that takes tools out of the check is seen.</p>
 Parameter CHECKEDFLOOR = 115;
@@ -77,6 +77,7 @@ port|OcuPilot.Port.TaskTransferPort|the port never reads the request scope and i
 port|OcuPilot.Port.TokenPort|the port never reads the request scope and its tools are instance-scoped
 port|OcuPilot.Port.UserCopyPort|the port never reads the request scope and its tools are instance-scoped
 port|OcuPilot.Port.WalletPort|the port never reads the request scope and its tools are instance-scoped
+port|OcuPilot.Port.PortalResourcePort|the port never reads the request scope and its tools are instance-scoped (page resources are %SYS's)
 tool|security.auditing.export|the audit log is the instance's and no namespace names it; the audit port's one tool that carries a namespace is the copy
 tool|security.auditing.purge|the audit log is the instance's and no namespace names it; the audit port's one tool that carries a namespace is the copy
 person|explorer.classmethod.run|a person's alone: it mints no proposal, so nothing is stored

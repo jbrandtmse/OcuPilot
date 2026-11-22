@@ -185,7 +185,7 @@ Blocking condition: none
 - `src/OcuPilot/Test/InteropLookupDescriptor.cls`: the two subjects in `TOOLS`.
 - `src/OcuPilot/Test/InteropItemControl.cls`, `InteropLookupFixture.cls`: optional trailing `pNamespace`.
 - `src/OcuPilot/Test/InteropConfirmNamespace.cls` (new): Matrix rows 1-3, one HTTP leg each.
-- `src/OcuPilot/Test/ConfirmNamespaceRoster.cls` (new, orchestrator order): every registered write tool outside a 42-entry declared exemption roster asks its port in the minting namespace; 335 write tools walked, 220 exempt, 115 asked.
+- `src/OcuPilot/Test/ConfirmNamespaceRoster.cls` (new, orchestrator order): every registered write tool outside a 43-entry declared exemption roster asks its port in the minting namespace. After the integration of feature 1d3cc3a3b (Story 21.37), 337 write tools are walked, 222 exempt and 115 asked: the guard reddened on 21.37's two page-resource writes, and `PortalResourcePort` joins the roster as instance-scoped, since page resources live in `%SYS` and the port never reads the request scope.
 - `scripts/ci-throwaway.sh`: add-only `# classes: InteropConfirmNamespace` line.
 
 **Review.** 9 findings: 1 medium patched (four roster-guard mutations observed, no code change), 1 low deferred (mint-level cross-namespace test for three creates), 1 low and 6 false rejected, reasons in the Triage Log. Follow-up review recommended: false.
