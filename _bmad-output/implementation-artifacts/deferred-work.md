@@ -14501,3 +14501,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on ocupilot-ci 2026-11-22: PurgeQueries({allNamespace:1}) run in HSCUSTOM or USER removed only that namespace's probe cached queries; the other namespace's stayed 30 s, as with {} (inference: this build's all-namespace purge does not reach the other namespace's probe queries; settle by reading PurgeAllNamespaces^%SYS.SQLSRV)
 - 2026-11-22T19:42:41Z status=routed owner=burndown by=lead note=from 21.6's deferred: frontmatter; ConfigGateSeam replaces the whole method, so no test runs the production fallback
 - 2026-11-22T19:44:03Z status=routed owner=burndown by=orchestrator note=measure first whether a Story 21.4 setting change leaves a stale cached query in a second namespace and whether the user would see it; if it does, it is a shipped defect and needs a release-note line at the cut
+
+### DW-2844: Two ruled 21.6 strings claim more than the instance does: Freeze plan refuses an Unfrozen/Parallel plan with 'This statement's plan is already frozen.', and Clean's consequence says every statement no class holds is removed, while a frozen one stays
+- source: spec-21-6-the-sql-tuning-track.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Measured on ocupilot-ci 2026-11-22: a frozen statement with no location survived Clean(); the classic dialog disables Freeze for Unfrozen/Parallel (SQLStatementDetails.cls:111).
+- 2026-11-22T20:28:24Z status=decision-pending owner=burndown by=cr note=human=string ruling; proposed: 'This statement's plan uses parallel processing and cannot be frozen.' and a Clean sentence naming frozen plans
+
+### DW-2845: SqlPort's tuning-track error paths are pinned at the port only: no test feeds a failed purge (500) or a vendor-refused statement write through the screen action or the agent's confirm
+- source: spec-21-6-the-sql-tuning-track.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: PURGECLASS is fixed to ConfigPort, so ConfigGateSeam.PurgeFails cannot reach SqlPort; the 409 test calls SqlTuningPortFixture.Invoke directly.
+- 2026-11-22T20:28:34Z status=wontfix-accepted owner=21-6-the-sql-tuning-track by=cr note=reopen_if=a purge or statement write the instance refuses answers 200 or another code than 500/409 on either caller

@@ -1007,3 +1007,5 @@
 2026-11-22T19:43:36Z	Story 21.6	stage_spawned	stage=code_review spawn_at=2026-11-22T19:43:36Z model=opus agent_name=21-6-cr prior_lines_ended=verified(af5fdb796) strings=pending_orchestrator_ruling
 2026-11-22T19:44:03Z	Story 21.6	ruling	question=strings_outside_U-83 via=orchestrator choice=items1,3_accepted;404_new_sentences(hash,cached_query);400_reuse_ok;veto=U-143
 2026-11-22T20:27:40Z	Story 21.6	ci_resolved	sha=010f0f951 run=45062235807 result=success
+2026-11-22T20:36:06Z	Story 21.6	stage_complete	stage=code_review agent=a8d18616b result=done tier=full-opus high=1(AD-16/AD-61r4_StatementCall_switched,patched) med=4(patched) low=7 ledger=DW-2844(decision-pending,burndown),DW-2845(wontfix-accepted) strings=404s_applied(visibility_clause_dropped:measured),clean_description_+1_sentence(U-143_change) bashedits=none lines_ended=verified
+2026-11-22T20:36:07Z	Story 21.6	code_head_pushed	sha=71884f36a run=45067284861 missing=none scope=review_patches
