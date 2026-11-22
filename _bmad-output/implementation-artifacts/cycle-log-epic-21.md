@@ -957,3 +957,4 @@
 2026-11-22T08:18:11Z	Story 21.38	stage_complete	stage=implement pass=3 agent=a8c880cfd result=done commits=439202455,248262974,19eb9b95d,7c50fd9bf,4b7f31401 deviation=SslConfiguration_6_args(recorded) protocol=batch8_subagent_multi---class_ci-runner_call(sequential_in_one_process,no_overlap;gates_rebuild_from_scratch) bashedits=none lines_ended=verified
 2026-11-22T08:18:11Z	Story 21.38	code_head_pushed	sha=4b7f31401 run=45002154533 missing=none scope=B7-B10
 2026-11-22T08:18:11Z	Story 21.38	stage_spawned	stage=code_review spawn_at=2026-11-22T08:18:11Z model=opus agent_name=21-38-cr prior_lines_ended=verified(a8c880cfd)
+2026-11-22T08:55:23Z	Story 21.38	ci_resolved	sha=4b7f31401 run=45002154533 result=success scope=B1-B10
