@@ -676,3 +676,6 @@
 2026-11-21T23:53:53Z	Story 24.15	stage_spawned	stage=code-review spawn_at=2026-11-21T23:53:53Z model=opus agent_name=24-15-review-batch1 cycle_iteration=1 range=3dca9873a..8df352529
 2026-11-22T00:34:39Z	Story 24.15	stage_completed	stage=code-review scope=batch1 commit=fc4a22869 findings=21(high2_patched:vendor_validate_before_gate,multiline_secret_audit;med4_patched:remove_namespace,edge_bar,item/hostclass,held-key) rejected=10 deferred=1
 2026-11-22T00:34:39Z	Story 24.15	ledger_adjudicated	scope=batch1 resolved=DW-2636 new=DW-2827(high,burndown,sibling_remove_tools_namespace)
+2026-11-22T00:34:56Z	Story 24.15	fresh_check_started	scope=batch1 tree=b92af7d65(code=fc4a22869)
+2026-11-22T00:57:55Z	Story 24.15	fresh_check_passed	scope=batch1 tree=b92af7d65 forward=7cls_43tests_first_run reverse+rosters+siblings=21cls_198tests browser=default-settings+partners+lookups+audit+log-hub+a11y_38/38 smoke=PASSED
+2026-11-22T00:57:55Z	Story 24.15	code_head_pushed	scope=batch1 sha=fc4a22869 run=44969124924 note=feature_4cd1a974c_bookkeeping-only_merged_after(b92af7d65)
