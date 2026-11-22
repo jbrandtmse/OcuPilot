@@ -2,7 +2,7 @@
 title: 'Story 21.38: Shared Rules helpers, the source-control follow-up and escalated wording'
 type: 'refactor'
 created: '2026-11-21'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'cd301a8ede572739353ac2fa5c5210b2d070cef9'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -458,8 +458,10 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 
 ## Auto Run Result
 
-Status: batches-4-6-committed
+Status: done
 Blocking condition: none
+
+Implement pass 3 (2026-11-22): Batches 7-10 (DW-2499) are committed locally (439202455, 248262974, 19eb9b95d, 7c50fd9bf), each with its loop green and the pre-commit hook passing; nothing is pushed. The loop and the probe exist once, in `AgentRules.ViolationsSentence` and `ScreenSaveRules.ReadTaken`, with no sentence, status or verdict changed. Whole Verification list on `ocupilot-ci`: 33 ObjectScript classes of Batches 2-5 plus `AgentRules` and `ScreenSaveOrder` green (343 tests), the Batch 7-10 slice classes green per batch, `check-objectscript` 0 problems, `lint-docs` clean, `test:tools` 2392 and `test:components` 3823 green, `screen-mirror --check` current, and browser `interop-message-trace`, `analytics`, `page-resources`, `system-explorer-source-control`, `system-explorer-write` and `interop-item-test` green on the rebuilt bundle. The runner-owned sweep, smoke and fresh check are not part of this pass.
 
 Lead patch after pass 2 (2026-11-22): pass 1's spec selection missed a consumer of a string it changed in place. CI run 44986244257 reddened `interop-item-test.browser-spec.mjs`, whose arrow-name prefix lacked `<label>`. The spec now fills `<label>` from the arrow's visible `.ocu-trace-label`. It and `interop-message-trace` are green on `ocupilot-ci`. mutation: the template renders `label.toUpperCase()`, and the arrow-name assertion reddens.
 
