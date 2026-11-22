@@ -715,3 +715,8 @@
 2026-11-22T10:31:02Z	Story 24.15	fresh_check_passed	scope=batch2 tree=874b3bd99(code=2e84d18d9+feature_timings) classes=21cls_217tests_first_run reverse=3cls_18tests browser=credentials+default-settings+partners+a11y_24/24 smoke=PASSED(1_skipped:agentswitches)
 2026-11-22T10:31:02Z	Story 24.15	code_head_pushed	scope=batch2 sha=2e84d18d9 run=45012764267
 2026-11-22T10:31:19Z	Story 24.15	stage_spawned	stage=plan spawn_at=2026-11-22T10:31:19Z model=opus agent_name=24-15-plan-batch3 cycle_iteration=4 scope=batch3_schedules
+2026-11-22T10:32:37Z	Story 24.15	ruling	source=orchestrator DW-2837=routed_with_DW-2822(burndown,med) DW-2838=batch3_first_commit(relayed_to_plan;precedent_clear_only_on_accepted_save)
+2026-11-22T10:44:53Z	Story 24.15	story_created	spawn_at=2026-11-22T10:33:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-15-credentials-default-settings-and-schedules-4.md build_status=ready-for-dev scope=batch3_schedules+DW-2838_first
+2026-11-22T10:44:53Z	Story 24.15	ruling	question=batch3_veto_set+README choice=keep category=veto inbox=U-140 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-22T10:44:53Z	Story 24.15	spec_validated	scope=batch3 owned_ledger=DW-2838 resolved=DW-2827
+2026-11-22T10:44:53Z	Story 24.15	stage_spawned	stage=implement spawn_at=2026-11-22T10:44:53Z model=sonnet agent_name=24-15-implement-batch3 cycle_iteration=4 story_base=e6db2ed9f
