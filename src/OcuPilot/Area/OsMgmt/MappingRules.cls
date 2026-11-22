@@ -325,12 +325,7 @@ ClassMethod Taken(pKind As %String, pNamespace As %String, pName As %String, Out
 {
     Set pTaken = 0
     Set tSC = ..Read(..ToolClass(pKind, "Create"), pNamespace, pName, .tFresh, .tHttp, .tFault)
-    If $$$ISERR(tSC) {
-        If +$Get(tHttp) = 404 Quit $$$OK
-        Quit tSC
-    }
-    Set pTaken = ($IsObject(tFresh) && tFresh.%IsA("%Library.DynamicObject"))
-    Quit $$$OK
+    Quit ##class(OcuPilot.Kernel.Proposal.ScreenSaveRules).ReadTaken(tSC, $Get(tHttp), $Get(tFresh), .pTaken)
 }
 
 /// <p>The present mapping <var>pName</var> of namespace <var>pNamespace</var>, read through the kind's
