@@ -753,3 +753,7 @@
 2026-11-22T22:27:10Z	Story 24.16	stage_completed	stage=qa+code-review scope=batch1 commit=596600cc6 findings=27(med6_patched;low12_patched,6_rejected,3_deferred) AD-9=contained clamp=safe(boundary_test:67897_ok,67898_raises;port_caps_+$H-2) partial_purge=500+audit_completed_false allowlist=scoped(182_harness_tests) containment_mutation=only_case_c_reds(_SYSTEM_success_leg) deferred_ledger=DW-2846
 2026-11-22T22:27:57Z	Story 24.16	ruling	source=orchestrator leg_d=accepted DW-2846=burndown partial_purge=accepted clamp_test=runtime_$Horolog(relayed) integrate=current_feature_head_at_push
 2026-11-22T22:36:12Z	Story 24.16	stage_completed	stage=patch scope=batch1 commit=f58e15d70 leg_d=_SYSTEM_rolesafter_error_path mutation=runs9_green,10_red(c,d),11_green clamp_test_runtime=yes
+2026-11-22T22:40:22Z	Story 24.16	integrated_feature	scope=batch1 feature=c655a65bd(21.39) merge=5a6823bd2 conflicts=0
+2026-11-22T22:40:22Z	Story 24.16	fresh_check_started	scope=batch1 tree=5a6823bd2
+2026-11-22T22:54:29Z	Story 24.16	fresh_check_passed	scope=batch1 tree=5a6823bd2 classes=15cls_142tests_first_run reverse=4cls_24tests browser=interop-purge+config-settings+a11y_26/26 smoke=PASSED test_tools=2400 harness=OK
+2026-11-22T22:54:29Z	Story 24.16	code_head_pushed	scope=batch1 sha=5a6823bd2 run=45080247136
