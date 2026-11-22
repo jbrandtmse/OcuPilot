@@ -983,3 +983,7 @@
 2026-11-22T13:33:04Z	Story 21.39	code_head_pushed	sha=00a3e27d3 run=45027868412 missing=none note=CI_status_said_unavailable(skip-token_heuristic_saw_feature's_[skip_ci]_record_commit_in_the_push);gh_run_list_shows_the_run_in_progress
 2026-11-22T13:33:27Z	Story 21.39	stage_spawned	stage=code_review spawn_at=2026-11-22T13:33:27Z model=opus agent_name=21-39-cr prior_lines_ended=verified(a458aa944)
 2026-11-22T14:10:36Z	Story 21.39	ci_resolved	sha=00a3e27d3 run=45027868412 result=success
+2026-11-22T14:22:02Z	Story 21.39	stage_complete	stage=code_review agent=a9f7feaad result=done tier=full-opus high=0 med=2(patched:pause_on_visit_session,no-outcome-change_pins) low=18(5_patched,13_rejected) real_chrome=abandoned_visit_paused_0ms_spinForStall,39351_bytes,423KB_profile protocol=one_literal_git_-C_.(epic-21_itself) bashedits=none lines_ended=verified
+2026-11-22T14:22:02Z	Story 21.39	code_head_pushed	sha=caaa772b3 run=45032370635 missing=none scope=review_patches
+2026-11-22T14:22:02Z	Story 21.39	ledger_closed	resolved-by=DW-2517 remaining_owned=0 routed_out=DW-1822,DW-2600(burndown),DW-2839(burndown)
+2026-11-22T14:22:02Z	Story 21.39	gate_step	step=fresh_check+full_sweep+smoke head=caaa772b3 started=2026-11-22T14:22:02Z dir=e21u/21-39/gate

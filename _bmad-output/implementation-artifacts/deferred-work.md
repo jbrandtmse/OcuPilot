@@ -12723,6 +12723,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-22T03:54:36Z status=routed owner=burndown by=orchestrator note=reopen_reason=recurrence; recurred after the 23-10 fix (cd679de0), run 44979425183 job 137076439199 on ca78cffc5 (instance shard 1/8, PORT.TIMEOUT on the reverse-order read); an AdminPort BackgroundTask 500 ERROR #9509 Failed to send signal to job came earlier in the same shard
 - 2026-11-22T05:34:51Z status=routed owner=burndown by=lead note=recurred again: run 44986244257 job 137097327539 on 83879c118 (instance shard 2/8), PORT.TIMEOUT on the reverse-order read; second recurrence in consecutive runs
 - 2026-11-22T06:23:35Z status=routed owner=21-39-ci-health-the-governance-renderer-stall-and-the-journal-reve by=orchestrator note=fix_forward_21.39(CI_health,Rule_27): DW-1822 2 of last 5 runs, DW-2517 two consecutive runs
+- 2026-11-22T14:22:02Z status=resolved-by:21-39-ci-health-the-governance-renderer-stall-and-the-journal-reve by=lead note=baea3ce4c + review caaa772b3: the first reverse read asks 12 rows inside the vendor's live 18-row bulk (JournalProbe.FirstBulkRows, bulk not run to file start); 3.51 s to 0.22-0.36 s; maxRows 20 reddens the bulk assertion alone; product side DW-2839 (burndown)
 
 ### DW-2526: flake: LogHubErrors.TestASeededErrorReadsInTheHubsForm read a row other than its seeded error as the newest (CI instance shard 8/8)
 - source: CI run 43332030735 (Story 20.39 head 8d7fa08a) | severity: med | fix-risk: low | footprint: out-of-footprint
