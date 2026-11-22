@@ -958,3 +958,7 @@
 2026-11-22T08:18:11Z	Story 21.38	code_head_pushed	sha=4b7f31401 run=45002154533 missing=none scope=B7-B10
 2026-11-22T08:18:11Z	Story 21.38	stage_spawned	stage=code_review spawn_at=2026-11-22T08:18:11Z model=opus agent_name=21-38-cr prior_lines_ended=verified(a8c880cfd)
 2026-11-22T08:55:23Z	Story 21.38	ci_resolved	sha=4b7f31401 run=45002154533 result=success scope=B1-B10
+2026-11-22T09:11:48Z	Story 21.38	stage_complete	stage=code_review agent=a2f7c1a55 result=done tier=full-opus high=0 med=6(patched) low=9(4_patched,5_ledgered:DW-2832..2836) patch_sha=26828c057 bashedits=none lines_ended=verified
+2026-11-22T09:11:48Z	Story 21.38	code_head_pushed	sha=26828c057 run=45006300417 missing=none scope=review_patches
+2026-11-22T09:11:48Z	Story 21.38	ledger_closed	resolved-by=DW-2369,2405,2442,2474,2499,2823 remaining_owned=0
+2026-11-22T09:11:48Z	Story 21.38	gate_step	step=fresh_check+full_sweep+smoke head=26828c057 started=2026-11-22T09:11:48Z dir=e21u/21-38/gate
