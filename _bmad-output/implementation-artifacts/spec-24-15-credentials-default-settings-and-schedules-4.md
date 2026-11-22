@@ -2,7 +2,7 @@
 title: 'Story 24.15: Credentials, default settings and schedules (Batch 3: schedules)'
 type: 'feature'
 created: '2026-11-22'
-status: 'blocked'
+status: 'ready-for-dev'
 baseline_revision: 'fab07a3951807de4ceadd4bc5d427251f9bb29a9'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -101,6 +101,8 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `e6db2ed9f`).
 
 ## Spec Change Log
 
+- 2026-11-22, re-open (runner, orchestrator ruling, option A; replaces a U-140 string in place): Task 0 (f) measured that a removed schedule spec leaves its items running until the next production update, which then disables and stops each item that names it until the spec is added again. The REMOVE consequence is replaced by "Items that name this schedule spec keep running until the production is next updated, and are then disabled and stopped until the schedule spec is added again. It cannot be restored from OcuPilot." There is no refusal; the remove ships off and a person confirms. Every consumer of the key in ui/browser, ui/tools and ui/src is found and run.
+
 - 2026-11-22, spec gate (runner, veto item U-140): Design Notes 1 to 6 kept as recommended. The README line is in scope as this batch's last task: the Interoperability paragraph and switched-off list gain the proposed clauses, add-only, and any count the README states over those lists is re-derived. The story-end spine lines stay proposed for the orchestrator.
 
 ## Review Triage Log
@@ -117,7 +119,7 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `e6db2ed9f`).
 6. **Proposed strings** (reused: "Name", "Description", "Deployable", "Schedule" (`taskDetailsSchedule`), "Edit <name>" and "Remove <name>" (the credential keys), each read true here):
    - Label: "Schedule specs" · action and dialog title "New schedule spec".
    - Help: "A schedule spec starts and stops the production items whose schedule names it, as @ and its name. Each part is START or STOP, a colon and a date and time, for example START:\*-\*-\*T08:00:00,STOP:\*-\*-\*T17:00:00, where \* matches any." · "Deployable schedule specs are included when schedule specs are exported to a deployment package."
-   - Consequences: `CHANGE` (edit) "A running production that uses this schedule spec follows a changed spec at once." · `REMOVE` "Items that name this schedule spec are no longer started and stopped by it, and it cannot be restored from OcuPilot."
+   - Consequences: `CHANGE` (edit) "A running production that uses this schedule spec follows a changed spec at once." · `REMOVE` "Items that name this schedule spec keep running until the production is next updated, and are then disabled and stopped until the schedule spec is added again. It cannot be restored from OcuPilot."
    - Refusals: `TAKEN` "This namespace already has a schedule spec with that name, in some letter case." · `NAME` "A schedule spec name is 1 to 50 characters and holds no control characters." · `SPEC` "This schedule is not valid. Each part is START or STOP, a colon and a date and time." · `DESCRIPTION` "A description is at most 256 characters." · `SOURCECONTROL` "This namespace uses source control, so change schedule specs in the classic Schedule Specs page."
    - Empty state: "This namespace has no schedule specs." (agent phrase "add a schedule spec").
    - Prompts: "Explain when this schedule spec starts and stops items." · "Which schedule specs are deployable?" · "Add a schedule spec that runs on weekdays from 8 to 5."

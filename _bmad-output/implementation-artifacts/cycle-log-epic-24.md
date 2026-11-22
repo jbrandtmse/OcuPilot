@@ -723,3 +723,5 @@
 2026-11-22T10:45:51Z	Story 24.15	ruling	source=orchestrator README=mine_add-only(word-diff_in_merge_note) spine_lines=cleared(AD-62_item18,AD-35,AD-10,AD-15,AD-22;story_end_one_commit;tag_U-135/U-137/U-140) ValidateScheduleSpec_signature_pin=relayed
 2026-11-22T10:57:57Z	Story 24.15	stage_completed	stage=task1 scope=batch3 commit=fab07a395 DW-2838_fixed(component_test+mutation)
 2026-11-22T10:57:57Z	Story 24.15	stage_blocked	stage=implement scope=batch3 condition=intent_gap(Task0_f:remove_disables_and_stops_items_at_next_production_update;REMOVE_consequence_untrue) task0=a_no_audit,b_own_db_write,c_case_distinct(SQL_exact),d_50/256,e_confirmed,g_ValidateScheduleSpec_ok(signature:ClassMethod_Internal_&pScheduleSpec,&pScheduleErrors,*pLength->%Status)
+2026-11-22T10:58:37Z	Story 24.15	ruling	source=orchestrator scope=batch3 option=A REMOVE_sentence_replaced_in_place inbox=U-141 DW-2838_accepted
+2026-11-22T10:58:37Z	Story 24.15	stage_spawned	stage=implement spawn_at=2026-11-22T10:58:37Z model=sonnet agent_name=24-15-implement-batch3-r2 cycle_iteration=4 story_base=432dac98e
