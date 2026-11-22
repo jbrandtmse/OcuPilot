@@ -426,20 +426,30 @@ Method TestAdvertisedInProduction()
 /// <p><b>Every <code>NAV.*</code> code carries a written sentence</b>, and an undeclared one
 /// carries none -- the same assertion <class>OcuPilot.Test.Restraint</class> makes for
 /// <code>RestraintCodes()</code>/<code>ReasonForRestraint()</code>, because a code with no
-/// sentence behind it reaches a tool result's <code>reason</code> as a blank line.</p>
+/// sentence behind it reaches a tool result's <code>reason</code> as a blank line. The vocabulary is
+/// <class>OcuPilot.Api.Error</class>'s own codes plus <class>OcuPilot.Api.NavError</class>'s, and the
+/// two never share a code, so the <code>NAV.</code> prefix dispatch cannot shadow an earlier answer.</p>
 Method TestEveryNavCodeHasAWrittenSentence()
 {
-    Set tCodes = ##class(OcuPilot.Api.Error).NavCodes()
-    Do $$$AssertEquals($ListLength(tCodes), 7, "the vocabulary holds seven NAV codes; adding one is a deliberate edit in OcuPilot.Api.Error")
+    Set tErrorCodes = ##class(OcuPilot.Api.Error).NavCodes()
+    Set tNavCodes = ##class(OcuPilot.Api.NavError).Codes()
+    Do $$$AssertEquals($ListLength(tErrorCodes), 7, "OcuPilot.Api.Error holds seven NAV codes; adding one is a deliberate edit there")
+    Do $$$AssertEquals($ListLength(tNavCodes), 1, "OcuPilot.Api.NavError holds one code; adding one is a deliberate edit there")
+    Set tCodes = tErrorCodes _ tNavCodes
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
-        Set tReason = ##class(OcuPilot.Api.Error).ReasonForNav(tCode)
-        Do $$$AssertNotEquals(tReason, "", tCode _ " carries a sentence")
-        Do $$$AssertTrue($Length(tReason) > 10, tCode _ "'s sentence says something: '" _ tReason _ "'")
+        Set tOwn = $Select(tI <= $ListLength(tErrorCodes): ##class(OcuPilot.Api.Error).ReasonForNav(tCode), 1: ##class(OcuPilot.Api.NavError).ReasonFor(tCode))
+        Set tOther = $Select(tI <= $ListLength(tErrorCodes): ##class(OcuPilot.Api.NavError).ReasonFor(tCode), 1: ##class(OcuPilot.Api.Error).ReasonForNav(tCode))
+        Do $$$AssertNotEquals(tOwn, "", tCode _ " carries a sentence")
+        Do $$$AssertEquals(tOther, "", tCode _ " is declared by one class only")
+        Do $$$AssertTrue($Length(tOwn) > 10, tCode _ "'s sentence says something: '" _ tOwn _ "'")
         Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " is a well-formed machine code (AD-39)")
-        Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForToolCode(tCode), tReason, tCode _ "'s sentence is reachable through the shared ReasonForToolCode resolver")
+        Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForToolCode(tCode), tOwn, tCode _ "'s sentence is reachable through the shared ReasonForToolCode resolver")
     }
     Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForNav("NAV.NO.SUCH.CODE"), "", "and a code the vocabulary does not hold carries none")
+    Do $$$AssertEquals(##class(OcuPilot.Api.NavError).ReasonFor("NAV.NO.SUCH.CODE"), "", "in either class")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForToolCode("NAV.NO.SUCH.CODE"), ##class(OcuPilot.Api.Error).#REASONTOOLUNAVAILABLE, "and the shared resolver falls through to the unavailable sentence")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForToolCode(##class(OcuPilot.Api.NavError).#NAVLOADFAILED), "The browser could not load that screen, so the move was not made.", "the load-failure sentence is the ruled one")
 }
 
 /// <p><b>Every key the settled result emits is declared in <method>ResultSchema</method> with a
@@ -461,7 +471,7 @@ Method TestSettledResultEmitsOnlyDeclaredKeysWithDeclaredTypes()
 
     ; Every outcome the settle answers, not only the interesting one, so a member that is right in
     ; one shape and wrong in another cannot hide.
-    Set tCases = $ListBuild($ListBuild("opened", "", "", ""), $ListBuild("opened", "_SYSTEM", "", ""), $ListBuild("refused", "", ##class(OcuPilot.Api.Error).#NAVREFUSEDUNSAVED, ""), $ListBuild("unavailable", "_SYSTEM", ##class(OcuPilot.Api.Error).#NAVUNAVAILABLE, ""), $ListBuild("opened", "", "", "7"), $ListBuild("refused", "", ##class(OcuPilot.Api.Error).#NAVREFUSEDUNSAVED, "7"))
+    Set tCases = $ListBuild($ListBuild("opened", "", "", ""), $ListBuild("opened", "_SYSTEM", "", ""), $ListBuild("refused", "", ##class(OcuPilot.Api.Error).#NAVREFUSEDUNSAVED, ""), $ListBuild("unavailable", "_SYSTEM", ##class(OcuPilot.Api.Error).#NAVUNAVAILABLE, ""), $ListBuild("opened", "", "", "7"), $ListBuild("refused", "", ##class(OcuPilot.Api.Error).#NAVREFUSEDUNSAVED, "7"), $ListBuild("refused", "", ##class(OcuPilot.Api.NavError).#NAVLOADFAILED, ""))
     For tI = 1:1:$ListLength(tCases) {
         Set tCase = $List(tCases, tI)
         Set tOutcome = $List(tCase, 1)

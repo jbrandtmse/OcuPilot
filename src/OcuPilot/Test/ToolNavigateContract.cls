@@ -22,7 +22,7 @@ Parameter PARENTIDTWOPARTS = "interoperability/productions/items/jobs,interopera
 
 /// <p>The ruled wording, owner-kept (U-7): a change here is a deliberate edit of the model-read text,
 /// never a drive-by.</p>
-Parameter DESCRIPTION = "Open a screen for the user: optionally select one of its rows by the row's id, or open a screen that belongs to one item (such as a task's history) for that item. Announces the move before it happens, then waits about a second before the browser moves; the departing screen may refuse the move (for example, unsaved changes), and the user may always return with Back.";
+Parameter DESCRIPTION = "Open a screen for the user: optionally select one of its rows by the row's id, or open a screen that belongs to one item (such as a task's history) for that item. Announces the move before it happens, then waits about a second before the browser moves; the departing screen may refuse the move (for example, unsaved changes), the browser may fail to load the new screen, and the user may always return with Back.";
 
 Parameter ENTITYIDTEXT = "The row to select, once resolved from the row's own identifying value, on a screen of its own rows. Refused on a screen that belongs to an item (send parentId there), and on a screen whose id is none or has more than one part.";
 

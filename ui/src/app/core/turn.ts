@@ -79,9 +79,16 @@ export function proposalCancelPath(id: string): string {
   return PROPOSAL_PATH + '/' + encodeURIComponent(id) + '/cancel';
 }
 
-/** The one refusal code this client is ever the author of (Story 4.7, `POST /turn/:id/navigation`'s
- * closed vocabulary) -- a dirty `form-page`'s decline, and nothing else. */
+/** A refusal code this client authors (`POST /turn/:id/navigation`'s closed vocabulary): the
+ * departing screen declined the move, as a dirty `form-page` does. */
 export const NAV_REFUSED_UNSAVED_CODE = 'NAV.REFUSEDUNSAVED';
+
+/** A refusal code this client authors (`POST /turn/:id/navigation`'s closed vocabulary): the
+ * browser could not load the screen it was sent to. */
+export const NAV_LOAD_FAILED_CODE = 'NAV.LOADFAILED';
+
+/** The two refusal codes the navigation settle accepts, and no other. */
+export type NavRefusalCode = typeof NAV_REFUSED_UNSAVED_CODE | typeof NAV_LOAD_FAILED_CODE;
 
 /** What a decision answers when there was nothing to decide, or the transport gave no envelope. */
 const NO_OUTCOME: ProposalOutcome = {
@@ -1731,7 +1738,8 @@ export class TurnStore {
 
   /**
    * Answer the live turn's own pending directive: `opened` once the browser has navigated,
-   * `refused` with `NAV_REFUSED_UNSAVED_CODE` when the departing screen declined. Posts
+   * `refused` with `NAV_REFUSED_UNSAVED_CODE` when the departing screen declined, or with
+   * `NAV_LOAD_FAILED_CODE` when the browser could not load the new screen. Posts
    * `POST /turn/{id}/navigation`; `code` travels only for a refusal, since the instance's own
    * closed vocabulary (`Api/Turn.cls`'s `NavigationViolation`) accepts it only there.
    *
@@ -1742,7 +1750,7 @@ export class TurnStore {
    * guards is a second call for the same `seq` (a stale re-render, a caller that already
    * settled) finding `navigation()` already empty rather than posting twice.
    */
-  async settleNavigation(outcome: 'opened' | 'refused', code: string | null = null): Promise<boolean> {
+  async settleNavigation(outcome: 'opened' | 'refused', code: NavRefusalCode | null = null): Promise<boolean> {
     const directive = this.pendingNavigationValue;
     if (directive === null || directive.seq <= this.actedNavigationSeq || this.currentTurnId === null) {
       return false;

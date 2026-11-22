@@ -65,7 +65,7 @@ Parameter FULFILMENT = "client";
 /// <code>criteria</code> are refused rather than announced and ignored.</p>
 Parameter ARRIVALARCHETYPE = "list (server criteria)";
 
-Parameter DESCRIPTION = "Open a screen for the user: optionally select one of its rows by the row's id, or open a screen that belongs to one item (such as a task's history) for that item. Announces the move before it happens, then waits about a second before the browser moves; the departing screen may refuse the move (for example, unsaved changes), and the user may always return with Back.";
+Parameter DESCRIPTION = "Open a screen for the user: optionally select one of its rows by the row's id, or open a screen that belongs to one item (such as a task's history) for that item. Announces the move before it happens, then waits about a second before the browser moves; the departing screen may refuse the move (for example, unsaved changes), the browser may fail to load the new screen, and the user may always return with Back.";
 
 /// <p>The screen registry the allow-list and the re-check are built from. Overridable for a
 /// fixture; production never overrides it.</p>

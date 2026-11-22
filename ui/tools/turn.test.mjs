@@ -38,6 +38,7 @@ const {
   proposalCancelPath,
   outputLinesOf,
   NAV_REFUSED_UNSAVED_CODE,
+  NAV_LOAD_FAILED_CODE,
   stepLabel,
   confirmedWriteStep,
   turnErrorBanner,
@@ -1104,7 +1105,13 @@ test('settleNavigation posts opened with no code key, and the directive is acted
   await settle();
 });
 
-test('settleNavigation posts refused with the one closed-vocabulary code this client ever authors', async () => {
+test('the two refusal codes this client authors are the instance\'s closed vocabulary', () => {
+  assert.equal(NAV_REFUSED_UNSAVED_CODE, 'NAV.REFUSEDUNSAVED');
+  assert.equal(NAV_LOAD_FAILED_CODE, 'NAV.LOADFAILED');
+});
+
+for (const authoredCode of [NAV_REFUSED_UNSAVED_CODE, NAV_LOAD_FAILED_CODE]) {
+test(`settleNavigation posts refused with ${authoredCode}, a code this client authors`, async () => {
   const { schedule, scheduled } = fakeSchedule();
   const api = fakeApi({
     [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
@@ -1132,13 +1139,14 @@ test('settleNavigation posts refused with the one closed-vocabulary code this cl
   await settle();
   assert.notEqual(turn.navigation(), null);
 
-  await turn.settleNavigation('refused', NAV_REFUSED_UNSAVED_CODE);
+  await turn.settleNavigation('refused', authoredCode);
   const call = api.calls.find((c) => c.path === turnNavigationPath('turn-1'));
-  assert.deepEqual(JSON.parse(call.body), { seq: 1, outcome: 'refused', code: 'NAV.REFUSEDUNSAVED' });
+  assert.deepEqual(JSON.parse(call.body), { seq: 1, outcome: 'refused', code: authoredCode });
 
   scheduled.shift().run();
   await settle();
 });
+}
 
 test('settleNavigation() with no directive pending posts nothing and answers false', async () => {
   const api = fakeApi();

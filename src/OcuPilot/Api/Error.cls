@@ -970,6 +970,7 @@ Parameter NAVNOTINSTANCE = "NAV.NOTINSTANCE";
 /// <code>{"opened","refused"}</code> / <code>{"NAV.REFUSEDUNSAVED", null}</code>, or no
 /// <code>seq</code>. Rendered on the <parameter>VALIDATIONFAILED</parameter> slug, HTTP 422 -- the
 /// closed vocabulary is what keeps the client from ever authoring model-visible text.</p>
+/// <p>A <code>refused</code> outcome also admits <code>NAV.LOADFAILED</code>, declared by <class>OcuPilot.Api.NavError</class>.</p>
 Parameter TURNNAVIGATIONINVALID = "TURN.NAVIGATION.INVALID";
 
 /// <p>Written sentence for <parameter>TURNBADBODY</parameter>.</p>
@@ -1259,6 +1260,7 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If $Extract(pCode, 1, 10) = "ALLOWLIST." Set tReason = ##class(OcuPilot.Api.AllowListError).ReasonFor(pCode)
     If $Extract(pCode, 1, 11) = "WALLETRUNG." Set tReason = ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode)
     If $Extract(pCode, 1, 9) = "WORKFLOW." Set tReason = ##class(OcuPilot.Api.WorkflowError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 4) = "NAV." Set tReason = ##class(OcuPilot.Api.NavError).ReasonFor(pCode)
     If tReason '= "" Quit tReason
     Quit ..#REASONTOOLUNAVAILABLE
 }
