@@ -742,3 +742,7 @@
 2026-11-22T16:40:52Z	Story 24.15	story_done	batches=1,1b,2,3 tracker=done spine=94a8ddc2d
 2026-11-22T16:41:09Z	Story 24.16	stage_spawned	stage=plan spawn_at=2026-11-22T16:41:09Z model=opus agent_name=24-16-plan cycle_iteration=1
 2026-11-22T16:44:50Z	Story 24.15	ledger_fix_forward	resolved=DW-2838(fab07a395),DW-2840(76c6b6f06) slice_24-15=empty feature=a4cf78378
+2026-11-22T16:56:54Z	Story 24.16	story_created	spawn_at=2026-11-22T16:42:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-16-purge-suspended-messages-export-and-the-archive-manager.md build_status=ready-for-dev scope=batch1_purge+settings batches=4
+2026-11-22T16:56:54Z	Story 24.16	ruling	question=batches,gate,limits,strings choice=keep category=veto inbox=U-142 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-22T16:56:54Z	Story 24.16	spec_validated	scope=batch1 owned_ledger=none
+2026-11-22T16:56:54Z	Story 24.16	stage_spawned	stage=implement spawn_at=2026-11-22T16:56:54Z model=sonnet agent_name=24-16-implement-batch1 cycle_iteration=1 story_base=98abd23ca
