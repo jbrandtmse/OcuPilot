@@ -18,6 +18,9 @@ Parameter PORT = "OcuPilot.Port.AtelierPort";
 /// <p>The text a statement or a call of the vendor's statement index procedure would carry, in upper case: <code>%SQL_Manager.StatementIndexAll</code>.</p>
 Parameter VENDORPROCEDURE = "SQL_MANAGER.STATEMENTINDEX";
 
+/// <p>The same procedure named as its class query, in upper case: <code>%SQL.Manager.Catalog:StatementIndexAll</code>.</p>
+Parameter VENDORCLASSQUERY = "SQL.MANAGER.CATALOG:STATEMENTINDEX";
+
 /// <p>The statement a SQL statements tab sends, written out here so that a column added to or
 /// renamed in the port's select list, and a grouping dropped from it, fails this class rather than
 /// passing through a body built from the port's own parameter.</p>
@@ -344,7 +347,7 @@ Method TestNoStatementReadSelectsAnIdentifyingColumn()
     If '$IsObject(tClass) Quit
     For tI = 1:1:tClass.Parameters.Count() {
         Set tParameter = tClass.Parameters.GetAt(tI)
-        If $ZConvert(tParameter.Default, "U") [ ..#VENDORPROCEDURE Set tNamed = tNamed _ " " _ tParameter.Name
+        If ($ZConvert(tParameter.Default, "U") [ ..#VENDORPROCEDURE) || ($ZConvert(tParameter.Default, "U") [ ..#VENDORCLASSQUERY) Set tNamed = tNamed _ " " _ tParameter.Name
     }
     Set tDefinition = ##class(%Dictionary.ClassDefinition).%OpenId(..#PORT)
     Do $$$AssertTrue($IsObject(tDefinition), "the port's definition opens")
@@ -356,7 +359,7 @@ Method TestNoStatementReadSelectsAnIdentifyingColumn()
         While 'tMethod.Implementation.AtEnd {
             Set tCode = tCode _ $ZConvert(tMethod.Implementation.ReadLine(), "U") _ " "
         }
-        If tCode [ ..#VENDORPROCEDURE Set tNamed = tNamed _ " " _ tMethod.Name
+        If (tCode [ ..#VENDORPROCEDURE) || (tCode [ ..#VENDORCLASSQUERY) Set tNamed = tNamed _ " " _ tMethod.Name
     }
     Do $$$AssertEquals(tNamed, "", "no parameter or method of the port names the statement index procedure")
 }

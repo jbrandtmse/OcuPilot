@@ -156,11 +156,22 @@ ClassMethod Facts(pNamespace As %String, pHash As %String) As %DynamicObject
     Quit tFacts
 }
 
-/// <p>Give <var>pHash</var> three recorded runs in the current namespace: the instance writes a statement's statistics into the statement index
-/// on its own schedule, so the probe writes the same node.</p>
-ClassMethod SetStatistics(pHash As %String)
+/// <p>Give <var>pHash</var> three recorded runs in <var>pNamespace</var>, or in the current namespace when it names none: the instance writes a
+/// statement's statistics into the statement index on its own schedule, so the probe writes the same node.</p>
+ClassMethod SetStatistics(pHash As %String, pNamespace As %String = "")
 {
-    Set ^rINDEXSQL("sqlidx", 5, pHash, "stat") = $ListBuild(3, 0.3, 0, +$Horolog, 3, 30)
+    If pNamespace = "" {
+        Set ^rINDEXSQL("sqlidx", 5, pHash, "stat") = $ListBuild(3, 0.3, 0, +$Horolog, 3, 30)
+        Quit
+    }
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set ^rINDEXSQL("sqlidx", 5, pHash, "stat") = $ListBuild(3, 0.3, 0, +$Horolog, 3, 30)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
 }
 
 /// <p>Run the statement over OcuPilot's own table in <var>pNamespace</var>, the install namespace, and answer its hash.</p>
@@ -179,8 +190,8 @@ ClassMethod MakeOwn(pNamespace As %String) As %String
     Quit tHash
 }
 
-/// <p>Put the own statement <var>pHash</var> back in <var>pNamespace</var>: unfrozen and with no plan error, through the vendor calls that change
-/// them.</p>
+/// <p>Put the own statement <var>pHash</var> back in <var>pNamespace</var>: unfrozen, with no plan error and no statistics, through the vendor
+/// calls that change them.</p>
 ClassMethod RemoveOwn(pNamespace As %String, pHash As %String)
 {
     If pHash = "" Quit
@@ -189,6 +200,7 @@ ClassMethod RemoveOwn(pNamespace As %String, pHash As %String)
         Set $NAMESPACE = pNamespace
         If $Extract(..Facts(pNamespace, pHash).PlanState, 1, 7) = "Frozen/" Do $SYSTEM.SQL.Statement.UnfreezeStatement(pHash)
         Do UpdateSQLIndex^%SYS.SQLSRV(pHash, "")
+        Do $SYSTEM.SQL.Statement.ClearStatement(pHash)
         Set $NAMESPACE = tOrigNS
     } Catch {
         Set $NAMESPACE = tOrigNS

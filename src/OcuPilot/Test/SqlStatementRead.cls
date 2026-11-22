@@ -1,8 +1,8 @@
 /// <p>Pins Story 21.6's reads (AC1, AC4; AD-5, AD-36, AD-51, AD-61): the SQL statements screen's declaration; the namespace's statement index read
 /// by the screen and by the agent's <code>explorer.sqlstatements.read</code> as the same capped rows, the probe statement's row carrying its hash,
 /// plan state, new plan, plan error and statistics as the instance's information schema holds them; <class>OcuPilot.Port.SqlPort</class>'s
-/// <code>STATEMENT</code> and <code>PURGE</code> reads and their shapes, counts, not-found answers and hostile ids; and the gates, refused before
-/// any read or write.</p>
+/// <code>STATEMENT</code> and <code>PURGE</code> reads and their shapes, counts, not-found answers and hostile ids; each write's copy-out script;
+/// and the gates, refused before any read or write.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, the calling account holding <code>%Development:USE</code> and READ on
 /// <code>USER</code>'s code databases, and a <code>USER</code> namespace, where each test makes <class>OcuPilot.Test.SqlTuningProbe</class>'s
 /// objects and removes them after. The screen's read runs in process through <method>OcuPilot.Screen.Read.Execute</method>, which the route's
@@ -172,9 +172,31 @@ Method TestTheStatementAndPurgeReadsAnswerTheirShapes()
         Set tSC = $ClassMethod(tPort, "Invoke", $List(tCase, 1), $List(tCase, 2), .tQuery, "", .tAnswer, .tHttp, .tFault)
         Do $$$AssertEquals($Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), $List(tCase, 4), $List(tCase, 1) _ "/" _ $List(tCase, 2) _ " " _ $List(tCase, 3) _ ": refused")
     }
+    For tCase = $ListBuild("Statements", "bAdHash0123456789abcdefgh=", ##class(OcuPilot.Api.AtelierError).#REASONSTATEMENTNOTFOUND), $ListBuild("CachedQueries", "%sqlcq.USER.cls987654", ##class(OcuPilot.Api.AtelierError).#REASONCACHEDQUERYNOTFOUND), $ListBuild("CachedQueries", "OcuProbe216.Absent", ##class(OcuPilot.Port.AtelierPort).#REASONCATALOGNOTFOUND) {
+        Set tQuery("id") = $List(tCase, 2)
+        Set tSC = $ClassMethod(tPort, "Invoke", $List(tCase, 1), $Select($List(tCase, 1) = "Statements": "STATEMENT", 1: "PURGE"), .tQuery, "", .tAnswer, .tHttp, .tFault)
+        Do $$$AssertEquals($Select($IsObject($Get(tFault)): tFault.reason, 1: ""), $List(tCase, 3), $List(tCase, 2) _ ": its absence is stated in the sentence of its own kind")
+    }
 }
 
-/// <p>The gates. A caller without the Explorer's <code>%Development:USE</code> is refused 403 naming the pair on every read and write, before any
+/// <p>The copy-out script of each tuning write (AD-59): its namespace line and its one vendor call, with the hash, or with the qualifiers the
+/// purge's target gives, as a literal.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.TuningSnippet</code> renders <code>UnfreezeStatement</code> for <code>FREEZE</code> -> the
+/// freeze's script goes red.</p>
+Method TestEachWritesScriptIsItsOneVendorCall()
+{
+    Set tHash = "abc+/0="
+    Set tOk = $Char(10) _ " If $System.Status.IsError(tSC) Do $System.Status.DisplayError(tSC)"
+    For tCase = $ListBuild("Statements", "FREEZE", tHash, " Set tSC = $SYSTEM.SQL.Statement.FreezeStatement(""abc+/0="")" _ tOk), $ListBuild("Statements", "UNFREEZE", tHash, " Set tSC = $SYSTEM.SQL.Statement.UnfreezeStatement(""abc+/0="")" _ tOk), $ListBuild("Statements", "CLEARSTATISTICS", tHash, " Set tSC = $SYSTEM.SQL.Statement.ClearStatement(""abc+/0="")" _ tOk), $ListBuild("Statements", "CLEARERROR", tHash, " Do UpdateSQLIndex^%SYS.SQLSRV(""abc+/0="", """")"), $ListBuild("Statements", "CLEAN", "*", " Do $SYSTEM.SQL.Statement.Clean()"), $ListBuild("CachedQueries", "PURGEQUERIES", "*", " Set tSC = $SYSTEM.SQL.PurgeQueries({})" _ tOk), $ListBuild("CachedQueries", "PURGEQUERIES", "OcuProbe216.T1", " Set tSC = $SYSTEM.SQL.PurgeQueries({""table"": [""OcuProbe216.T1""]})" _ tOk), $ListBuild("CachedQueries", "PURGEQUERIES", "%sqlcq.USER.cls12", " Set tSC = $SYSTEM.SQL.PurgeQueries({""class"": [""%sqlcq.USER.cls12""]})" _ tOk) {
+        Kill tQuery
+        Set tQuery("namespace") = ..#NAMESPACE
+        Set tQuery("id") = $List(tCase, 3)
+        Set tSteps = ##class(OcuPilot.Port.SqlPort).Snippet($List(tCase, 1), $List(tCase, 2), .tQuery)
+        Do $$$AssertEquals($Select(tSteps.%Size() = 1: tSteps.%Get(0).kind _ "|" _ tSteps.%Get(0).text, 1: tSteps.%ToJSON()), "objectscript| Set $NAMESPACE = ""USER""" _ $Char(10) _ $List(tCase, 4), $List(tCase, 2) _ " " _ $List(tCase, 3) _ ": the script is its one vendor call")
+    }
+}
+
+/// <p>The gates. A caller without the Explorer's <code>%Development:USE</code> is refused 403 naming the pair on everyread and write, before any
 /// is made; a caller without WRITE on the namespace's routines database reads and is refused 403 on each write, and the instance is asked for
 /// none.</p>
 /// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.TuningInvoke</code> asks <code>Gate</code> without its write flag -> the write-pair assertions
@@ -203,6 +225,7 @@ Method TestTheGatesRefuseBeforeAnyReadOrWrite()
         If $List(tCase, 4) = 403 Do $$$AssertEquals($Piece($Select($IsObject($Get(tFault)): tFault.detail.failedPair, 1: ""), ":", 2), "WRITE", "naming the WRITE pair")
     }
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls") _ "|" _ $ClassMethod(..#PROBE, "Facts", ..#NAMESPACE, tHash).PlanState _ "|" _ $ClassMethod(..#PROBE, "Facts", ..#NAMESPACE, tHash).Present, "0|Unfrozen|1", "no vendor call was made and nothing changed")
+    Do $$$AssertEquals(##class(OcuPilot.Test.SqlCachedQueryPurge).Count("OcuProbe216.T2"), 1, "the refused purge left the table's cached query")
 }
 
 }

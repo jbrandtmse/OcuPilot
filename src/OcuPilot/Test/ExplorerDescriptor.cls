@@ -131,7 +131,7 @@ Method TestEveryScreenDeclaresThreePromptsInTheCodeGroup()
     }
 }
 
-/// <p>The area's advertised tools are its thirty-eight reads and twenty-eight writes: the SQL statements list's five writes and the Cached queries tab's three purges, the lists' compile, create,the Globals list's export, import and replace,
+/// <p>The area's advertised tools are its thirty-eight reads and twenty-eight writes: the SQL statements list's five writes and the Cached queries tab's three purges, the lists' compile, create, the Globals list's export, import and replace,
 /// delete, export, import and save, the SQL run, the document database create and drop, and the namespace compare's promote.
 /// Each write names
 /// its screen, its port, its endpoint and request type, whether it is destructive (the deletes, imports,

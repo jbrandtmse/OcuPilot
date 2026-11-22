@@ -30,7 +30,8 @@ Parameter DESTRUCTIVE As BOOLEAN = 0;
 
 Parameter CHANGEACTION = "updated";
 
-/// <p>The pair the write itself names: <code>%Development:USE</code>, which the vendor's calls check themselves.</p>
+/// <p>The pair the write itself names: <code>%Development:USE</code>, which the vendor's freeze, unfreeze and clear of statistics check
+/// themselves and its clean and plan-error update do not, so the port's gate is what holds it for all five.</p>
 Parameter WRITERESOURCE = "%Development";
 
 Parameter WRITEPERMISSION = "USE";

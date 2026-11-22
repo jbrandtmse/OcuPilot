@@ -1,5 +1,5 @@
 /// <p>SQL statements' Clean stale statements (Story 21.6, AD-6, AD-51, AD-53, AD-58): remove the namespace's stale entries from its statement index,
-/// the statements that no class or routine in the namespace still holds. Two callers reach it: the page's own Clean stale statements action, on
+/// the statements that no class or routine in the namespace still holds and whose plan is not frozen. Two callers reach it: the page's own Clean stale statements action, on
 /// the target <code>*</code>, and the agent's proposal and confirmation. The vendor's clean takes no argument, so the target <code>*</code> is the
 /// namespace's index, whose fresh read answers the stale entries it holds; an index that holds none is refused at the fresh read, for both callers,
 /// before anything is written. A removed entry does not come back, so its governance key ships disabled.</p>
@@ -10,7 +10,7 @@ Parameter TOOLNAME = "explorer.sqlstatements.clean";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.ExplorerSqlStatementList";
 
-Parameter DESCRIPTION = "Propose cleaning this namespace's statement index: removing the statements that no class or routine in the namespace still holds. It changes nothing by itself: it answers a proposal the user reviews and confirms. Send the literal '*' as the target. An index that holds no stale statements is refused.";
+Parameter DESCRIPTION = "Propose cleaning this namespace's statement index: removing the statements that no class or routine in the namespace still holds. A statement whose plan is frozen stays. It changes nothing by itself: it answers a proposal the user reviews and confirms. Send the literal '*' as the target. An index that holds no stale statements is refused.";
 
 Parameter WRITETYPE = "CLEAN";
 

@@ -756,6 +756,8 @@ const ATELIER_REFUSALS = [
   ['REASONSTATEMENTCLEARERROR', 'sqlStatementClearErrorConsequence'],
   ['REASONSTATEMENTCLEAN', 'sqlStatementCleanConsequence'],
   ['REASONCACHEDQUERYPURGE', 'sqlCachedQueryPurgeConsequence'],
+  ['REASONSTATEMENTNOTFOUND', 'sqlStatementNotFoundReason'],
+  ['REASONCACHEDQUERYNOTFOUND', 'sqlCachedQueryNotFoundReason'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {

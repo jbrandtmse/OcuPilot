@@ -12,11 +12,11 @@ ClassMethod GateClass() As %String
     Quit ..#GATE
 }
 
-ClassMethod StatementCall(pType As %String, pHash As %String) As %Status
+ClassMethod StatementCall(pType As %String, pHash As %String, pNamespace As %String) As %Status
 {
     Set ^||OcuPilotSqlTuningCalls = $Get(^||OcuPilotSqlTuningCalls) + 1
     If $Get(^||OcuPilotSqlTuningRefuse) '= "" Quit $$$ERROR($$$GeneralError, ^||OcuPilotSqlTuningRefuse)
-    Quit ##super(pType, pHash)
+    Quit ##super(pType, pHash, pNamespace)
 }
 
 }

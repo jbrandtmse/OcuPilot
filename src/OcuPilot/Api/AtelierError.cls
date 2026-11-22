@@ -363,6 +363,11 @@ Parameter STATEMENTNOSTALE = "SQL.STATEMENT.NOSTALE";
 
 Parameter REASONSTATEMENTNOSTALE = "This namespace's statement index holds no stale statements.";
 
+/// <p>The sentences the 404 <code>PORT.NOTFOUND</code> of an absent statement hash and of an absent cached-query class state (Story 21.6).</p>
+Parameter REASONSTATEMENTNOTFOUND = "This namespace holds no SQL statement with that hash.";
+
+Parameter REASONCACHEDQUERYNOTFOUND = "This namespace holds no cached query by that name.";
+
 /// <p>The consequence codes the proposal card and the dialog of each statement write and of the cached-query purges carry (Story 21.6).</p>
 Parameter STATEMENTFREEZE = "SQL.STATEMENT.FREEZE";
 

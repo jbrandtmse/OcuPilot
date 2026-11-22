@@ -142,6 +142,41 @@ Method TestAnotherNamespacesCachedQueriesSurviveTheNamespacePurge()
     Do $$$AssertEquals(tStatus _ "|" _ $ClassMethod(..#PURGE, "Count", "OcuProbe216.T1") _ "|" _ ..CountIn(tOther, "OcuProbe216.T1") _ "|" _ ..CountIn(tOther, "OcuProbe216.T2"), "200|0|2|1", "the purge of " _ ..#NAMESPACE _ " removes its queries and leaves the queries of " _ tOther)
 }
 
+/// <p>AC3. A statement no class or routine holds whose plan is frozen is not stale: freezing the probe's stale statement takes it out of the index's
+/// stale count, and the screen's clean leaves it in the index.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.STALECOUNTQUERY</code> counts frozen statements -> the count assertion goes red.</p>
+Method TestAFrozenStatementNoClassHoldsIsNotStale()
+{
+    Set tWrite = ..#WRITE
+    Kill tSettings
+    Set tSettings($Parameter(..#CLEAN, "TOOLNAME")) = "enabled"
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings), "the clean, whose key ships disabled, is enabled through its stored setting")
+    Set tStale = $ClassMethod(..#PROBE, "HashOf", ..#NAMESPACE, "SELECT A , B FROM")
+    Set tBefore = ..StaleIn(..#NAMESPACE)
+    Do $ClassMethod(tWrite, "Call", ..#NAMESPACE, "freeze", tStale)
+    Set tFacts = $ClassMethod(..#PROBE, "Facts", ..#NAMESPACE, tStale)
+    Do $$$AssertEquals(tFacts.PlanState _ "|" _ (tFacts.Location = "") _ "|" _ (tBefore - ..StaleIn(..#NAMESPACE)), "Frozen/Explicit|1|1", "the frozen statement no class holds leaves the stale count")
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Do $SYSTEM.SQL.Statement.Clean()
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Facts", ..#NAMESPACE, tStale).Present, 1, "and the vendor's clean, which the tool calls, leaves it in the index")
+}
+
+/// <p>The stale statements the port's <code>STATEMENT</code> read of <code>*</code> counts in <var>pNamespace</var>, or <code>-1</code> when it answers none.</p>
+ClassMethod StaleIn(pNamespace As %String) As %Integer
+{
+    Kill tQuery
+    Set tQuery("namespace") = pNamespace
+    Set tQuery("id") = "*"
+    Set tSC = ##class(OcuPilot.Port.SqlPort).Invoke("Statements", "STATEMENT", .tQuery, "", .tAnswer, .tHttp, .tFault)
+    Quit $Select($IsObject($Get(tAnswer)): tAnswer.Stale, 1: -1)
+}
+
 /// <p>The cached queries the port's <code>PURGE</code> read says <var>pId</var> holds in <var>pNamespace</var>, or <code>-1</code> when it answers none.</p>
 ClassMethod CountIn(pNamespace As %String, pId As %String) As %Integer
 {

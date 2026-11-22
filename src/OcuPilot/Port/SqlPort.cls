@@ -98,10 +98,11 @@ Parameter CACHEDQUERYPATTERN = "^%sqlcq\.[A-Za-z0-9_%-]{1,64}\.cls[0-9]{1,12}$";
 
 Parameter CACHEDQUERYPREFIX = "%sqlcq.";
 
-/// <p>The statement index's row count, and the count of its entries no class or routine holds, in the target namespace.</p>
+/// <p>The statement index's row count, and the count of its entries no class or routine holds whose plan is not frozen, which are the
+/// entries the vendor's clean removes, in the target namespace.</p>
 Parameter INDEXCOUNTQUERY = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATEMENTS";
 
-Parameter STALECOUNTQUERY = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATEMENTS s WHERE NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.STATEMENT_LOCATIONS l WHERE l.Statement = s.Hash)";
+Parameter STALECOUNTQUERY = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATEMENTS s WHERE (s.Frozen IS NULL OR s.Frozen NOT IN (1, 2)) AND NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.STATEMENT_LOCATIONS l WHERE l.Statement = s.Hash)";
 
 /// <p>The distinct cached-query locations of the namespace, of one table (bound with its relation key,
 /// <method>OcuPilot.Port.AtelierPort.CatalogRelation</method>) and of one class, each bound with its prefix.</p>
@@ -869,7 +870,7 @@ ClassMethod CountOf(pNamespace As %String, pText As %String, pValues As %Dynamic
 /// <parameter>OcuPilot.Port.AtelierPort.CATALOGSTATEMENTINDEXQUERY</parameter> with the hash bound, 404 <code>PORT.NOTFOUND</code>
 /// when the index holds none; a list of <code>Tables</code> cut at <parameter>MAXCELL</parameter> characters is the internal fault,
 /// since a cut list could hide a table. For <parameter>ALLID</parameter>, <code>{Namespace, Statements, Stale}</code>: how many
-/// statements the index holds and how many of them no class or routine holds a location of. A statement's <code>Executions</code> and
+/// statements the index holds and how many of them no class or routine holds a location of and are not frozen. A statement's <code>Executions</code> and
 /// <code>AverageTime</code> are numbers, or <code>""</code> where it has none.</p>
 ClassMethod StatementRead(pNamespace As %String, pId As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
@@ -890,7 +891,7 @@ ClassMethod StatementRead(pNamespace As %String, pId As %String, Output pAnswer 
     If $$$ISERR(tSC) Quit tSC
     Set tRows = tRaw.%Get("rows")
     If (tRows.%Size() '= 1) || (tRows.%Get(0).%Get(0) '= pId) {
-        Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ##class(OcuPilot.Port.AtelierPort).#REASONCATALOGNOTFOUND, .pHttpStatus, .pFault)
+        Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ##class(OcuPilot.Api.AtelierError).#REASONSTATEMENTNOTFOUND, .pHttpStatus, .pFault)
     }
     Set tRow = tRows.%Get(0)
     Set tTables = tRow.%Get(14)
@@ -945,51 +946,54 @@ ClassMethod StatementWrite(pNamespace As %String, pType As %String, pId As %Stri
     Quit $$$OK
 }
 
-/// <p>The one vendor call of statement write <var>pType</var> on <var>pHash</var>, in the current namespace, as its status:
+/// <p>The one vendor call of statement write <var>pType</var> on <var>pHash</var>, in <var>pNamespace</var>, as its status:
 /// <code>FreezeStatement</code>, <code>UnfreezeStatement</code> and <code>ClearStatement</code> with the hash alone, the plan
 /// error update with the hash and an empty error, and <code>Clean</code>, which takes no argument and cleans the namespace's stale
-/// entries. A call that answers no status is <code>$$$OK</code>. Overridable so a fixture can feed an error status; production
-/// overrides none.</p>
-ClassMethod StatementCall(pType As %String, pHash As %String) As %Status
+/// entries. A call that answers no status is <code>$$$OK</code>. The namespace is switched by save and restore around the vendor
+/// call alone, restored first when it throws, and the throw is passed on. Overridable so a fixture can feed an error status;
+/// production overrides none.</p>
+ClassMethod StatementCall(pType As %String, pHash As %String, pNamespace As %String) As %Status
 {
-    If pType = ..#TYPEFREEZE Quit $SYSTEM.SQL.Statement.FreezeStatement(pHash)
-    If pType = ..#TYPEUNFREEZE Quit $SYSTEM.SQL.Statement.UnfreezeStatement(pHash)
-    If pType = ..#TYPECLEARSTATISTICS Quit $SYSTEM.SQL.Statement.ClearStatement(pHash)
-    If pType = ..#TYPECLEARERROR {
-        Do UpdateSQLIndex^%SYS.SQLSRV(pHash, "")
-        Quit $$$OK
+    Set tStatus = $$$ERROR($$$GeneralError, "no statement call for " _ pType)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        If pType = ..#TYPEFREEZE {
+            Set tStatus = $SYSTEM.SQL.Statement.FreezeStatement(pHash)
+        } ElseIf pType = ..#TYPEUNFREEZE {
+            Set tStatus = $SYSTEM.SQL.Statement.UnfreezeStatement(pHash)
+        } ElseIf pType = ..#TYPECLEARSTATISTICS {
+            Set tStatus = $SYSTEM.SQL.Statement.ClearStatement(pHash)
+        } ElseIf pType = ..#TYPECLEARERROR {
+            Do UpdateSQLIndex^%SYS.SQLSRV(pHash, "")
+            Set tStatus = $$$OK
+        } ElseIf pType = ..#TYPECLEAN {
+            Do $SYSTEM.SQL.Statement.Clean()
+            Set tStatus = $$$OK
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
     }
-    If pType = ..#TYPECLEAN {
-        Do $SYSTEM.SQL.Statement.Clean()
-        Quit $$$OK
-    }
-    Quit $$$ERROR($$$GeneralError, "no statement call for " _ pType)
+    Quit tStatus
 }
 
 /// <p>The call of <var>pType</var> in <var>pNamespace</var>: <method>StatementCall</method> with <var>pArgument</var>, a hash, or
-/// <parameter>PURGECLASS</parameter>'s <code>PurgeCachedQueries</code> with <var>pArgument</var>, the qualifiers, and
-/// <var>pNamespace</var>, answering the call's own status as <var>pStatus</var>. The namespace is switched by save and restore,
-/// and the switched region calls vendor classes only, which is why a purge names its namespace to the purge instead of being called
-/// from it; the returned status is an unexpected failure.</p>
+/// <parameter>PURGECLASS</parameter>'s <code>PurgeCachedQueries</code> with <var>pArgument</var>, the qualifiers, answering the call's
+/// own status as <var>pStatus</var>. Each call is named <var>pNamespace</var> and switches to it around its vendor call alone, so no
+/// OcuPilot class is called while switched; the returned status is an unexpected failure.</p>
 ClassMethod Applied(pNamespace As %String, pType As %String, pArgument, Output pStatus As %Status) As %Status [ Private ]
 {
     Set pStatus = $$$OK
     Set tSC = $$$OK
-    If pType = ..#TYPEPURGEQUERIES {
-        Try {
-            Set pStatus = $ClassMethod(..#PURGECLASS, "PurgeCachedQueries", pArgument, pNamespace)
-        } Catch ex {
-            Set tSC = $$$ERROR($$$GeneralError, "the write raised " _ ex.Name)
-        }
-        Quit tSC
-    }
-    Set tOrigNS = $NAMESPACE
     Try {
-        Set $NAMESPACE = pNamespace
-        Set pStatus = ..StatementCall(pType, pArgument)
-        Set $NAMESPACE = tOrigNS
+        If pType = ..#TYPEPURGEQUERIES {
+            Set pStatus = $ClassMethod(..#PURGECLASS, "PurgeCachedQueries", pArgument, pNamespace)
+        } Else {
+            Set pStatus = ..StatementCall(pType, pArgument, pNamespace)
+        }
     } Catch ex {
-        Set $NAMESPACE = tOrigNS
         Set tSC = $$$ERROR($$$GeneralError, "the write raised " _ ex.Name)
     }
     Quit tSC
@@ -1024,7 +1028,7 @@ ClassMethod PurgeTarget(pNamespace As %String, pId As %String, Output pKind As %
         Set tSC = ..CountOf(pNamespace, ..#PURGENAMESPACEQUERY, [(pId _ ".")], .pCount, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit tSC
         If pCount = 0 {
-            Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, $Parameter(tPort, "REASONCATALOGNOTFOUND"), .pHttpStatus, .pFault)
+            Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ##class(OcuPilot.Api.AtelierError).#REASONCACHEDQUERYNOTFOUND, .pHttpStatus, .pFault)
         }
         Set pKind = "class"
         Set pName = pId

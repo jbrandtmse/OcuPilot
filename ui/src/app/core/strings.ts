@@ -5555,6 +5555,8 @@ export const STRINGS = {
   sqlStatementRefusalNoError: 'This statement has no plan error.',
   sqlStatementRefusalNoStale: 'This namespace\'s statement index holds no stale statements.',
   sqlStatementRefusalVendor: 'The instance did not apply this change to the statement.',
+  sqlStatementNotFoundReason: 'This namespace holds no SQL statement with that hash.',
+  sqlCachedQueryNotFoundReason: 'This namespace holds no cached query by that name.',
   // Story 18.6: License key and License servers -- their titles, License key's twelve field labels
   // beyond License usage's "License units", the authorization-key line, the activate dialog's
   // labels, validity, restart and reduction sentences and consequence, Print and its printed-by
