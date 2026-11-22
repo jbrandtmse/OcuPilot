@@ -338,6 +338,9 @@ const KERNEL_REFUSALS = [
   // Story 21.5: a global that holds OcuPilot's own data or the instance's protected system data, which either caller is refused changing or
   // deleting, and which the Globals list and the node page draw on the action before a click for a global OcuPilot's own name begins.
   ['PROTECTEDGLOBAL', 'globalRefusalProtected'],
+  // Story 24.15: the credential an enabled agent definition reads its provider key from, whose remove and password change the agent is refused
+  // when proposed and a person is not.
+  ['PROVIDERCREDENTIAL', 'credentialRefusalProvider'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -351,7 +354,8 @@ test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings
     assert.ok(experience.includes(`"${kernel[1]}"`), `${code}REASON is published in EXPERIENCE.md's Fixed strings table`);
     assert.equal(kernel[1], stringValue(key), `${code}REASON and ${key} are one published sentence`);
     assert.ok(prohibited.includes(`If pCode = ..#${code} Quit ..#${code}REASON`), `ReasonFor answers ${code} with its parameter`);
-    assert.ok(!kernel[1].toLowerCase().includes('agent'), `${code}REASON names no caller: ${kernel[1]}`);
+    // "agent definition" names the stored definition the credential belongs to, never the caller that was refused.
+    assert.ok(!kernel[1].toLowerCase().replaceAll('agent definition', '').includes('agent'), `${code}REASON names no caller: ${kernel[1]}`);
   }
 });
 

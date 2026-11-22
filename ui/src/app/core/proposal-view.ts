@@ -494,6 +494,9 @@ export const CONSEQUENCE_INTEROPPARTNERREMOVE = 'INTEROP.PARTNER.REMOVE';
 /** Story 24.15: a system default setting's removal, and an added or changed default's reach into a running production. */
 export const CONSEQUENCE_INTEROPDEFAULTSETTINGREMOVE = 'INTEROP.DEFAULTSETTING.REMOVE';
 export const CONSEQUENCE_INTEROPDEFAULTSETTINGPENDING = 'INTEROP.DEFAULTSETTING.PENDING';
+/** Story 24.15: a credential's removal, and a changed credential's or password's reach into what signs in with it. */
+export const CONSEQUENCE_INTEROPCREDENTIALREMOVE = 'INTEROP.CREDENTIAL.REMOVE';
+export const CONSEQUENCE_INTEROPCREDENTIALCHANGE = 'INTEROP.CREDENTIAL.CHANGE';
 /** Story 20.6: a host test, which sends a real message through the running production. */
 export const CONSEQUENCE_INTEROPTESTSENDS = 'INTEROP.TEST.SENDS';
 /** Story 20.27: a data transformation test, which runs the transformation's code on this instance as the person. */
@@ -723,6 +726,9 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 24.15: a system default setting's removal and its reach into a running production, each published once.
   if (code === CONSEQUENCE_INTEROPDEFAULTSETTINGREMOVE) return STRINGS.interopDefaultSettingRemoveConsequence;
   if (code === CONSEQUENCE_INTEROPDEFAULTSETTINGPENDING) return STRINGS.interopDefaultSettingPendingConsequence;
+  // Story 24.15: a credential's removal and its change, each published once.
+  if (code === CONSEQUENCE_INTEROPCREDENTIALREMOVE) return STRINGS.x509DeleteConsequence;
+  if (code === CONSEQUENCE_INTEROPCREDENTIALCHANGE) return STRINGS.interopCredentialChangeConsequence;
   // Story 20.6: a host test's sentence, the one its own dialog shows.
   if (code === CONSEQUENCE_INTEROPTESTSENDS) return STRINGS.interopTestSendsConsequence;
   // Story 20.27: a data transformation test's sentence, the one its own dialog shows.

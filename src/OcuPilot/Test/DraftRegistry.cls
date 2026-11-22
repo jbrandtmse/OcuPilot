@@ -86,7 +86,7 @@ Parameter REFUSEDDRAFTS = "security.encryptionkeyfile.create,security.encryption
 
 /// <p>The secrets a screen declares that one of its tools never sends, as <code>&lt;tool&gt;=&lt;name&gt;</code> entries, comma-separated: the tool's synthetic row carries no
 /// probe for one, since its own write sends a body that has no such member (Story 21.36: Task Manager email's setting set beside the mail password's tool).</p>
-Parameter UNSENTSECRETS = "tasks.mail.set=AuthPassword";
+Parameter UNSENTSECRETS = "tasks.mail.set=AuthPassword,interop.credentials.update=Password,interop.credentials.remove=Password";
 
 Method OnBeforeOneTest() As %Status
 {

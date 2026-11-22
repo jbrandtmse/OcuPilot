@@ -232,6 +232,7 @@ XData Titles
 "sqlShellSettingsLabel": "SQL Shell settings",
 "sslFormLabel": "SSL/TLS configuration",
 "sslListLabel": "SSL/TLS",
+"sslTabCredentials": "Credentials",
 "startupSettingsLabel": "Startup settings",
 "superserverListLabel": "Superservers",
 "systemAlertsLabel": "System alerts",

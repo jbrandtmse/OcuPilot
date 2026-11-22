@@ -234,6 +234,7 @@ XData Elsewhere
 <screen name="InteropBusinessPartnerList"/>
 <screen name="InteropDefaultSettingList"/>
 <screen name="InteropDefaultSettingDiff"/>
+<screen name="InteropCredentialList"/>
 <screen name="InteropItemClassTab"/>
 <screen name="InteropItemJobTab"/>
 <screen name="InteropItemList"/>
