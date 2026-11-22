@@ -737,3 +737,6 @@
 2026-11-22T15:50:06Z	Story 24.15	fresh_check_started	scope=batch3 tree=740a904a4
 2026-11-22T16:04:30Z	Story 24.15	fresh_check_passed	scope=batch3 tree=740a904a4 classes=17cls_164tests_first_run reverse=4cls_19tests browser=schedules+credentials+default-settings+explorer-source-control+a11y_23/23 smoke=PASSED README_crosscheck=instance_346_keys_96_false
 2026-11-22T16:04:30Z	Story 24.15	code_head_pushed	scope=batch3 sha=740a904a4 run=45041714141
+2026-11-22T16:06:19Z	Story 24.15	spine_amended	commit=94a8ddc2d AD-62_item18+AD-35+AD-10+AD-15+AD-22 add-only(+9/-0) push=after_batch3_merge
+2026-11-22T16:40:52Z	Story 24.15	ci_green	scope=batch3 sha=740a904a4 run=45041714141
+2026-11-22T16:40:52Z	Story 24.15	story_done	batches=1,1b,2,3 tracker=done spine=94a8ddc2d
