@@ -322,6 +322,66 @@ Method TestADelimitedSchemaAndItsTablesAreTunedOnBothCallers()
     Do $$$AssertEquals($ListLength($ClassMethod(..#PROBE, "TablesOf", ..#NAMESPACE, tSchema)) _ "|" _ $ClassMethod(..#PROBE, "CachedQueryCount", ..#NAMESPACE, tSchema), "0|0", "no table or cached query of the schema is left")
 }
 
+/// <p>AC3. Two tables whose names hold a double quote, <code>t"x</code> and <code>u"y</code>, in the schema
+/// <parameter>OcuPilot.Test.SqlTuningProbe.QUOTEDSCHEMA</parameter>, whose name holds one too, are collected, cleared and tuned by the agent's confirmed
+/// proposal and by the screen's action, each reading the statistics as the rows. Then the copy-out script of each write is run for the same names, over
+/// tables made again, and does what the write does: the table tune collects the rows, the clear removes the fixed size, the schema tune clears the
+/// fixed sizes of both collected tables and keeps their rows.</p>
+/// <p>Mutation (Rule 19): <code>SqlPort.Literal</code> stops doubling <code>"</code> -> a copy-out script no longer parses as the name and its assertion
+/// goes red; <code>OcuPilot.Test.SqlTuningProbe.SqlName</code> stops doubling it -> the probe cannot be made and the assertions go red.</p>
+Method TestTablesAndASchemaWhoseNamesHoldAQuoteAreTunedOnBothCallers()
+{
+    Set tSchema = $Parameter(..#PROBE, "QUOTEDSCHEMA")
+    Set tPort = ..#FIXTURE
+    Do $$$AssertTrue(tSchema [ """", "the probe schema's name holds a double quote")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 0, 4, .tFirst, "t""x", tSchema), "a table whose name holds a quote is made in the schema whose name does")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 0, 6, .tSecond, "u""y", tSchema), "and a second")
+    Do $$$AssertTrue($ClassMethod(..#PROBE, "CachedQueryCount", ..#NAMESPACE, tSchema) > 0, "the cached-query count reads the queries the tables' inserts left, so its 0 at the end is a purge")
+    Do $$$AssertEquals($Piece(..Stats(tFirst), " ", 1) _ "|" _ $Piece(..Stats(tSecond), " ", 1), "none|none", "both resolve, with no statistics collected yet")
+    Set tConfirm = ..Agent(..#TUNETOOL, tFirst, {}, , .tProposal, .tResult)
+    Do $$$AssertEquals(tConfirm _ "|" _ ..Stats(tFirst), "200 |collected 4 0", "the agent's collection of the first table reads its rows: " _ tConfirm)
+    Set tStatus = ..Act(..#TABLESCREEN, "tune", tSecond, "", , .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ ..Stats(tSecond), "200|collected 6 0", "the screen's collection of the second reads its rows")
+    For tTable = tFirst, tSecond Do $$$AssertStatusOK($ClassMethod(..#PROBE, "FixExtent", ..#NAMESPACE, tTable, 777), "a fixed size is set on " _ tTable)
+    Set tStatus = ..Act(..#TABLESCREEN, "clear-statistics", tFirst, "", , .tAnswer)
+    Do $$$AssertEquals($ClassMethod(..#HELPERS, "Verdict", tStatus, tAnswer) _ "|" _ ..Stats(tFirst), "200 |collected 4 0", "the screen's removal leaves the first table with none: " _ $ClassMethod(..#HELPERS, "Problem", tAnswer))
+    Set tConfirm = ..Agent(..#CLEARTOOL, tSecond, {}, , .tProposal, .tResult)
+    Do $$$AssertEquals(tConfirm _ "|" _ ..Stats(tSecond), "200 |collected 6 0", "the agent's removal leaves the second with none: " _ tConfirm)
+    For tTable = tFirst, tSecond Do $$$AssertStatusOK($ClassMethod(..#PROBE, "FixExtent", ..#NAMESPACE, tTable, 777), "a fixed size is set again on " _ tTable)
+    Set tConfirm = ..Agent(..#SCHEMATOOL, tSchema, {"ClearValues": true}, , .tProposal, .tResult)
+    Do $$$AssertEquals(tConfirm _ "|" _ ..Stats(tFirst) _ "|" _ ..Stats(tSecond), "200 |collected 4 0|collected 6 0", "the agent's tune of the schema clears both tables' fixed sizes: " _ tConfirm)
+    For tTable = tFirst, tSecond Do $$$AssertStatusOK($ClassMethod(..#PROBE, "FixExtent", ..#NAMESPACE, tTable, 777), "a fixed size is set on " _ tTable _ " once more")
+    Set tStatus = ..Act(..#SCHEMASCREEN, "tune", tSchema, {"ClearValues": "true"}, , .tAnswer)
+    Do $$$AssertEquals($ClassMethod(..#HELPERS, "Verdict", tStatus, tAnswer) _ "|" _ ..Stats(tFirst) _ "|" _ ..Stats(tSecond), "200 |collected 4 0|collected 6 0", "and the screen's clears both: " _ $ClassMethod(..#HELPERS, "Problem", tAnswer))
+    ; the copy-out scripts, over tables made again so that no statistic is held
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 0, 4, .tFirst, "t""x", tSchema), "the first table is made again")
+    Do $$$AssertEquals($Piece(..Stats(tFirst), " ", 1), "none", "it holds no statistics")
+    Set tQuery("id") = tFirst
+    Set tScript = $ClassMethod(tPort, "Snippet", "Tables", "TUNE", .tQuery).%Get(0).%Get("text")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RunScript", ..#NAMESPACE, tScript), "the table tune's script runs: " _ tScript)
+    Do $$$AssertEquals(..Stats(tFirst), "collected 4 0", "and collects the first table's rows")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "FixExtent", ..#NAMESPACE, tFirst, 777), "a fixed size is set on it")
+    Set tScript = $ClassMethod(tPort, "Snippet", "Tables", "CLEARSTATS", .tQuery).%Get(0).%Get("text")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RunScript", ..#NAMESPACE, tScript), "the removal's script runs: " _ tScript)
+    Do $$$AssertEquals(..Stats(tFirst), "collected 4 0", "and removes the fixed size")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 0, 4, .tFirst, "t""x", tSchema), "the first table is made again")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 0, 6, .tSecond, "u""y", tSchema), "and the second")
+    For tTable = tFirst, tSecond {
+        Do $ClassMethod(..#READS, "Statistics", "collect", tTable)
+        Do $$$AssertStatusOK($ClassMethod(..#PROBE, "FixExtent", ..#NAMESPACE, tTable, 777), "a collected table's fixed size is set on " _ tTable)
+    }
+    Do $$$AssertEquals(..Stats(tFirst) _ "|" _ ..Stats(tSecond), "fixed 777 1|fixed 777 1", "both hold a fixed size")
+    Set tQuery("id") = tSchema
+    Set tQuery("ClearValues") = "true"
+    Set tScript = $ClassMethod(tPort, "Snippet", "Tables", "TUNESCHEMA", .tQuery).%Get(0).%Get("text")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RunScript", ..#NAMESPACE, tScript), "the schema tune's script runs: " _ tScript)
+    Do $$$AssertEquals(..Stats(tFirst) _ "|" _ ..Stats(tSecond), "collected 4 0|collected 6 0", "and collects both tables' rows and clears their fixed sizes")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", ..#NAMESPACE), "the probe tables are removed")
+    Do $$$AssertEquals($ListLength($ClassMethod(..#PROBE, "TablesOf", ..#NAMESPACE, tSchema)) _ "|" _ $ClassMethod(..#PROBE, "CachedQueryCount", ..#NAMESPACE, tSchema), "0|0", "no table or cached query of the schema is left")
+}
+
 /// <p>AC3. The table's Info tab and the schema's Tables tab declare the command aliases the story rules, and no other: "table statistics" is not one.</p>
 /// <p>Mutation (Rule 19): add <code>"table statistics"</code> to <class>OcuPilot.Screen.Descriptor.ExplorerSqlSchema</class>'s <code>commandAliases</code>
 /// -> the schema assertion goes red.</p>

@@ -9,7 +9,8 @@
 /// <li><parameter>QUERYSTALE</parameter> reads the first table and had its cached query purged, so the index holds no location for it.</li>
 /// </ul>
 /// <p><method>Table</method> makes Story 21.25's tables, which carry rows and two indices of their own, in <parameter>TABLESCHEMA</parameter> or, given a
-/// name, in <parameter>DELIMITEDSCHEMA</parameter>, whose name holds a space; <method>Remove</method> purges their cached queries and drops them too.</p>
+/// name, in <parameter>DELIMITEDSCHEMA</parameter>, whose name holds a space, or in the schema it is given, such as <parameter>QUOTEDSCHEMA</parameter>,
+/// whose name holds a double quote; <method>Remove</method> purges their cached queries and drops them too.</p>
 /// <p><method>Remove</method> unfreezes every probe statement and clears its plan error through the vendor calls that set them, purges both tables'
 /// cached queries, then drops both tables. The statement-index entries of the same four texts stay and are reused by the next
 /// <method>Make</method>. <method>MakeOwn</method> runs the one statement over OcuPilot's own table that the own-statement tests judge, in the
@@ -43,6 +44,9 @@ Parameter INDEXC = "IdxC";
 
 /// <p>The schema of the tables <method>Table</method> makes when it is given a name: one SQL reaches only as a delimited identifier.</p>
 Parameter DELIMITEDSCHEMA = "OcuProbe225 Delim";
+
+/// <p>A schema whose name holds a double quote, which SQL reaches only as a delimited identifier with the quote doubled.</p>
+Parameter QUOTEDSCHEMA = "OcuProbe225 Q""s";
 
 /// <p>Create the probe objects in <var>pNamespace</var>, after removing any an earlier run left.</p>
 ClassMethod Make(pNamespace As %String) As %Status
@@ -109,11 +113,12 @@ ClassMethod Remove(pNamespace As %String) As %Status
 /// <p>Create the table <code>OcuProbe225.T</code><var>pNumber</var> in <var>pNamespace</var>, named by <var>pTable</var>, with the columns <code>A</code>,
 /// <code>B</code> and <code>C</code>, the indices <parameter>INDEXB</parameter> and <parameter>INDEXC</parameter> and <var>pRows</var> rows
 /// (Story 21.25), in the schema <parameter>TABLESCHEMA</parameter>. Given <var>pName</var>, the table is <var>pName</var> in
-/// <parameter>DELIMITEDSCHEMA</parameter>, created as a delimited identifier (<method>SqlName</method>), and <var>pNumber</var> is not used. A table of
-/// that name an earlier run left is dropped first. <method>Remove</method> drops every table of both schemas.</p>
-ClassMethod Table(pNamespace As %String, pNumber As %Integer, pRows As %Integer, Output pTable As %String, pName As %String = "") As %Status
+/// <var>pSchema</var> (<parameter>DELIMITEDSCHEMA</parameter> by default), created as a delimited identifier (<method>SqlName</method>), and
+/// <var>pNumber</var> is not used. A table of that name an earlier run left is dropped first. <method>Remove</method> drops every table of the three
+/// schemas.</p>
+ClassMethod Table(pNamespace As %String, pNumber As %Integer, pRows As %Integer, Output pTable As %String, pName As %String = "", pSchema As %String = {..#DELIMITEDSCHEMA}) As %Status
 {
-    Set pTable = $Select(pName = "": ..#TABLESCHEMA _ ".T" _ pNumber, 1: ..#DELIMITEDSCHEMA _ "." _ pName)
+    Set pTable = $Select(pName = "": ..#TABLESCHEMA _ ".T" _ pNumber, 1: pSchema _ "." _ pName)
     Set tSqlName = $Select(pName = "": pTable, 1: ..SqlName(pTable))
     Set tOrigNS = $NAMESPACE
     Set tSC = $$$OK
@@ -227,10 +232,32 @@ ClassMethod IndexEntries(pNamespace As %String, pTable As %String, pIndex As %St
     Quit tCount
 }
 
-/// <p><var>pTable</var>, a <code>Schema.Table</code> name, written as SQL text reads it when either part needs delimiting: each part quoted.</p>
+/// <p><var>pTable</var>, a <code>Schema.Table</code> name, written as SQL text reads it when either part needs delimiting: each part quoted, a double
+/// quote inside a part doubled.</p>
 ClassMethod SqlName(pTable As %String) As %String
 {
-    Quit """" _ $Piece(pTable, ".", 1) _ """.""" _ $Piece(pTable, ".", 2, *) _ """"
+    Quit """" _ $Replace($Piece(pTable, ".", 1), """", """""") _ """.""" _ $Replace($Piece(pTable, ".", 2, *), """", """""") _ """"
+}
+
+/// <p>Run the copy-out script <var>pText</var>, one line at a time, in the process's own variables, as a person pasting it into a terminal would, and
+/// answer its status variable <code>tSC</code> where it sets one. The namespace the caller was in is restored first when a line throws.</p>
+ClassMethod RunScript(pNamespace As %String, pText As %String) As %Status
+{
+    Set zOrig = $NAMESPACE
+    Set zResult = $$$OK
+    Try {
+        Set $NAMESPACE = pNamespace
+        For zI = 1:1:$Length(pText, $Char(10)) {
+            Set zLine = $ZStrip($Piece(pText, $Char(10), zI), "<W")
+            If zLine '= "" Xecute zLine
+        }
+        If $Data(tSC) && ($Get(tSC) '= 1) Set zResult = tSC
+    } Catch zEx {
+        Set $NAMESPACE = zOrig
+        Set zResult = zEx.AsStatus()
+    }
+    Set $NAMESPACE = zOrig
+    Quit zResult
 }
 
 /// <p>The tables of the schema <var>pSchema</var> (<parameter>TABLESCHEMA</parameter> by default) in <var>pNamespace</var>, as a <class>%List</class>
@@ -256,14 +283,14 @@ ClassMethod TablesOf(pNamespace As %String, pSchema As %String = {..#TABLESCHEMA
     Quit tList
 }
 
-/// <p>Purge the cached queries of, then drop, every table of the schemas <parameter>TABLESCHEMA</parameter> and <parameter>DELIMITEDSCHEMA</parameter> in
-/// <var>pNamespace</var>.</p>
+/// <p>Purge the cached queries of, then drop, every table of the schemas <parameter>TABLESCHEMA</parameter>, <parameter>DELIMITEDSCHEMA</parameter> and
+/// <parameter>QUOTEDSCHEMA</parameter> in <var>pNamespace</var>.</p>
 ClassMethod RemoveTables(pNamespace As %String) As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
-        For tSchema = ..#TABLESCHEMA, ..#DELIMITEDSCHEMA {
+        For tSchema = ..#TABLESCHEMA, ..#DELIMITEDSCHEMA, ..#QUOTEDSCHEMA {
             Set tTables = ..TablesOf(pNamespace, tSchema)
             Set $NAMESPACE = pNamespace
             For tI = 1:1:$ListLength(tTables) {

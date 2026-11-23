@@ -253,6 +253,59 @@ Method TestATableWithADelimitedNameIsRebuiltOnBothCallers()
     Do $$$AssertEquals(..Verdict(tStatus, tAnswer) _ "|" _ ..Entries(tTable), "200 |5|5", "the screen's rebuild fills both")
 }
 
+/// <p>AC2. A table whose name holds a double quote, <code>t"x</code> in
+/// <parameter>OcuPilot.Test.SqlTuningProbe.QUOTEDSCHEMA</parameter>, whose name holds one too, has one index rebuilt by the agent's confirmed proposal and
+/// every index by it, one by the screen's row action and every index by its page action, each filling the indices whose globals were killed. Then the
+/// copy-out script of each rebuild is run for the same names and fills the killed indices of that table.</p>
+/// <p>Mutation (Rule 19): <code>SqlPort.Literal</code> stops doubling <code>"</code> -> the copy-out assertions go red;
+/// <code>OcuPilot.Test.SqlTuningProbe.SqlName</code> stops doubling it -> the probe cannot be made and the assertions go red; the rebuild of one index
+/// passes an empty list -> the untouched-index assertion goes red.</p>
+Method TestATableWhoseNameHoldsAQuoteIsRebuiltOnBothCallers()
+{
+    Set tSchema = $Parameter(..#PROBE, "QUOTEDSCHEMA")
+    Set tPort = ..#FIXTURE
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 0, 5, .tTable, "t""x", tSchema), "a table whose name holds a quote is made in the schema whose name does")
+    Do $$$AssertTrue($ClassMethod(..#PROBE, "CachedQueryCount", ..#NAMESPACE, tSchema) > 0, "the cached-query count reads the queries the table's inserts left, so its 0 at the end is a purge")
+    For tRound = 1:1:4 {
+        Do $ClassMethod(..#PROBE, "KillIndex", ..#NAMESPACE, tTable, "IdxB")
+        Do $ClassMethod(..#PROBE, "KillIndex", ..#NAMESPACE, tTable, "IdxC")
+        Do $$$AssertEquals(..Entries(tTable), "0|0", "both indices are empty (round " _ tRound _ ")")
+        If tRound = 1 {
+            Set tConfirm = ..Agent(..#INDEXTOOL, tTable, "IdxB", , .tProposal, .tResult)
+            Set tVerdict = tConfirm _ "|" _ ..Entries(tTable)
+            Set tExpected = "200 |5|0"
+        } ElseIf tRound = 2 {
+            Set tConfirm = ..Agent(..#TABLETOOL, tTable, , , .tProposal, .tResult)
+            Set tVerdict = tConfirm _ "|" _ ..Entries(tTable)
+            Set tExpected = "200 |5|5"
+        } ElseIf tRound = 3 {
+            Set tStatus = ..Act(..#INDEXSCREEN, "rebuild", ..IndexId(tTable, "IdxC"), , .tAnswer)
+            Set tVerdict = ..Verdict(tStatus, tAnswer) _ "|" _ ..Entries(tTable)
+            Set tExpected = "200 |0|5"
+        } Else {
+            Set tStatus = ..Act(..#TABLESCREEN, "rebuild-indices", tTable, , .tAnswer)
+            Set tVerdict = ..Verdict(tStatus, tAnswer) _ "|" _ ..Entries(tTable)
+            Set tExpected = "200 |5|5"
+        }
+        Do $$$AssertEquals(tVerdict, tExpected, "the " _ $Case(tRound, 1: "agent's rebuild of one index", 2: "agent's rebuild of every index", 3: "screen's rebuild of one index", : "screen's rebuild of every index") _ " fills what it names: " _ tVerdict)
+    }
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("id") = ..IndexId(tTable, "IdxB")
+    Do $ClassMethod(..#PROBE, "KillIndex", ..#NAMESPACE, tTable, "IdxB")
+    Do $ClassMethod(..#PROBE, "KillIndex", ..#NAMESPACE, tTable, "IdxC")
+    Set tScript = $ClassMethod(tPort, "Snippet", "Tables", "REBUILD", .tQuery).%Get(0).%Get("text")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RunScript", ..#NAMESPACE, tScript), "the rebuild of one index's script runs: " _ tScript)
+    Do $$$AssertEquals(..Entries(tTable), "5|0", "and fills the named index of that table alone")
+    Set tQuery("id") = tTable
+    Do $ClassMethod(..#PROBE, "KillIndex", ..#NAMESPACE, tTable, "IdxB")
+    Set tScript = $ClassMethod(tPort, "Snippet", "Tables", "REBUILDALL", .tQuery).%Get(0).%Get("text")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RunScript", ..#NAMESPACE, tScript), "the rebuild of every index's script runs: " _ tScript)
+    Do $$$AssertEquals(..Entries(tTable), "5|5", "and fills both")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", ..#NAMESPACE), "the probe table is removed")
+    Do $$$AssertEquals($ListLength($ClassMethod(..#PROBE, "TablesOf", ..#NAMESPACE, tSchema)) _ "|" _ $ClassMethod(..#PROBE, "CachedQueryCount", ..#NAMESPACE, tSchema), "0|0", "no table or cached query of the schema is left")
+}
+
 /// <p>AC2. The table's data map holds its rows and has no index to rebuild: the screen's rebuild of it and the agent's proposal are refused with
 /// the published sentence before any write, and the table's rows stay.</p>
 /// <p>Mutation (Rule 19): the index tool's <code>Holds</code> admits a data map -> both refusals go red.</p>
