@@ -14547,3 +14547,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-25-index-rebuild-and-tune-table.md (rework 4 measurement) | severity: medium | fix-risk: medium | footprint: cross-story
 - evidence: Measured on ocupilot-ci in USER, three sequences on one instance with the residue removed between them: (i) CREATE then DROP of a "-named schema and table with no OcuPilot call breaks SCHEMATA at the DROP TABLE of the last table; (ii) OcuPilot's tune, clear statistics and rebuild and (iii) the vendor calls they make leave SCHEMATA at SQLCODE 100 until that DROP
 - 2026-11-23T08:10:50Z status=routed owner=burndown by=orchestrator note=vendor defect candidate; product answers 500 on the SQL schemas list (pinned by AtelierPortCatalog); DropSchema^%apiDDL clears it (internal entry, test probe only)
+
+### DW-2852: The vendor's field outlier setter evaluates its value as an ObjectScript expression
+- source: spec-21-31-fixed-table-statistics.md (Task 0) | severity: low | fix-risk: low | footprint: cross-story
+- evidence: Measured on ocupilot-ci at Story 21.31's Task 0: an outlier value of $Increment(^X) passed to the vendor's field selectivity setter ran (^X incremented)
+- 2026-11-23T13:39:12Z status=routed owner=burndown by=orchestrator note=vendor defect candidate; OcuPilot quotes every caller value itself so the caller's text never runs
