@@ -14501,11 +14501,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-2.md (review 672390e1c) | severity: low | fix-risk: low | footprint: cross-story
 - evidence: openReview always opens 'typed-name' (screen-action-handler.ts:1891) and CHECKED_SET_DIALOGS routes discard there
 - 2026-11-23T07:59:57Z status=decision-pending owner=burndown by=epic-24-runner note=UX ruling: which confirm dialog a reversible checked-set write uses
+- 2026-11-23T08:16:47Z status=routed owner=burndown by=orchestrator note=UX ruling: discard is reversible (a discarded header can still be resubmitted), so it confirms through the ordinary confirm dialog; the typed-name dialog is for irreversible acts only and delete keeps it; fixed in 24.16 Batch 3's first pass if it is a one-line dialog choice with its spec updated
 
 ### DW-2850: Edit and resubmit leaves the original body behind with no header naming it, so no purge ever reaches it (vendor behaviour, inference); changing the behaviour or the consequence sentence is a product and string decision
 - source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-2.md (review 672390e1c) | severity: low | fix-risk: med | footprint: in-footprint
 - evidence: ResubmitMessage with a new body points the header at the clone (irislib/Ens/MessageHeader.cls:409-417); the tests delete the old body by hand
 - 2026-11-23T07:59:57Z status=decision-pending owner=burndown by=epic-24-runner note=product ruling: delete the orphaned original body, or say in the consequence sentence that it stays
+- 2026-11-23T08:16:47Z status=routed owner=burndown by=orchestrator note=measure first: if the classic page's edit and resubmit leaves the same orphan, close wontfix-accepted with reopen_if=a purge is found never to reclaim orphaned bodies, after checking whether Batch 1's purge with bodies reclaims them; if the classic page does not orphan it, OcuPilot's clone path is the defect, fixed at burndown
 ### DW-2842: CI's gates job timeout (timeout-minutes 20) is below 1.5x its typical 14.3-minute duration, while the shard jobs are held to 1.5x plus setup, so a uniformly slow runner times the gates job out
 - source: ci run 45048213834 (M ffa2a92e7) | severity: medium | fix-risk: low | footprint: cross-story
 - evidence: Run 45048213834 job 137287353314, gates (node 22.22.3), hit its 20-minute timeout in the document gates step on a runner about 1.4x slower than run 45041714141's node-22 leg (client suite 11.8 against 8.5 min, checkers 3.4 against 2.3, harness 3.5 against 2.3)
