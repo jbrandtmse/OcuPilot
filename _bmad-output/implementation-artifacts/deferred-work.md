@@ -14530,3 +14530,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ARCHITECTURE-SPINE.md:411 says keeping the class up to date rewrites OcuPilot's class definitions; no tool offers or passes it (AD-51 line 1271); the code comment was corrected in review
 - 2026-11-23T06:24:48Z status=open owner=21-25-index-rebuild-and-tune-table by=cr note=lead: delete the clause in the spine (Rule 20); the review stage may not edit the spine
 - 2026-11-23T06:29:48Z status=resolved-by:21-25-index-rebuild-and-tune-table by=lead note=098d97b0a: add-only spine line on AD-10's 21.25 arm (Rule 20)
+
+### DW-2851: A DROP TABLE of the last table in a schema whose name contains " leaves the schema in the SQL index, and every later INFORMATION_SCHEMA.SCHEMATA read in that namespace fails with <SYNTAX>GetNextSubscript+11^%SYS.SQLSEC; DROP SCHEMA cannot remove it
+- source: spec-21-25-index-rebuild-and-tune-table.md (rework 4 measurement) | severity: medium | fix-risk: medium | footprint: cross-story
+- evidence: Measured on ocupilot-ci in USER, three sequences on one instance with the residue removed between them: (i) CREATE then DROP of a "-named schema and table with no OcuPilot call breaks SCHEMATA at the DROP TABLE of the last table; (ii) OcuPilot's tune, clear statistics and rebuild and (iii) the vendor calls they make leave SCHEMATA at SQLCODE 100 until that DROP
+- 2026-11-23T08:10:50Z status=routed owner=burndown by=orchestrator note=vendor defect candidate; product answers 500 on the SQL schemas list (pinned by AtelierPortCatalog); DropSchema^%apiDDL clears it (internal entry, test probe only)

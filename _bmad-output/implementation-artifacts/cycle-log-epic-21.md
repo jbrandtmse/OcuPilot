@@ -1051,3 +1051,4 @@
 2026-11-23T08:10:14Z	Story 21.25	stage_complete	stage=implement(rework4) agent=a5743f258 result=done commit=a500f3bc5 measurement=sequence_i_(vendor_DROP_TABLE_alone)_breaks_SCHEMATA;tools_innocent residue=^rINDEXSQL(schema)_entry;removed_via_DropSchema^%apiDDL(internal) product=schemas_list_answers_500_INTERNAL(pinned) mappingdescriptor=committed bashedits=1_false_positive(sed_-n_read) lines_ended=verified
 2026-11-23T08:10:14Z	Story 21.25	code_head_pushed	sha=a500f3bc5 run=45136354856 missing=none contains=d5974757e
 2026-11-23T08:10:14Z	Story 21.25	gate_step	step=fresh_check+full_sweep+smoke head=a500f3bc5 started=2026-11-23T08:10:14Z dir=e21u/21-25/gate2
+2026-11-23T08:10:50Z	Story 21.25	ledger_routed	id=DW-2851 vendor_defect_candidate(DW-1527/1640_family) owner=burndown by=orchestrator
