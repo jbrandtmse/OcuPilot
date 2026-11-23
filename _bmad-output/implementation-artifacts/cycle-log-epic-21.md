@@ -1026,3 +1026,6 @@
 2026-11-22T23:48:38Z	Story 21.6	merged	feature=c141bd5b5 by=orchestrator
 2026-11-23T04:04:57Z	Story 21.25	stage_ended	stage=implement agent=a7b27a938 result=died(API_403_billing) committed=888433da8(B1),cd7ddadd4(B2) uncommitted=B4(12_modified+5_new,unverified)
 2026-11-23T04:04:57Z	Story 21.25	stage_spawned	stage=implement(resume) spawn_at=2026-11-23T04:04:57Z model=sonnet agent_name=21-25-impl-resume throwaway=rebuilt_from_scratch(04:04Z,LOADERRORS=0) prior_results=void
+2026-11-23T04:46:07Z	Story 21.25	stage_complete	stage=implement(resume) agent=a6786e6be result=done commit=1372d596a(B4) prior_results=re-run_void bashedits=none lines_ended=verified
+2026-11-23T04:46:07Z	Story 21.25	rework_opened	iteration=1 cause=orchestrator_ruling(alias_out,rebuild_+1_sentence,collect_purge_record,keep_class_remeasure_or_drop;vetoes_U-146,U-148)
+2026-11-23T04:46:07Z	Story 21.25	stage_spawned	stage=implement(rework1) spawn_at=2026-11-23T04:46:07Z model=sonnet agent_name=21-25-rework1 prior_lines_ended=verified(a6786e6be)

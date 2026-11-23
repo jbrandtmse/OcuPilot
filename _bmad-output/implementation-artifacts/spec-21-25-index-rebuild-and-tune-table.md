@@ -2,7 +2,7 @@
 title: 'Story 21.25: Index rebuild and tune table'
 type: 'feature'
 created: '2026-11-16'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'b8283da29229ddfb140e5303a9e7e7d04814a9a8'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -166,6 +166,11 @@ After the three changes: regenerate the mirror (`cd ui && node tools/screen-mirr
   - **Scope applied:** Batches 1, 2 and 4 only. Clear fixed statistics sat in Batch 2 and stays in 21.25 (key `false`). Batch 3 moves whole to 21.31: `SETEXTENT`, `SETSELECTIVITY`, `SETMAPSIZE`, `FIELDSTATS`, the three setter tools, `sql-field`, `SqlTableFixedStats`, the set-extent-size page action, the Set selectivity and Set map size row actions, the shape refusals and the matrix rows and AC4 that name them. The Field statistics tab (a read) stays here with `entityType` `class` (as the Fields tab) and no row action.
   - **Strings (measured corrections, verbatim):** Rebuild index: "This index is emptied and built again from the table's rows. The table is locked against changes while it runs." Rebuild all indices: "Every index of this table is emptied and built again from its rows. The table is locked against changes while it runs." Collect statistics: "The table's extent size and each field's selectivity are measured from its current rows. Some of the table's cached queries may be purged, so their plans may change." Keep class up to date: "The class is not recompiled and is not marked out of date." Every other 21.25 string stands as ruled.
   - **Matrix and AC3, restated to the measured observable (intent unchanged):** `Collect statistics` reads the collected extent size N (the port's `ExtentSize` is the collected size, or the fixed size when `HasFixed`). `Keep class up to date` does not change the class's storage `ExtentSize` or its compiled state on this build, so the pass-through of `KeepClassUpToDate` is pinned at the seam and the class is pinned unchanged and up to date.
+- 2026-11-22, orchestrator ruling after Task 0 and the resume (rework 1; vetoes U-146, U-148):
+  - The Field statistics read tab's strings are accepted (veto U-148): its label, eight column words, empty state and three prompts. The tab keeps `entityType` `class`; Story 21.31's plan decides whether it moves to `sql-field`. Nothing else of 21.31's set ships here: the command alias "table statistics" (in `ExplorerSqlSchema`'s `commandAliases`) comes out of 21.25.
+  - Task 0's corrections stand. Rebuild index and Rebuild all indices each gain one sentence, verbatim: "Changes to the table wait meanwhile, and fail if the rebuild outlasts their lock timeout."
+  - Collect statistics' sentence stands; record in Design Notes which cached queries the measurement purged and which it kept.
+  - Keep class up to date is measured once more before it ships: read the class dictionary before and after a collect with the box ticked and unticked (the storage `ExtentSize`, and each property's `Selectivity`, `OutlierSelectivity` and `AverageFieldSize` in its storage property definition). If anything differs, the consequence becomes, verbatim, "The class definition's stored statistics are updated with the measured values. The class is not recompiled." with the measured detail in Design Notes. If nothing differs on this build, the option is dropped from 21.25 entirely (no control with no effect) and recorded as a named limit.
 
 ## Review Triage Log
 
