@@ -4,7 +4,7 @@
 /// <method>Tools</method> declare for it, and is refused every other surface naming the pair it
 /// lacks. Derived legs hold the rosters: every screen opened replaces a classic page whose compiled
 /// <code>RESOURCE</code> the principal holds a declared pair of, and no principal holds a write
-/// tool. The routes are <class>OcuPilot.Test.InteropFloorRoutes</class>', the turn
+/// tool beyond <parameter>ADMINISTRATORWRITES</parameter>. The routes are <class>OcuPilot.Test.InteropFloorRoutes</class>', the turn
 /// <class>OcuPilot.Test.InteropFloorTurn</class>'s, and the pair every surface declares
 /// <class>OcuPilot.Test.InteropFloorOwnPairs</class>'.</p>
 /// <p>It needs <parameter>ARMINGVARIABLE</parameter> armed: <class>OcuPilot.Test.InteropFloorFixture</class>
@@ -85,6 +85,12 @@ Parameter ADMINISTRATORSCREENS = "InteropItemClassTab,InteropItemTestTab,Interop
 /// <p>See <parameter>ADMINISTRATORSCREENS</parameter>.</p>
 Parameter ADMINISTRATORTOOLS = "interop.itemclasses.read,interop.itemtest.read,interop.message.body,interop.message.detail,interop.messagecontents.read,interop.processes.read,interop.purge.read,interop.purgesettings.read,interop.rules.read,interop.transforms.read";
 
+/// <p>The write tools whose declared pairs the Administrator principal holds in full, each one parity with a classic page that opens for that role:
+/// exactly <code>interop.messages.export</code>, whose classic Export dialog checks <code>%Ens_MessageExport:USE</code> beside the Message Viewer's
+/// <code>%Ens_MessageHeader:USE</code>, both of which the role holds, and which declares READ alone on the globals database. Any other write tool
+/// whose pairs this principal holds turns <method>TestTheToolsEachPrincipalHoldsAreItsRoster</method> red.</p>
+Parameter ADMINISTRATORWRITES = "interop.messages.export";
+
 /// <p>The principals' password for this run.</p>
 Property PreparedPassword As %String;
 
@@ -162,7 +168,7 @@ ClassMethod Tools(pKind As %String) As %String
     Set tList = ..#BASETOOLS
     If $ListFind($ListBuild("monitor", "operator", "administrator"), pKind) Set tList = tList _ "," _ ..#MONITORTOOLS
     If $ListFind($ListBuild("operator", "administrator"), pKind) Set tList = tList _ "," _ ..#OPERATORTOOLS
-    If pKind = "administrator" Set tList = tList _ "," _ ..#ADMINISTRATORTOOLS
+    If pKind = "administrator" Set tList = tList _ "," _ ..#ADMINISTRATORTOOLS _ "," _ ..#ADMINISTRATORWRITES
     Quit tList
 }
 
@@ -489,9 +495,10 @@ Method TestEveryOpenScreenMatchesItsClassicPage()
 }
 
 /// <p><b>Tools.</b> Of every tool the registry lists, the ones whose required pairs each principal
-/// holds are exactly its <method>Tools</method> roster, and none of them is a write tool.</p>
+/// holds are exactly its <method>Tools</method> roster, and none of them is a write tool beyond <parameter>ADMINISTRATORWRITES</parameter>.</p>
 /// <p>Mutation: give <class>OcuPilot.Screen.Descriptor.WebAppList</class> an empty pair set ->
-/// <code>webapp.list.read</code> joins every principal's held set and this goes red.</p>
+/// <code>webapp.list.read</code> joins every principal's held set and this goes red. Empty <parameter>ADMINISTRATORWRITES</parameter>, or give
+/// <class>OcuPilot.Screen.Tool.InteropSuspendedDiscard</class> READ alone on the database -> the Administrator's leg goes red.</p>
 Method TestTheToolsEachPrincipalHoldsAreItsRoster()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
@@ -519,7 +526,7 @@ Method TestTheToolsEachPrincipalHoldsAreItsRoster()
             If tTool.kind = "write" Set tWrites = tWrites _ $Select(tWrites = "": "", 1: ",") _ tTool.name
         }
         Do $$$AssertEquals(##class(OcuPilot.Test.DeveloperFloor).Sorted(tHeld), ##class(OcuPilot.Test.DeveloperFloor).Sorted(..Tools(tKind)), tKind _ ": the tools it holds are its roster")
-        Do $$$AssertEquals(tWrites, "", tKind _ ": and it holds no write tool")
+        Do $$$AssertEquals(tWrites, $Select(tKind = "administrator": ..#ADMINISTRATORWRITES, 1: ""), tKind _ ": and it holds no write tool but the declared ones")
     }
 }
 

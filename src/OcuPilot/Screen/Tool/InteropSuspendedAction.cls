@@ -33,6 +33,9 @@ Parameter FINGERPRINTSUBJECT = "Verdicts,Production,Namespace,Reviewed";
 /// <p>One sentence for the model: what the set names, in this action's words.</p>
 Parameter SETDESCRIPTION;
 
+/// <p>The code whose sentence refuses a set none of whose messages can be acted on.</p>
+Parameter NONECODE = "INTEROP.SUSPENDED.NONE";
+
 ClassMethod Endpoint() As %String
 {
     Quit ##class(OcuPilot.Port.InteropPort).#ENDPOINTSUSPENDEDMESSAGES
@@ -111,7 +114,7 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
             Set tLines = tLines _ $Select(tLines = "": "", 1: $Char(10)) _ ..MessageLine(tMessage)
         }
         If 'pFresh.%Get("Eligible") {
-            Set pProblem = ##class(OcuPilot.Port.InteropPort).Sentence("INTEROP.SUSPENDED.NONE") _ $Char(10) _ tLines
+            Set pProblem = ##class(OcuPilot.Port.InteropPort).Sentence(..#NONECODE) _ $Char(10) _ tLines
             Quit
         }
         Set tRow = {}

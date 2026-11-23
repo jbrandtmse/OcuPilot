@@ -315,6 +315,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   },
   // Story 20.6: an item's Test tab's Send test opens the dialog that builds and sends one test request.
   'OcuPilot.Screen.Descriptor.InteropItemTestTab': { test: STRINGS.interopItemTestAction },
+  // Story 24.16 Batch 3: Messages' Export opens the dialog that saves the checked messages' bodies as one file.
+  'OcuPilot.Screen.Descriptor.InteropMessageList': { export: STRINGS.taskExportAction },
   // Story 20.27: Data transformations' Test opens the dialog that runs the selected transformation once on a pasted message.
   'OcuPilot.Screen.Descriptor.InteropTransformList': { test: STRINGS.serverFlagTest },
   // Story 20.22: Item settings' Set value opens its dialog, and its Reset to default returns a setting to its default.

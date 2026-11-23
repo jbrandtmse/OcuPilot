@@ -89,9 +89,9 @@ export function saveCsv(doc: Document, text: string, fileName: string): void {
 /**
  * Save `text` as the file `fileName` with media type `type` (Story 19.13's export to this browser):
  * the same in-document anchor over an object URL as `saveCsv`, so no request leaves the page and
- * nothing navigates (AD-20, AD-47). `doc` is the page's document.
+ * nothing navigates (AD-20, AD-47). `doc` is the page's document. Bytes are saved as they are (Story 24.16 Batch 3's message export).
  */
-export function saveText(doc: Document, text: string, fileName: string, type: string): void {
+export function saveText(doc: Document, text: string | Uint8Array<ArrayBuffer>, fileName: string, type: string): void {
   const url = URL.createObjectURL(new Blob([text], { type }));
   const anchor = doc.createElement('a');
   anchor.href = url;

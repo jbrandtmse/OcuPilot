@@ -87,7 +87,7 @@ Method TestTheScreensDeclareTheirActionsAndTheCap()
     Set tSC = $ClassMethod(..#LISTCLASS, "DeclarationJson", .tList)
     Do $$$AssertStatusOK(tSC, "the Messages list declares JSON")
     If $IsObject($Get(tList)) {
-        Do $$$AssertEquals(tList.rowActions.%Size() _ "|" _ tList.rowActions.%Get(0).id _ "|" _ tList.multiSelect.action _ "|" _ tList.multiSelect.max, "1|resend|resend|" _ $Parameter(..#PORT, "RESENDMAX"), "the list resends its checked rows, at most the port's cap")
+        Do $$$AssertEquals(tList.rowActions.%Size() _ "|" _ tList.rowActions.%Get(0).id _ "|" _ tList.rowActions.%Get(1).id _ "|" _ tList.multiSelect.action _ "|" _ tList.multiSelect.extraActions.%Get(0) _ "|" _ tList.multiSelect.max, "2|resend|export|resend|export|" _ $Parameter(..#PORT, "RESENDMAX"), "the list resends and exports its checked rows, at most the port's cap")
         Do $$$AssertEquals(tList.table.emptyNextKey _ "|" _ tList.table.emptyAgentKey, "|interopMessagesEmptyAgent", "and an empty list says to ask the agent")
     }
     Set tSC = $ClassMethod(..#HEADERCLASS, "DeclarationJson", .tHeader)

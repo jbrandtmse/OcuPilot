@@ -343,10 +343,16 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             If (tTool.class = "OcuPilot.Screen.Tool.InteropMessageEditResend") || (tTool.class = "OcuPilot.Screen.Tool.InteropSuspendedEditResubmit") Set tOwnPairs = $ListBuild($ListBuild("%Ens_MessageContent", "USE"), $ListBuild("%Ens_MessageResend", "USE"), $ListBuild("%Ens_MessageEditResend", "USE"))
             ; Story 24.16: a suspended message's discard and delete declare the classic Suspended Messages page's %Ens_MessageDiscard:USE in its place.
             If (tTool.class = "OcuPilot.Screen.Tool.InteropSuspendedDiscard") || (tTool.class = "OcuPilot.Screen.Tool.InteropSuspendedDelete") Set tOwnPairs = $ListBuild($ListBuild("%Ens_MessageDiscard", "USE"))
+            ; Story 24.16 Batch 3: a message export declares the classic export dialog's %Ens_MessageExport:USE and the Contents pane's %Ens_MessageContent:USE, and READ on the globals database: it writes no database.
+            Set tDatabasePermission = "WRITE"
+            If tTool.class = "OcuPilot.Screen.Tool.InteropMessageExport" {
+                Set tOwnPairs = $ListBuild($ListBuild("%Ens_MessageExport", "USE"), $ListBuild("%Ens_MessageContent", "USE"))
+                Set tDatabasePermission = "READ"
+            }
             For tOwnIndex = 1:1:$ListLength(tOwnPairs) {
                 If '$ListFind(tExpected, $List(tOwnPairs, tOwnIndex)) Set tExpected = tExpected _ $ListBuild($List(tOwnPairs, tOwnIndex))
             }
-            Set tWritePair = $ListBuild(tGlobalResource, "WRITE")
+            Set tWritePair = $ListBuild(tGlobalResource, tDatabasePermission)
             If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropProductionAction") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropJobAction") || (tTool.class = "OcuPilot.Screen.Tool.InteropQueueAbort") || (tTool.class = "OcuPilot.Screen.Tool.InteropQueueMessageAbort") || (tTool.class = "OcuPilot.Screen.Tool.InteropPurgeRun") || (tTool.class = "OcuPilot.Screen.Tool.InteropPurgeSettingSet") {
             ; Story 24.16: the purge declares %Ens_Purge:USE and the purge setting set %Ens_PurgeSettings:WRITE, which its screen already declares, then WRITE on the

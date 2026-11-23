@@ -761,17 +761,46 @@ Parameter OUTCOMEDELETED = "deleted";
 
 Parameter OUTCOMENOTDELETED = "not deleted";
 
+/// <p>The refusals and words of the message export (Story 24.16 Batch 3): no message that can be exported, a review the messages moved past, and a file over the
+/// size OcuPilot sends, each 409; the consequence code the proposal and the dialog carry; the verdicts a message reads before an export
+/// (<parameter>EXPORTVERDICTS</parameter>, in the order they are judged) and the words that follow a message id in an outcome line.</p>
+Parameter EXPORTNONE = "INTEROP.EXPORT.NONE";
+
+Parameter REASONEXPORTNONE = "None of these messages can be exported. Each one's line says why.";
+
+Parameter EXPORTCHANGED = "INTEROP.EXPORT.CHANGED";
+
+Parameter REASONEXPORTCHANGED = "These messages changed after they were reviewed, so nothing was exported. Review them again.";
+
+Parameter EXPORTTOOLARGE = "INTEROP.EXPORT.TOOLARGE";
+
+Parameter REASONEXPORTTOOLARGE = "The file is larger than OcuPilot imports or exports.";
+
+Parameter MESSAGEEXPORT = "INTEROP.MESSAGE.EXPORT";
+
+Parameter REASONMESSAGEEXPORT = "Exporting saves the body of each message marked to be exported to one file in this browser's downloads, in message id order, with the chosen separator between them. Each body exported is recorded in the audit log as viewed. Anyone who can open the file can read the messages.";
+
+Parameter EXPORTVERDICTS = "gone,nobody,notext,export";
+
+Parameter VERDICTEXPORT = "will be exported";
+
+Parameter VERDICTNOTEXT = "its body cannot be exported as text";
+
+Parameter OUTCOMEEXPORTED = "exported";
+
+Parameter OUTCOMENOTEXPORTED = "not exported";
+
 /// <p>The refusals the port answers with, as a <class>%List</class>: every code that is not a
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..ScheduleCodes() _ ..PurgeCodes() _ ..SuspendedCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..StartupCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..ScheduleCodes() _ ..PurgeCodes() _ ..SuspendedCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..ExportCodes() _ ..StartupCodes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP, ..#SUSPENDEDRESUBMIT, ..#SUSPENDEDEDIT, ..#SUSPENDEDDISCARD, ..#SUSPENDEDDELETE)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP, ..#SUSPENDEDRESUBMIT, ..#SUSPENDEDEDIT, ..#SUSPENDEDDISCARD, ..#SUSPENDEDDELETE, ..#MESSAGEEXPORT)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -955,6 +984,13 @@ ClassMethod MessageCodes() As %List
     Quit $ListBuild(..#MESSAGECONTENTS, ..#RESENDNONE, ..#RESENDCHANGED, ..#EDITNOTEDITABLE, ..#EDITNOCHANGE, ..#EDITFIELD, ..#EDITSECRET, ..#EDITVALUE)
 }
 
+/// <p>The message export's refusals (Story 24.16 Batch 3), as a <class>%List</class>: none to export, a moved review and a file over the cap. The consequence code is
+/// <method>ConsequenceCodes</method>'s.</p>
+ClassMethod ExportCodes() As %List
+{
+    Quit $ListBuild(..#EXPORTNONE, ..#EXPORTCHANGED, ..#EXPORTTOOLARGE)
+}
+
 /// <p>The words that say <var>pVerdict</var>, one of <parameter>VERDICTS</parameter>, or <code>""</code> for any other.</p>
 ClassMethod VerdictSentence(pVerdict As %String) As %String
 {
@@ -967,6 +1003,8 @@ ClassMethod VerdictSentence(pVerdict As %String) As %String
     If pVerdict = "resubmit" Quit ..#VERDICTRESUBMIT
     If pVerdict = "discard" Quit ..#VERDICTDISCARD
     If pVerdict = "delete" Quit ..#VERDICTDELETE
+    If pVerdict = "export" Quit ..#VERDICTEXPORT
+    If pVerdict = "notext" Quit ..#VERDICTNOTEXT
     Quit ""
 }
 
@@ -1136,6 +1174,10 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#SUSPENDEDEDIT Quit ..#REASONSUSPENDEDEDIT
     If pCode = ..#SUSPENDEDDISCARD Quit ..#REASONSUSPENDEDDISCARD
     If pCode = ..#SUSPENDEDDELETE Quit ..#REASONSUSPENDEDDELETE
+    If pCode = ..#EXPORTNONE Quit ..#REASONEXPORTNONE
+    If pCode = ..#EXPORTCHANGED Quit ..#REASONEXPORTCHANGED
+    If pCode = ..#EXPORTTOOLARGE Quit ..#REASONEXPORTTOOLARGE
+    If pCode = ..#MESSAGEEXPORT Quit ..#REASONMESSAGEEXPORT
     Quit ""
 }
 

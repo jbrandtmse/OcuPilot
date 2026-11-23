@@ -1692,6 +1692,69 @@ test("a confirm's console lines reach its outcome and the proposal the card rend
   assert.equal(Object.hasOwn(event, 'output'), false, 'the change carries no console line');
 });
 
+test("a confirmed message export's file is saved by the confirming browser and the card gets the status and failure lines only (Story 24.16 Batch 3)", async () => {
+  // AD-39's fifth exception: the bytes are the confirm's own `output.file`; they reach the injected save and nothing else.
+  //
+  // Mutation (Rule 19): hand the card the file's base64 as a line, or the outcome lines in place of the status line -> the card assertion goes red.
+  const failure = `13: ${STRINGS.interopExportOutcomeNotExported}: the vendor said no`;
+  const saved = [];
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'export', state: 'completed', proposals: [wireProposal({ target: { type: 'interop-message', scope: 'USER', id: '12,13' }, tool: 'interop.messages.export' })] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      ok({
+        proposalId: 'p1',
+        state: 'confirmed',
+        closedReason: '',
+        confirmedAt: '2026-09-19T10:01:02Z',
+        action: 'updated',
+        output: { lines: [`12: ${STRINGS.interopExportOutcomeExported}`, failure], file: 'YWJj' },
+      }),
+    ],
+  });
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' }),
+    navigationType: reloadedTab(),
+    now: () => NOW_MS,
+    bus: recordingBus(),
+    saveFile: (bytes, name) => saved.push({ text: new TextDecoder().decode(bytes), name }),
+  });
+  await turn.restore();
+  const outcome = await turn.confirmProposal('p1');
+  assert.deepEqual(saved, [{ text: 'abc', name: 'USER-messages.txt' }], 'the browser saves the bytes under a name that carries the namespace');
+  const lines = ['Saved 1 message as USER-messages.txt.', failure];
+  assert.deepEqual(outcome.output, lines, 'the outcome carries the status line and the failure');
+  assert.deepEqual(turn.entries()[0].proposals[0].output, lines, 'and so does the proposal the card renders');
+  assert.equal(JSON.stringify(turn.entries()).includes('YWJj'), false, 'no part of the file reaches the transcript the card draws');
+});
+
+test('a confirmed export that exported nothing saves no file and shows the lines the instance answered (Story 24.16 Batch 3)', async () => {
+  const failures = [`12: ${STRINGS.interopExportOutcomeNotExported}: refused`];
+  const saved = [];
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'export', state: 'completed', proposals: [wireProposal({ target: { type: 'interop-message', scope: 'USER', id: '12' }, tool: 'interop.messages.export' })] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z', action: 'updated', output: { lines: failures } }),
+    ],
+  });
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' }),
+    navigationType: reloadedTab(),
+    now: () => NOW_MS,
+    bus: recordingBus(),
+    saveFile: (bytes, name) => saved.push({ bytes, name }),
+  });
+  await turn.restore();
+  const outcome = await turn.confirmProposal('p1');
+  assert.deepEqual(saved, [], 'no file is saved');
+  assert.deepEqual(outcome.output, failures, 'the card shows the failure lines');
+});
+
 test("a confirmed write's source-control questions reach its outcome and the card as text, and nothing else (Story 21.38)", async () => {
   // AD-39's ninth exception: the class's question is the confirm's own `output.questions`, held in memory for the card's dialog; the change event
   // and the console lines carry none, an unsupported step carries no text, and a step the port flagged shows none of its text.

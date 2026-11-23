@@ -523,6 +523,8 @@ export const INTEROP_MESSAGE_LIST = 'OcuPilot.Screen.Descriptor.InteropMessageLi
 export const INTEROP_MESSAGE_HEADER = 'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab';
 export const MESSAGE_RESEND = 'resend';
 export const MESSAGE_EDIT_RESEND = 'editresend';
+/** Story 24.16 Batch 3: Messages' Export over the checked rows, reviewed and sent by the list's own page and dialog (`interop-message-list.page.ts`), never the handler's. */
+export const MESSAGE_EXPORT = 'export';
 
 /**
  * Suspended messages (Story 24.16): Resubmit, Discard and Delete act on the checked rows and Edit and resubmit on one, each after a dry run the person reviews.
@@ -546,7 +548,7 @@ const REVIEWED_VALUE = 'Reviewed';
  * `dryRunFor` refuses any other, so no action is dry-run that its tool does not declare so.
  */
 const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
-  [INTEROP_MESSAGE_LIST]: [MESSAGE_RESEND],
+  [INTEROP_MESSAGE_LIST]: [MESSAGE_RESEND, MESSAGE_EXPORT],
   [INTEROP_MESSAGE_HEADER]: [MESSAGE_EDIT_RESEND],
   // Story 20.41: Production items' Change class lists the settings the new class does not take before it is confirmed.
   'OcuPilot.Screen.Descriptor.InteropItemList': ['changeclass'],
@@ -717,6 +719,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropTransformList': ['test'],
   // A message's Header tab page registers Resend and Edit and resend itself, each reviewed before it is sent (Story 20.31).
   [INTEROP_MESSAGE_HEADER]: [MESSAGE_RESEND, MESSAGE_EDIT_RESEND],
+  // Messages' page registers Export itself, whose dialog reviews the checked rows and sends the separator and the character set (Story 24.16 Batch 3).
+  [INTEROP_MESSAGE_LIST]: [MESSAGE_EXPORT],
 };
 
 /**
@@ -948,7 +952,7 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   // Story 24.10: a deleted folder item goes for every user, and dashboards that show it can no longer display it.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { delete: STRINGS.analyticsFolderItemDeleteConsequence },
   // Story 20.31: a resend delivers a copy that cannot be recalled, and so does an edit and resend.
-  [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence },
+  [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence, [MESSAGE_EXPORT]: STRINGS.interopMessageExportConsequence },
   [INTEROP_MESSAGE_HEADER]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence, [MESSAGE_EDIT_RESEND]: STRINGS.interopMessageEditResendConsequence },
   // Story 24.16: a resubmit cannot be recalled, a discard keeps the message and its body, and a delete removes them.
   [INTEROP_SUSPENDED_LIST]: {
@@ -2289,7 +2293,7 @@ export class ScreenActionHandler {
 }
 
 /** The sentences a dry run's 400 `detail.problem` begins with, which are published (Stories 20.31 and 24.16): none of the messages can be resent or acted on, and an edit that changes nothing. */
-const DRY_RUN_SENTENCES: readonly string[] = [STRINGS.interopRefusalResendNone, STRINGS.interopRefusalEditNoChange, STRINGS.interopSuspendedRefusalNone];
+const DRY_RUN_SENTENCES: readonly string[] = [STRINGS.interopRefusalResendNone, STRINGS.interopRefusalEditNoChange, STRINGS.interopSuspendedRefusalNone, STRINGS.interopExportRefusalNone];
 
 /**
  * The verdict sentence a review line ends with for a message the action will act on, keyed by descriptor and then by action id, where it is not the resend's

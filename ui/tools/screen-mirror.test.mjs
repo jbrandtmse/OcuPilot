@@ -1115,7 +1115,7 @@ test('multiSelectProblem returns every sentence OcuPilot.Test.MultiSelectCorpus 
   const processes = declaring.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.ProcessList');
   assert.ok(declaredStringKeys(processes.declaration).includes('processBroadcastIneligible'), 'its ineligible reason is a key the string check resolves');
   const messages = declaring.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.InteropMessageList');
-  assert.deepEqual(messages.declaration.multiSelect, { action: 'resend', max: 100 }, 'Messages checks every row for resend, at most the port\'s cap (Story 20.31)');
+  assert.deepEqual(messages.declaration.multiSelect, { action: 'resend', max: 100, extraActions: ['export'] }, 'Messages checks every row for resend and export, at most the port\'s cap (Story 20.31, Story 24.16 Batch 3)');
   const compare = declaring.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff');
   assert.deepEqual(compare.declaration.multiSelect, { action: 'promote', eligible: 'Promotable', max: 100, ineligibleKey: 'explorerPromoteIneligible' }, 'Compare namespaces checks the promotable rows for promote, at most the port\'s cap (Story 24.9)');
   const suspended = declaring.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.InteropSuspendedMessageList');

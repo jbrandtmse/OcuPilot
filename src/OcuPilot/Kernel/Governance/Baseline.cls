@@ -293,6 +293,7 @@ XData Keys [ MimeType = application/json ]
   "interop.processeditor.save": true,
   "interop.transformeditor.save": true,
   "interop.messages.resend": false,
+  "interop.messages.export": true,
   "interop.messageheader.editresend": false,
   "analytics.cubemanager.build": false,
   "analytics.cubemanager.synchronize": true,

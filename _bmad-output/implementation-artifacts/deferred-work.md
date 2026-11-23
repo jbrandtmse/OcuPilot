@@ -14503,11 +14503,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-2.md (review 672390e1c) | severity: low | fix-risk: low | footprint: cross-story
 - evidence: openReview always opens 'typed-name' (screen-action-handler.ts:1891) and CHECKED_SET_DIALOGS routes discard there
 - 2026-11-23T07:59:57Z status=decision-pending owner=burndown by=epic-24-runner note=UX ruling: which confirm dialog a reversible checked-set write uses
+- 2026-11-23T08:16:47Z status=routed owner=burndown by=orchestrator note=UX ruling: discard is reversible (a discarded header can still be resubmitted), so it confirms through the ordinary confirm dialog; the typed-name dialog is for irreversible acts only and delete keeps it; fixed in 24.16 Batch 3's first pass if it is a one-line dialog choice with its spec updated
 
 ### DW-2850: Edit and resubmit leaves the original body behind with no header naming it, so no purge ever reaches it (vendor behaviour, inference); changing the behaviour or the consequence sentence is a product and string decision
 - source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-2.md (review 672390e1c) | severity: low | fix-risk: med | footprint: in-footprint
 - evidence: ResubmitMessage with a new body points the header at the clone (irislib/Ens/MessageHeader.cls:409-417); the tests delete the old body by hand
 - 2026-11-23T07:59:57Z status=decision-pending owner=burndown by=epic-24-runner note=product ruling: delete the orphaned original body, or say in the consequence sentence that it stays
+- 2026-11-23T08:16:47Z status=routed owner=burndown by=orchestrator note=measure first: if the classic page's edit and resubmit leaves the same orphan, close wontfix-accepted with reopen_if=a purge is found never to reclaim orphaned bodies, after checking whether Batch 1's purge with bodies reclaims them; if the classic page does not orphan it, OcuPilot's clone path is the defect, fixed at burndown
 ### DW-2842: CI's gates job timeout (timeout-minutes 20) is below 1.5x its typical 14.3-minute duration, while the shard jobs are held to 1.5x plus setup, so a uniformly slow runner times the gates job out
 - source: ci run 45048213834 (M ffa2a92e7) | severity: medium | fix-risk: low | footprint: cross-story
 - evidence: Run 45048213834 job 137287353314, gates (node 22.22.3), hit its 20-minute timeout in the document gates step on a runner about 1.4x slower than run 45041714141's node-22 leg (client suite 11.8 against 8.5 min, checkers 3.4 against 2.3, harness 3.5 against 2.3)
@@ -14532,6 +14534,30 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: PURGECLASS is fixed to ConfigPort, so ConfigGateSeam.PurgeFails cannot reach SqlPort; the 409 test calls SqlTuningPortFixture.Invoke directly.
 - 2026-11-22T20:28:34Z status=wontfix-accepted owner=21-6-the-sql-tuning-track by=cr note=reopen_if=a purge or statement write the instance refuses answers 200 or another code than 500/409 on either caller
 
+### DW-2854: A message export ignores Read's status on a stream body, so a file-backed body whose file is gone exports empty and is still audited as viewed
+- source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-3.md (review d196f6de8) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: ExportRenderHere: Set pWire = pObject.Read(tLimit) passes no status argument
+- 2026-11-23T14:29:07Z status=routed owner=burndown by=epic-24-runner note=check the read status and answer the member as failed
+
+### DW-2855: Export and suspended-message writes are not driven over HTTP for every outcome: too large has no agent-confirm leg, fault, partial and all-failed run only through the port, and AC7's resubmit and discard never go over HTTP
+- source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-3.md (review d196f6de8) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: the XPort and SPort legs in InteropMessageExport* and InteropSuspended*; the test seam cannot reach the server request process
+- 2026-11-23T14:29:07Z status=routed owner=burndown by=epic-24-runner note=add HTTP legs once a seam reaches the request process
+
+### DW-2856: The export consequence sentence says the separator goes between messages, but it also follows the last one and MLLP is a frame; the string is ruled (U-150 V4), so a rewording is a string decision
+- source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-3.md (review d196f6de8) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: REASONMESSAGEEXPORT against ExportTail
+- 2026-11-23T14:29:07Z status=decision-pending owner=burndown by=epic-24-runner note=string ruling: reword the consequence or accept it as close enough
+
+### DW-2857: InteropMessageExportElsewhere's no-probe-left test never exports, and TempListing compares a shared temporary directory, so AC8 is asserted without the act it guards
+- source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-3.md (review d196f6de8) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: TestNoProbeIsLeftInEitherNamespaceAfterAnExport
+- 2026-11-23T14:29:07Z status=routed owner=burndown by=epic-24-runner note=make the test export once before it checks both namespaces
+
+### DW-2858: InteropSessionRoute answered SQLCODE -99 on Ens.SuperSessionIndex once on a long-lived throwaway under a restricted principal (inference: a cold cached-query compile), also with the story-base InteropPort; a cold first run on a fresh rebuild passed
+- source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-3.md (implement ca5626323, review d196f6de8) | severity: low | fix-risk: med | footprint: cross-story
+- evidence: implement shard 5 red -99 on ocupilot-b-ci; review run 1 on the 14:11:15Z rebuild green 6/6 as the route's first restricted use
+- 2026-11-23T14:29:07Z status=routed owner=burndown by=epic-24-runner note=orchestrator: raise to medium if -99 recurs; a restricted principal's cold first query could be a user-facing 500 (inference); no warm-up goes into the test
 ### DW-2847: SqlPort.QuotedName's delimited-name branch (a schema or table whose name needs quotes) is run by no test, though 21.25's tune and schema-tune targets already pass every Tables-list name through it
 - source: spec-21-25-index-rebuild-and-tune-table.md (implement review) | severity: low | fix-risk: low | footprint: in-story
 - evidence: SqlPort.cls:1263 QuotedName quotes any name not matching ^[A-Za-z%][A-Za-z0-9_]*$; callers SqlPort.cls:1258 (schema tune) and :1411 (table tune target), both reachable from a name the Tables list shows

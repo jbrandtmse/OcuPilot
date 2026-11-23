@@ -18,7 +18,7 @@ import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page
 import { TaskEditorPage } from '../areas/tasks/task-editor.page';
 import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { InteropMessageHeaderPage } from '../areas/interoperability/interop-message-header.page';
-import { AuditPage } from '../areas/logs/audit.page';
+import { InteropMessageListPage } from '../areas/interoperability/interop-message-list.page';
 import { MappingFormPage } from '../areas/os-management/mapping-form.page';
 import { NamespaceListPage } from '../areas/os-management/namespace-list.page';
 import { ServiceEditorPage } from '../areas/permissions/service-editor.page';
@@ -648,7 +648,8 @@ describe('the descriptor map (DW-369)', () => {
     const resolve = (name: string, archetype: string) =>
       pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, `OcuPilot.Screen.Descriptor.${name}`, archetype));
     expect(await resolve('InteropMessageHeaderTab', 'detail')).toBe(InteropMessageHeaderPage);
-    expect(await resolve('InteropMessageList', 'list (server criteria)')).toBe(AuditPage);
+    // Story 24.16 Batch 3: the Messages search has a page of its own, which registers Export over the shared search page.
+    expect(await resolve('InteropMessageList', 'list (server criteria)')).toBe(InteropMessageListPage);
     expect(await resolve('InteropItemQueueTab', 'detail')).toBe(DetailPage);
   });
 

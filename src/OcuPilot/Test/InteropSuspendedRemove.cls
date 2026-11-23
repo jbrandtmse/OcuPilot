@@ -276,22 +276,6 @@ Method TestAVendorRefusalOfOneMessageLeavesTheRestActedOnAndLogsNoText()
     Do $$$AssertTrue($ClassMethod(..#SEAM, "LoggedText") '[ $Parameter(..#SEAM, "MARKER"), "and the line carries no text of the vendor's: " _ $ClassMethod(..#SEAM, "LoggedText"))
 }
 
-/// <p>Take (<var>pHold</var> 1) or give back (0) this process's exclusive lock on the body <var>pBody</var> (<method>OcuPilot.Test.InteropSuspendedCase.BodyOf</method>'s) in
-/// <code>USER</code>; whether the call succeeded. While it is held, another process's delete of the body waits for the lock and then fails.</p>
-ClassMethod HoldBody(pBody As %String, pHold As %Boolean) As %Boolean
-{
-    Set tOk = 0
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set $NAMESPACE = ..#NAMESPACE
-        Set tOk = $System.Status.IsOK($ClassMethod($Piece(pBody, "|", 1), $Select(pHold: "%LockId", 1: "%UnlockId"), $Piece(pBody, "|", 2)))
-        Set $NAMESPACE = tOrigNS
-    } Catch {
-        Set $NAMESPACE = tOrigNS
-    }
-    Quit tOk
-}
-
 /// <p>AC3, Decided in-stage 9: a delete whose body cannot be deleted, for a reason other than the body being gone already, keeps the header and its body, and each caller is told
 /// so. This process holds the lock on one message's body, so the instance's delete of it fails. The person's delete of that message and another deletes the other and answers
 /// the first <code>not deleted</code> with the vendor's text; the agent's delete of the first, confirmed over HTTP, answers the same; the first still reads Suspended with its
