@@ -1073,3 +1073,6 @@
 2026-11-23T13:37:23Z	Story 21.31	code_head_pushed	sha=9cb5ce5b9 missing=none
 2026-11-23T13:37:48Z	Story 21.31	stage_spawned	stage=code_review spawn_at=2026-11-23T13:37:48Z model=opus agent_name=21-31-cr prior_lines_ended=verified(a408034b6)
 2026-11-23T13:39:12Z	Story 21.31	ruling	question=outlier_value+fixed_after_failure+map_size_0 via=orchestrator choice=port_quotes_value(plain_data_contract,audit_all_setter_args),U-152_sentence,map_size>=1 spine=own_line_replaced ledger=DW-2852 veto=U-153
+2026-11-23T14:12:33Z	Story 21.31	stage_complete	stage=code_review agent=a167bc80b result=in-progress commit=390cc7437 high=3 med=5(1_routed_DW-2853) low=2 security_probes=held(21_inputs,0_vendor_calls) lines_ended=verified bashedits=none
+2026-11-23T14:12:33Z	Story 21.31	rework_opened	iteration=1 items=3H+5M+2L(ruled_U-152/U-153)
+2026-11-23T14:12:33Z	Story 21.31	stage_spawned	stage=implement(rework1) spawn_at=2026-11-23T14:12:33Z model=sonnet agent_name=21-31-rw1 prior_lines_ended=verified(a167bc80b)
