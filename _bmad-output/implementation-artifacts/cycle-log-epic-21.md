@@ -1087,3 +1087,7 @@
 2026-11-23T18:13:09Z	Story 21.31	measurement	what=$Char(65)_as_outlier_value_via_SetFieldSelectivity on=ocupilot-ci_USER_OcuProbe225.T97 stored='"A"'(evaluated_result) consequence=vendor_never_keeps_expression;4th_seed_moot;spec_line cleanup=RemoveTables,SCHEMATA_SQLCODE_100,^OcuProbeRan_undefined
 2026-11-23T18:13:09Z	Story 21.31	rework_opened	iteration=2 items=ExplorerDescriptor_setmapsize_pin(grep_all_fingerprint_consumers)
 2026-11-23T18:13:09Z	Story 21.31	stage_spawned	stage=implement(rework2) spawn_at=2026-11-23T18:13:09Z model=sonnet agent_name=21-31-rw2 prior_lines_ended=verified(a232806df)
+2026-11-23T19:31:21Z	Story 21.31	stage_complete	stage=implement(rework2) agent=a1601ff2d result=done commit=187d17655 grep_hits=ExplorerDescriptor.cls:163_only lines_ended=verified bashedits=none
+2026-11-23T19:31:21Z	Story 21.31	integrated_forward	feature=39e56f9d2 merge=M=79ad64ee2 conflicts=6(EXPERIENCE,ClassicPageGate,MappingDescriptor,ReadTool,ToolRoundTrip,ToolWrite;m3w_token_merge,counts_re-derived) merge_fix=strings.ts_taskCreate_citation_:673->:674 checks=24_classes_green,test:tools_2413,ci.test_108,build,test:components_333_files
+2026-11-23T19:31:21Z	Story 21.31	code_head_pushed	sha=79ad64ee2 run=45249712294
+2026-11-23T19:31:21Z	Story 21.31	gate_step	step=fresh_check+full_sweep+smoke head=79ad64ee2 started=2026-11-23T19:31:21Z dir=e21-kit/21-31/gate2
