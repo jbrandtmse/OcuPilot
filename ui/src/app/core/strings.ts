@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:669 */
+  /** EXPERIENCE.md:670 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5558,6 +5558,16 @@ export const STRINGS = {
   sqlStatementRefusalVendor: 'The instance did not apply this change to the statement.',
   sqlStatementNotFoundReason: 'This namespace holds no SQL statement with that hash.',
   sqlCachedQueryNotFoundReason: 'This namespace holds no cached query by that name.',
+  // Story 21.25: the table maintenance writes. The sentences the rebuilds' dialogs and cards state, the refusals the instance answers and the
+  // refusal of one of OcuPilot's own tables.
+  sqlIndexRebuildAction: 'Rebuild index',
+  sqlTableRebuildAllAction: 'Rebuild all indices',
+  sqlTableRebuildConsequence: 'This index is emptied and built again from the table\'s rows. The table is locked against changes while it runs.',
+  sqlTableRebuildAllConsequence: 'Every index of this table is emptied and built again from its rows. The table is locked against changes while it runs.',
+  sqlTableRefusalDataMap: 'This is the table\'s data map, which has no index to rebuild.',
+  sqlTableRefusalVendor: 'The instance did not apply this change to the table.',
+  sqlTableRefusalOcuPilot: 'This table is one of OcuPilot\'s own, so OcuPilot does not rebuild or tune it.',
+  explorerSqlTableMaintenanceEmptyAgent: 'rebuild indices',
   // Story 18.6: License key and License servers -- their titles, License key's twelve field labels
   // beyond License usage's "License units", the authorization-key line, the activate dialog's
   // labels, validity, restart and reduction sentences and consequence, Print and its printed-by

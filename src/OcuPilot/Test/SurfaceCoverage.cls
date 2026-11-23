@@ -560,6 +560,8 @@ XData Coverage
 <tool name="explorer.sqlcachedqueries.purge" class="OcuPilot.Test.SqlCachedQueryPurge" method="TestThePurgeToolsDeclareTheirWritePath" corpus="the three cached-query purges are asserted together in one loop"/>
 <tool name="explorer.sqlcachedqueries.purgetable" class="OcuPilot.Test.SqlCachedQueryPurge" method="TestThePurgeToolsDeclareTheirWritePath" corpus="the three cached-query purges are asserted together in one loop"/>
 <tool name="explorer.sqlcachedqueries.purgenamespace" class="OcuPilot.Test.SqlCachedQueryPurge" method="TestThePurgeToolsDeclareTheirWritePath" corpus="the three cached-query purges are asserted together in one loop"/>
+<tool name="explorer.sqlindices.rebuild" class="OcuPilot.Test.SqlIndexRebuild" method="TestTheToolsDeclareTheirWritePath" corpus="the two rebuilds are asserted together in one loop"/>
+<tool name="explorer.sqltable.rebuildindices" class="OcuPilot.Test.SqlIndexRebuild" method="TestTheToolsDeclareTheirWritePath" corpus="the two rebuilds are asserted together in one loop"/>
 <tool name="explorer.globals.delete" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
 <tool name="explorer.globalnodes.save" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
 <tool name="explorer.globalnodes.delete" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>

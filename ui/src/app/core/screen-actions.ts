@@ -202,6 +202,9 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     'purge-table': STRINGS.sqlCachedQueryPurgeTableAction,
     'purge-namespace': STRINGS.sqlCachedQueryPurgeAllAction,
   },
+  // Story 21.25: a table's Rebuild all indices, and one index's Rebuild index.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlTable': { 'rebuild-indices': STRINGS.sqlTableRebuildAllAction },
+  'OcuPilot.Screen.Descriptor.ExplorerSqlIndices': { rebuild: STRINGS.sqlIndexRebuildAction },
   // Story 21.20: SQL activity's Cancel query and System alerts' Reset alerts.
   'OcuPilot.Screen.Descriptor.SqlActivityList': { cancel: STRINGS.sqlActivityCancelAction },
   'OcuPilot.Screen.Descriptor.SystemAlertsList': { reset: STRINGS.systemAlertsResetAction },

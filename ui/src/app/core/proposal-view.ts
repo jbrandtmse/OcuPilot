@@ -494,6 +494,9 @@ export const CONSEQUENCE_SQLSTATEMENTCLEARSTATISTICS = 'SQL.STATEMENT.CLEARSTATI
 export const CONSEQUENCE_SQLSTATEMENTCLEARERROR = 'SQL.STATEMENT.CLEARERROR';
 export const CONSEQUENCE_SQLSTATEMENTCLEAN = 'SQL.STATEMENT.CLEAN';
 export const CONSEQUENCE_SQLCACHEDQUERYPURGE = 'SQL.CACHEDQUERY.PURGE';
+/** Story 21.25: the table maintenance rebuilds' cards; each is one published sentence. */
+export const CONSEQUENCE_SQLTABLEREBUILD = 'SQL.TABLE.REBUILD';
+export const CONSEQUENCE_SQLTABLEREBUILDALL = 'SQL.TABLE.REBUILDALL';
 /** Story 24.2: the term list editor's delete and entry remove; each is one published sentence. */
 export const CONSEQUENCE_ANALYTICSTERMLISTDELETE = 'ANALYTICS.TERMLIST.DELETE';
 export const CONSEQUENCE_ANALYTICSTERMLISTREMOVE = 'ANALYTICS.TERMLIST.REMOVE';
@@ -762,6 +765,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_SQLSTATEMENTCLEARERROR) return STRINGS.sqlStatementClearErrorConsequence;
   if (code === CONSEQUENCE_SQLSTATEMENTCLEAN) return STRINGS.sqlStatementCleanConsequence;
   if (code === CONSEQUENCE_SQLCACHEDQUERYPURGE) return STRINGS.sqlCachedQueryPurgeConsequence;
+  if (code === CONSEQUENCE_SQLTABLEREBUILD) return STRINGS.sqlTableRebuildConsequence;
+  if (code === CONSEQUENCE_SQLTABLEREBUILDALL) return STRINGS.sqlTableRebuildAllConsequence;
   // Story 24.2: the term list editor's delete and entry remove sentences, each published once.
   if (code === CONSEQUENCE_ANALYTICSTERMLISTDELETE) return STRINGS.analyticsTermListDeleteConsequence;
   if (code === CONSEQUENCE_ANALYTICSFOLDERITEMDELETE) return STRINGS.analyticsFolderItemDeleteConsequence;

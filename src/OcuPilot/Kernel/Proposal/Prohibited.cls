@@ -197,6 +197,13 @@ Parameter TYPESTATEMENTENTRY = "statement-index-entry";
 
 Parameter TYPECACHEDQUERY = "cached-query";
 
+/// <p>One SQL table, keyed by <code>Schema.Table</code>, and one of its indices, keyed by the composite <code>[Table, Map]</code>, which the table
+/// maintenance writes act on (AD-13, Story 21.25). Each is judged by the schema and the class the instance resolves for the table
+/// (<method>TableEntry</method>).</p>
+Parameter TYPESQLTABLE = "sql-table";
+
+Parameter TYPESQLINDEX = "sql-index";
+
 /// <p>The extension a global's document carries in an import (Story 19.13).</p>
 Parameter GLOBALEXTENSION = ".gbl";
 
@@ -324,7 +331,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,analytics-setting,analytics-worklist,security-recommendation,task-mail-setting,analytics-runtime-variable,analytics-user-icon,sql-statement,system-alerts,pmml-definition,pmml-model,page-resource,default-setting,interop-credential,interop-schedule,statement-index-entry,cached-query";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,analytics-setting,analytics-worklist,security-recommendation,task-mail-setting,analytics-runtime-variable,analytics-user-icon,sql-statement,system-alerts,pmml-definition,pmml-model,page-resource,default-setting,interop-credential,interop-schedule,statement-index-entry,cached-query,sql-table,sql-index";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -1028,6 +1035,16 @@ Parameter OCUPILOTSQLPRIVILEGE = "PROHIBITED.OCUPILOTSQLPRIVILEGE";
 /// EXPERIENCE.md's Fixed strings and pinned by <file>ui/tools/self-protection.test.mjs</file>.</p>
 Parameter OCUPILOTSQLPRIVILEGEREASON = "OcuPilot's own SQL tables keep the privileges its installer grants, so a grant or revoke on them is not offered.";
 
+/// <p>An index rebuild, a table or schema tune, or a statistics change on a table whose schema lies in one of OcuPilot's own schemas or whose class
+/// name begins with OcuPilot's, or a tune of one of OcuPilot's own schemas, by either caller (AD-10 as amended 2026-11-16, Story 21.25): a rebuild
+/// locks OcuPilot's protected tables (AD-9), and keeping the class up to date rewrites OcuPilot's own class definitions
+/// (<parameter>OCUPILOTCODE</parameter>'s family). The target is read at the write; a read that resolves no table refuses.</p>
+Parameter OCUPILOTTABLE = "PROHIBITED.OCUPILOTTABLE";
+
+/// <p>The one sentence <parameter>OCUPILOTTABLE</parameter> carries, caller-neutral, published in EXPERIENCE.md's Fixed strings and pinned by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTTABLEREASON = "This table is one of OcuPilot's own, so OcuPilot does not rebuild or tune it.";
+
 /// <p>The write would remove from a key file a key that encrypts OcuPilot's own database, the install
 /// namespace's globals or routines database, one of <parameter>SYSTEMDATABASES</parameter>, or the
 /// journal, read at the write; a read that fails refuses (AD-10 as amended 2026-10-04, Story 18.7).</p>
@@ -1284,7 +1301,7 @@ Parameter READTYPE = "GET";
 /// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last, and the one <method>OwnRoutineApplication</method> arm adds after it, and the one <method>AgentReachable</method> judges, and the one <method>ProviderSsl</method> judges, and the start arm's journal and KMIP codes, and the one <method>Mirror</method> judges, and the one <parameter>PERSONONLY</parameter> adds, and the one <parameter>PROTECTEDGLOBAL</parameter> adds, and the one <parameter>PROVIDERCREDENTIAL</parameter> adds last -- forty-two in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP, ..#ALLOWLISTAGENT, ..#PROVIDERSSL, ..#STARTUPJOURNAL, ..#STARTUPKMIP, ..#MIRRORDATABASES, ..#PERSONONLY, ..#PROTECTEDGLOBAL, ..#PROVIDERCREDENTIAL)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP, ..#ALLOWLISTAGENT, ..#PROVIDERSSL, ..#STARTUPJOURNAL, ..#STARTUPKMIP, ..#MIRRORDATABASES, ..#PERSONONLY, ..#PROTECTEDGLOBAL, ..#PROVIDERCREDENTIAL, ..#OCUPILOTTABLE)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -1328,6 +1345,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTSTART Quit ..#OCUPILOTSTARTREASON
     If pCode = ..#SERVINGSUPERSERVER Quit ..#SERVINGSUPERSERVERREASON
     If pCode = ..#OCUPILOTSQLPRIVILEGE Quit ..#OCUPILOTSQLPRIVILEGEREASON
+    If pCode = ..#OCUPILOTTABLE Quit ..#OCUPILOTTABLEREASON
     If pCode = ..#OCUPILOTSCREEN Quit ..#OCUPILOTSCREENREASON
     If pCode = ..#OCUPILOTROUTINEAPP Quit ..#OCUPILOTROUTINEAPPREASON
     If pCode = ..#ALLOWLISTAGENT Quit ..#ALLOWLISTAGENTREASON
@@ -1763,7 +1781,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPEFOLDERITEM) && '..IsListingGroupType(tType) && '..IsQualityMeasureType(tType) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) && (tType '= ..#TYPENLSDEFAULT) && (tType '= ..#TYPELOCALE) && (tType '= ..#TYPELOCALEPROPERTY) && (tType '= ..#TYPEGLOBAL) && (tType '= ..#TYPEGLOBALNODE) && (tType '= ..#TYPESYSTEMSECURITYSETTING) && (tType '= ..#TYPEPHONEPROVIDER) && (tType '= ..#TYPESECURITYRECOMMENDATION) && (tType '= ..#TYPETASKMAILSETTING) && (tType '= ..#TYPESQLSTATEMENT) && (tType '= ..#TYPESYSTEMALERTS) && (tType '= ..#TYPEDEFAULTSETTING) && (tType '= ..#TYPEINTEROPCREDENTIAL) && (tType '= ..#TYPEINTEROPSCHEDULE) && '..IsAnalyticsSettingType(tType) && '..IsPmmlDefinitionType(tType) && (tType '= ..#TYPEPAGERESOURCE) && (tType '= ..#TYPESTATEMENTENTRY) && (tType '= ..#TYPECACHEDQUERY) {
+        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPEFOLDERITEM) && '..IsListingGroupType(tType) && '..IsQualityMeasureType(tType) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) && (tType '= ..#TYPENLSDEFAULT) && (tType '= ..#TYPELOCALE) && (tType '= ..#TYPELOCALEPROPERTY) && (tType '= ..#TYPEGLOBAL) && (tType '= ..#TYPEGLOBALNODE) && (tType '= ..#TYPESYSTEMSECURITYSETTING) && (tType '= ..#TYPEPHONEPROVIDER) && (tType '= ..#TYPESECURITYRECOMMENDATION) && (tType '= ..#TYPETASKMAILSETTING) && (tType '= ..#TYPESQLSTATEMENT) && (tType '= ..#TYPESYSTEMALERTS) && (tType '= ..#TYPEDEFAULTSETTING) && (tType '= ..#TYPEINTEROPCREDENTIAL) && (tType '= ..#TYPEINTEROPSCHEDULE) && '..IsAnalyticsSettingType(tType) && '..IsPmmlDefinitionType(tType) && (tType '= ..#TYPEPAGERESOURCE) && (tType '= ..#TYPESTATEMENTENTRY) && (tType '= ..#TYPECACHEDQUERY) && (tType '= ..#TYPESQLTABLE) && (tType '= ..#TYPESQLINDEX) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1794,6 +1812,13 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; passes the reviewed-few sweep below.
         If tType = ..#TYPESTATEMENTENTRY {
             Set tSC = ..StatementEntry(pToolName, tId, pPayload, .pProhibits, .pCode)
+            If $$$ISERR(tSC) || pProhibits Quit
+        }
+
+        ; Story 21.25: a table or an index is judged by the schema and the class the instance resolves for the table now, read again here
+        ; through the tool's port in the namespace the stored payload names. The write then passes the reviewed-few sweep below.
+        If (tType = ..#TYPESQLTABLE) || (tType = ..#TYPESQLINDEX) {
+            Set tSC = ..TableEntry(pToolName, tId, pPayload, .pProhibits, .pCode)
             If $$$ISERR(tSC) || pProhibits Quit
         }
 
@@ -2132,7 +2157,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         ; Story 21.6: a statement or a cached-query purge sets no field and AD-10 names no effect on a purge, so a write passes the
         ; reviewed-few sweep and nothing else.
-        If (tType = ..#TYPESTATEMENTENTRY) || (tType = ..#TYPECACHEDQUERY) {
+        If (tType = ..#TYPESTATEMENTENTRY) || (tType = ..#TYPECACHEDQUERY) || (tType = ..#TYPESQLTABLE) || (tType = ..#TYPESQLINDEX) {
             Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }
@@ -3636,6 +3661,39 @@ ClassMethod StatementEntry(pToolName As %String, pId As %String, pPayload As %St
                 Do ..Refuse(..#OCUPILOTSQL, .pProhibits, .pCode)
                 Quit
             }
+        }
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The table arm of the table maintenance writes (AD-10 as amended 2026-11-16, Story 21.25): a rebuild, a tune or a statistics change on the table
+/// or index <var>pId</var> is refused <parameter>OCUPILOTTABLE</parameter> when the table's schema or its class lies in OcuPilot's own
+/// (<method>IsOcuPilotCode</method>). Both are read now, through the tool's port with the stored payload <var>pPayload</var>, so they are those of
+/// the namespace the proposal read. A read that fails, answers no table or answers no schema and class is refused: a table nobody resolved is not
+/// one to write.</p>
+ClassMethod TableEntry(pToolName As %String, pId As %String, pPayload As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tClass = ..ToolClassNamed(pToolName)
+        If tClass = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "the prohibited set was asked about a tool this instance does not carry: '" _ pToolName _ "'")
+            Quit
+        }
+        Do ##class(OcuPilot.Kernel.Proposal.Operation).Query(tClass, $ClassMethod(tClass, "IdParam"), pId, pPayload, .tQuery)
+        Set tReadSC = ##class(OcuPilot.Kernel.Proposal.Operation).ReadTarget(tClass, ..PortClassOf(tClass), $ClassMethod(tClass, "Endpoint"), .tQuery, pId, .tTable, .tHttp, .tFault)
+        If $$$ISERR(tReadSC) || '$IsObject($Get(tTable)) || 'tTable.%IsA("%Library.DynamicObject") || (tTable.%GetTypeOf("Table") '= "string") || (tTable.%GetTypeOf("Class") '= "string") || (tTable.%Get("Table") = "") || (tTable.%Get("Class") = "") {
+            Do ..Refuse(..#OCUPILOTTABLE, .pProhibits, .pCode)
+            Quit
+        }
+        If ..IsOcuPilotCode($Piece(tTable.%Get("Table"), ".", 1)) || ..IsOcuPilotCode(tTable.%Get("Class")) {
+            Do ..Refuse(..#OCUPILOTTABLE, .pProhibits, .pCode)
         }
     } Catch ex {
         Set pProhibits = 0

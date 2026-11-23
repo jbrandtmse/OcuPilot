@@ -250,6 +250,8 @@ XData Keys [ MimeType = application/json ]
   "explorer.sqlcachedqueries.purge": true,
   "explorer.sqlcachedqueries.purgetable": true,
   "explorer.sqlcachedqueries.purgenamespace": true,
+  "explorer.sqlindices.rebuild": false,
+  "explorer.sqltable.rebuildindices": false,
   "interop.productions.start": true,
   "interop.productions.stop": true,
   "interop.productions.restart": true,

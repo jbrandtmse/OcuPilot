@@ -1450,7 +1450,10 @@ ClassMethod CatalogRows(pVersion As %Integer, pNamespace As %String, pEndpoint A
             If (pMax > 0) && (tRows.%Size() >= pMax) Quit
             If '$IsObject(tRow) || 'tRow.%IsA("%Library.DynamicObject") Continue
             If (pEndpoint = ..#ENDPOINTCATALOGTABLE) && (tRow.%Get("NAME") '= tName) Continue
-            Do tRows.%Push(..CatalogRow(tRow, tColumns))
+            Set tObject = ..CatalogRow(tRow, tColumns)
+            ; An index row names the table it belongs to, which the table's own indices tab keys it by (Story 21.25).
+            If pEndpoint = ..#ENDPOINTCATALOGINDICES Do tObject.%Set("Table", tSchema _ "." _ tName, "string")
+            Do tRows.%Push(tObject)
         }
         Set pRows = tRows
         Set pHttpStatus = 200

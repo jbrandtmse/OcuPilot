@@ -8,6 +8,8 @@
 /// <li><parameter>QUERYTWO</parameter> carries the plan error <parameter>PLANERROR</parameter>, set through the vendor's own update.</li>
 /// <li><parameter>QUERYSTALE</parameter> reads the first table and had its cached query purged, so the index holds no location for it.</li>
 /// </ul>
+/// <p><method>Table</method> makes Story 21.25's tables, which carry rows and two indices of their own; <method>Remove</method> purges their cached
+/// queries and drops them too.</p>
 /// <p><method>Remove</method> unfreezes every probe statement and clears its plan error through the vendor calls that set them, purges both tables'
 /// cached queries, then drops both tables. The statement-index entries of the same four texts stay and are reused by the next
 /// <method>Make</method>. <method>MakeOwn</method> runs the one statement over OcuPilot's own table that the own-statement tests judge, in the
@@ -31,6 +33,13 @@ Parameter QUERYSTALE = "SELECT A, B FROM OcuProbe216.T1";
 Parameter OWNQUERY = "SELECT COUNT(*) AS Probe216 FROM OcuPilot_Kernel_State.Version";
 
 Parameter PLANERROR = "probe plan error";
+
+/// <p>The schema of the tables <method>Table</method> makes (Story 21.25), and the two indices each carries.</p>
+Parameter TABLESCHEMA = "OcuProbe225";
+
+Parameter INDEXB = "IdxB";
+
+Parameter INDEXC = "IdxC";
 
 /// <p>Create the probe objects in <var>pNamespace</var>, after removing any an earlier run left.</p>
 ClassMethod Make(pNamespace As %String) As %Status
@@ -86,10 +95,171 @@ ClassMethod Remove(pNamespace As %String) As %Status
         Do ..Run("DROP TABLE " _ ..#FIRST)
         Do ..Run("DROP TABLE " _ ..#SECOND)
         Set $NAMESPACE = tOrigNS
+        Set tSC = ..RemoveTables(pNamespace)
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
+    Quit tSC
+}
+
+/// <p>Create the table <code>OcuProbe225.T</code><var>pNumber</var> in <var>pNamespace</var>, named by <var>pTable</var>, with the columns <code>A</code>,
+/// <code>B</code> and <code>C</code>, the indices <parameter>INDEXB</parameter> and <parameter>INDEXC</parameter> and <var>pRows</var> rows
+/// (Story 21.25), in the schema <parameter>TABLESCHEMA</parameter>. A table of that number an earlier run left is dropped first. <method>Remove</method>
+/// drops every table of the schema.</p>
+ClassMethod Table(pNamespace As %String, pNumber As %Integer, pRows As %Integer, Output pTable As %String) As %Status
+{
+    Set pTable = ..#TABLESCHEMA _ ".T" _ pNumber
+    Set tOrigNS = $NAMESPACE
+    Set tSC = $$$OK
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do $SYSTEM.SQL.PurgeQueries({"table": [(pTable)]})
+        Do ..Run("DROP TABLE " _ pTable)
+        Set tSC = ..Run("CREATE TABLE " _ pTable _ " (A INTEGER, B VARCHAR(20), C VARCHAR(20))")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run("CREATE INDEX " _ ..#INDEXB _ " ON TABLE " _ pTable _ " (B)")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run("CREATE INDEX " _ ..#INDEXC _ " ON TABLE " _ pTable _ " (C)")
+        If $$$ISERR(tSC) Quit
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("INSERT INTO " _ pTable _ " (A, B, C) VALUES (?, ?, ?)")
+        If $$$ISERR(tSC) Quit
+        For tI = 1:1:pRows {
+            Set tResult = tStatement.%Execute(tI, "v" _ tI, "w" _ tI)
+            If tResult.%SQLCODE < 0 {
+                Set tSC = $$$ERROR($$$GeneralError, "SQLCODE " _ tResult.%SQLCODE _ " " _ tResult.%Message)
+                Quit
+            }
+        }
+        Set tResult = ""
+        Set tStatement = ""
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Kill the global of index <var>pIndex</var> of table <var>pTable</var> in <var>pNamespace</var>, so the index holds no entry and a rebuild is
+/// observable (Story 21.25).</p>
+ClassMethod KillIndex(pNamespace As %String, pTable As %String, pIndex As %String)
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tGlobal = ..IndexGlobal(pTable, pIndex)
+        If tGlobal '= "" Kill @tGlobal
+    } Catch {
+    }
+    Set $NAMESPACE = tOrigNS
+}
+
+/// <p>The global that holds index <var>pIndex</var> of table <var>pTable</var> in the current namespace, as the table's indices list reports it, or
+/// <code>""</code>.</p>
+ClassMethod IndexGlobal(pTable As %String, pIndex As %String) As %String
+{
+    Set tGlobal = ""
+    Set tStatement = ##class(%SQL.Statement).%New()
+    Set tSC = tStatement.%PrepareClassQuery("%SQL.Manager.Catalog", "Indices")
+    If $$$ISERR(tSC) Quit ""
+    Set tResult = tStatement.%Execute($Piece(pTable, ".", 1), $Piece(pTable, ".", 2))
+    While tResult.%Next() {
+        If tResult.%Get("INDEX_NAME") = pIndex {
+            Set tGlobal = tResult.%Get("GLOBAL")
+            Quit
+        }
+    }
+    Quit tGlobal
+}
+
+/// <p>How many rows a query through index <var>pIndex</var> of <var>pTable</var> returns in <var>pNamespace</var>: a count over the indexed column
+/// <var>pColumn</var>, which the instance answers from the index alone. A killed index answers fewer than the table's rows.</p>
+ClassMethod IndexedCount(pNamespace As %String, pTable As %String, pColumn As %String) As %Integer
+{
+    Set tCount = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT COUNT(*) FROM " _ pTable _ " WHERE " _ pColumn _ " %STARTSWITH ?")
+        If $$$ISOK(tSC) {
+            Set tResult = tStatement.%Execute($Select(pColumn = "B": "v", 1: "w"))
+            If tResult.%Next() Set tCount = tResult.%GetData(1)
+        }
+        Set tResult = ""
+        Set tStatement = ""
+    } Catch {
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tCount
+}
+
+/// <p>The entries index <var>pIndex</var> of <var>pTable</var> holds in <var>pNamespace</var>, counted in its global directly (Story 21.25).</p>
+ClassMethod IndexEntries(pNamespace As %String, pTable As %String, pIndex As %String) As %Integer
+{
+    Set tCount = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tRoot = ..IndexGlobal(pTable, pIndex)
+        If tRoot '= "" {
+            Set tValue = ""
+            For {
+                Set tValue = $Order(@tRoot@(tValue))
+                If tValue = "" Quit
+                Set tId = ""
+                For {
+                    Set tId = $Order(@tRoot@(tValue, tId))
+                    If tId = "" Quit
+                    Set tCount = tCount + 1
+                }
+            }
+        }
+    } Catch {
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tCount
+}
+
+/// <p>The tables of the schema <parameter>TABLESCHEMA</parameter> in <var>pNamespace</var>, as a <class>%List</class> of <code>Schema.Table</code>
+/// names as the instance holds them.</p>
+ClassMethod TablesOf(pNamespace As %String) As %List
+{
+    Set tList = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT TABLE_SCHEMA || '.' || TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ?")
+        Set tResult = tStatement.%Execute(..#TABLESCHEMA)
+        While tResult.%Next() {
+            Set tList = tList _ $ListBuild(tResult.%GetData(1))
+        }
+        Set tResult = ""
+        Set tStatement = ""
+    } Catch {
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tList
+}
+
+/// <p>Purge the cached queries of, then drop, every table of the schema <parameter>TABLESCHEMA</parameter> in <var>pNamespace</var>.</p>
+ClassMethod RemoveTables(pNamespace As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tTables = ..TablesOf(pNamespace)
+        Set $NAMESPACE = pNamespace
+        For tI = 1:1:$ListLength(tTables) {
+            Do $SYSTEM.SQL.PurgeQueries({"table": [($List(tTables, tI))]})
+            Do ..Run("DROP TABLE " _ $List(tTables, tI))
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
     Quit tSC
 }
 

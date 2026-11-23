@@ -398,10 +398,35 @@ Parameter CACHEDQUERYPURGE = "SQL.CACHEDQUERY.PURGE";
 
 Parameter REASONCACHEDQUERYPURGE = "The purged queries are prepared again the next time each one runs.";
 
-/// <p>The sentence <var>pCode</var>, one of the <code>SQL.STATEMENT.*</code> and <code>SQL.CACHEDQUERY.*</code> codes above, carries, or <code>""</code>
-/// for any other code (Story 21.6).</p>
+/// <p>Envelope code: the instance answered an error status for a table write -- an index rebuild (Story 21.25). Rendered on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, the instance's message in <code>detail</code> alone and never logged
+/// (AD-39).</p>
+Parameter TABLEVENDOR = "SQL.TABLE.VENDOR";
+
+Parameter REASONTABLEVENDOR = "The instance did not apply this change to the table.";
+
+/// <p>A rebuild of the table's data map, which holds the rows and has no index to rebuild (Story 21.25).</p>
+Parameter TABLEDATAMAP = "SQL.TABLE.DATAMAP";
+
+Parameter REASONTABLEDATAMAP = "This is the table's data map, which has no index to rebuild.";
+
+/// <p>The consequence codes the proposal card and the dialog of each table write carry (Story 21.25).</p>
+Parameter TABLEREBUILD = "SQL.TABLE.REBUILD";
+
+Parameter REASONTABLEREBUILD = "This index is emptied and built again from the table's rows. The table is locked against changes while it runs.";
+
+Parameter TABLEREBUILDALL = "SQL.TABLE.REBUILDALL";
+
+Parameter REASONTABLEREBUILDALL = "Every index of this table is emptied and built again from its rows. The table is locked against changes while it runs.";
+
+/// <p>The sentence <var>pCode</var>, one of the <code>SQL.STATEMENT.*</code>, <code>SQL.CACHEDQUERY.*</code> and <code>SQL.TABLE.*</code> codes above,
+/// carries, or <code>""</code> for any other code (Stories 21.6 and 21.25).</p>
 ClassMethod SqlReasonFor(pCode As %String) As %String
 {
+    If pCode = ..#TABLEVENDOR Quit ..#REASONTABLEVENDOR
+    If pCode = ..#TABLEDATAMAP Quit ..#REASONTABLEDATAMAP
+    If pCode = ..#TABLEREBUILD Quit ..#REASONTABLEREBUILD
+    If pCode = ..#TABLEREBUILDALL Quit ..#REASONTABLEREBUILDALL
     If pCode = ..#STATEMENTVENDOR Quit ..#REASONSTATEMENTVENDOR
     If pCode = ..#STATEMENTALREADYFROZEN Quit ..#REASONSTATEMENTALREADYFROZEN
     If pCode = ..#STATEMENTPARALLEL Quit ..#REASONSTATEMENTPARALLEL

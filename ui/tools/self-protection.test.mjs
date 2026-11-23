@@ -341,6 +341,8 @@ const KERNEL_REFUSALS = [
   // Story 24.15: the credential an enabled agent definition reads its provider key from, whose remove and password change the agent is refused
   // when proposed and a person is not.
   ['PROVIDERCREDENTIAL', 'credentialRefusalProvider'],
+  // Story 21.25: a table of OcuPilot's own, whose index rebuild either caller is refused with this sentence before any write.
+  ['OCUPILOTTABLE', 'sqlTableRefusalOcuPilot'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -759,6 +761,11 @@ const ATELIER_REFUSALS = [
   ['REASONCACHEDQUERYPURGE', 'sqlCachedQueryPurgeConsequence'],
   ['REASONSTATEMENTNOTFOUND', 'sqlStatementNotFoundReason'],
   ['REASONCACHEDQUERYNOTFOUND', 'sqlCachedQueryNotFoundReason'],
+  // Story 21.25: the table writes' vendor and data-map refusals, and the sentences the rebuilds' cards and dialogs state.
+  ['REASONTABLEVENDOR', 'sqlTableRefusalVendor'],
+  ['REASONTABLEDATAMAP', 'sqlTableRefusalDataMap'],
+  ['REASONTABLEREBUILD', 'sqlTableRebuildConsequence'],
+  ['REASONTABLEREBUILDALL', 'sqlTableRebuildAllConsequence'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {
