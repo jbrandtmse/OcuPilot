@@ -14579,3 +14579,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 45197647823 (24.16 Batch 3 code head 92f0235be) | severity: medium | fix-risk: low | footprint: cross-story
 - evidence: job 137772299472 gates (node 22.22.3): component runner still passing at 14:58:53Z, 297 of 332 files started, step killed at 12 min; the node 24.15.0 and 26.0.0 legs finished all 332 files in 409-414 s
 - 2026-11-23T15:03:04Z status=routed owner=burndown by=epic-24-runner note=the step bound wants the same 1.5x-of-largest-observed rule DW-2842 gave the job, pinned in ci.test.mjs; ci.yml change is the orchestrator's call
+- 2026-11-23T15:12:01Z status=routed owner=24-16-purge-suspended-messages-export-and-the-archive-manager by=orchestrator note=raise the node-22 client suite step to 18 min in Batch 4's code head; ci.test.mjs pins LARGEST_OBSERVED_CLIENT_SUITE_SECONDS 705 (run 45062235807), bound >= ceil(1.5x705/60) and below the job's 30
+
+### DW-2860: CI's browser shard bound (63 min) is only 1.11x the largest green browser shard (3,409 s, run 45137088496), below the 1.5x rule every other bound follows, so a slow runner times a shard out with every spec green
+- source: ci run 45197647823 (24.16 Batch 3 code head 92f0235be) | severity: medium | fix-risk: low | footprint: cross-story
+- evidence: browser shard 3/5 cancelled at 63 min with 48 of 51 specs green (estimated 36.4 min, took 58.0); shards 1, 2 and 5 took about 55 min against a 38.6-min estimate each; the untimed export spec weighed at the median 33.1 s and landed in shard 2
+- 2026-11-23T15:52:27Z status=routed owner=burndown by=orchestrator note=measure-first; preferred fix is a sixth browser shard (wall time stays flat), not a bound raise. Re-derive per-shard estimates from ci-timings.json, and set the bound by the 1.5x rule on the new largest observed, pinned in ci.test.mjs.
