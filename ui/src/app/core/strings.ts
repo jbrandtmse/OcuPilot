@@ -5590,6 +5590,10 @@ export const STRINGS = {
   explorerSqlFieldStatisticsPrompt1: 'Which fields have fixed selectivity?',
   explorerSqlFieldStatisticsPrompt2: 'Do the collected and fixed values differ?',
   explorerSqlFieldStatisticsPrompt3: 'Which field has an outlier value?',
+  // Story 21.25: the Tune dialogs' two value labels, and the sentence the Keep class up to date box adds to the dialog and the card once ticked.
+  sqlTuneKeepClassLabel: 'Keep class up to date',
+  sqlTuneClearValuesLabel: 'Clear values',
+  sqlTuneKeepClassConsequence: 'The class is not recompiled and is not marked out of date.',
   // Story 18.6: License key and License servers -- their titles, License key's twelve field labels
   // beyond License usage's "License units", the authorization-key line, the activate dialog's
   // labels, validity, restart and reduction sentences and consequence, Print and its printed-by

@@ -13,7 +13,7 @@ import {
   type ProposalPhase,
   type ProposalPrivilegeLine,
   CODESAVECONSEQUENCES,
-  consequenceSentence,
+  consequenceSentenceOf,
   remoteListSentence,
   journalSentence,
   sqlConsequenceSentence,
@@ -947,7 +947,7 @@ export class ProposalCard {
    * warning: the write is still offered (DW-1489). `''` where the code has no sentence.
    */
   protected get consequenceText(): string {
-    return consequenceSentence(this.view().consequence);
+    return consequenceSentenceOf(this.view());
   }
 
   /**

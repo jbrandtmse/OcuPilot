@@ -104,6 +104,16 @@ ClassMethod Agent(pTool As %String, pId As %String, pArgs As %DynamicObject, pNa
     Quit $ClassMethod("OcuPilot.Test.LicenseProbe", "Confirm", pProposal, .pResult)
 }
 
+/// <p>The <code>after</code> of the <code>KeepClassUpToDate</code> row in <var>pProposal</var>'s changed rows, or <code>absent</code>.</p>
+ClassMethod KeepAfter(pProposal As %DynamicObject) As %String
+{
+    Set tAfter = "absent"
+    For tAt = 0:1:pProposal.changed.%Size() - 1 {
+        If pProposal.changed.%Get(tAt).field = "KeepClassUpToDate" Set tAfter = pProposal.changed.%Get(tAt).after
+    }
+    Quit tAfter
+}
+
 /// <p>The table <var>pTable</var>'s statistics as the port reads them: <code>kind size fixed</code>.</p>
 ClassMethod Stats(pTable As %String) As %String
 {
@@ -225,9 +235,11 @@ Method TestTheClassUpToDateValueReachesTheInstanceAsDeclared()
     Set tConfirm = ..Agent(..#TUNETOOL, tTable, {"KeepClassUpToDate": true}, , .tProposal, .tResult, ..#FIXTURE)
     Do $$$AssertEquals(tConfirm _ "|" _ $ClassMethod(..#SEAM, "TableCalls"), "200 |TUNE|1", "the agent's collection with the box checked reaches the instance with 1: " _ tConfirm)
     Do $$$AssertEquals(..ClassState(tTable), tBefore, "and the class's source time, up-to-date flag and storage extent size are unchanged")
+    Do $$$AssertEquals(..KeepAfter(tProposal), "true", "and the minted proposal's changed rows carry the value as true, which the card states from")
     Do $ClassMethod(..#SEAM, "Reset")
     Set tConfirm = ..Agent(..#TUNETOOL, tTable, {"KeepClassUpToDate": false}, , .tProposal, .tResult, ..#FIXTURE)
     Do $$$AssertEquals(tConfirm _ "|" _ $ClassMethod(..#SEAM, "TableCalls"), "200 |TUNE|0", "and with the box clear with 0")
+    Do $$$AssertEquals(..KeepAfter(tProposal), "false", "and the proposal's changed rows carry it as false")
     Set tStatus = ..Act(..#TABLESCREEN, "tune", tTable, {"KeepClassUpToDate": "true"}, , .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ ..Stats(tTable) _ "|" _ (..ClassState(tTable) = tBefore), "200|collected 5 0|1", "the screen's collection with the box checked collects and leaves the class as it was")
 }
@@ -405,6 +417,11 @@ Method TestTheFieldStatisticsTabAndTheAgentsReadAnswerTheDirectRows()
         Set tSeen = tSeen + 1
         Set tShown = tRow.Selectivity _ "|" _ tRow.OutlierValue _ "|" _ tRow.OutlierSelectivity _ "|" _ tRow.AverageFieldSize _ "|" _ tRow.FixedSelectivity _ "|" _ tRow.FixedOutlierValue _ "|" _ tRow.FixedOutlierSelectivity _ "|" _ tRow.FixedAverageFieldSize
         Do $$$AssertEquals(tShown, $Get(tDirect(tRow.Field)), "field " _ tRow.Field _ " reads what the direct select reads")
+        If tRow.Field = "B" {
+            Do $$$AssertEquals(tRow.FixedSelectivity _ "|" _ tRow.Selectivity, "2.5000%|20.0000%", "field B shows its fixed selectivity under the fixed heading and the collected one under its own: " _ tShown)
+        } ElseIf tRow.Field '= "ID" {
+            Do $$$AssertEquals(tRow.FixedSelectivity, tRow.Selectivity, "field " _ tRow.Field _ " was fixed from its collected selectivity: " _ tShown)
+        }
     }
     Do $$$AssertTrue(tSeen >= 3, "the tab shows each field: " _ tSeen)
     Do $$$AssertEquals($ClassMethod(..#READS, "Declaration", ..#STATISTICSDESCRIPTOR).tab.position _ "|" _ $ClassMethod(..#READS, "Declaration", ..#STATISTICSDESCRIPTOR).entityType _ "|" _ $ClassMethod(..#READS, "Declaration", ..#STATISTICSDESCRIPTOR).rowActions.%Size(), "10|class|0", "the tab is the tenth, a read of the class entity with no row action")

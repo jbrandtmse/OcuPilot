@@ -1147,7 +1147,14 @@ interface WarningValue {
   readonly value: string;
   readonly labelKey: keyof typeof STRINGS;
   readonly hintKey?: keyof typeof STRINGS;
+  /** A flag's sentence, shown under the box while it is ticked (Story 21.25). */
+  readonly noteKey?: keyof typeof STRINGS;
+  /** A second checkbox the dialog draws after a flag, sent as a second declared value (Story 21.25). */
+  readonly also?: { readonly value: string; readonly labelKey: keyof typeof STRINGS };
 }
+
+/** The Keep class up to date box of a Tune dialog, whose ticked sentence the dialog states (Story 21.25). */
+const KEEP_CLASS_VALUE: WarningValue = { kind: 'flag', value: 'KeepClassUpToDate', labelKey: 'sqlTuneKeepClassLabel', noteKey: 'sqlTuneKeepClassConsequence' };
 
 const WARNING_VALUES: Readonly<Record<string, Readonly<Record<string, WarningValue>>>> = {
   [DATABASE_DETAILS]: {
@@ -1162,6 +1169,9 @@ const WARNING_VALUES: Readonly<Record<string, Readonly<Record<string, WarningVal
   [JOURNAL_LIST]: { [JOURNAL_INTEGRITY]: { kind: 'flag', value: 'CheckDetails', labelKey: 'journalIntegrityEveryRecord' } },
   // Story 21.2: a freeze names how many seconds the instance suspends writes, from 1 to 600.
   [BACKUP_TASK_LIST]: { [BACKUP_FREEZE]: { kind: 'field', value: BACKUP_LIMIT_VALUE, labelKey: 'backupFreezeLimitLabel', hintKey: 'backupFreezeLimitHelp' } },
+  // Story 21.25: a table's Collect statistics asks whether to keep the class up to date, and a schema's Tune all tables also asks whether to clear values.
+  [EXPLORER_SQL_TABLE]: { [SQL_TABLE_TUNE]: KEEP_CLASS_VALUE },
+  [EXPLORER_SQL_SCHEMA]: { [SQL_SCHEMA_TUNE]: { ...KEEP_CLASS_VALUE, also: { value: 'ClearValues', labelKey: 'sqlTuneClearValuesLabel' } } },
 };
 
 /**
@@ -1306,6 +1316,9 @@ export interface PendingConfirm {
   /** A warning dialog's whole-number field's label and hint (Story 18.4); absent or `''` for none. */
   readonly fieldLabel?: string;
   readonly fieldHint?: string;
+  /** A warning dialog's flag sentence, shown while the box is ticked, and its second box's label (Story 21.25); absent or `''` for none. */
+  readonly flagNote?: string;
+  readonly flag2Label?: string;
   /** The broadcast dialog's count of checked rows (Story 16.6); absent for every other kind. */
   readonly count?: number;
   /** The broadcast dialog's message is being sent. */
@@ -1476,7 +1489,7 @@ export class ScreenActionHandler {
    * checked or not (AD-56 (ii)); otherwise a checked box sends the flagged action in place of the one
    * the dialog was opened for, and nothing else about the request changes.
    */
-  confirmPending(flag = false, value = ''): void {
+  confirmPending(flag = false, value = '', second = false): void {
     const pending = this.waiting();
     // A reviewed action (Story 20.31) is sent with the digest of its review, and answers with an outcome dialog.
     if (pending !== null && pending.kind === 'typed-name' && pending.reviewed !== undefined) {
@@ -1496,7 +1509,8 @@ export class ScreenActionHandler {
     const asked = pending.kind === 'warning' ? this.warningValue(pending.descriptor, pending.actionId) : null;
     if (asked !== null) {
       const sent = asked.kind === 'flag' ? (flag ? 'true' : 'false') : value;
-      void this.send(pending.descriptor, pending.actionId, pending.target, { [asked.value]: sent }, sink);
+      const values: ActionValues = asked.also === undefined ? { [asked.value]: sent } : { [asked.value]: sent, [asked.also.value]: second ? 'true' : 'false' };
+      void this.send(pending.descriptor, pending.actionId, pending.target, values, sink);
       return;
     }
     const own = this.flag(pending.descriptor, pending.actionId);
@@ -1745,6 +1759,8 @@ export class ScreenActionHandler {
       flagLabel,
       fieldLabel: asked?.kind === 'field' ? stringFor(asked.labelKey) : '',
       fieldHint: asked?.kind === 'field' && asked.hintKey !== undefined ? stringFor(asked.hintKey) : '',
+      flagNote: asked?.kind === 'flag' && asked.noteKey !== undefined ? stringFor(asked.noteKey) : '',
+      flag2Label: asked?.kind === 'flag' && asked.also !== undefined ? stringFor(asked.also.labelKey) : '',
       options,
       privileged,
       impact: '',

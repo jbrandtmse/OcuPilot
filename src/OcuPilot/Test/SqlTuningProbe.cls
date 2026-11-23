@@ -239,6 +239,7 @@ ClassMethod TablesOf(pNamespace As %String) As %List
         Set tResult = ""
         Set tStatement = ""
     } Catch {
+        Set tList = $ListBuild("TablesOf failed")
     }
     Set $NAMESPACE = tOrigNS
     Quit tList
@@ -261,6 +262,69 @@ ClassMethod RemoveTables(pNamespace As %String) As %Status
     }
     Set $NAMESPACE = tOrigNS
     Quit tSC
+}
+
+/// <p>The statistics the instance holds for <var>pTable</var> in <var>pNamespace</var>, read through the vendor's own calls: <code>kind size</code>,
+/// the kind being <code>fixed</code>, <code>collected</code> or <code>none</code>, and the size the optimizer uses (the collected extent size unless the
+/// table has fixed statistics). <code>unread</code> where a call raised.</p>
+ClassMethod Statistics(pNamespace As %String, pTable As %String) As %String
+{
+    Set tAnswer = "unread"
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSchema = $Piece(pTable, ".", 1)
+        Set tName = $Piece(pTable, ".", 2)
+        Set tFixed = ''##class(%SQL.Manager.Catalog).HasFixedStats(tSchema, tName)
+        Set tCurrent = ##class(%SQL.Manager.Catalog).GetCurrentTableExtentSize(tSchema, tName)
+        Kill tStat
+        Do ##class(%SQL.Manager.Catalog).DisplayExtentDBStats(tSchema, tName, .tStatClass, .tStat, .tStatId)
+        Set tCollected = $Select($IsObject($Get(tStat)): tStat.ExtentSize, 1: "")
+        Set tStat = ""
+        Set tKind = $Select(tFixed: "fixed", tCollected '= "": "collected", 1: "none")
+        Set tAnswer = tKind _ " " _ $Select(tKind = "collected": +tCollected, 1: +tCurrent)
+    } Catch {
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tAnswer
+}
+
+/// <p>Fix the extent size of <var>pTable</var> in <var>pNamespace</var> at <var>pSize</var> through the vendor's own call, so a test puts the table in
+/// the state Clear fixed statistics acts on (Story 21.25).</p>
+ClassMethod FixExtent(pNamespace As %String, pTable As %String, pSize As %Integer) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(%SQL.Manager.Catalog).SetTableExtentSize($Piece(pTable, ".", 1), $Piece(pTable, ".", 2), pSize, 0)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>How many cached queries <var>pNamespace</var>'s statement index holds for a relation of the schema <parameter>TABLESCHEMA</parameter>, in the
+/// upper case the index keeps (Story 21.25).</p>
+ClassMethod CachedQueryCount(pNamespace As %String) As %Integer
+{
+    Set tCount = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATEMENT_LOCATIONS l JOIN INFORMATION_SCHEMA.STATEMENT_RELATIONS r ON r.Statement = l.Statement WHERE r.Relation [ ?")
+        If $$$ISOK(tSC) {
+            Set tResult = tStatement.%Execute($ZConvert(..#TABLESCHEMA, "U") _ ".")
+            If tResult.%Next() Set tCount = tResult.%GetData(1)
+        }
+        Set tResult = ""
+        Set tStatement = ""
+    } Catch {
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tCount
 }
 
 /// <p>Run <var>pText</var> in the current namespace, to its end.</p>

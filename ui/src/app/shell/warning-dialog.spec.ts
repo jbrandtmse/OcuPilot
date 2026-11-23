@@ -95,6 +95,8 @@ describe('the warning dialog', () => {
     [consequence]="consequence"
     [advisory]="advisory()"
     [flagLabel]="flagLabel()"
+    [flagNote]="flagNote()"
+    [flag2Label]="flag2Label()"
     [fieldLabel]="fieldLabel()"
     [fieldHint]="fieldHint()"
     [fieldKind]="fieldKind()"
@@ -102,6 +104,8 @@ describe('the warning dialog', () => {
   />`,
 })
 class PartsHost {
+  readonly flagNote = signal('');
+  readonly flag2Label = signal('');
   readonly fieldKind = signal<'number' | 'text'>('number');
   readonly verb = STRINGS.databaseActionTruncate;
   readonly consequence = STRINGS.databaseTruncateConsequence;
@@ -113,12 +117,22 @@ class PartsHost {
 }
 
 describe('the warning dialog, with its optional parts (Story 18.4)', () => {
-  function mount(parts: { advisory?: string; flagLabel?: string; fieldLabel?: string; fieldHint?: string; fieldKind?: 'number' | 'text' }) {
+  function mount(parts: {
+    advisory?: string;
+    flagLabel?: string;
+    flagNote?: string;
+    flag2Label?: string;
+    fieldLabel?: string;
+    fieldHint?: string;
+    fieldKind?: 'number' | 'text';
+  }) {
     TestBed.configureTestingModule({ providers: [{ provide: OverlayStack, useValue: new OverlayStack() }] });
     const fixture = TestBed.createComponent(PartsHost);
     const component = fixture.componentInstance;
     component.advisory.set(parts.advisory ?? '');
     component.flagLabel.set(parts.flagLabel ?? '');
+    component.flagNote.set(parts.flagNote ?? '');
+    component.flag2Label.set(parts.flag2Label ?? '');
     component.fieldLabel.set(parts.fieldLabel ?? '');
     component.fieldHint.set(parts.fieldHint ?? '');
     component.fieldKind.set(parts.fieldKind ?? 'number');
@@ -217,6 +231,36 @@ describe('the warning dialog, with its optional parts (Story 18.4)', () => {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     fixture.detectChanges();
     expect(component.answers()).toEqual([{ value: '/data/a/' }]);
+  });
+
+  it('Story 21.25: states a flag\'s note only while the box is ticked, and answers a second box beside the first', () => {
+    // Mutation (Rule 19): draw the note whether or not the box is ticked -> the unticked leg goes red; answer `flag2` from the first box -> the last leg goes red.
+    const { host, component, fixture } = mount({
+      flagLabel: STRINGS.sqlTuneKeepClassLabel,
+      flagNote: STRINGS.sqlTuneKeepClassConsequence,
+      flag2Label: STRINGS.sqlTuneClearValuesLabel,
+    });
+    const first = host.querySelector('[data-slot="flag"] input') as HTMLInputElement;
+    const second = host.querySelector('[data-slot="flag2"] input') as HTMLInputElement;
+    expect(host.querySelector('[data-slot="flag2"]')?.textContent).toContain(STRINGS.sqlTuneClearValuesLabel);
+    expect(host.querySelector('[data-slot="flag-note"]')).toBeNull();
+    first.click();
+    fixture.detectChanges();
+    expect(host.querySelector('[data-slot="flag-note"]')?.textContent?.trim()).toBe(STRINGS.sqlTuneKeepClassConsequence);
+    first.click();
+    fixture.detectChanges();
+    expect(host.querySelector('[data-slot="flag-note"]')).toBeNull();
+    proceedOf(host).click();
+    first.click();
+    proceedOf(host).click();
+    second.click();
+    proceedOf(host).click();
+    fixture.detectChanges();
+    expect(component.answers()).toEqual([
+      { flag: false, flag2: false },
+      { flag: true, flag2: false },
+      { flag: true, flag2: true },
+    ]);
   });
 
   it('keeps the numeric hint on a whole-number field, the default', () => {

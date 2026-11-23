@@ -126,6 +126,10 @@ const {
   RESIDUE_COUNT_PLACEHOLDER,
   USER_NAME_PLACEHOLDER,
   consequenceSentence,
+  consequenceSentenceOf,
+  CONSEQUENCE_SQLTABLETUNE,
+  CONSEQUENCE_SQLTABLETUNESCHEMA,
+  CONSEQUENCE_SQLTABLEREBUILD,
   countdownPhase,
   countdownRemaining,
   formatCountdown,
@@ -318,6 +322,25 @@ test('the two privilege-grant consequence codes resolve to their published sente
 test("the resource import's consequence code resolves to its published sentence", () => {
   assert.equal(CONSEQUENCE_RESOURCEFILEIMPORT, 'RESOURCEFILE.IMPORT');
   assert.equal(consequenceSentence(CONSEQUENCE_RESOURCEFILEIMPORT), STRINGS.resourceImportConsequence);
+});
+
+// Story 21.25: a tune's card states the Keep class up to date sentence after its own once its `KeepClassUpToDate` row reads true, and only a tune's.
+//
+// Mutation (Rule 19): state the sentence whatever the row reads -> the false leg goes red; drop the sentence -> the true legs go red.
+test("a tune's card adds the Keep class up to date sentence only while the box is ticked", () => {
+  const row = (after) => ({ field: 'KeepClassUpToDate', before: '', after });
+  for (const code of [CONSEQUENCE_SQLTABLETUNE, CONSEQUENCE_SQLTABLETUNESCHEMA]) {
+    const own = consequenceSentence(code);
+    assert.notEqual(own, '', `${code} publishes its own sentence`);
+    assert.equal(consequenceSentenceOf({ consequence: code, changed: [row('true')] }), `${own} ${STRINGS.sqlTuneKeepClassConsequence}`);
+    assert.equal(consequenceSentenceOf({ consequence: code, changed: [row('false')] }), own);
+    assert.equal(consequenceSentenceOf({ consequence: code, changed: [] }), own);
+  }
+  assert.equal(
+    consequenceSentenceOf({ consequence: CONSEQUENCE_SQLTABLEREBUILD, changed: [row('true')] }),
+    consequenceSentence(CONSEQUENCE_SQLTABLEREBUILD),
+    'a write that is not a tune never carries the sentence'
+  );
 });
 
 // Story 14.2, AC10: the agent's audit purge is minted destructive carrying the purge tool's own

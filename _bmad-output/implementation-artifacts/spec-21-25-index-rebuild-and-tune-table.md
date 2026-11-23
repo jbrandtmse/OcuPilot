@@ -2,7 +2,7 @@
 title: 'Story 21.25: Index rebuild and tune table'
 type: 'feature'
 created: '2026-11-16'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'b8283da29229ddfb140e5303a9e7e7d04814a9a8'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -10,7 +10,14 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-6-the-sql-tuning-track.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      `SqlPort.QuotedName`'s delimited-identifier branch (a table or schema name needing quotes) has no test against the real vendor.
+    evidence: |-
+      Every probe table matches the plain-identifier shape, so the branch returns the name unchanged in every test; the copy-out script for TUNE and CLEARSTATS also shows the raw id. Story 21.31 reuses the helper and can add a probe with a delimited name.
+    location: >-
+      src/OcuPilot/Port/SqlPort.cls QuotedName
+    severity: low
 ---
 
 <intent-contract>
@@ -78,7 +85,14 @@ deferred: []
 
 Story 21.6 is `done` and merged. **Task 0 is done** (Design Notes, "Task 0 results"); **Batch 3 is not built here** (Spec Change Log, 2026-11-22: it is Story 21.31's). The implement stage builds Batches 1, 2 and 4, and a handoff builds one batch at a time. Where a Batch 1 or 2 bullet below names Batch 3 (`FIELDSTATS`, `SETEXTENT`, `sql-field`, set-extent-size, set-selectivity, set-map-size), skip that part. Strings are the Spec Change Log's ruled and corrected ones; any other user-facing sentence stops with `## Clarification Needed`. Codes go in `Api/AtelierError.cls` (`Api/Error.cls` is frozen). `ConfirmNamespaceRoster` (Epic 24's roster over every registered write tool) is one of the rosters to update: each new namespace-scoped write tool's confirm names the mint's namespace, or is exempted in that roster with a reason.
 
-**Handoff scope now: Batch 2 only (tune).** Batch 1 is committed (888433da8) and closed; its rework paragraph below is history, not work. Build Batch 2's bullets and nothing of Batch 3 or 4, leaving the work uncommitted, with these rules that Batch 1 established:
+**Handoff scope now: Batch 4 only (client).** Batches 1 and 2 are committed (888433da8, cd7ddadd4) and closed, and the server and the strings they needed are in. Build Batch 4's bullets, leaving the work uncommitted, with these rules:
+
+- Read what Batches 1 and 2 already put in `strings.ts`, `screen-actions.ts`, `proposal-view.ts`, `screen-action-handler.ts`, the EXPERIENCE.md rows and the mirror, and add only what is missing; the actions `rebuild-indices`, `tune` and `clear-statistics` on the table route and `tune` on the schema route, and the row action `rebuild`, are the whole client write surface (`set-extent-size`, set selectivity and set map size are Story 21.31's and are not drawn). Use 21.6's `sql-cached-queries.page.ts` as the sibling to extend, and collect the tune values as `database-editor.page.ts` collects `InitialSize`: the table's Tune dialog collects "Keep class up to date" (a box, `KeepClassUpToDate`), the schema's collects it and "Clear values" (`ClearValues`).
+- The only new sentences allowed are the ruled value labels "Keep class up to date" and "Clear values" and the corrected keep consequence "The class is not recompiled and is not marked out of date." (shown with the Tune dialog and the card when the box is ticked), listed in the 21.25 EXPERIENCE.md row with the same line count so the `EXPERIENCE.md:NNN` cites do not shift. Anything else a person would read is a `## Clarification Needed`.
+- The browser spec `ui/browser/system-explorer-sql-tuning.browser-spec.mjs` follows Batch 4's bullet, minus set selectivity (21.31's): rebuild one index on the Indices tab and its rows answer again; Collect statistics on the Info tab and the extent size reads the probe's rows; Clear fixed statistics restores the probe (the probe's fixed size is set by the fixture through the vendor call, since the set-extent-size action is not built here); an own table's Collect statistics shows the refusal sentence and changes nothing. Each step waits for the screen's answered signal; the `after` hook purges the probe tables' cached queries and drops the probe schema. Rebuild and redeploy the bundle before every browser run; run it alone, then with `system-explorer-sql.browser-spec.mjs`, then that file first, then check no probe schema, table, statistic or cached query remains (AC6). Add the AC6 and AC2/AC3 browser mutation lines (the Indices tab loses its `rebuild` row action; the Info tab's tune handler is not registered) as `mutation:` lines, applied after rebuild and redeploy.
+- Run `npm run test:tools`, `npm run test:components` and `npm run build`; update every shared-surface test the new shape changes (search `ui/browser`, `ui/tools`, `ui/src` and `src/OcuPilot/Test` for each key you change) and run each one found.
+
+Closed history, Batch 2 scope: build Batch 2's bullets and nothing of Batch 3 or 4, leaving the work uncommitted, with these rules that Batch 1 established:
 
 - Strings are only the ruled and corrected set (Spec Change Log, Design Notes "Strings, escalated"): the Field statistics tab's label, its eight column words, its empty state and suggested prompts, the actions "Collect statistics", "Clear fixed statistics" and "Tune all tables", the values "Keep class up to date" and "Clear values", the consequences as corrected, "This table has no fixed statistics." and the vendor and own-table sentences already published in Batch 1. A write-capable descriptor must declare `"emptyNextKey": ""` and a non-empty `emptyAgentKey` (the mirror and `Registry.TableProblem` enforce it): the Info tab already has `explorerSqlTableMaintenanceEmptyAgent`, and the Schema tab uses the ruled phrase "tune table" verbatim under one new key `explorerSqlSchemaTuneEmptyAgent`. The ruled command aliases "tune table" and "table statistics" go on the descriptors that carry the actions. No other sentence: a state-row word, a new refusal or a new label is a `## Clarification Needed`. Tune and Clear fixed statistics declare no state row (`SqlTableAction.StateDiff` already answers none).
 - The Field statistics tab is a read: `entityType` `class` (as the Fields tab), no row action, `emptyNextKey` `tableReadOnlyEmptyNext`; its descriptor is `ExplorerSqlFieldStatistics`, its roster rows join `ExplorerDescriptor` and the mirror, and its read is `Catalog.FieldStatistics` bound as Design Notes (h) measured, equal for the tab and the agent (AC1).
@@ -154,6 +168,23 @@ After the three changes: regenerate the mirror (`cd ui && node tools/screen-mirr
   - **Matrix and AC3, restated to the measured observable (intent unchanged):** `Collect statistics` reads the collected extent size N (the port's `ExtentSize` is the collected size, or the fixed size when `HasFixed`). `Keep class up to date` does not change the class's storage `ExtentSize` or its compiled state on this build, so the pass-through of `KeepClassUpToDate` is pinned at the seam and the class is pinned unchanged and up to date.
 
 ## Review Triage Log
+
+### 2026-11-22 — Review pass
+
+- verdicts: 12 findings — high 0, medium 1, low 10, false 1, maybe-false 0 (the last row groups the intent auditor's descriptive divergences)
+- findings:
+  - `[low]` `reject` Keep class up to date: the seam records the value before `TableCall` runs, so a constant inside `TableCall` stays green — the vendor shows no observable difference between 0 and 1 on this build (Task 0 clause 4), so only the seam can pin it, and a second seam level is more than a direct correction. The upstream mutation (`TableWrite` hands 0) is recorded.
+  - `[medium]` `patch` The tune card's Keep sentence depends on a changed row no server test reads — patched: `SqlTableTune.TestTheClassUpToDateValueReachesTheInstanceAsDeclared` asserts the minted proposal's `KeepClassUpToDate` row reads `true` and `false`; mutation (the `TABLESTATS` answer drops the member) red on four tests.
+  - `[low]` `patch` The cleanup assertions pass when `TablesOf` fails — patched: `SqlTuningProbe.TablesOf` answers a one-name list on failure, so the leftover count is not 0.
+  - `[low]` `defer` `QuotedName`'s delimited branch has no test — Story 21.31 reuses the helper; deferred.
+  - `[low]` `patch` The Field statistics oracle is the product's own query — patched: the test pins field B's fixed `2.5000%` against its collected `20.0000%` and the other fields' fixed equal to collected; mutation (the query's collected column reads the fixed one) red.
+  - `[low]` `reject` Browser AC2's untouched-index assertion cannot tell one from all — the sibling `SqlIndexRebuild` tests pin one against all with two killed indices.
+  - `[low]` `reject` Map-name rebuild test asserts only 200 — the mutation on `TableFacts` (run 940) reddens it.
+  - `[low]` `reject` The seam's call count does not see the screen's HTTP leg — the screen leg is pinned by its 400 or 403 verdict and the unchanged statistics.
+  - `[low]` `reject` The AC6 mutation lines do not name the leak assertion; the hard-coded `none 100000` default — both cosmetic; the leak is pinned by the direct probe counts.
+  - `[false]` `reject` `ConfirmNamespaceRoster` was not run — it ran green on `ocupilot-ci` this pass (3 of 3).
+  - `[low]` `reject` Formatting in `AtelierPort.cls`, and the copy-out script shows the raw id for a delimited name — formatting only; the delimited name is deferred above.
+  - Intent audit, descriptive, accepted by ruling: Keep class up to date and the class storage `ExtentSize` (Spec Change Log, 2026-11-22, measured); the separate `Tables` endpoint beside `Statements` and `CachedQueries` (Design Notes, Batch 1); the own-table test names `OcuPilot_Kernel_State.Convo` (a table that exists on the instance); the data-map refusal's two surfaces; emptiness asserted on probe index globals only; set-up statistics through the vendor, restored through the product's Clear tool; vendor-refusal rows through the seam.
 
 ## Design Notes
 
@@ -305,12 +336,25 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
   - mutation: AC1, `AtelierPort.CATALOGFIELDSTATISTICSCOLUMNS` drops `FixedSelectivity` -> `SqlTableTune.TestTheFieldStatisticsTabAndTheAgentsReadAnswerTheDirectRows` red on every field (run 1026).
   - mutation: AC3, `SqlPort.TableWrite` hands the seam `0` for the `TUNE` value -> `SqlTableTune.TestTheClassUpToDateValueReachesTheInstanceAsDeclared` red on the `1` call (run 1027); `TableCall` makes no call for `CLEARSTATS` -> `TestFixedStatisticsAreClearedOnBothCallersAndATableWithNoneIsRefused` red on both callers (run 1028); `TableCall` passes `0` for `ClearValues` -> `TestASchemasTablesAreTunedOnBothCallers` red on the cleared leg (run 1029).
   - mutation: AC5, `SqlTableAction.RefusedBeforeState` answers 0 -> `SqlTableTune.TestATableAndASchemaOfOcuPilotsOwnAreRefusedOnBothCallers` red on both callers' clear-statistics (run 1030); `Prohibited.TableEntry` judges no schema name -> `Prohibited.TestASchemaIsRefusedForItsNameAndForAFailedRead` red (run 1031).
+  - Observed (Batch 4, re-run after the outage: each applied on the rebuilt `ocupilot-ci`, over a rebuilt and redeployed bundle for the browser ones, reverted, the files' `git hash-object` identical) and recorded as `mutation:` lines:
+  - mutation: AC2/AC6, `ExplorerSqlIndices` dropped from `SCREEN_ACTION_DESCRIPTORS` -> `system-explorer-sql-tuning.browser-spec.mjs`'s Rebuild index test red on the label assertion.
+  - mutation: AC3/AC6, `SQL_TABLE_TUNE` dropped from `SqlTablePage`'s registered actions -> the browser spec's Collect statistics and own-table tests red (its Clear fixed statistics test stays green); `sql-table.page.spec.ts`'s registration and Collect statistics tests red.
+  - mutation: AC3, `confirmPending` sends no value for a one-value warning -> `sql-table.page.spec.ts`'s Collect statistics test red; its second box sent as the first's state -> `sql-schema.page.spec.ts`'s Tune all tables test red; `SqlSchemaPage` registers nothing -> both its registration and tune tests red.
+  - mutation: AC3, `SqlPort.TableAnswer` stops answering the `KeepClassUpToDate` member -> `SqlTableTune` red on four tests, including the minted proposal's `KeepClassUpToDate` row.
+  - mutation: AC1, `AtelierPort.CATALOGFIELDSTATISTICSQUERY` reads the fixed selectivity under the collected heading -> `SqlTableTune.TestTheFieldStatisticsTabAndTheAgentsReadAnswerTheDirectRows` red (file hashes identical after revert, source reloaded).
+  - mutation: AC3, `WarningDialog` draws the note whether or not its box is ticked, and answers the second box from the first -> `warning-dialog.spec.ts`'s Keep class up to date test red each way; the card states the sentence whatever its `KeepClassUpToDate` row reads -> `proposal-view.test.mjs`'s tune test red.
 
 **Owner answer U-84 (2026-11-16, "A"):** the three records are written into the spine as proposed, with the new `PROHIBITED.OCUPILOTTABLE` code and its escalated sentence. Implementation waits for Story 21.6's merge.
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none (implements after Story 21.6 merges)
+Status: done
+Blocking condition: none
 
-First plan. The spec is otherwise complete for development once the three records are ruled. Escalated for the gate: the strings, the four entity types, the keys, and the recommended split of Batch 3. Task 0's eight write measurements wait for the implement stage on `ocupilot-ci`, since `ocupilot` is read-only and a rebuild or tune writes.
+**This pass (resume after the outage).** Batch 4 (client) was re-read whole, found complete, and verified on a rebuilt `ocupilot-ci`; every pre-outage result and mutation was re-run. Batches 1 and 2 closed earlier (888433da8, cd7ddadd4); Batch 3 is Story 21.31's.
+
+- **Changed:** the two pages and their specs (`sql-table.page.ts`, `sql-schema.page.ts`), the tune dialog and card (`warning-dialog.ts`, `screen-action-dialogs.ts`, `proposal-card.ts`, `proposal-view.ts`), the handler and outlet rows, three strings, one EXPERIENCE.md row, the browser spec, and `SqlTuningProbe` helpers. The browser spec's Clear fixed statistics test now captures the table's state before the fixture fixes the extent size, so it no longer depends on the Collect statistics test having run first.
+- **Review (two layers):** one patch to the card's pinning (a minted tune proposal carries the `KeepClassUpToDate` row, pinned in `SqlTableTune`), one to the Field statistics oracle (literal fixed and collected values), one to the probe cleanup (`TablesOf` no longer reports an empty list on failure). One finding deferred (`QuotedName`'s delimited branch); the rest rejected with reasons in the Review Triage Log. Follow-up review not recommended (no high patched, one medium).
+- **Verified, all after the rebuild:** `reload.sh` `LOADERRORS=0`; `npm run test:tools` 2403 of 2403; `npm run test:components` 3892 tests; `npm run build` with its seven checkers; the browser spec alone (4 of 4), with `system-explorer-sql.browser-spec.mjs` (14 of 14) and that file first (10 of 10, then 4 of 4), with no probe schema, table, statistic or cached query left; `SqlTableTune` 10, `SqlIndexRebuild` 8, `SqlCachedQueryPurge` 4 and `ConfirmNamespaceRoster` 3, each green, one class per call; `check-objectscript.py` 0 problems; `lint-docs.sh` 0 issues. Every Batch 4 mutation re-applied, observed red and reverted with identical file hashes.
+- **Field statistics tab strings already shipped by Batches 1-2** (not touched here; for the runner to take to the orchestrator): label `explorerSqlTabFieldStatistics` "Field statistics" (`ui/src/app/core/strings.ts`, `src/OcuPilot/Screen/Titles.cls`); column words `explorerSqlColumnOutlierValue`, `...OutlierSelectivity`, `...AverageFieldSize`, `...FixedSelectivity`, `...FixedOutlierValue`, `...FixedOutlierSelectivity`, `...FixedAverageFieldSize` (new in `strings.ts`) and `explorerSqlColumnSelectivity` (older, Story 19.5); empty state `explorerSqlFieldStatisticsEmpty`; prompts `explorerSqlFieldStatisticsPrompt1` to `Prompt3`; the descriptor `ExplorerSqlFieldStatistics.cls` wires them and has no command aliases.
+- **Residual:** the `(once)` runner sweep, `smoke.sh` and Rule 30's fresh check are the runner's; the contended-path check against Epic 24 was not re-run this pass (the Batch 4 edits to `screen-action-handler.ts`, `proposal-view.ts` and `strings.ts` are add-only).
