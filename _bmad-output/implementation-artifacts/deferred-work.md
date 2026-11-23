@@ -14493,3 +14493,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-39-ci-health-the-governance-renderer-stall-and-the-journal-reve.md (21.39 plan) | severity: medium | fix-risk: medium | footprint: cross-story
 - evidence: Measured on ocupilot-ci, 319 MB journal, 30 matching records: the vendor List returns 18 rows per 2000-byte bulk; maxRows 10-16 took 0.08-0.10 s, 17-20 took 3.4 s while the second bulk scanned to the file start; CI's file was 629 MB
 - 2026-11-22T12:36:39Z status=routed owner=burndown by=orchestrator note=degraded read, no data risk; any change to AD-26's or AD-36's read is ruled at the burndown, not in 21.39
+
+### DW-2849: Discard, which is not destructive, confirms through the typed-name dialog with the red destructive button; a non-destructive review dialog in the shared handler is a UX decision under EXPERIENCE's confirm-dialog rule
+- source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-2.md (review 672390e1c) | severity: low | fix-risk: low | footprint: cross-story
+- evidence: openReview always opens 'typed-name' (screen-action-handler.ts:1891) and CHECKED_SET_DIALOGS routes discard there
+- 2026-11-23T07:59:57Z status=decision-pending owner=burndown by=epic-24-runner note=UX ruling: which confirm dialog a reversible checked-set write uses
+
+### DW-2850: Edit and resubmit leaves the original body behind with no header naming it, so no purge ever reaches it (vendor behaviour, inference); changing the behaviour or the consequence sentence is a product and string decision
+- source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-2.md (review 672390e1c) | severity: low | fix-risk: med | footprint: in-footprint
+- evidence: ResubmitMessage with a new body points the header at the clone (irislib/Ens/MessageHeader.cls:409-417); the tests delete the old body by hand
+- 2026-11-23T07:59:57Z status=decision-pending owner=burndown by=epic-24-runner note=product ruling: delete the orphaned original body, or say in the consequence sentence that it stays
