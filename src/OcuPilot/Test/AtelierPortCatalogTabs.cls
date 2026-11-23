@@ -15,6 +15,12 @@ Class OcuPilot.Test.AtelierPortCatalogTabs Extends %UnitTest.TestCase
 
 Parameter PORT = "OcuPilot.Port.AtelierPort";
 
+/// <p>The text a statement or a call of the vendor's statement index procedure would carry, in upper case: <code>%SQL_Manager.StatementIndexAll</code>.</p>
+Parameter VENDORPROCEDURE = "SQL_MANAGER.STATEMENTINDEX";
+
+/// <p>The same procedure named as its class query, in upper case: <code>%SQL.Manager.Catalog:StatementIndexAll</code>.</p>
+Parameter VENDORCLASSQUERY = "SQL.MANAGER.CATALOG:STATEMENTINDEX";
+
 /// <p>The statement a SQL statements tab sends, written out here so that a column added to or
 /// renamed in the port's select list, and a grouping dropped from it, fails this class rather than
 /// passing through a body built from the port's own parameter.</p>
@@ -324,13 +330,24 @@ Method TestNoStatementReadSelectsAnIdentifyingColumn()
         Set tColumn = $Piece($Piece(tColumns, ",", tI), ":", 2)
         Do $$$AssertTrue(..#STATEMENTSQUERY [ (" AS " _ tColumn _ $Select(tColumn = "LOCATION": " FROM", 1: ",")), "the statements row map's " _ tColumn _ " is a column the statement selects")
     }
+    ; Story 21.6: the namespace-wide statement index read selects the same kind of columns, from the same tables.
+    Set tIndexQuery = $ZConvert($Parameter(..#PORT, "CATALOGSTATEMENTINDEXQUERY"), "U")
+    Do $$$AssertTrue(tIndexQuery [ "INFORMATION_SCHEMA.STATEMENTS", "the statement index read reads the information schema's statements")
+    For tColumn = "USERNAME", "USER_NAME", "CLIENTNAME", "CLIENTIP", "CLIENTAPP", "CALLSTACK", "S.PLAN", "JSONPLAN" {
+        Do $$$AssertTrue(tIndexQuery '[ tColumn, "the statement index read names no " _ tColumn)
+    }
+    Set tIndexColumns = $Parameter(..#PORT, "CATALOGSTATEMENTINDEXCOLUMNS")
+    For tI = 1:1:$Length(tIndexColumns, ",") {
+        Set tColumn = $Piece($Piece(tIndexColumns, ",", tI), ":", 2)
+        Do $$$AssertTrue(tIndexQuery [ (" AS " _ tColumn _ $Select(tColumn = "LOCATION": " FROM", 1: ",")), "the statement index row map's " _ tColumn _ " is a column the read selects")
+    }
     Set tNamed = ""
     Set tClass = ##class(%Dictionary.CompiledClass).%OpenId(..#PORT)
     Do $$$AssertTrue($IsObject(tClass), "the port is compiled")
     If '$IsObject(tClass) Quit
     For tI = 1:1:tClass.Parameters.Count() {
         Set tParameter = tClass.Parameters.GetAt(tI)
-        If $ZConvert(tParameter.Default, "U") [ "STATEMENTINDEX" Set tNamed = tNamed _ " " _ tParameter.Name
+        If ($ZConvert(tParameter.Default, "U") [ ..#VENDORPROCEDURE) || ($ZConvert(tParameter.Default, "U") [ ..#VENDORCLASSQUERY) Set tNamed = tNamed _ " " _ tParameter.Name
     }
     Set tDefinition = ##class(%Dictionary.ClassDefinition).%OpenId(..#PORT)
     Do $$$AssertTrue($IsObject(tDefinition), "the port's definition opens")
@@ -342,7 +359,7 @@ Method TestNoStatementReadSelectsAnIdentifyingColumn()
         While 'tMethod.Implementation.AtEnd {
             Set tCode = tCode _ $ZConvert(tMethod.Implementation.ReadLine(), "U") _ " "
         }
-        If tCode [ "STATEMENTINDEX" Set tNamed = tNamed _ " " _ tMethod.Name
+        If (tCode [ ..#VENDORPROCEDURE) || (tCode [ ..#VENDORCLASSQUERY) Set tNamed = tNamed _ " " _ tMethod.Name
     }
     Do $$$AssertEquals(tNamed, "", "no parameter or method of the port names the statement index procedure")
 }

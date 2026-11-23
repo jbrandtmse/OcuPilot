@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting' | 'statement-index-entry' | 'cached-query';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -596,7 +596,9 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "interop-credential",
   "interop-schedule",
   "interop-purge",
-  "interop-purge-setting"
+  "interop-purge-setting",
+  "statement-index-entry",
+  "cached-query"
 ];
 
 /**
@@ -14106,7 +14108,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "permission": "USE"
       }
     ],
-    "entityType": "class",
+    "entityType": "cached-query",
     "secondaryEntityTypes": [],
     "scope": "namespace",
     "parentScope": "system-explorer/sql-tables",
@@ -14118,7 +14120,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "purge",
+        "selfProtection": ""
+      },
+      {
+        "id": "purge-table",
+        "selfProtection": ""
+      },
+      {
+        "id": "purge-namespace",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "CachedQuery",
@@ -14228,8 +14243,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "explorerSqlCachedQueriesEmptyAgent"
     },
     "tab": {
       "group": "system-explorer/sql-tables/document",
@@ -16336,6 +16351,243 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "explorer.sqlschemas",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerSqlStatementList",
+    "route": "system-explorer/sql-statements",
+    "area": "system-explorer",
+    "labelKey": "explorerSqlTabStatements",
+    "sideBarPosition": 20,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "statement-index-entry",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "freeze",
+        "selfProtection": ""
+      },
+      {
+        "id": "unfreeze",
+        "selfProtection": ""
+      },
+      {
+        "id": "clear-statistics",
+        "selfProtection": ""
+      },
+      {
+        "id": "clear-error",
+        "selfProtection": ""
+      },
+      {
+        "id": "clean",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Hash",
+        "Statement",
+        "Tables",
+        "PlanState",
+        "NewPlan",
+        "PlanError",
+        "Executions",
+        "AverageTime"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerSqlStatementListEmpty",
+    "commandAliases": [
+      "statement index",
+      "frozen plans"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlStatementListPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlStatementListPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlStatementListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.Home",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "statement in the index",
+      "label": "Every SQL statement the namespace's statement index holds, with plan state, plan error and run statistics; statements running now are in osmgmt.sqlactivity.",
+      "source": {
+        "port": "atelier",
+        "endpoint": "Catalog.Statements",
+        "type": "LIST"
+      },
+      "fields": [
+        "Hash",
+        "Statement",
+        "Tables",
+        "PlanState",
+        "NewPlan",
+        "PlanError",
+        "PlanSaved",
+        "PlanVersion",
+        "Executions",
+        "TotalTime",
+        "AverageTime",
+        "StdDevTime",
+        "RowCount",
+        "Commands",
+        "FirstSeen",
+        "Location"
+      ],
+      "filter": [
+        "Hash",
+        "Statement",
+        "Tables",
+        "PlanState",
+        "PlanError",
+        "Location"
+      ],
+      "sort": {
+        "fields": [
+          "Statement",
+          "PlanState",
+          "Executions",
+          "TotalTime",
+          "AverageTime",
+          "FirstSeen"
+        ],
+        "default": "AverageTime",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "note": {
+        "key": "explorerSqlStatementsNote",
+        "text": "Statistics are as of the instance's last aggregation, so a recently run statement can read blank."
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Hash",
+          "labelKey": "explorerSqlColumnStatementHash",
+          "kind": "name"
+        },
+        {
+          "field": "Statement",
+          "labelKey": "explorerSqlColumnStatement",
+          "kind": "text"
+        },
+        {
+          "field": "Tables",
+          "labelKey": "explorerSqlColumnTables",
+          "kind": "text"
+        },
+        {
+          "field": "PlanState",
+          "labelKey": "explorerSqlColumnPlanState",
+          "kind": "text"
+        },
+        {
+          "field": "NewPlan",
+          "labelKey": "explorerSqlColumnNewPlan",
+          "kind": "status"
+        },
+        {
+          "field": "PlanError",
+          "labelKey": "explorerSqlColumnPlanError",
+          "kind": "text"
+        },
+        {
+          "field": "PlanSaved",
+          "labelKey": "explorerSqlColumnPlanSaved",
+          "kind": "text"
+        },
+        {
+          "field": "PlanVersion",
+          "labelKey": "explorerSqlColumnPlanVersion",
+          "kind": "text"
+        },
+        {
+          "field": "Executions",
+          "labelKey": "explorerSqlColumnExecutions",
+          "kind": "number"
+        },
+        {
+          "field": "TotalTime",
+          "labelKey": "explorerSqlColumnTotalTime",
+          "kind": "number"
+        },
+        {
+          "field": "AverageTime",
+          "labelKey": "explorerSqlColumnAverageTime",
+          "kind": "number"
+        },
+        {
+          "field": "StdDevTime",
+          "labelKey": "explorerSqlColumnStdDevTime",
+          "kind": "number"
+        },
+        {
+          "field": "RowCount",
+          "labelKey": "explorerSqlColumnRowCount",
+          "kind": "number"
+        },
+        {
+          "field": "Commands",
+          "labelKey": "processColumnCommands",
+          "kind": "number"
+        },
+        {
+          "field": "FirstSeen",
+          "labelKey": "explorerSqlColumnFirstSeen",
+          "kind": "text"
+        },
+        {
+          "field": "Location",
+          "labelKey": "processDetailsLocation",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "explorerSqlStatementListEmptyAgent"
+    },
+    "toolIdentifier": "explorer.sqlstatements",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,

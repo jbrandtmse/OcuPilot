@@ -241,7 +241,7 @@ test('every string key a table or banner declaration names is one the key check 
 //
 // Mutation (Rule 19): drop the note key from `declaredStringKeys` -> the key assertion goes red; change
 // one descriptor's `text` -> the equality goes red naming it.
-test('every read note\'s text is the string its key names, and the three SQL statements reads declare one', () => {
+test('every read note\'s text is the string its key names, and the four SQL statements reads declare one', () => {
   const strings = loadStrings();
   const noted = readSources().screens.filter((screen) => screen.declaration.read?.note);
   assert.deepEqual(
@@ -252,6 +252,8 @@ test('every read note\'s text is the string its key names, and the three SQL sta
       // Story 18.21: ECP application servers' Connections tab states when its statuses were read.
       'OcuPilot.Screen.Descriptor.EcpAppServerTab',
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
+      // Story 21.6: the namespace's SQL statements list states the same statistics note.
+      'OcuPilot.Screen.Descriptor.ExplorerSqlStatementList',
       'OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
       // Story 20.30: the Trace tab states that the classic Visual Trace also shows the session's event, rule and I/O log entries.
@@ -269,7 +271,7 @@ test('every read note\'s text is the string its key names, and the three SQL sta
       // Story 19.10: SQL activity states whose statement text it shows.
       'OcuPilot.Screen.Descriptor.SqlActivityList',
     ],
-    'the three SQL statements reads, the ECP Connections tab, Services, Page resources, SQL activity, Prometheus metrics, the three Interoperability usage tabs and the message Trace tab declare a note'
+    'the four SQL statements reads, the ECP Connections tab, Services, Page resources, SQL activity, Prometheus metrics, the three Interoperability usage tabs and the message Trace tab declare a note'
   );
   for (const screen of noted) {
     const { key, text } = screen.declaration.read.note;

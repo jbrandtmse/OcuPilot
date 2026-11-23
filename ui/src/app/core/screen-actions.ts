@@ -193,6 +193,19 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   // Story 21.2: Backup tasks' Run starts one backup, and Backup database list's Add database and Remove change the list the list backups use.
   'OcuPilot.Screen.Descriptor.BackupTaskList': { run: STRINGS.actionRun, freeze: STRINGS.backupFreezeAction, thaw: STRINGS.backupThawAction },
   'OcuPilot.Screen.Descriptor.BackupDatabaseList': { add: STRINGS.backupAddDatabaseAction, removedatabase: STRINGS.actionRemove },
+  // Story 21.6: the SQL statements list's five plan and statistics actions, and the Cached queries tab's three purges.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlStatementList': {
+    freeze: STRINGS.sqlStatementFreezeAction,
+    unfreeze: STRINGS.sqlStatementUnfreezeAction,
+    'clear-statistics': STRINGS.sqlStatementClearStatisticsAction,
+    'clear-error': STRINGS.sqlStatementClearErrorAction,
+    clean: STRINGS.sqlStatementCleanAction,
+  },
+  'OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries': {
+    purge: STRINGS.auditDatabasePurgeConfirm,
+    'purge-table': STRINGS.sqlCachedQueryPurgeTableAction,
+    'purge-namespace': STRINGS.sqlCachedQueryPurgeAllAction,
+  },
   // Story 21.20: SQL activity's Cancel query and System alerts' Reset alerts.
   'OcuPilot.Screen.Descriptor.SqlActivityList': { cancel: STRINGS.sqlActivityCancelAction },
   'OcuPilot.Screen.Descriptor.SystemAlertsList': { reset: STRINGS.systemAlertsResetAction },

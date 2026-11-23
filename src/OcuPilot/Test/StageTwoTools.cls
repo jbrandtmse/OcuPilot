@@ -198,6 +198,7 @@ XData Elsewhere
 <screen name="ExplorerDocDbList"/>
 <screen name="ExplorerGlobalList"/>
 <screen name="ExplorerGlobalView"/>
+<screen name="ExplorerSqlStatementList"/>
 <screen name="ExplorerDocumentHashes"/>
 <screen name="ExplorerMacro"/>
 <screen name="ExplorerNamespaceDiff"/>

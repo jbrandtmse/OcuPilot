@@ -2927,6 +2927,21 @@ test('DW-2501: the gates job fetches the release branch tips before it runs the 
   assert.ok(testAt > fetchAt, 'and does so before npm test');
 });
 
+// The longest green gates leg observed, in minutes (completedAt - startedAt): run 44794079238's
+// node 22.22.3 leg, the largest of the last 30 successful runs' legs across all three bands.
+// Re-measure it whenever the floor is raised, and read the value from a run, never from memory.
+const LARGEST_OBSERVED_GATES_MINUTES = 19.9;
+
+// Mutation (Rule 19): set the gates job's `timeout-minutes` to 29 -> red here alone.
+test('the gates job is bounded at no less than 1.5x its longest observed green leg', () => {
+  const jobTimeout = Number(/^ {4}timeout-minutes:\s*(\d+)\s*$/m.exec(jobSlice(workflow, 'gates'))?.[1]);
+  const floor = Math.ceil(1.5 * LARGEST_OBSERVED_GATES_MINUTES);
+  assert.ok(
+    Number.isInteger(jobTimeout) && jobTimeout >= floor,
+    `the gates job's ${jobTimeout} minutes must be at least ${floor} (1.5 x ${LARGEST_OBSERVED_GATES_MINUTES}), so a uniformly slow runner does not time a green leg out; the one job definition bounds every Node band`
+  );
+});
+
 // Mutation (Rule 19): drop the client suite step's `timeout-minutes`, or the report step's
 // `cancelled()` -> red; run `npm test` without the sampler -> red.
 test('the client suite step is bounded under the job, sampled, and followed by the resource report on failure or cancel', () => {

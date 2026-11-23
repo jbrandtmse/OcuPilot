@@ -168,6 +168,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 21.2: Backup tasks, whose Run warns first, and Backup database list, whose Remove is sent at once.
   'OcuPilot.Screen.Descriptor.BackupTaskList',
   'OcuPilot.Screen.Descriptor.BackupDatabaseList',
+  // Story 21.6: the SQL statements list, whose four plan and statistics actions warn first, and a table's Cached queries tab, whose Purge warns first.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlStatementList',
+  'OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries',
   // Story 24.2: the Term lists and the entries lists, whose Delete and Remove type the name or key, and whose Edit and Change dialogs send the rest.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList',
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
@@ -330,6 +333,19 @@ export const LOCALE_LOAD_TABLE = 'load-table';
 export const BACKUP_FREEZE = 'freeze';
 export const BACKUP_THAW = 'thaw';
 export const BACKUP_ADD_DATABASE = 'add';
+
+/**
+ * The SQL statements list and a table's Cached queries tab (Story 21.6). The list's Freeze plan, Unfreeze plan, Clear statistics and Clear plan
+ * error are row actions on the selected statement's hash, each warning first. Its Clean stale statements and the tab's two purges name no row:
+ * their pages register them and send them, with the handler, on the one target `SQL_TUNING_ALL_TARGET` (the namespace's whole index or
+ * every cached query) or, for the table's purge, on the table the route names.
+ */
+export const EXPLORER_SQL_STATEMENT_LIST = 'OcuPilot.Screen.Descriptor.ExplorerSqlStatementList';
+export const EXPLORER_SQL_CACHED_QUERIES = 'OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries';
+export const SQL_STATEMENT_CLEAN = 'clean';
+export const SQL_CACHED_QUERY_PURGE_TABLE = 'purge-table';
+export const SQL_CACHED_QUERY_PURGE_NAMESPACE = 'purge-namespace';
+export const SQL_TUNING_ALL_TARGET = '*';
 
 /** The one target the freeze and the thaw name: the instance's database writes. */
 export const BACKUP_WRITES_TARGET = 'SYSTEM';
@@ -584,6 +600,10 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // registers Add database itself, whose dialog names the database (Story 21.2).
   [BACKUP_TASK_LIST]: [BACKUP_FREEZE, BACKUP_THAW],
   [BACKUP_DATABASE_LIST]: [BACKUP_ADD_DATABASE],
+  // The SQL statements list's page registers Clean stale statements itself, and the Cached queries tab's page its two purges, each on the target
+  // no row names (Story 21.6).
+  [EXPLORER_SQL_STATEMENT_LIST]: [SQL_STATEMENT_CLEAN],
+  [EXPLORER_SQL_CACHED_QUERIES]: [SQL_CACHED_QUERY_PURGE_TABLE, SQL_CACHED_QUERY_PURGE_NAMESPACE],
   // The three settings screens' page registers Set value itself, whose dialog sends the value (Story 21.3).
   // Story 24.13 Batch 2: the General settings' Set value is the settings page's, and its key's own action is sent from the same dialog.
   'OcuPilot.Screen.Descriptor.AnalyticsSettingList': ['set', 'setkey'],
@@ -1068,6 +1088,19 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   [ECP_SSL_CONNECTION_TAB]: { authorize: STRINGS.ecpSslAuthorizeConsequence, reject: STRINGS.ecpSslRejectConsequence },
   // Story 21.2: a run starts in the background, and a freeze stops database writes until a thaw or its limit.
   [BACKUP_TASK_LIST]: { run: STRINGS.backupRunNote, [BACKUP_FREEZE]: STRINGS.backupFreezeConsequence },
+  // Story 21.6: each statement write and each purge states what the instance does; none removes data that cannot be rebuilt, so each warns.
+  [EXPLORER_SQL_STATEMENT_LIST]: {
+    freeze: STRINGS.sqlStatementFreezeConsequence,
+    unfreeze: STRINGS.sqlStatementUnfreezeConsequence,
+    'clear-statistics': STRINGS.sqlStatementClearStatisticsConsequence,
+    'clear-error': STRINGS.sqlStatementClearErrorConsequence,
+    [SQL_STATEMENT_CLEAN]: STRINGS.sqlStatementCleanConsequence,
+  },
+  [EXPLORER_SQL_CACHED_QUERIES]: {
+    purge: STRINGS.sqlCachedQueryPurgeConsequence,
+    [SQL_CACHED_QUERY_PURGE_TABLE]: STRINGS.sqlCachedQueryPurgeConsequence,
+    [SQL_CACHED_QUERY_PURGE_NAMESPACE]: STRINGS.sqlCachedQueryPurgeConsequence,
+  },
   // Story 20.15: a reset puts a screen back to the permissions its descriptor declares.
   [SCREEN_PERMISSIONS]: { [SCREEN_PERMISSIONS_RESET]: STRINGS.screenPermissionsResetConsequence },
   // Story 20.2: each production action but Start states the wait it makes, or what Recover does.

@@ -164,6 +164,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.JournalList': () => import('../areas/os-management/journal-list.page').then((m) => m.JournalListPage),
   'OcuPilot.Screen.Descriptor.BackupTaskList': () => import('../areas/os-management/backup-task-list.page').then((m) => m.BackupTaskListPage),
   'OcuPilot.Screen.Descriptor.BackupDatabaseList': () => import('../areas/os-management/backup-database-list.page').then((m) => m.BackupDatabaseListPage),
+  // Story 21.6: the SQL statements list with its Clean stale statements, and a table's Cached queries tab with its two purges.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlStatementList': () => import('../areas/system-explorer/sql-statement-list.page').then((m) => m.SqlStatementListPage),
+  'OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries': () => import('../areas/system-explorer/sql-cached-queries.page').then((m) => m.SqlCachedQueriesPage),
   // Story 24.13 Batch 2: Analytics' General settings, a detail tab, on the same page: its Set value, and its key's masked dialog.
   'OcuPilot.Screen.Descriptor.AnalyticsSettingList': CONFIG_SETTINGS_PAGE,
   // Story 21.3: Startup, Memory and Compatibility settings, the one page that adds Set value over the shared list.

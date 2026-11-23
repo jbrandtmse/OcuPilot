@@ -261,6 +261,7 @@ XData Catalog [ MimeType = application/json ]
  {"id": "slowquery", "purpose": "Find out why a query is slow and recommend a fix.",
   "steps": [
    {"say": "Read the statements recorded for the table the query uses and the cached queries, for their run counts and times.", "reads": ["explorer.sqltablestatements.read", "explorer.sqlcachedqueries.read"]},
+   {"say": "Read the namespace's statement index for statements with a high average time, a frozen plan that differs from the current one, or a plan error.", "reads": ["explorer.sqlstatements.read"]},
    {"say": "Read the table's indices to see which could serve the query's conditions.", "reads": ["explorer.sqlindices.read"]},
    {"say": "When the person gave the statement, run it as a read to see what it returns.", "reads": ["explorer.sqlquery.read"]},
    {"say": "Weigh the findings: a condition on a column with no index, a function on an indexed column, a join without an index, a cached query with a high average time."}],
