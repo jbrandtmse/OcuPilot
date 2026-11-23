@@ -14523,3 +14523,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-25-index-rebuild-and-tune-table.md (implement review) | severity: low | fix-risk: low | footprint: in-story
 - evidence: SqlPort.cls:1263 QuotedName quotes any name not matching ^[A-Za-z%][A-Za-z0-9_]*$; callers SqlPort.cls:1258 (schema tune) and :1411 (table tune target), both reachable from a name the Tables list shows
 - 2026-11-23T04:46:59Z status=routed owner=21-25-index-rebuild-and-tune-table by=orchestrator note=21.25's own writes reach a delimited name, so the test is 21.25's: a probe schema or table needing quotes, tuned and rebuilt through both callers, at the code review; 21.31 reuses the helper after
+- 2026-11-23T06:24:39Z status=resolved-by:21-25-index-rebuild-and-tune-table owner=21-25-index-rebuild-and-tune-table by=cr note=delimited probe tests both callers; quoting removed (instance refused a quoted schema), runs 60/61/64/65
+
+### DW-2848: AD-10's 21.25 table arm still justifies the refusal by keeping the class up to date, an option rework 1 dropped
+- source: spec-21-25-index-rebuild-and-tune-table.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ARCHITECTURE-SPINE.md:411 says keeping the class up to date rewrites OcuPilot's class definitions; no tool offers or passes it (AD-51 line 1271); the code comment was corrected in review
+- 2026-11-23T06:24:48Z status=open owner=21-25-index-rebuild-and-tune-table by=cr note=lead: delete the clause in the spine (Rule 20); the review stage may not edit the spine
+- 2026-11-23T06:29:48Z status=resolved-by:21-25-index-rebuild-and-tune-table by=lead note=098d97b0a: add-only spine line on AD-10's 21.25 arm (Rule 20)
