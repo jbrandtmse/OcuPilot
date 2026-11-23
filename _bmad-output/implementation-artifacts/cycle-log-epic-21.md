@@ -1024,3 +1024,5 @@
 2026-11-22T23:44:21Z	Story 21.25	story_started	base=47363d553(+bookkeeping) doctrine=3d11cec9 policy=b9ff703e hold=none spec=ready-for-dev(planned_2026-11-16;ruling_U-146)
 2026-11-22T23:44:21Z	Story 21.25	stage_spawned	stage=implement spawn_at=2026-11-22T23:44:21Z model=sonnet agent_name=21-25-impl prior_lines_ended=verified(a455605c6)
 2026-11-22T23:48:38Z	Story 21.6	merged	feature=c141bd5b5 by=orchestrator
+2026-11-23T04:04:57Z	Story 21.25	stage_ended	stage=implement agent=a7b27a938 result=died(API_403_billing) committed=888433da8(B1),cd7ddadd4(B2) uncommitted=B4(12_modified+5_new,unverified)
+2026-11-23T04:04:57Z	Story 21.25	stage_spawned	stage=implement(resume) spawn_at=2026-11-23T04:04:57Z model=sonnet agent_name=21-25-impl-resume throwaway=rebuilt_from_scratch(04:04Z,LOADERRORS=0) prior_results=void
