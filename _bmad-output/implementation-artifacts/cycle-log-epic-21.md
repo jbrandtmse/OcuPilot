@@ -1066,3 +1066,4 @@
 2026-11-23T11:10:45Z	Story 21.31	spec_gate	result=pass ruling=U-151(sql-field,strings_as_written+measure-first,extent_bound_constant+boundary_test,AD-51_add-only,FixTableStats_ordering_pin) spine=4ac5b13c4
 2026-11-23T11:11:16Z	Story 21.31	stage_spawned	stage=implement spawn_at=2026-11-23T11:11:16Z model=sonnet agent_name=21-31-impl prior_lines_ended=verified(ac0370005)
 2026-11-23T12:25:41Z	Story 21.25	merged	feature=9e09385c8 by=orchestrator rerun=45160592270(BackgroundTasksLive_DW-1829_family)
+2026-11-23T12:29:03Z	Epic 21	slip	what=bkl_commit_0d4475689_swept_the_21.31_stage's_37_staged_files_under_a_[skip_ci]_bookkeeping_message cause=bkl_ran_git_commit_without_a_pathspec fix=reset_--soft_HEAD~1(not_pushed),re-committed_log_alone(--only);stage's_index_intact(37_staged);bkl_now_commits_with_--only_paths
