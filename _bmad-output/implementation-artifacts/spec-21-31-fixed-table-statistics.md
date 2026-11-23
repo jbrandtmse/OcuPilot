@@ -2,7 +2,7 @@
 title: 'Story 21.31: Fixed table statistics'
 type: 'feature'
 created: '2026-11-23'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '2b6b656d06d800d4a60814da4beec183028a8f42'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -203,6 +203,7 @@ Code review 2026-11-23 (stage `21-31-cr`, Opus). The diff is `16a1401d9..0798022
 - [x] [Review][Patch] LOW: a 409 that saved nothing is pinned to omit `statisticsFixed` [Test/SqlIndexRebuild.cls:TestTheInstancesRefusalIsAnsweredWithItsMessageInDetailAlone]
 - [x] [Review][Patch] LOW: the own-table test asserts the extent size was read before it compares [Test/SqlTableFixedStats.cls:TestATableOfOcuPilotsOwnIsRefusedOnBothCallers]
 - [x] [Review][Patch] LOW: the selectivity's accepted edges (99.999 with and without `%`, six decimals, `1`) and one step over are pinned [Test/SqlTableFixedStatsCard.cls:TestASelectivityAtItsBoundsIsAValidValue]
+- [x] [Review][Patch] MED: `ExplorerDescriptor`'s writer roster pins the map size's fingerprint subject as the class answers it (`StatsKind`, `CollectedAt`, `HasFixed` added) [Test/ExplorerDescriptor.cls:163]
 
 **Routed:**
 
@@ -450,13 +451,14 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
   - mutation: AC2, the map size field loses `digits: 15` in `WARNING_VALUES` -> `screen-action-handler-sqlstats.spec.ts` "takes a map size of up to fifteen digits" and "Set map size warns" red; the extent size loses `digits: 13` -> `sql-table.page.spec.ts` "Set extent size warns" red.
   - mutation: U-153, `refusalReason` answers the generic vendor sentence -> "shows a set that failed after the statistics were saved" red alone; one word of `sqlTableRefusalSetAfterFix` changed -> `self-protection.test.mjs`'s refusal roster red alone.
   - mutation: AC1 hermeticity, `SQL_TABLE_CLEAR_STATISTICS` dropped from `SqlTablePage`'s actions, bundle rebuilt and redeployed -> the browser spec's Set extent size and Set selectivity steps both red (each also passed alone, forward and in reverse, before it).
+  - mutation: the map size writer's pin in `ExplorerDescriptor`, `+HasFixed` dropped from `Namespace+Table+Map+Type+SizeMB+StatsKind+CollectedAt+HasFixed` -> `TestTheAreaAdvertisesItsReadsAndWrites` red alone (run 918); restored, green (run 919).
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-- **Change (rework 1):** the ten review items. An outlier value is plain data the port quotes (`OutlierExpression`) and the read shows as plain text (`OutlierPlain`); one left out is passed back raw. A map size is 1 or more ("Enter a whole number, 1 or more."). A set that fails after the statistics were saved answers the ruled sentence as its reason. The screen's size fields take 13 and 15 digits. The Set map size fingerprint carries `StatsKind`, `CollectedAt` and `HasFixed` (the `INDEX` answer gains them). The browser steps restore through Clear fixed statistics. The script, the delimited-name legs, the alias row and the new tests (`SqlTableOutlierValues`, moved and new outlier and failure tests) are in.
-- **Verification:** `ocupilot-ci` green after the last source edit for `SqlTableFixedStats` (11), `SqlTableOutlierValues` (4), `SqlTableFixedStatsCard` (4), `SqlTableTune`, `SqlTableRead`, `SqlIndexRebuild`, `Prohibited`, `ToolWrite`, `ToolRoundTrip`, `CompositeMintSweep`, `ConfirmNamespaceRoster`, `MappingDescriptor`, `SurfaceCoverage` and `ReadDescriptions`; `check-objectscript` 0 problems; `lint-docs` clean; `npm run build`, `test:tools` (2405) and `test:components` (3919) green; the tuning browser spec and `system-explorer-sql.browser-spec.mjs` 16/16 forward and in reverse, and each new step green alone. Each mutation is in Verification.
-- **Review (rework 1):** 12 findings. Patched: 2 medium (the map fingerprint's `CollectedAt` leg, a held 130-character outlier value through the screen) and 3 low (the script's guard assertions, the 128-character accept legs, the unobserved empty-string mutation); 1 deferred (the existing one); 6 rejected with reasons in the Review Triage Log. No high patched, so follow-up review is not recommended. After the patches `SqlTableFixedStats` (11) and `SqlTableOutlierValues` (4) are green; no other file changed.
-- **Residual:** `TestAnOutlierValueIsNeverRun` has no positive control inside the test (deferred; the audit's control is in the Review Triage Log).
+- **Change (rework 2):** `ExplorerDescriptor`'s pinned writer roster now reads the map size subject as the class answers it, `Namespace+Table+Map+Type+SizeMB+StatsKind+CollectedAt+HasFixed` (`src/OcuPilot/Test/ExplorerDescriptor.cls:163`). The grep over `src/OcuPilot/Test` and `ui/` for `SETMAPSIZE/`, `SETEXTENT/`, `SETSELECTIVITY/` and the three tool names found that one pin of a subject; the extent size and selectivity pins on the same line already match their classes. No other file changed.
+- **Verification:** `ocupilot-ci` green after the edit for `ExplorerDescriptor` (17), `SqlTableOutlierValues` (4), `SqlTableFixedStats` (11) and `SqlTableFixedStatsCard` (4); `check-objectscript` 0 problems; `test:tools` 2405 green; `lint-docs` clean. No `ui/` file outside `ui/tools` changed, so no component or browser run. The mutation is in Verification.
+- **Review:** one item, patched. No high patched, so follow-up review is not recommended.
+- **Residual:** none new.
