@@ -1061,3 +1061,5 @@
 2026-11-23T10:56:56Z	Story 21.25	story_complete	head=a500f3bc5(gates)+M=5282c9e77 run=45136354856(+45160592270) fresh=pass sweep=20/20 smoke=50/50 vetoes=U-146,U-148,U-149 spine=c026c9ade(AD-51),04fe358b6(AD-10) ledger_owned=0
 2026-11-23T10:57:25Z	Story 21.31	story_started	base=M_5282c9e77 doctrine=3d11cec9 policy=b9ff703e hold=none kit=.coordination/e21-kit
 2026-11-23T10:57:25Z	Story 21.31	stage_spawned	stage=plan spawn_at=2026-11-23T10:57:25Z model=opus agent_name=21-31-plan cycle_iteration=1 prior_lines_ended=verified(a5743f258)
+2026-11-23T11:09:13Z	Story 21.31	stage_complete	stage=plan agent=ac0370005 result=ready-for-dev escalated=strings_batch(5_groups;consequence_starting_text_contradicted_by_21.25_measure;Map_size_unit_measure-first),sql-field_move(consumer_list;no_stored_rows),AD-51_add-only_record bashedits=none lines_ended=verified
+2026-11-23T11:09:13Z	Story 21.31	escalation_sent	to=orchestrator items=strings,sql-field,AD-51 at=2026-11-23T11:09:13Z
