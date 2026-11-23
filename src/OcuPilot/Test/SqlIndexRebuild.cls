@@ -236,6 +236,23 @@ Method TestEveryIndexIsRebuiltOnBothCallers()
     }
 }
 
+/// <p>AC2. A table whose schema and name each hold a space, <code>Probe Table</code> in
+/// <parameter>OcuPilot.Test.SqlTuningProbe.DELIMITEDSCHEMA</parameter>, has one index rebuilt by the agent's confirmed proposal and every index by the
+/// screen's page action, each filling the indices whose globals were killed.</p>
+/// <p>Mutation (Rule 19): <code>SqlPort.ResolveTable</code> refuses an id holding a space -> both callers' assertions go red.</p>
+Method TestATableWithADelimitedNameIsRebuiltOnBothCallers()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 0, 5, .tTable, "Probe Table"), "a table named with a space is made in the schema named with one")
+    Do $ClassMethod(..#PROBE, "KillIndex", ..#NAMESPACE, tTable, "IdxB")
+    Do $ClassMethod(..#PROBE, "KillIndex", ..#NAMESPACE, tTable, "IdxC")
+    Do $$$AssertEquals(..Entries(tTable), "0|0", "both indices are empty")
+    Set tConfirm = ..Agent(..#INDEXTOOL, tTable, "IdxB", , .tProposal, .tResult)
+    Do $$$AssertEquals(tConfirm _ "|" _ ..Entries(tTable), "200 |5|0", "the agent's confirmed rebuild fills the named index: " _ tConfirm)
+    Do $ClassMethod(..#PROBE, "KillIndex", ..#NAMESPACE, tTable, "IdxB")
+    Set tStatus = ..Act(..#TABLESCREEN, "rebuild-indices", tTable, , .tAnswer)
+    Do $$$AssertEquals(..Verdict(tStatus, tAnswer) _ "|" _ ..Entries(tTable), "200 |5|5", "the screen's rebuild fills both")
+}
+
 /// <p>AC2. The table's data map holds its rows and has no index to rebuild: the screen's rebuild of it and the agent's proposal are refused with
 /// the published sentence before any write, and the table's rows stay.</p>
 /// <p>Mutation (Rule 19): the index tool's <code>Holds</code> admits a data map -> both refusals go red.</p>
@@ -291,8 +308,9 @@ Method TestTheInstancesRefusalIsAnsweredWithItsMessageInDetailAlone()
 /// <p>AC5. A table of OcuPilot's own, <code>OcuPilot_Kernel_State.Convo</code>, is refused <code>PROHIBITED.OCUPILOTTABLE</code> with its published
 /// sentence by the screen's two actions and by the agent's two confirmed proposals, before any write: the agent's run through the instrumented port,
 /// which counts no vendor call. The table and its index are read, not changed.</p>
-/// <p>Mutation (Rule 19): <code>OcuPilot.Kernel.Proposal.Prohibited.TableEntry</code> skips the class-name test -> the own-table assertions go red on both
-/// callers (the schema test alone, this table's schema being OcuPilot's, would still refuse: the mutation also skips the schema test).</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Screen.Tool.SqlTableAction.RefusedBeforeState</code> answers 0 and
+/// <code>OcuPilot.Kernel.Proposal.Prohibited.TableEntry</code> skips its schema and class tests -> the own-table assertions go red on both callers.
+/// Either check alone still refuses this table.</p>
 Method TestATableOfOcuPilotsOwnIsRefusedOnBothCallers()
 {
     Set tOwn = ..#OWNTABLE

@@ -981,9 +981,11 @@ Method TestAFailedStatementReadIsNeverPermitted()
 
 /// <p>Story 21.25's table arm refuses a table whose schema or whose class lies in OcuPilot's own, in either case and whichever of the two it is, and
 /// refuses a read that resolves no table at all: a failed read, a missing one, an empty answer and an answer with no class. A table whose schema and
-/// class are neither OcuPilot's is permitted. The read is the armed one, so the shipped arm runs against a table a test composed.</p>
+/// class are neither OcuPilot's is permitted. An index rebuild is judged by its table the same way. The read is the armed one, so the shipped arm runs
+/// against a table a test composed.</p>
 /// <p>Mutation (Rule 19): <code>OcuPilot.Kernel.Proposal.Prohibited.TableEntry</code> skips the class-name test -> the class assertions go red; skips the
-/// schema test -> the schema assertion goes red; answers permitted for a failed read -> the four failed-read assertions go red.</p>
+/// schema test -> the schema assertion goes red; answers permitted for a failed read -> the four failed-read assertions go red;
+/// <code>Prohibits</code> does not send <code>sql-index</code> to it -> the index assertion goes red.</p>
 Method TestATableIsRefusedForItsSchemaOrItsClassAndForAFailedRead()
 {
     Set tTool = "explorer.sqltable.rebuildindices"
@@ -996,6 +998,13 @@ Method TestATableIsRefusedForItsSchemaOrItsClassAndForAFailedRead()
         Do ##class(OcuPilot.Test.ProposalFixture).Arm(tArmed.%ToJSON())
         Set tSC = $ClassMethod(..#SET, "Prohibits", tTool, tRef, "{""Namespace"":""USER""}", "[]", .tProhibits, .tCode, .tReason)
         Do $$$AssertEquals($Select($$$ISERR(tSC): "error", 1: "answered") _ "|" _ tProhibits _ "|" _ tCode, "answered|" _ $List(tCase, 3) _ "|" _ $Select($List(tCase, 3): "PROHIBITED.OCUPILOTTABLE", 1: ""), $List(tCase, 4))
+    }
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("sql-index", "USER", "OcuProbe225.T1" _ $Char(1) _ "IdxB", .tIndexRef)
+    Do $$$AssertStatusOK(tSC, "the index has a key")
+    For tCase = $ListBuild("OcuPilot.Probe225.Row", 1, "an index of an OcuPilot class under another schema"), $ListBuild("User.OcuProbe225.T1", 0, "an index of neither") {
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm({"Table": "OcuProbe225.T1", "Class": ($List(tCase, 1)), "Map": "IdxB"}.%ToJSON())
+        Set tSC = $ClassMethod(..#SET, "Prohibits", "explorer.sqlindices.rebuild", $Get(tIndexRef), "{""Namespace"":""USER""}", "[]", .tProhibits, .tCode, .tReason)
+        Do $$$AssertEquals($Select($$$ISERR(tSC): "error", 1: "answered") _ "|" _ tProhibits _ "|" _ tCode, "answered|" _ $List(tCase, 2) _ "|" _ $Select($List(tCase, 2): "PROHIBITED.OCUPILOTTABLE", 1: ""), $List(tCase, 3))
     }
     For tFailure = "ArmMissing", "ArmReadFault", "ArmEmpty", "NoClass" {
         If tFailure = "NoClass" {

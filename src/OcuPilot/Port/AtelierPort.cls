@@ -216,7 +216,7 @@ Parameter CATALOGFIELDSQUERY = "CALL %SQL_Manager.Fields(?, ?)";
 
 Parameter CATALOGINDICESQUERY = "CALL %SQL_Manager.Indices(?, ?)";
 
-/// <p>One table's field statistics, bound with its exact schema and name twice over: the classic Tune Table window's own join of the fields' current
+/// <p>One table's field statistics, its exact schema and name bound once and read by both procedures: the classic Tune Table window's own join of the fields' current
 /// (fixed) selectivity with the collected one, one row per field.</p>
 Parameter CATALOGFIELDSTATISTICSQUERY = "SELECT f.FIELD_NAME, CASE c.SELECTIVITY WHEN 1 THEN '1 (unique)' ELSE c.SELECTIVITY END AS COLLECTED_SELECTIVITY, c.OUTLIER_VALUE AS COLLECTED_OUTLIER_VALUE, c.OUTLIER_SELECTIVITY AS COLLECTED_OUTLIER_SELECTIVITY, c.AVERAGE_FIELD_SIZE AS COLLECTED_AVG_FIELD_SIZE, CASE f.SELECTIVITY WHEN 1 THEN '1 (unique)' ELSE f.SELECTIVITY END AS FIXED_SELECTIVITY, f.OUTLIER_VALUE AS FIXED_OUTLIER_VALUE, f.OUTLIER_SELECTIVITY AS FIXED_OUTLIER_SELECTIVITY, f.AVERAGE_FIELD_SIZE AS FIXED_AVG_FIELD_SIZE FROM (SELECT ? AS s, ? AS t) t, %SQL_Manager.FieldCurrentSelectivity(t.s, t.t) f LEFT JOIN %SQL_Manager.CollectedFieldSelectivity(t.s, t.t) c ON f.FIELD_NAME = c.FIELD_NAME";
 

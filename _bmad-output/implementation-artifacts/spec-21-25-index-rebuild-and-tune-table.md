@@ -173,6 +173,40 @@ After the three changes: regenerate the mirror (`cd ui && node tools/screen-mirr
 - AC5. Given a table or schema in an `OcuPilot` schema, when either caller attempts any of the eight writes, then each is refused with its published sentence before any write, and the table's statistics, class and indices are unchanged.
 - AC6. Given the throwaway, when the browser spec runs forward and in reverse with any other spec file, then it passes and leaves no probe schema, table, statistic or cached query behind.
 
+### Review Findings
+
+Code review 2026-11-23 (stage review, four layers, full-opus). Patches uncommitted; runs on `ocupilot-ci`.
+
+- [x] [Review][Patch] (medium) `CompositeMintSweep` red on the merged tree: `SqlIndexMint` had no roster row [src/OcuPilot/Test/CompositeMintSweep.cls:70] — row added (`Table`, `Map`); without it run 58 red on `TestTheRosterIsEveryCompositeIdMint` alone, with it runs 59 and 72 green (5 of 5).
+- [x] [Review][Patch] (medium) DW-2847: a schema whose name needs delimiting could not be tuned, and no test ran a delimited name [src/OcuPilot/Port/SqlPort.cls:1252] — measured on `ocupilot-ci`: `TuneSchema` refuses a quoted schema ("No such schema '\"OcuProbe225 Delim\"'") and accepts it bare; `TuneTable` and `ClearTableStats` accept a spaced or reserved-word name bare, as the classic page passes them; a `.` is refused in any delimited identifier. `QuotedName` removed; the tunes pass the names as the instance holds them, so the copy-out script now names the same target. Tests: `SqlTableTune.TestADelimitedSchemaAndItsTablesAreTunedOnBothCallers`, `SqlIndexRebuild.TestATableWithADelimitedNameIsRebuiltOnBothCallers` (schema `OcuProbe225 Delim`, tables `Probe Table` and `Order`). DW-2847 resolved-by this story.
+- [x] [Review][Patch] (medium) Rule 2/31: `sql-table.page.ts` and `sql-schema.page.ts` were near-copies of `sql-cached-queries.page.ts` [ui/src/app/areas/system-explorer/route-target-actions.ts] — both now call one helper, `registerRouteTargetActions`; 21.6's two pages are another story's and keep their form.
+- [x] [Review][Patch] (medium) The `DESCRIPTOR_PAGES` rows for the two pages had no test [ui/src/app/shell/screen-outlet.spec.ts] — pinned; mutation below.
+- [x] [Review][Patch] (medium) `Prohibits` sending `sql-index` to `TableEntry` had no test [src/OcuPilot/Test/Prohibited.cls] — index leg added; mutation run 68.
+- [x] [Review][Patch] (medium) Hermeticity: `SqlTableTune` counts the probe schema's tables without clearing it first [src/OcuPilot/Test/SqlTableTune.cls:52] — `OnBeforeOneTest` removes any probe table first.
+- [x] [Review][Patch] (low) The own-table rebuild test's mutation line had gone stale (an earlier check by name refuses first) [src/OcuPilot/Test/SqlIndexRebuild.cls] — corrected; run 66.
+- [x] [Review][Patch] (low) `OCUPILOTTABLE`'s doc comment justified the arm by the dropped Keep class option [src/OcuPilot/Kernel/Proposal/Prohibited.cls:1050] — clause deleted.
+- [x] [Review][Patch] (low) Prose: `CATALOGFIELDSTATISTICSQUERY` "twice over", `SqlTableAction`'s "with the table's class", the EXPERIENCE.md row's "The last is" before "The next three" — corrected, line count unchanged.
+- [x] [Review][Defer] (low) AD-10's 21.25 arm in the spine still gives keeping the class up to date as a reason [ARCHITECTURE-SPINE.md:411] — deferred: the spine is the lead's (Rule 20); DW-2848 open, owner this story.
+
+Brief item 3: every Keep class surface is gone (tool argument, dialog box and note, card row and sentence, strings, EXPERIENCE.md, mirror), the port passes 0 to both tunes, and the schema's Clear values box stays. The `TimeCreated` reading is right: in the dictionary `%Dictionary.CompiledClass.TimeCreated` is the class's own timestamp, and the stored statistics are `%Dictionary.StorageDefinition.ExtentSize` and `%Dictionary.StoragePropertyDefinition`'s `Selectivity`, `OutlierSelectivity` and `AverageFieldSize`. The ticked call did touch the compiled class record on a seeded class, so commit 888433da8's "changes no class state" overstates; the named limit ("changes no stored statistic") is exact.
+
+Rejected:
+
+- (maybe-false, low at most) Rebuild script's `BI_ARGUMENT` without the `INDEX_NAME` fallback and `FindClassName` for a collection child table: `BI_ARGUMENT` reads filled for ordinary indices; a child-table probe would settle it.
+- (spec-bound) The `OCUPILOTTABLE` sentence for a schema tune and for a failed resolve: the sentence is ruled (U-84) and the Boundaries make a failed resolve refuse with the AD-10 code.
+- (spec-bound) The browser spec does not drive Rebuild all, Tune all tables or the Field statistics tab: its step list is the spec's; those run over HTTP in `SqlIndexRebuild`/`SqlTableTune` and in the component specs.
+- (maybe-false, low) `CollectedAt` labeled UTC; an empty `EndTime` gives `Z`: the instance runs UTC; a non-UTC host would settle it.
+- (low, theoretical) The schema card counts tables the caller sees, and a same-count swap keeps the fingerprint.
+- (low) `SqlTableTuneAction` has one subclass after the drop: folding it is more than a deletion.
+- (false) Reserved words need quoting: `Order` was collected and cleared bare (runs 61, 89).
+- (false) Names holding a `.`: the instance refuses a delimited identifier containing `.`.
+- (spec-bound) A collection child table's rebuild acts on its parent class: the Code Map follows the classic page.
+- (low) `IGNOREFIXEDSTATS`, a `%Next` error in the index lookup, the Rebuild row action drawn on the data map row (refused with its ruled sentence): each needs a new branch for an unlikely case.
+- (low) The AC6 statistics assertion after the drop is redundant; AC3's single-table no-call mutation has no line: each AC already has an observed mutation.
+- (rejected, spec edit) Verification still names `SqlTableFixedStats` for AC4: AC4 is Story 21.31's (Spec Change Log).
+- (low, theoretical) An `OcuPilot*` class under another schema gets the precondition sentence first: none exists (0 of 21 on slot A).
+- (closed earlier) The own-table screen legs assert the 403 only: Review Triage Log, first pass.
+
 ## Spec Change Log
 
 - 2026-11-22, orchestrator ruling at the start of implement (veto U-146); authoritative over the Design Notes where they differ:
@@ -386,6 +420,12 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
   - mutation: rework 1 item 2, one character of the sentence added to `sqlTableRebuildConsequence` changed -> `self-protection.test.mjs`'s `ATELIER_REFUSALS` pair test red.
   - mutation: rework 1 item 1, `table statistics` put back on `ExplorerSqlSchema` with the mirror not regenerated -> `screen-mirror.mjs --check` red; put back with the source reloaded -> `SqlTableTune.TestTheTabsDeclareOnlyTheirRuledCommandAliases` red (run 34).
   - mutation: rework 1 review, `SqlPort.TableCall` passes `1` for the schema tune's class argument -> `SqlTableTune.TestASchemasTablesAreTunedOnBothCallers` red on the class-state assertion (run 33); `TuneValues` accepts any value -> `TestTheSchemaIsReadAndEveryHostileIdOrValueIsRefusedBeforeAnyCall` red (run 35); `ExplorerSqlSchemaTune.FINGERPRINTSUBJECT` drops `ClearValues` -> `TestASchemasTablesAreTunedOnBothCallers` red (run 36); `proposal-view.ts` points `SQL.TABLE.REBUILDALL` at the single rebuild's sentence -> `proposal-view.test.mjs`'s table-writes test red. Each file's `git hash-object` identical after revert, source reloaded.
+  - Observed (code review, `ocupilot-ci`, each reverted and reloaded, `git diff --stat` back to the patch set):
+  - mutation: DW-2847, `SqlPort.SchemaServe` hands the schema tune its name quoted -> `SqlTableTune.TestADelimitedSchemaAndItsTablesAreTunedOnBothCallers` red on both callers' schema assertions (run 60); `TableWrite` passes the table's name without its schema -> the same test red on both callers' table assertions (run 65).
+  - mutation: DW-2847, `SqlPort.ResolveTable` refuses an id holding a space -> `SqlIndexRebuild.TestATableWithADelimitedNameIsRebuiltOnBothCallers` red on both callers (run 64).
+  - mutation: AC5, `SqlTableAction.RefusedBeforeState` answers 0 and `Prohibited.TableEntry` skips its schema and class tests -> `SqlIndexRebuild.TestATableOfOcuPilotsOwnIsRefusedOnBothCallers` red on both callers (run 66); `Prohibits` does not send `sql-index` to `TableEntry` -> `Prohibited.TestATableIsRefusedForItsSchemaOrItsClassAndForAFailedRead` red on the index leg (run 68).
+  - mutation: the `CompositeMintSweep` roster row for `SqlIndexMint` absent -> `TestTheRosterIsEveryCompositeIdMint` red alone (run 58).
+  - mutation: `ExplorerSqlSchema` dropped from `DESCRIPTOR_PAGES` -> `screen-outlet.spec.ts`'s Story 21.25 test red alone.
 
 **Owner answer U-84 (2026-11-16, "A"):** the three records are written into the spine as proposed, with the new `PROHIBITED.OCUPILOTTABLE` code and its escalated sentence. Implementation waits for Story 21.6's merge.
 

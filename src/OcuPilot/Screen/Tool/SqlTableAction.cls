@@ -2,7 +2,7 @@
 /// table, or one of its indices, through <class>OcuPilot.Port.SqlPort</class>'s <code>Tables</code> endpoint, which runs in the confirm or action
 /// request and never in a job (AD-7). Two callers reach each: the table tab's page action or the indices tab's row action, through
 /// <class>OcuPilot.Api.ScreenAction</class>, and the agent's proposal and confirmation.</p>
-/// <p><b>It sends no body.</b> The port makes one vendor call with the table's class, resolved through the caller's own information schema, and
+/// <p><b>It sends no body.</b> The port makes one vendor call with the table's class or SQL name, resolved through the caller's own information schema, and
 /// the declared values alone. The fresh read is the port's <code>TABLESTATS</code>: the table's class, its extent size, whether that size is
 /// collected or fixed, when it was collected and whether it has fixed statistics. The fingerprint covers
 /// <parameter>FINGERPRINTSUBJECT</parameter>, which names the namespace so that a confirm reaches the namespace the proposal read

@@ -6,7 +6,7 @@
 /// or value; and the Field statistics tab answering the rows of a direct bound select and the agent's read.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP as <class>OcuPilot.Test.Http</class>'s account, which holds
 /// <code>%Development:USE</code> and WRITE on <code>USER</code>'s and the install namespace's routines databases, and a <code>USER</code> namespace, where
-/// each test makes <class>OcuPilot.Test.SqlTuningProbe</class>'s tables and removes them after. Each fixed statistic a test sets it removes through the same
+/// each test removes any <class>OcuPilot.Test.SqlTuningProbe</class> table an earlier run left, makes its own and removes them after. Each fixed statistic a test sets it removes through the same
 /// tool. The own-table tests only ask for writes on OcuPilot's own table in the install namespace, which a mutation that lets one through would run. It
 /// snapshots the stored governance policy before and puts it back after.</p>
 Class OcuPilot.Test.SqlTableTune Extends %UnitTest.TestCase
@@ -52,6 +52,7 @@ Method OnBeforeOneTest() As %Status
     Do ##class(OcuPilot.Kernel.Scope).Set(..#NAMESPACE)
     Do ##class(OcuPilot.Test.ProposalFixture).Clear()
     Do $ClassMethod(..#SEAM, "Reset")
+    Do $ClassMethod(..#PROBE, "Remove", ..#NAMESPACE)
     Kill ..PreparedPolicy
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
     If $$$ISERR(tSC) Quit tSC
@@ -288,6 +289,37 @@ Method TestASchemasTablesAreTunedOnBothCallers()
     Do $$$AssertTrue(($Extract(tBefore, 1, 6) '= "unread") && (..ClassState(tFirst) = tBefore), "and leaves the class as it was: " _ ..ClassState(tFirst) _ " from " _ tBefore)
     Set tStatus = ..Act(..#SCHEMASCREEN, "tune", ..#SCHEMA, {"ClearValues": "true"}, , .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ ##class(OcuPilot.Test.EcpDataServerWrite).Verdict(tAnswer) _ "|" _ $Piece(..Stats(tFirst), " ", 3) _ "|" _ $Piece(..Stats(tSecond), " ", 2), "200|nothingSent|0|6", "and with them cleared the fixed size goes and the other table still reads its rows")
+}
+
+/// <p>AC3. A schema whose name holds a space, <parameter>OcuPilot.Test.SqlTuningProbe.DELIMITEDSCHEMA</parameter>, and its tables <code>Probe Table</code>
+/// and <code>Order</code>, a reserved word, are collected, cleared and tuned by the agent's confirmed proposal and by the screen's action, the vendor's
+/// table and schema arguments being the names as the instance holds them: each collection reads the rows, each removal leaves no fixed size, and each
+/// schema tune with the fixed values cleared removes the ones it finds. Nothing of the schema is left after.</p>
+/// <p>Mutation (Rule 19): <code>SqlPort.SchemaServe</code> hands the schema tune its name as a quoted identifier -> the instance answers "No such
+/// schema" and both callers' schema assertions go red.</p>
+Method TestADelimitedSchemaAndItsTablesAreTunedOnBothCallers()
+{
+    Set tSchema = $Parameter(..#PROBE, "DELIMITEDSCHEMA")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 0, 4, .tSpaced, "Probe Table"), "a table named with a space is made in the schema named with one")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 0, 6, .tReserved, "Order"), "and one named by a reserved word")
+    Do $$$AssertEquals($Piece(..Stats(tSpaced), " ", 1) _ "|" _ $Piece(..Stats(tReserved), " ", 1), "none|none", "both resolve, with no statistics collected yet")
+    Set tConfirm = ..Agent(..#TUNETOOL, tSpaced, {}, , .tProposal, .tResult)
+    Do $$$AssertEquals(tConfirm _ "|" _ ..Stats(tSpaced), "200 |collected 4 0", "the agent's collection of the space-named table reads its rows: " _ tConfirm)
+    Set tStatus = ..Act(..#TABLESCREEN, "tune", tReserved, "", , .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ ..Stats(tReserved), "200|collected 6 0", "the screen's collection of the reserved-word table reads its rows")
+    For tTable = tSpaced, tReserved Do $$$AssertStatusOK($ClassMethod(..#PROBE, "FixExtent", ..#NAMESPACE, tTable, 777), "a fixed size is set on " _ tTable)
+    Set tStatus = ..Act(..#TABLESCREEN, "clear-statistics", tSpaced, "", , .tAnswer)
+    Do $$$AssertEquals($ClassMethod(..#HELPERS, "Verdict", tStatus, tAnswer) _ "|" _ ..Stats(tSpaced), "200 |collected 4 0", "the screen's removal leaves the space-named table with none")
+    Set tConfirm = ..Agent(..#CLEARTOOL, tReserved, {}, , .tProposal, .tResult)
+    Do $$$AssertEquals(tConfirm _ "|" _ ..Stats(tReserved), "200 |collected 6 0", "the agent's removal leaves the reserved-word table with none: " _ tConfirm)
+    For tTable = tSpaced, tReserved Do $$$AssertStatusOK($ClassMethod(..#PROBE, "FixExtent", ..#NAMESPACE, tTable, 777), "a fixed size is set again on " _ tTable)
+    Set tConfirm = ..Agent(..#SCHEMATOOL, tSchema, {"ClearValues": true}, , .tProposal, .tResult)
+    Do $$$AssertEquals(tConfirm _ "|" _ ..Stats(tSpaced) _ "|" _ ..Stats(tReserved), "200 |collected 4 0|collected 6 0", "the agent's tune of the schema clears both tables' fixed sizes: " _ tConfirm)
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "FixExtent", ..#NAMESPACE, tSpaced, 777), "a fixed size is set on the space-named table once more")
+    Set tStatus = ..Act(..#SCHEMASCREEN, "tune", tSchema, {"ClearValues": "true"}, , .tAnswer)
+    Do $$$AssertEquals($ClassMethod(..#HELPERS, "Verdict", tStatus, tAnswer) _ "|" _ ..Stats(tSpaced), "200 |collected 4 0", "and the screen's clears it")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", ..#NAMESPACE), "the probe tables are removed")
+    Do $$$AssertEquals($ListLength($ClassMethod(..#PROBE, "TablesOf", ..#NAMESPACE, tSchema)) _ "|" _ $ClassMethod(..#PROBE, "CachedQueryCount", ..#NAMESPACE, tSchema), "0|0", "no table or cached query of the schema is left")
 }
 
 /// <p>AC3. The table's Info tab and the schema's Tables tab declare the command aliases the story rules, and no other: "table statistics" is not one.</p>

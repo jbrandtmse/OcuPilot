@@ -1048,8 +1048,7 @@ Parameter OCUPILOTSQLPRIVILEGEREASON = "OcuPilot's own SQL tables keep the privi
 
 /// <p>An index rebuild, a table or schema tune, or a statistics change on a table whose schema lies in one of OcuPilot's own schemas or whose class
 /// name begins with OcuPilot's, or a tune of one of OcuPilot's own schemas, by either caller (AD-10 as amended 2026-11-16, Story 21.25): a rebuild
-/// locks OcuPilot's protected tables (AD-9), and keeping the class up to date rewrites OcuPilot's own class definitions
-/// (<parameter>OCUPILOTCODE</parameter>'s family). The target is read at the write; a read that resolves no table refuses.</p>
+/// locks OcuPilot's protected tables (AD-9). The target is read at the write; a read that resolves no table refuses.</p>
 Parameter OCUPILOTTABLE = "PROHIBITED.OCUPILOTTABLE";
 
 /// <p>The one sentence <parameter>OCUPILOTTABLE</parameter> carries, caller-neutral, published in EXPERIENCE.md's Fixed strings and pinned by

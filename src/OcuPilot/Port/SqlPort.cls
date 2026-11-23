@@ -1249,15 +1249,7 @@ ClassMethod SchemaServe(pNamespace As %String, pType As %String, pSchemaId As %S
         Set pHttpStatus = 200
         Quit $$$OK
     }
-    Quit ..TableWritten(pNamespace, pType, ..QuotedName(tSchema), pValues, pSchemaId, .pResult, .pHttpStatus, .pFault)
-}
-
-/// <p><var>pName</var> as the vendor's table and schema arguments read it: a name of letters, digits and underscores, which the vendor reads as it
-/// stands, as it is, and any other name as one delimited identifier, its quotes doubled.</p>
-ClassMethod QuotedName(pName As %String) As %String [ Private ]
-{
-    If $Match(pName, "^[A-Za-z%][A-Za-z0-9_]*$") Quit pName
-    Quit """" _ $Replace(pName, """", """""") _ """"
+    Quit ..TableWritten(pNamespace, pType, tSchema, pValues, pSchemaId, .pResult, .pHttpStatus, .pFault)
 }
 
 /// <p>What <var>pTableId</var> names in <var>pNamespace</var>, resolved through the caller's own information schema, with the instance's facts about it
@@ -1400,7 +1392,7 @@ ClassMethod TableWrite(pNamespace As %String, pType As %String, pId As %String, 
         Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#TABLENOFIXEDSTATS, ##class(OcuPilot.Api.AtelierError).#REASONTABLENOFIXEDSTATS, .pHttpStatus, .pFault)
     }
     If (pType = ..#TYPETUNE) || (pType = ..#TYPECLEARSTATS) {
-        Set tTarget = ..QuotedName(pFacts.%Get("Schema")) _ "." _ ..QuotedName(pFacts.%Get("Name"))
+        Set tTarget = pFacts.%Get("Table")
         Set tValues = ""
     } Else {
         Set tTarget = pFacts.%Get("Class")
@@ -1432,7 +1424,8 @@ ClassMethod TableWritten(pNamespace As %String, pType As %String, pTarget As %St
 /// <p>The one vendor call of table write <var>pType</var>, in <var>pNamespace</var>, as its status: <code>RebuildIndices</code> of the class
 /// <var>pTarget</var> with the one index <var>pValues</var> names for <parameter>TYPEREBUILD</parameter>, and with none, which rebuilds every index,
 /// for <parameter>TYPEREBUILDALL</parameter>. The call purges each index and holds the table's extent lock while it builds. The tunes take the
-/// table or schema as one SQL identifier (<method>QuotedName</method>): <parameter>TYPETUNE</parameter> is <code>TuneTable</code> over
+/// table as <code>Schema.Table</code> and the schema by its name, spelled as the instance holds them and not quoted, as the classic page passes them
+/// (the instance refuses a quoted schema name): <parameter>TYPETUNE</parameter> is <code>TuneTable</code> over
 /// <var>pTarget</var>, display off, no log file, the class definition left as it is and fixed values kept; <parameter>TYPECLEARSTATS</parameter> is
 /// <code>ClearTableStats</code>; <parameter>TYPETUNESCHEMA</parameter> is <code>TuneSchema</code> over the schema, with <var>pValues</var>
 /// <code>1</code> or <code>0</code> for whether the fixed values are cleared. A message the tune answers is its error status. A call that

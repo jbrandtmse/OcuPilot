@@ -8,8 +8,8 @@
 /// <li><parameter>QUERYTWO</parameter> carries the plan error <parameter>PLANERROR</parameter>, set through the vendor's own update.</li>
 /// <li><parameter>QUERYSTALE</parameter> reads the first table and had its cached query purged, so the index holds no location for it.</li>
 /// </ul>
-/// <p><method>Table</method> makes Story 21.25's tables, which carry rows and two indices of their own; <method>Remove</method> purges their cached
-/// queries and drops them too.</p>
+/// <p><method>Table</method> makes Story 21.25's tables, which carry rows and two indices of their own, in <parameter>TABLESCHEMA</parameter> or, given a
+/// name, in <parameter>DELIMITEDSCHEMA</parameter>, whose name holds a space; <method>Remove</method> purges their cached queries and drops them too.</p>
 /// <p><method>Remove</method> unfreezes every probe statement and clears its plan error through the vendor calls that set them, purges both tables'
 /// cached queries, then drops both tables. The statement-index entries of the same four texts stay and are reused by the next
 /// <method>Make</method>. <method>MakeOwn</method> runs the one statement over OcuPilot's own table that the own-statement tests judge, in the
@@ -40,6 +40,9 @@ Parameter TABLESCHEMA = "OcuProbe225";
 Parameter INDEXB = "IdxB";
 
 Parameter INDEXC = "IdxC";
+
+/// <p>The schema of the tables <method>Table</method> makes when it is given a name: one SQL reaches only as a delimited identifier.</p>
+Parameter DELIMITEDSCHEMA = "OcuProbe225 Delim";
 
 /// <p>Create the probe objects in <var>pNamespace</var>, after removing any an earlier run left.</p>
 ClassMethod Make(pNamespace As %String) As %Status
@@ -105,25 +108,27 @@ ClassMethod Remove(pNamespace As %String) As %Status
 
 /// <p>Create the table <code>OcuProbe225.T</code><var>pNumber</var> in <var>pNamespace</var>, named by <var>pTable</var>, with the columns <code>A</code>,
 /// <code>B</code> and <code>C</code>, the indices <parameter>INDEXB</parameter> and <parameter>INDEXC</parameter> and <var>pRows</var> rows
-/// (Story 21.25), in the schema <parameter>TABLESCHEMA</parameter>. A table of that number an earlier run left is dropped first. <method>Remove</method>
-/// drops every table of the schema.</p>
-ClassMethod Table(pNamespace As %String, pNumber As %Integer, pRows As %Integer, Output pTable As %String) As %Status
+/// (Story 21.25), in the schema <parameter>TABLESCHEMA</parameter>. Given <var>pName</var>, the table is <var>pName</var> in
+/// <parameter>DELIMITEDSCHEMA</parameter>, created as a delimited identifier (<method>SqlName</method>), and <var>pNumber</var> is not used. A table of
+/// that name an earlier run left is dropped first. <method>Remove</method> drops every table of both schemas.</p>
+ClassMethod Table(pNamespace As %String, pNumber As %Integer, pRows As %Integer, Output pTable As %String, pName As %String = "") As %Status
 {
-    Set pTable = ..#TABLESCHEMA _ ".T" _ pNumber
+    Set pTable = $Select(pName = "": ..#TABLESCHEMA _ ".T" _ pNumber, 1: ..#DELIMITEDSCHEMA _ "." _ pName)
+    Set tSqlName = $Select(pName = "": pTable, 1: ..SqlName(pTable))
     Set tOrigNS = $NAMESPACE
     Set tSC = $$$OK
     Try {
         Set $NAMESPACE = pNamespace
         Do $SYSTEM.SQL.PurgeQueries({"table": [(pTable)]})
-        Do ..Run("DROP TABLE " _ pTable)
-        Set tSC = ..Run("CREATE TABLE " _ pTable _ " (A INTEGER, B VARCHAR(20), C VARCHAR(20))")
+        Do ..Run("DROP TABLE " _ tSqlName)
+        Set tSC = ..Run("CREATE TABLE " _ tSqlName _ " (A INTEGER, B VARCHAR(20), C VARCHAR(20))")
         If $$$ISERR(tSC) Quit
-        Set tSC = ..Run("CREATE INDEX " _ ..#INDEXB _ " ON TABLE " _ pTable _ " (B)")
+        Set tSC = ..Run("CREATE INDEX " _ ..#INDEXB _ " ON TABLE " _ tSqlName _ " (B)")
         If $$$ISERR(tSC) Quit
-        Set tSC = ..Run("CREATE INDEX " _ ..#INDEXC _ " ON TABLE " _ pTable _ " (C)")
+        Set tSC = ..Run("CREATE INDEX " _ ..#INDEXC _ " ON TABLE " _ tSqlName _ " (C)")
         If $$$ISERR(tSC) Quit
         Set tStatement = ##class(%SQL.Statement).%New()
-        Set tSC = tStatement.%Prepare("INSERT INTO " _ pTable _ " (A, B, C) VALUES (?, ?, ?)")
+        Set tSC = tStatement.%Prepare("INSERT INTO " _ tSqlName _ " (A, B, C) VALUES (?, ?, ?)")
         If $$$ISERR(tSC) Quit
         For tI = 1:1:pRows {
             Set tResult = tStatement.%Execute(tI, "v" _ tI, "w" _ tI)
@@ -222,9 +227,15 @@ ClassMethod IndexEntries(pNamespace As %String, pTable As %String, pIndex As %St
     Quit tCount
 }
 
-/// <p>The tables of the schema <parameter>TABLESCHEMA</parameter> in <var>pNamespace</var>, as a <class>%List</class> of <code>Schema.Table</code>
-/// names as the instance holds them.</p>
-ClassMethod TablesOf(pNamespace As %String) As %List
+/// <p><var>pTable</var>, a <code>Schema.Table</code> name, written as SQL text reads it when either part needs delimiting: each part quoted.</p>
+ClassMethod SqlName(pTable As %String) As %String
+{
+    Quit """" _ $Piece(pTable, ".", 1) _ """.""" _ $Piece(pTable, ".", 2, *) _ """"
+}
+
+/// <p>The tables of the schema <var>pSchema</var> (<parameter>TABLESCHEMA</parameter> by default) in <var>pNamespace</var>, as a <class>%List</class>
+/// of <code>Schema.Table</code> names as the instance holds them.</p>
+ClassMethod TablesOf(pNamespace As %String, pSchema As %String = {..#TABLESCHEMA}) As %List
 {
     Set tList = ""
     Set tOrigNS = $NAMESPACE
@@ -232,7 +243,7 @@ ClassMethod TablesOf(pNamespace As %String) As %List
         Set $NAMESPACE = pNamespace
         Set tStatement = ##class(%SQL.Statement).%New()
         Set tSC = tStatement.%Prepare("SELECT TABLE_SCHEMA || '.' || TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ?")
-        Set tResult = tStatement.%Execute(..#TABLESCHEMA)
+        Set tResult = tStatement.%Execute(pSchema)
         While tResult.%Next() {
             Set tList = tList _ $ListBuild(tResult.%GetData(1))
         }
@@ -245,17 +256,21 @@ ClassMethod TablesOf(pNamespace As %String) As %List
     Quit tList
 }
 
-/// <p>Purge the cached queries of, then drop, every table of the schema <parameter>TABLESCHEMA</parameter> in <var>pNamespace</var>.</p>
+/// <p>Purge the cached queries of, then drop, every table of the schemas <parameter>TABLESCHEMA</parameter> and <parameter>DELIMITEDSCHEMA</parameter> in
+/// <var>pNamespace</var>.</p>
 ClassMethod RemoveTables(pNamespace As %String) As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
-        Set tTables = ..TablesOf(pNamespace)
-        Set $NAMESPACE = pNamespace
-        For tI = 1:1:$ListLength(tTables) {
-            Do $SYSTEM.SQL.PurgeQueries({"table": [($List(tTables, tI))]})
-            Do ..Run("DROP TABLE " _ $List(tTables, tI))
+        For tSchema = ..#TABLESCHEMA, ..#DELIMITEDSCHEMA {
+            Set tTables = ..TablesOf(pNamespace, tSchema)
+            Set $NAMESPACE = pNamespace
+            For tI = 1:1:$ListLength(tTables) {
+                Do $SYSTEM.SQL.PurgeQueries({"table": [($List(tTables, tI))]})
+                Do ..Run("DROP TABLE " _ $Select(tSchema = ..#TABLESCHEMA: $List(tTables, tI), 1: ..SqlName($List(tTables, tI))))
+            }
+            Set $NAMESPACE = tOrigNS
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -305,9 +320,9 @@ ClassMethod FixExtent(pNamespace As %String, pTable As %String, pSize As %Intege
     Quit tSC
 }
 
-/// <p>How many cached queries <var>pNamespace</var>'s statement index holds for a relation of the schema <parameter>TABLESCHEMA</parameter>, in the
-/// upper case the index keeps (Story 21.25).</p>
-ClassMethod CachedQueryCount(pNamespace As %String) As %Integer
+/// <p>How many cached queries <var>pNamespace</var>'s statement index holds for a relation of the schema <var>pSchema</var>
+/// (<parameter>TABLESCHEMA</parameter> by default), in the upper case the index keeps (Story 21.25).</p>
+ClassMethod CachedQueryCount(pNamespace As %String, pSchema As %String = {..#TABLESCHEMA}) As %Integer
 {
     Set tCount = -1
     Set tOrigNS = $NAMESPACE
@@ -316,7 +331,7 @@ ClassMethod CachedQueryCount(pNamespace As %String) As %Integer
         Set tStatement = ##class(%SQL.Statement).%New()
         Set tSC = tStatement.%Prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATEMENT_LOCATIONS l JOIN INFORMATION_SCHEMA.STATEMENT_RELATIONS r ON r.Statement = l.Statement WHERE r.Relation [ ?")
         If $$$ISOK(tSC) {
-            Set tResult = tStatement.%Execute($ZConvert(..#TABLESCHEMA, "U") _ ".")
+            Set tResult = tStatement.%Execute($ZConvert(pSchema, "U") _ ".")
             If tResult.%Next() Set tCount = tResult.%GetData(1)
         }
         Set tResult = ""
