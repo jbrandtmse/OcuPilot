@@ -2825,6 +2825,10 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList',
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm',
       'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
+      // Story 24.16 Batch 4: the three archive screens own %Ens_ArchiveManager:READ.
+      'OcuPilot.Screen.Descriptor.InteropArchiveErrorList',
+      'OcuPilot.Screen.Descriptor.InteropArchiveList',
+      'OcuPilot.Screen.Descriptor.InteropArchiveSettingList',
       'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList',
       // Story 24.15: Credentials owns %Ens_Credentials:READ.
       'OcuPilot.Screen.Descriptor.InteropCredentialList',

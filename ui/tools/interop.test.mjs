@@ -194,6 +194,14 @@ const SENTENCES = [
   ['VERDICTNOTEXT', 'interopExportVerdictNotext'],
   ['OUTCOMEEXPORTED', 'interopExportOutcomeExported'],
   ['OUTCOMENOTEXPORTED', 'interopExportOutcomeNotExported'],
+  // Story 24.16 Batch 4: the archive manager's five refusals and its consequence, and what Archive to namespace accepts when no other namespace is listed.
+  ['REASONARCHIVERUNNING', 'interopArchiveRefusalRunning'],
+  ['REASONARCHIVENOTARGET', 'interopArchiveRefusalNoTarget'],
+  ['REASONARCHIVECLASS', 'interopArchiveRefusalClass'],
+  ['REASONARCHIVETOOMANY', 'interopArchiveRefusalTooMany'],
+  ['REASONARCHIVETAKEN', 'interopArchiveRefusalTaken'],
+  ['REASONARCHIVERUN', 'interopArchiveRunConsequence'],
+  ['ACCEPTSNOARCHIVETARGET', 'interopArchiveAcceptsNone'],
   ['REASONSTARTUPSAME', 'interopStartupRefusalSame'],
   ['REASONSTARTUPPRIORITY', 'interopStartupRefusalPriority'],
   ['REASONSTARTUPGROUP', 'interopStartupRefusalGroup'],
@@ -292,4 +300,38 @@ test('Story 24.3 (DW-2452): the empty-agent phrase of every write-capable Intero
     if (!/^[a-z]/.test(phrase) || phrase.endsWith('.')) wrong.push(`${screen.table.emptyAgentKey}: ${JSON.stringify(phrase)}`);
   }
   assert.deepEqual(wrong, [], `empty-agent phrases that are not lowercase action phrases:\n${wrong.join('\n')}`);
+});
+
+const README = join(REPO_ROOT, 'README.md');
+
+const BASELINE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Governance', 'Baseline.cls');
+
+const UNDER_TWENTY = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+
+const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+/** A whole number from 1 to 999 as the README writes one, capitalised: "Ninety", "One hundred and seven", "Eighty-five". */
+function numberWords(value) {
+  const hundreds = Math.floor(value / 100);
+  const rest = value % 100;
+  const below = rest < 20 ? UNDER_TWENTY[rest] : `${TENS[Math.floor(rest / 10)]}${rest % 10 === 0 ? '' : `-${UNDER_TWENTY[rest % 10]}`}`;
+  const words = hundreds === 0 ? below : rest === 0 ? `${UNDER_TWENTY[hundreds]} hundred` : `${UNDER_TWENTY[hundreds]} hundred and ${below}`;
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+// Story 24.16 Batch 4, AC8. Mutation (Rule 19): type the count in the README as one less, or drop the archive clause from its off list -> red here.
+test('the README states the count of the baseline\'s switched-off keys and carries the archive, purge and suspended message clauses', () => {
+  const keys = /XData Keys[^\n]*\n\{\n([\s\S]*?)\n\}\n\}/.exec(readFileSync(BASELINE, 'utf8'))?.[1] ?? '';
+  const off = [...keys.matchAll(/"([a-z.]+)": false/g)].length;
+  assert.ok(off > 0, 'the baseline lists switched-off keys');
+  const readme = readFileSync(README, 'utf8').replace(/\s+/g, ' ');
+  assert.ok(readme.includes(`${numberWords(off)} agent actions ship switched off`), `the README says ${numberWords(off)} agent actions ship switched off, the number of false lines in the baseline`);
+  assert.ok(
+    readme.includes('removing a default setting, a credential or a schedule spec, purging interoperability management data, resubmitting, editing and resubmitting or deleting a suspended message, archiving interoperability messages into another namespace, building'),
+    'the off list names the purge, the suspended message writes and the archive run'
+  );
+  assert.ok(
+    readme.includes('add, edit and remove schedule specs; keep the purge settings and purge old management data; resubmit, edit and resubmit, discard or delete suspended messages, up to 100 at a time; export up to 100 messages to a file in your browser\'s downloads; keep the archive settings and archive old messages into another interoperability namespace; and add, edit'),
+    'the Interoperability paragraph names what a person can do with each'
+  );
 });

@@ -543,6 +543,36 @@ Parameter PURGEBITMAP = "INTEROP.PURGE.BITMAP";
 
 Parameter REASONPURGEBITMAP = "Deletes this namespace's event log entries, messages, completed business process records, business rule log entries, I/O log entries, host monitor data and managed alerts older than the days to keep, and their message bodies when Include message bodies is on. When Purge only completed sessions is on, a session with a message still in progress is kept whole, and so is an open managed alert. With 0 days, everything up to the end of today is deleted, except managed alerts from today. It cannot be undone. Bitmap cleanup then runs over every class in this namespace with full system rights, and can take a long time. Those rights end when it finishes.";
 
+/// <p>The local archive manager's refusals and consequence (Story 24.16 Batch 4), each 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug: a run already
+/// running, no other interoperability namespace to archive to, a namespace that archives with its own class, a namespace holding more messages than one run takes, and a
+/// target that already holds an id the run would move. <parameter>ACCEPTSNOARCHIVETARGET</parameter> is what Archive to namespace accepts when no other namespace is
+/// listed.</p>
+Parameter ARCHIVERUNNING = "INTEROP.ARCHIVE.RUNNING";
+
+Parameter REASONARCHIVERUNNING = "An archive is already running in this namespace. Try again when it has finished.";
+
+Parameter ARCHIVENOTARGET = "INTEROP.ARCHIVE.NOTARGET";
+
+Parameter REASONARCHIVENOTARGET = "Archive to namespace is not set to another interoperability namespace. Set it under Archive settings first.";
+
+Parameter ARCHIVECLASS = "INTEROP.ARCHIVE.CLASS";
+
+Parameter REASONARCHIVECLASS = "This namespace archives with its own archive manager class, which runs code OcuPilot does not run. Run it from the classic Archive Manager page.";
+
+Parameter ARCHIVETOOMANY = "INTEROP.ARCHIVE.TOOMANY";
+
+Parameter REASONARCHIVETOOMANY = "This namespace holds more messages than one archive run here can take. Purge older messages first, or run the archive from the classic Archive Manager page.";
+
+Parameter ARCHIVETAKEN = "INTEROP.ARCHIVE.TAKEN";
+
+Parameter REASONARCHIVETAKEN = "Archive to namespace already holds a message with the id of one this run would move, so nothing was archived. Choose a namespace kept for archives.";
+
+Parameter ARCHIVERUN = "INTEROP.ARCHIVE.RUN";
+
+Parameter REASONARCHIVERUN = "Archiving moves every message in this namespace older than the number of days before archiving, whatever its status, to the namespace set as Archive to namespace: its header is saved there under its own message id and its body as text, and then both are deleted here. A body that is not an EDI document or an object that can be written as XML is kept there only as its class name and id. With 0 days, everything up to the end of today is moved. The last run's history and error log are replaced. It cannot be undone.";
+
+Parameter ACCEPTSNOARCHIVETARGET = "No other interoperability namespace on this instance.";
+
 /// <p>The startup settings' refusals, violations and consequences (Story 24.3): the auto-start production and a production's shutdown
 /// group. <code>SAME</code> is 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, <code>ALLNAMESPACES</code> is 403,
 /// <code>READONLY</code> is 409, and <code>PRIORITY</code>, <code>GROUP</code> and <code>NOPRIORITY</code> are 422.</p>
@@ -778,7 +808,7 @@ Parameter REASONEXPORTTOOLARGE = "The file is larger than OcuPilot imports or ex
 
 Parameter MESSAGEEXPORT = "INTEROP.MESSAGE.EXPORT";
 
-Parameter REASONMESSAGEEXPORT = "Exporting saves the body of each message marked to be exported to one file in this browser's downloads, in message id order, with the chosen separator between them. Each body exported is recorded in the audit log as viewed. Anyone who can open the file can read the messages.";
+Parameter REASONMESSAGEEXPORT = "Exporting saves the body of each message marked to be exported to one file in this browser's downloads, in message id order, each marked off by the chosen separator. Each body exported is recorded in the audit log as viewed. Anyone who can open the file can read the messages.";
 
 Parameter EXPORTVERDICTS = "gone,nobody,notext,export";
 
@@ -794,13 +824,13 @@ Parameter OUTCOMENOTEXPORTED = "not exported";
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..ScheduleCodes() _ ..PurgeCodes() _ ..SuspendedCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..ExportCodes() _ ..StartupCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..ScheduleCodes() _ ..PurgeCodes() _ ..ArchiveCodes() _ ..SuspendedCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..ExportCodes() _ ..StartupCodes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP, ..#SUSPENDEDRESUBMIT, ..#SUSPENDEDEDIT, ..#SUSPENDEDDISCARD, ..#SUSPENDEDDELETE, ..#MESSAGEEXPORT)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP, ..#ARCHIVERUN, ..#SUSPENDEDRESUBMIT, ..#SUSPENDEDEDIT, ..#SUSPENDEDDISCARD, ..#SUSPENDEDDELETE, ..#MESSAGEEXPORT)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -928,6 +958,20 @@ ClassMethod PurgeCodes() As %List
 ClassMethod PurgePreconditionCodes() As %List
 {
     Quit $ListBuild(..#PURGERUNNING)
+}
+
+/// <p>The archive codes (Story 24.16 Batch 4), as a <class>%List</class>: a run already running, no target, a stored class that is not the vendor's, too many messages in the
+/// namespace, and a target that holds an id the run would move. The consequence code is <method>ConsequenceCodes</method>'s.</p>
+ClassMethod ArchiveCodes() As %List
+{
+    Quit $ListBuild(..#ARCHIVERUNNING, ..#ARCHIVENOTARGET, ..#ARCHIVECLASS, ..#ARCHIVETOOMANY, ..#ARCHIVETAKEN)
+}
+
+/// <p>The archive refusals an archive tool's fresh read answers when the action does not fit the namespace: the four the namespace itself decides. A target that holds an id the run
+/// would move is judged at the write alone, since the review does not read the target.</p>
+ClassMethod ArchivePreconditionCodes() As %List
+{
+    Quit $ListBuild(..#ARCHIVERUNNING, ..#ARCHIVENOTARGET, ..#ARCHIVECLASS, ..#ARCHIVETOOMANY)
 }
 
 /// <p>The suspended message codes (Story 24.16), as a <class>%List</class>: the refusal of a selection none of which can be acted on and of a selection that changed
@@ -1137,6 +1181,12 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#PURGERUNNING Quit ..#REASONPURGERUNNING
     If pCode = ..#PURGERUN Quit ..#REASONPURGERUN
     If pCode = ..#PURGEBITMAP Quit ..#REASONPURGEBITMAP
+    If pCode = ..#ARCHIVERUNNING Quit ..#REASONARCHIVERUNNING
+    If pCode = ..#ARCHIVENOTARGET Quit ..#REASONARCHIVENOTARGET
+    If pCode = ..#ARCHIVECLASS Quit ..#REASONARCHIVECLASS
+    If pCode = ..#ARCHIVETOOMANY Quit ..#REASONARCHIVETOOMANY
+    If pCode = ..#ARCHIVETAKEN Quit ..#REASONARCHIVETAKEN
+    If pCode = ..#ARCHIVERUN Quit ..#REASONARCHIVERUN
     If pCode = ..#STARTUPSAME Quit ..#REASONSTARTUPSAME
     If pCode = ..#STARTUPPRIORITY Quit ..#REASONSTARTUPPRIORITY
     If pCode = ..#STARTUPGROUP Quit ..#REASONSTARTUPGROUP

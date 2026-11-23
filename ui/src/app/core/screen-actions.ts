@@ -358,6 +358,9 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   // Story 24.16: Purge management data's Purge, which opens the dialog that takes the days, and Purge data settings' Set value.
   'OcuPilot.Screen.Descriptor.InteropPurgeList': { purge: STRINGS.auditDatabasePurgeConfirm },
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': { set: STRINGS.interopItemSettingSetAction },
+  // Story 24.16 Batch 4: Archive manager's Run archive, which opens the dialog that shows what the run moves, and Archive settings' Set value.
+  'OcuPilot.Screen.Descriptor.InteropArchiveList': { archive: STRINGS.interopArchiveAction },
+  'OcuPilot.Screen.Descriptor.InteropArchiveSettingList': { set: STRINGS.interopItemSettingSetAction },
   // Story 8.5: the X.509 list's Create imports a credential rather than typing one in.
   'OcuPilot.Screen.Descriptor.X509CredentialList': { create: STRINGS.actionImport },
   'OcuPilot.Screen.Descriptor.AgentSwitches': {

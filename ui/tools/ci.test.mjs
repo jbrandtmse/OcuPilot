@@ -2942,6 +2942,23 @@ test('the gates job is bounded at no less than 1.5x its longest observed green l
   );
 });
 
+// The longest successful client suite step observed on node 22, in seconds: run 45062235807's `client suite` step.
+// Re-measure it whenever the suite grows past it, and read the value from a run, never from memory.
+const LARGEST_OBSERVED_CLIENT_SUITE_SECONDS = 705;
+
+// Mutation (Rule 19): set the client suite step's `timeout-minutes` to 17 -> red here alone; to 30 or more -> red in the next test alone.
+test('the client suite step is bounded at no less than 1.5x its longest observed green run', () => {
+  const steps = jobSteps(workflow, 'gates');
+  const at = steps.findIndex((step) => step.run === CLIENT_SUITE_RUN);
+  assert.ok(at >= 0, `the gates job runs the client suite through the sampler: ${CLIENT_SUITE_RUN}`);
+  const stepTimeout = Number(/^ {8}timeout-minutes:\s*(\d+)\s*$/m.exec(steps[at].text)?.[1]);
+  const floor = Math.ceil((1.5 * LARGEST_OBSERVED_CLIENT_SUITE_SECONDS) / 60);
+  assert.ok(
+    Number.isInteger(stepTimeout) && stepTimeout >= floor,
+    `the client suite step's ${stepTimeout} minutes must be at least ${floor} (1.5 x ${LARGEST_OBSERVED_CLIENT_SUITE_SECONDS} s), so a slow runner does not time a green suite out`
+  );
+});
+
 // Mutation (Rule 19): drop the client suite step's `timeout-minutes`, or the report step's
 // `cancelled()` -> red; run `npm test` without the sampler -> red.
 test('the client suite step is bounded under the job, sampled, and followed by the resource report on failure or cancel', () => {

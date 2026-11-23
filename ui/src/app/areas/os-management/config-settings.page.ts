@@ -41,9 +41,13 @@ export const ANALYTICS_SETTING_LIST = 'OcuPilot.Screen.Descriptor.AnalyticsSetti
 /** Interoperability's Purge data settings (Story 24.16): a list screen, whose Set value this page sends. */
 export const INTEROP_PURGE_SETTING_LIST = 'OcuPilot.Screen.Descriptor.InteropPurgeSettingList';
 
+/** Interoperability's Archive settings (Story 24.16 Batch 4): a list screen, whose Set value this page sends. */
+export const INTEROP_ARCHIVE_SETTING_LIST = 'OcuPilot.Screen.Descriptor.InteropArchiveSettingList';
+
 const SERVED_LISTS: readonly string[] = [
   ANALYTICS_SETTING_LIST,
   INTEROP_PURGE_SETTING_LIST,
+  INTEROP_ARCHIVE_SETTING_LIST,
   STARTUP_SETTING_LIST,
   MEMORY_SETTING_LIST,
   COMPATIBILITY_SETTING_LIST,

@@ -2,7 +2,8 @@
 title: 'Story 24.16: Purge, suspended messages, export and the archive manager (Batch 4: the local archive manager)'
 type: 'feature'
 created: '2026-11-23'
-status: 'ready-for-dev'
+status: 'in-review'
+baseline_revision: '4d03e0b613ba78765a38cb2f96e6d6fee329e5cd'
 review_loop_iteration: 0
 followup_review_recommended: false
 owned_ledger: 'DW-2856'
@@ -164,6 +165,32 @@ No new dependency; no privilege, role or access grant.
 
 **Measured at plan (`ocupilot-b-ci`, read-only, identity `ocupilot-b-ci` 52777/1976, IRIS for Health 2026.2 build 221U).** `^%SYS("Ensemble","InstalledNamespace")` holds USER alone; `IsEnsembleNamespace` answers 1 for USER, HSCUSTOM, HSLIB and HSSYS. Neither USER nor HSCUSTOM holds `^Ens.ArchiveManager` or a message header; `GetRunningStatus` reads `idle` in both; `Ens.Archive.MessageBody` is compiled. `^Ens.ArchiveManager`, `^Ens.Archive.MessageBodyD` and `^Ens.MessageHeaderD` map to `/durable/iris/mgr/HSCUSTOM/` from HSCUSTOM and `/durable/iris/mgr/user/` from USER. The Web Gateway's `Server_Response_Timeout` is 60. Nothing was written.
 
+**Measured (Task 0, `ocupilot-b-ci`, HSCUSTOM to USER, auditing on; no HALT).**
+
+- (a) `SetArchiveParameters` writes the three nodes `Namespace`, `Classname` and `DaysToArchive` in the namespace's own `^Ens.ArchiveManager`, nothing in USER, and no vendor audit row (a positive control, OcuPilot's own `ConfigChange` emit, wrote one). A negative day count fails in the vendor's datatype check, zero stores, and 36,501 stores. An empty class fails the vendor's `$zname`. A principal holding only the read pairs and `%DB_HSCUSTOM:R` reads `^%SYS("Ensemble","InstalledNamespace")`.
+- (b) Each back-dated probe is in USER under its own header id; body class `Ens.Archive.MessageBody` with the body text for an HL7 message (its segments), an XML-writing object (its XML) and a character stream (class name and id alone); a message with no body is kept as the empty class name and id; the current probe stays in HSCUSTOM. HSCUSTOM loses the headers, the bodies and the HL7 search-table rows; the vendor's five counts read 1,1,1,1,0 per probe; no vendor audit row. The ids the port's rule names equal the ids the vendor moved. Characters above 255 in an HL7 body come back as `?` (a vendor limit; the fixture uses Latin-1 text).
+- (c) A target already holding a header with a moved id has it overwritten in place; the port refuses first (`ARCHIVETAKEN`), which is why the one-id-per-target refusal exists. (d) A header saved in USER after a run takes the counter's next id and never an archived one in this run (the hazard is a moved id above the target's counter, a named limit). (e) A back-dated Queued header is moved like the others.
+- (f) `%Ens_Portal:U`, `%Ens_ArchiveManager:RW`, `%DB_HSCUSTOM:RW` and `%DB_USER:RW` runs a full archive; `%DB_USER:RW` implies read, so the port names the WRITE pair on the target's database alone. With `%DB_USER:R` the vendor logs `<PROTECT>` on the body save in USER's database. `$USERNAME` and `$ROLES` are unchanged after `DoArchive`.
+- (g) With a child job holding `^Ens.ArchiveManager("lock")`, `GetRunningStatus` reads `running` and a `:0` lock fails; with the port holding it, `DoArchive` runs and the lock is held once after. The vendor takes it again when held, so the release loops on `^$LOCK(name,"OWNER") = $Job`.
+- (h) Per header: 0.02 ms to 0.28 ms for kept or non-XML probes; XML-writing probes 1.0 ms to 4.0 ms at 1,000 and 10.3 s, 11.0 s and 20.1 s for 10,000 (three runs). `ARCHIVEMAXMESSAGES` is 10,000, the largest multiple of 1,000 that ends inside 30 s in the slowest of them; the evidence is the 20.1 s run.
+- Residue: the scratch class, `^OcuScratch`, the probe principals, every probe header and body and the test globals are gone; both `^Ens.ArchiveManager` trees read as before (`$Order` walk and the saved-tree comparison). USER holds `Ens.ScheduleService` headers made by other classes in the sweep, not by a probe.
+
+**Decided in-stage (implement).**
+
+1. `ARCHIVERUN` stands as drafted: Task 0 (b), (c) and (e) measured as it says. The vendor's loss of characters above 255 in an HL7 body and its stopping at the first error are vendor behavior, recorded here and not a contradiction.
+2. `ARCHIVEMAXMESSAGES` = 10,000 by (h); `ARCHIVEERRORSMAX` = 2,000 and `ARCHIVEMAXDAYS` = 36,500 (the vendor stores 36,501).
+3. V2: the README count is 107, the number of `false` keys in the committed tree's `Baseline.cls` (106 on feature plus `interop.archive.run`), pinned by `interop.test.mjs` from the Baseline. The plan's "85 plus five" reads 90; the 1.0.18 README said 85 against 91 `false` keys, so the two were never equal. The lead recounts after integrating feature.
+4. The write needs one WRITE pair on the target's database; the READ pair of the plan is dropped because WRITE implies it (Task 0 (f)).
+5. `ArchiveCutoff` clamps the cutoff at `+$Horolog - 2`, so days 0 and 1 cannot move today's or yesterday's messages. (Two substitutions in `InteropPort.cls` were made through a Bash script rather than the Edit tool; verified by `grep` and by the green classes.)
+6. `InteropArchiveSettingSet.ConfirmProblem` skips the namespace-dependent choice judgment, which the port judges at the write, in the proposal's namespace.
+7. `InteropArchiveSettingSet` overrides `PrivilegePairs` so the descriptor's pairs, its own WRITE pair, the database pair and the classic pages come in the order `ClassicPageGate` pins.
+8. `ArchiveTargetHere` is an empty private hook inside the target-switched block, so a test can show that nothing of OcuPilot's is called while switched to the target. The vendor call and the facts read run in the source namespace, which is the same namespace as the call's origin on this instance, so a mutation moving them cannot be told apart here (named limit).
+9. The Archive manager's running status is not a published string of its own: `interopArchiveStatusRunning` and the literal "running" in EXPERIENCE were removed because `strings.test.mjs` forbids a duplicate value.
+10. The Archive manager's Run archive action sits on the "Total messages archived" row; the list stays filtered by the row action, and the counts read through `GetRunningCount`.
+11. Tests: every archive class extends `InteropArchiveCase` (`EMPTYTREES`), saves and restores both trees, drops its probes, and ends any child job; `InteropArchiveCapSeam` and `InteropArchiveSeam` override `ARCHIVEMAXMESSAGES`, `ARCHIVEERRORSMAX` and the seams, so each compiles per subclass.
+12. DW-2859 carried on the orchestrator's ruling: the `ci.yml` client suite step bound is 18 minutes and `ci.test.mjs` pins `LARGEST_OBSERVED_CLIENT_SUITE_SECONDS = 705` (run 45062235807) with a floor of 1.5 times that, below the job's 30.
+13. The relay's timings refresh from run 45197647823 and the browser-shard bound were not done: `ci-shards.mjs refresh` failed twice on GitHub's `503 Egress is over the account limit` and wrote nothing, and the orchestrator's copy is not to be copied over. `ci-timings.json` and the browser-shard `timeout-minutes` (63) are unchanged; the lead completes both.
+
 **Story end (the lead's, not the implement stage's).**
 
 - [ ] **Spine, add-only, each line tagged `[AMENDED <date>, Story 24.16, Rule 20]`, written with `memlog.py append` and `lint_spine.py` as Rule 20 says.** Batch 3's lines are reworded to its V2, V3 and V5 rulings. AD-62's item numbers follow the last item present when written (18 at plan).
@@ -200,9 +227,27 @@ No new dependency; no privilege, role or access grant.
 
 **Mutations** (each AC's pinning test shown red on `ocupilot-b-ci`, `src` reloaded with subclasses and reverted byte-identical; client ones on a rebuilt, redeployed bundle or in the component runner), recorded by the implement stage as `mutation: <change> -> <test red>`. Planned: AC1 the set passes the stored days for every setting -> `InteropArchiveSettingControl` red; AC2 the run answers 200 without calling `DoArchive` -> `InteropArchiveControl` red; AC3 the lock test answers free whatever it holds -> `InteropArchiveRefusals` red (running leg), and the cap compare `>` made `>=` -> red (the at-cap leg); AC4 the run ignores the vendor's error count -> `InteropArchiveRefusals` red (partial leg); AC5 `InteropArchiveRun`'s `FINGERPRINTSUBJECT` without `Namespace` -> `InteropArchiveElsewhere` red; AC6 the dialog's Run archive closes without sending -> the browser spec red; AC7 `REASONMESSAGEEXPORT` left as before -> `interop.test.mjs` red; AC9 the fixture's `RestoreTrees` restores nothing -> `InteropArchiveSettingControl` red.
 
+**Mutations run (implement stage; each on `ocupilot-b-ci` with the class and its subclasses reloaded, then reverted and `cmp`-identical to the copy taken before).**
+
+- mutation: AC1 the set ignores the days value -> `InteropArchiveSettingControl` red (2 of 6).
+- mutation: AC2 the run does not call `DoArchive` -> `InteropArchiveControl` red (2 of 7).
+- mutation: AC3 the lock test answers held -> `InteropArchiveRefusals` red (running leg); the cap compare `>` made `>=` -> red (at-cap leg); the database WRITE pair check removed -> red (gate leg, the read-only principal); the taken-id refusal removed -> red; one release instead of the loop -> red (lock leg); the vendor status passed through unmapped -> red (vendor text in the log); a log line inside the switched Catch -> red (namespace leg); the script form's guard line removed -> `InteropArchiveControl` red.
+- mutation: AC4 the run ignores the vendor's error count -> `InteropArchiveRefusals` red (partial leg).
+- mutation: AC5 `FINGERPRINTSUBJECT` without `Namespace` -> `InteropArchiveElsewhere` red; the settings tool judging the choice in the confirm's namespace -> `InteropArchiveElsewhere` red.
+- mutation: AC6 the dialog's Run archive closes without sending -> the component spec red (2 of 7) and the browser spec `interop-archive` red, on a rebuilt, redeployed bundle.
+- mutation: AC7 `REASONMESSAGEEXPORT` reworded in `InteropError` alone -> `interop.test.mjs` red.
+- mutation: AC8 the README count one less -> `interop.test.mjs` red (the README row).
+- mutation: AC9 the fixture's `RestoreTrees` restores nothing -> `InteropArchiveSettingControl` red (6 of 6).
+- mutation: the `interop.archivesettings.set` draft row removed -> `DraftRegistry` red; `CHECKEDFLOOR` raised to 400 -> `ConfirmNamespaceRoster` red (146 asserted).
+- mutation: DW-2859 the client suite step bound 17 -> `ci.test.mjs` red in the floor test alone; 30 -> red in the below-the-job test alone.
+
+**Results (`ocupilot-b-ci`).** The 17 `ci-runner` shards over 889 classes: 1 51/306, 2 51/333, 3 52/395, 4 51/434, 5 52/377, 6 53/378, 7 52/384, 8 52/391, 9 52/432, 10 52/417, 11 53/370, 12 53/440, 13 53/406, 14 53/433, 15 53/432, 16 53/393, 17 53/403 (classes/tests), 6,724 tests, none failed. Shard 14 failed on first run (two `InteropArchiveRefusals` tests, the seam ones) after the mutation work and shards 1 to 13 had left stale compiled subclasses on the instance; after `InteropPort` and its subclasses were reloaded it passed in isolation and as a whole shard (cause not isolated; a CI shard starts on a fresh throwaway). Browser: `interop-archive`, `interop-purge` and `interop-message-export` green on a rebuilt, redeployed bundle. Smoke 49 of 49 executed, 1 skipped. `npm run test:tools` 2,413 of 2,413; the component runner 333 files, 3,932 tests; `ci.test.mjs` 109; `check-objectscript` 0 problems; `lint-docs` clean.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: in-review
 Blocking condition: none
+
+**Implemented (implement stage, Batch 4).** The local archive manager through `InteropPort` (`ArchiveSettings`, `Archive`, `ArchiveErrors`, the guarded run with the vendor's lock, the partial-outcome rule), three screens, the settings tool and Run archive for the person and the agent, the six `ARCHIVE*` codes, DW-2856's sentence, the README clauses (107), the baseline key `interop.archive.run`, and DW-2859's step bound. Task 0 measured as `ARCHIVERUN` says; `ARCHIVEMAXMESSAGES` is 10,000. Decided in-stage and Results are above; the timings refresh and the browser-shard bound the orchestrator added are not done (Decided in-stage 13).
 
 **Plan.** Batch 4 of four: the local archive manager through `InteropPort` (three screens; the settings set and Run archive, each reached by the screen and the agent; every proposal keeps its namespace and every confirm judges there), DW-2856's sentence, and the story's README clauses. Veto items 1 to 7; the consolidated story-end spine lines and the tracker step are under Design Notes. Read-only probes on `ocupilot-b-ci` (Measured at plan); nothing was written to the instance.

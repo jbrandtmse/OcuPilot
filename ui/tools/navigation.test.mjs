@@ -494,6 +494,10 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'interoperability/purge-settings',
       // Story 24.16 Batch 2: Suspended messages, listed after them.
       'interoperability/suspended-messages',
+      // Story 24.16 Batch 4: Archive manager, Archive settings and Archive errors, listed after them.
+      'interoperability/archive',
+      'interoperability/archive-settings',
+      'interoperability/archive-errors',
       // Story 20.11: Analytics' four unlisted screens (a cube's three tabs and a term list's entries), then Cubes, Term lists and Folder items.
       'analytics/cubes/dimensions',
       'analytics/cubes/document',
@@ -1145,10 +1149,10 @@ test('Story 20.8: the Productions name cell still opens Production items, the di
   assert.equal(screenForUrl(`/${viewer.route}?ns=USER`)?.route, viewer.route);
   assert.equal(screenForUrl(`/${viewer.route}/x?ns=USER`), null, 'a route id after it names no screen');
   const listed = listedScreensForArea('interoperability').map((screen) => screen.route);
-  assert.equal(listed.at(-9), viewer.route, 'listed before Messages (Story 20.9), the two default settings screens, Credentials and Schedule specs (Story 24.15), the two purge screens and Suspended messages (Story 24.16), which close the area\'s side bar');
-  assert.equal(listed.at(-8), 'interoperability/messages', 'Messages follows it');
+  assert.equal(listed.at(-12), viewer.route, 'listed before Messages (Story 20.9), the two default settings screens, Credentials and Schedule specs (Story 24.15), the two purge screens, Suspended messages and the three archive screens (Story 24.16), which close the area\'s side bar');
+  assert.equal(listed.at(-11), 'interoperability/messages', 'Messages follows it');
   assert.deepEqual(
-    listed.slice(-7),
+    listed.slice(-10),
     [
       'interoperability/default-settings',
       'interoperability/default-settings-diff',
@@ -1157,8 +1161,11 @@ test('Story 20.8: the Productions name cell still opens Production items, the di
       'interoperability/purge',
       'interoperability/purge-settings',
       'interoperability/suspended-messages',
+      'interoperability/archive',
+      'interoperability/archive-settings',
+      'interoperability/archive-errors',
     ],
-    'and System default settings, Compare default settings, Credentials, Schedule specs, Purge management data, Purge data settings and Suspended messages close the side bar'
+    'and System default settings, Compare default settings, Credentials, Schedule specs, Purge management data, Purge data settings, Suspended messages, Archive manager, Archive settings and Archive errors close the side bar'
   );
 });
 

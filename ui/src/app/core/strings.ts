@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:673 */
+  /** EXPERIENCE.md:674 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -9670,7 +9670,7 @@ export const STRINGS = {
   interopExportOutcomeNotExported: 'not exported',
   /** EXPERIENCE.md:631 */
   interopMessageExportConsequence:
-    'Exporting saves the body of each message marked to be exported to one file in this browser\'s downloads, in message id order, with the chosen separator between them. Each body exported is recorded in the audit log as viewed. Anyone who can open the file can read the messages.',
+    'Exporting saves the body of each message marked to be exported to one file in this browser\'s downloads, in message id order, each marked off by the chosen separator. Each body exported is recorded in the audit log as viewed. Anyone who can open the file can read the messages.',
   /** EXPERIENCE.md:631 */
   interopExportRefusalNone: 'None of these messages can be exported. Each one\'s line says why.',
   /** EXPERIENCE.md:631 */
@@ -9679,6 +9679,79 @@ export const STRINGS = {
   interopMessageExportSaved: 'Saved <n> messages as <file>.',
   /** EXPERIENCE.md:631 */
   interopMessageExportSavedOne: 'Saved 1 message as <file>.',
+  // Story 24.16 Batch 4: the local archive manager's three screens, its Run archive dialog, the classic captions its rows carry, its consequence, its five refusals, its empty states and prompts.
+  /** EXPERIENCE.md:632 */
+  interopArchiveLabel: 'Archive manager',
+  /** EXPERIENCE.md:632 */
+  interopArchiveSettingsLabel: 'Archive settings',
+  /** EXPERIENCE.md:632 */
+  interopArchiveErrorsLabel: 'Archive errors',
+  /** EXPERIENCE.md:632 */
+  interopArchiveAction: 'Run archive',
+  /** EXPERIENCE.md:632 */
+  interopArchiveSettingTarget: 'Archive to namespace',
+  /** EXPERIENCE.md:632 */
+  interopArchiveSettingClass: 'Archive manager class name',
+  /** EXPERIENCE.md:632 */
+  interopArchiveSettingDays: 'Number of days before archiving',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRowStart: 'Archive start time',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRowStop: 'Archive stop time',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRowProcessed: 'Total messages processed',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRowArchived: 'Total messages archived',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRowHeaders: 'Total message headers deleted',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRowBodies: 'Total message bodies deleted',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRowErrors: 'Total number of errors',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRowStatus: 'Archive status',
+  /** EXPERIENCE.md:632 */
+  interopArchiveStatusIdle: 'idle',
+  /** EXPERIENCE.md:632 */
+  interopArchiveMessages: 'Messages to archive',
+  /** EXPERIENCE.md:632 */
+  interopArchiveAcceptsNone: 'No other interoperability namespace on this instance.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRunConsequence:
+    'Archiving moves every message in this namespace older than the number of days before archiving, whatever its status, to the namespace set as Archive to namespace: its header is saved there under its own message id and its body as text, and then both are deleted here. A body that is not an EDI document or an object that can be written as XML is kept there only as its class name and id. With 0 days, everything up to the end of today is moved. The last run\'s history and error log are replaced. It cannot be undone.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRefusalRunning: 'An archive is already running in this namespace. Try again when it has finished.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRefusalNoTarget: 'Archive to namespace is not set to another interoperability namespace. Set it under Archive settings first.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRefusalClass:
+    'This namespace archives with its own archive manager class, which runs code OcuPilot does not run. Run it from the classic Archive Manager page.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRefusalTooMany:
+    'This namespace holds more messages than one archive run here can take. Purge older messages first, or run the archive from the classic Archive Manager page.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRefusalTaken:
+    'Archive to namespace already holds a message with the id of one this run would move, so nothing was archived. Choose a namespace kept for archives.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveEmpty: 'This namespace has no archive history.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveEmptyAgent: 'archive old messages',
+  /** EXPERIENCE.md:632 */
+  interopArchiveSettingsEmpty: 'This namespace has no archive settings.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveSettingsEmptyAgent: 'change an archive setting',
+  /** EXPERIENCE.md:632 */
+  interopArchiveErrorsEmpty: 'The last archive run recorded no errors.',
+  /** EXPERIENCE.md:632 */
+  interopArchivePrompt1: 'What does an archive run move, and where to?',
+  /** EXPERIENCE.md:632 */
+  interopArchivePrompt2: 'How many messages would an archive run move now?',
+  /** EXPERIENCE.md:632 */
+  interopArchivePrompt3: 'Did the last archive run finish without errors?',
+  /** EXPERIENCE.md:632 */
+  interopArchiveErrorsPrompt1: 'Which messages did the last archive run fail on, and why?',
+  /** EXPERIENCE.md:632 */
+  interopArchiveSettingsPrompt1: 'Set the days before archiving to 90.',
 } as const;
 
 /**

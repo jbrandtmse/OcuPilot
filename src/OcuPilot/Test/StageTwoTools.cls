@@ -240,6 +240,9 @@ XData Elsewhere
 <screen name="InteropScheduleList"/>
 <screen name="InteropPurgeList"/>
 <screen name="InteropPurgeSettingList"/>
+<screen name="InteropArchiveList"/>
+<screen name="InteropArchiveSettingList"/>
+<screen name="InteropArchiveErrorList"/>
 <screen name="InteropSuspendedMessageList"/>
 <screen name="InteropItemClassTab"/>
 <screen name="InteropItemJobTab"/>

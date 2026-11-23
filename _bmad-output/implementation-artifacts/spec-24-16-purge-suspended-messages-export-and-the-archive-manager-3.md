@@ -109,6 +109,8 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `b0e597306`).
 
 ## Spec Change Log
 
+- 2026-11-23, Batch 4 (DW-2856): the export consequence now reads "Exporting saves the body of each message marked to be exported to one file in this browser's downloads, in message id order, each marked off by the chosen separator. Each body exported is recorded in the audit log as viewed. Anyone who can open the file can read the messages." in EXPERIENCE.md, `strings.ts` and `InteropError.REASONMESSAGEEXPORT`.
+
 ## Review Triage Log
 
 ### 2026-11-23 review (Opus; four layers: adversarial, edge cases, verification gaps, intent)
