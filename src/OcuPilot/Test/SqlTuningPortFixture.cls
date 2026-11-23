@@ -1,6 +1,7 @@
-/// <p><class>OcuPilot.Port.SqlPort</class> with its two seams in a test's hands (Story 21.6): the gate is
+/// <p><class>OcuPilot.Port.SqlPort</class> with its seams in a test's hands (Stories 21.6 and 21.25): the gate is
 /// <class>OcuPilot.Test.SqlTuningGateSeam</class>, which records the pair sets it is asked and refuses the permission a test armed, and
-/// <method>StatementCall</method> counts each call and, where armed, answers an error status with its message instead of calling the instance.
+/// <method>StatementCall</method> and <method>TableCall</method> count each call and, where armed, answer an error status with its message instead of
+/// calling the instance.
 /// Without either armed, the call is the production port's. Everything else is the production port's.</p>
 Class OcuPilot.Test.SqlTuningPortFixture Extends OcuPilot.Port.SqlPort
 {
@@ -17,6 +18,16 @@ ClassMethod StatementCall(pType As %String, pHash As %String, pNamespace As %Str
     Set ^||OcuPilotSqlTuningCalls = $Get(^||OcuPilotSqlTuningCalls) + 1
     If $Get(^||OcuPilotSqlTuningRefuse) '= "" Quit $$$ERROR($$$GeneralError, ^||OcuPilotSqlTuningRefuse)
     Quit ##super(pType, pHash, pNamespace)
+}
+
+/// <p>The table writes' seam (Story 21.25), counted and refused as <method>StatementCall</method> is, and recording the type and values of each call
+/// as <code>type|values</code> for <method>OcuPilot.Test.SqlTuningGateSeam.TableCalls</method>.</p>
+ClassMethod TableCall(pType As %String, pTarget As %String, pValues As %String, pNamespace As %String) As %Status
+{
+    Set ^||OcuPilotSqlTuningTable($Increment(^||OcuPilotSqlTuningTable)) = pType _ "|" _ pValues
+    Set ^||OcuPilotSqlTuningCalls = $Get(^||OcuPilotSqlTuningCalls) + 1
+    If $Get(^||OcuPilotSqlTuningRefuse) '= "" Quit $$$ERROR($$$GeneralError, ^||OcuPilotSqlTuningRefuse)
+    Quit ##super(pType, pTarget, pValues, pNamespace)
 }
 
 }

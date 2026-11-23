@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting' | 'statement-index-entry' | 'cached-query';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting' | 'statement-index-entry' | 'cached-query' | 'sql-table' | 'sql-index' | 'sql-schema';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -598,7 +598,10 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "interop-purge",
   "interop-purge-setting",
   "statement-index-entry",
-  "cached-query"
+  "cached-query",
+  "sql-table",
+  "sql-index",
+  "sql-schema"
 ];
 
 /**
@@ -14472,6 +14475,182 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerSqlFieldStatistics",
+    "route": "system-explorer/sql-tables/field-statistics",
+    "area": "system-explorer",
+    "labelKey": "explorerSqlTabFieldStatistics",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "system-explorer/sql-tables",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Field",
+        "Selectivity",
+        "OutlierValue",
+        "OutlierSelectivity",
+        "AverageFieldSize",
+        "FixedSelectivity",
+        "FixedOutlierValue",
+        "FixedOutlierSelectivity",
+        "FixedAverageFieldSize"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerSqlFieldStatisticsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlFieldStatisticsPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlFieldStatisticsPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlFieldStatisticsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.TuneTable",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "field statistics of one SQL table",
+      "source": {
+        "port": "atelier",
+        "endpoint": "Catalog.FieldStatistics",
+        "type": "LIST"
+      },
+      "fields": [
+        "Field",
+        "Selectivity",
+        "OutlierValue",
+        "OutlierSelectivity",
+        "AverageFieldSize",
+        "FixedSelectivity",
+        "FixedOutlierValue",
+        "FixedOutlierSelectivity",
+        "FixedAverageFieldSize"
+      ],
+      "filter": [
+        "Field",
+        "Selectivity",
+        "FixedSelectivity"
+      ],
+      "sort": {
+        "fields": [
+          "Field",
+          "Selectivity",
+          "FixedSelectivity"
+        ],
+        "default": "Field",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "table",
+            "labelKey": "explorerSqlColumnTable",
+            "kind": "text",
+            "maxLength": 257,
+            "hint": "One table, as Schema.Table, spelled as explorer.sqltables.read answers its Table."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Field",
+          "labelKey": "explorerSqlColumnField",
+          "kind": "name"
+        },
+        {
+          "field": "Selectivity",
+          "labelKey": "explorerSqlColumnSelectivity",
+          "kind": "text"
+        },
+        {
+          "field": "OutlierValue",
+          "labelKey": "explorerSqlColumnOutlierValue",
+          "kind": "text"
+        },
+        {
+          "field": "OutlierSelectivity",
+          "labelKey": "explorerSqlColumnOutlierSelectivity",
+          "kind": "text"
+        },
+        {
+          "field": "AverageFieldSize",
+          "labelKey": "explorerSqlColumnAverageFieldSize",
+          "kind": "number"
+        },
+        {
+          "field": "FixedSelectivity",
+          "labelKey": "explorerSqlColumnFixedSelectivity",
+          "kind": "text"
+        },
+        {
+          "field": "FixedOutlierValue",
+          "labelKey": "explorerSqlColumnFixedOutlierValue",
+          "kind": "text"
+        },
+        {
+          "field": "FixedOutlierSelectivity",
+          "labelKey": "explorerSqlColumnFixedOutlierSelectivity",
+          "kind": "text"
+        },
+        {
+          "field": "FixedAverageFieldSize",
+          "labelKey": "explorerSqlColumnFixedAverageFieldSize",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "system-explorer/sql-tables/document",
+      "position": 10,
+      "labelKey": "explorerSqlTabFieldStatistics"
+    },
+    "toolIdentifier": "explorer.sqlfieldstatistics",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ExplorerSqlFields",
     "route": "system-explorer/sql-tables/fields",
     "area": "system-explorer",
@@ -14675,21 +14854,30 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "permission": "USE"
       }
     ],
-    "entityType": "class",
+    "entityType": "sql-index",
     "secondaryEntityTypes": [],
     "scope": "namespace",
     "parentScope": "system-explorer/sql-tables",
     "id": {
-      "kind": "single",
-      "parts": []
+      "kind": "composite",
+      "parts": [
+        "Table",
+        "Map"
+      ]
     },
     "primaryAction": {
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "rebuild",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
+        "Table",
         "Index",
         "Map",
         "Fields",
@@ -14732,6 +14920,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "type": "LIST"
       },
       "fields": [
+        "Table",
         "Index",
         "Map",
         "Fields",
@@ -14813,8 +15002,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "explorerSqlTableMaintenanceEmptyAgent"
     },
     "tab": {
       "group": "system-explorer/sql-tables/document",
@@ -15781,7 +15970,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "permission": "USE"
       }
     ],
-    "entityType": "class",
+    "entityType": "sql-schema",
     "secondaryEntityTypes": [],
     "scope": "namespace",
     "parentScope": "system-explorer/sql-schemas",
@@ -15793,7 +15982,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "tune",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Table",
@@ -15805,7 +15999,9 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "secretFields": []
     },
     "emptyStateKey": "explorerSqlSchemaTablesEmpty",
-    "commandAliases": [],
+    "commandAliases": [
+      "tune table"
+    ],
     "suggestedPrompts": [
       {
         "groupKey": "webAppPromptGroupCode",
@@ -15899,8 +16095,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "explorerSqlSchemaTuneEmptyAgent"
     },
     "tab": {
       "group": "system-explorer/sql-schemas/document",
@@ -16613,7 +16809,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "permission": "USE"
       }
     ],
-    "entityType": "class",
+    "entityType": "sql-table",
     "secondaryEntityTypes": [],
     "scope": "namespace",
     "parentScope": "system-explorer/sql-tables",
@@ -16625,7 +16821,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "rebuild-indices",
+        "selfProtection": ""
+      },
+      {
+        "id": "tune",
+        "selfProtection": ""
+      },
+      {
+        "id": "clear-statistics",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -16641,7 +16850,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "secretFields": []
     },
     "emptyStateKey": "explorerSqlTableEmpty",
-    "commandAliases": [],
+    "commandAliases": [
+      "rebuild indices",
+      "tune table"
+    ],
     "suggestedPrompts": [
       {
         "groupKey": "webAppPromptGroupCode",
@@ -16753,8 +16965,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "explorerSqlTableMaintenanceEmptyAgent"
     },
     "tab": {
       "group": "system-explorer/sql-tables/document",

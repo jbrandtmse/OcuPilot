@@ -185,6 +185,7 @@ XData Coverage
 <screen name="ExplorerSqlQuery" class="OcuPilot.Test.ExplorerDescriptor" method="TestSqlQueryKeysTheClassicSqlPage"/>
 <screen name="ExplorerSqlData" class="OcuPilot.Test.ExplorerDescriptor" method="TestDataBrowserKeysTheClassicOpenTablePage"/>
 <screen name="ExplorerSqlTableStatements" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTableTabsFormOneParentScopedGroup" corpus="the nine SQL table tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlFieldStatistics" class="OcuPilot.Test.SqlTableTune" method="TestTheFieldStatisticsTabAndTheAgentsReadAnswerTheDirectRows" corpus="the tab's declaration, its rows against a direct select and the agent's read"/>
 <screen name="ExplorerSqlStatementList" class="OcuPilot.Test.SqlStatementRead" method="TestTheScreenDeclaresItsShape"/>
 <screen name="ExplorerSqlView" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlViewFields" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
@@ -563,6 +564,11 @@ XData Coverage
 <tool name="explorer.sqlcachedqueries.purge" class="OcuPilot.Test.SqlCachedQueryPurge" method="TestThePurgeToolsDeclareTheirWritePath" corpus="the three cached-query purges are asserted together in one loop"/>
 <tool name="explorer.sqlcachedqueries.purgetable" class="OcuPilot.Test.SqlCachedQueryPurge" method="TestThePurgeToolsDeclareTheirWritePath" corpus="the three cached-query purges are asserted together in one loop"/>
 <tool name="explorer.sqlcachedqueries.purgenamespace" class="OcuPilot.Test.SqlCachedQueryPurge" method="TestThePurgeToolsDeclareTheirWritePath" corpus="the three cached-query purges are asserted together in one loop"/>
+<tool name="explorer.sqlindices.rebuild" class="OcuPilot.Test.SqlIndexRebuild" method="TestTheToolsDeclareTheirWritePath" corpus="the two rebuilds are asserted together in one loop"/>
+<tool name="explorer.sqltable.rebuildindices" class="OcuPilot.Test.SqlIndexRebuild" method="TestTheToolsDeclareTheirWritePath" corpus="the two rebuilds are asserted together in one loop"/>
+<tool name="explorer.sqltable.tune" class="OcuPilot.Test.SqlTableTune" method="TestTheToolsDeclareTheirWritePath" corpus="the three statistics writes are asserted together in one loop"/>
+<tool name="explorer.sqltable.clearstatistics" class="OcuPilot.Test.SqlTableTune" method="TestTheToolsDeclareTheirWritePath" corpus="the three statistics writes are asserted together in one loop"/>
+<tool name="explorer.sqlschematables.tune" class="OcuPilot.Test.SqlTableTune" method="TestTheToolsDeclareTheirWritePath" corpus="the three statistics writes are asserted together in one loop"/>
 <tool name="explorer.globals.delete" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
 <tool name="explorer.globalnodes.save" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
 <tool name="explorer.globalnodes.delete" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>

@@ -171,6 +171,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 21.6: the SQL statements list, whose four plan and statistics actions warn first, and a table's Cached queries tab, whose Purge warns first.
   'OcuPilot.Screen.Descriptor.ExplorerSqlStatementList',
   'OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries',
+  'OcuPilot.Screen.Descriptor.ExplorerSqlTable',
+  'OcuPilot.Screen.Descriptor.ExplorerSqlIndices',
+  'OcuPilot.Screen.Descriptor.ExplorerSqlSchema',
   // Story 24.2: the Term lists and the entries lists, whose Delete and Remove type the name or key, and whose Edit and Change dialogs send the rest.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList',
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
@@ -346,6 +349,21 @@ export const SQL_STATEMENT_CLEAN = 'clean';
 export const SQL_CACHED_QUERY_PURGE_TABLE = 'purge-table';
 export const SQL_CACHED_QUERY_PURGE_NAMESPACE = 'purge-namespace';
 export const SQL_TUNING_ALL_TARGET = '*';
+
+/**
+ * A SQL table's Table info and Indices tabs (Story 21.25). The Indices tab's Rebuild index is a row action on the selected index's composite id,
+ * warning first. The Table info tab's Rebuild all indices names no row: its page registers it and sends it, with the handler, on the table the
+ * route names.
+ */
+export const EXPLORER_SQL_TABLE = 'OcuPilot.Screen.Descriptor.ExplorerSqlTable';
+export const EXPLORER_SQL_INDICES = 'OcuPilot.Screen.Descriptor.ExplorerSqlIndices';
+export const SQL_TABLE_REBUILD_INDICES = 'rebuild-indices';
+export const SQL_TABLE_TUNE = 'tune';
+export const SQL_TABLE_CLEAR_STATISTICS = 'clear-statistics';
+
+/** A SQL schema's Tables tab (Story 21.25): its Tune all tables is a page action on the schema the route names. */
+export const EXPLORER_SQL_SCHEMA = 'OcuPilot.Screen.Descriptor.ExplorerSqlSchema';
+export const SQL_SCHEMA_TUNE = 'tune';
 
 /** The one target the freeze and the thaw name: the instance's database writes. */
 export const BACKUP_WRITES_TARGET = 'SYSTEM';
@@ -606,6 +624,10 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // no row names (Story 21.6).
   [EXPLORER_SQL_STATEMENT_LIST]: [SQL_STATEMENT_CLEAN],
   [EXPLORER_SQL_CACHED_QUERIES]: [SQL_CACHED_QUERY_PURGE_TABLE, SQL_CACHED_QUERY_PURGE_NAMESPACE],
+  // The Table info tab's page registers Rebuild all indices, Collect statistics and Clear fixed statistics itself, on the table the route names, and
+  // the schema's Tables tab Tune all tables on the schema the route names (Story 21.25).
+  [EXPLORER_SQL_TABLE]: [SQL_TABLE_REBUILD_INDICES, SQL_TABLE_TUNE, SQL_TABLE_CLEAR_STATISTICS],
+  [EXPLORER_SQL_SCHEMA]: [SQL_SCHEMA_TUNE],
   // The three settings screens' page registers Set value itself, whose dialog sends the value (Story 21.3).
   // Story 24.13 Batch 2: the General settings' Set value is the settings page's, and its key's own action is sent from the same dialog.
   'OcuPilot.Screen.Descriptor.AnalyticsSettingList': ['set', 'setkey'],
@@ -1105,6 +1127,15 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
     [SQL_CACHED_QUERY_PURGE_TABLE]: STRINGS.sqlCachedQueryPurgeConsequence,
     [SQL_CACHED_QUERY_PURGE_NAMESPACE]: STRINGS.sqlCachedQueryPurgeConsequence,
   },
+  // Story 21.25: a rebuild locks the table against changes while it runs, so each rebuild warns.
+  [EXPLORER_SQL_TABLE]: {
+    [SQL_TABLE_REBUILD_INDICES]: STRINGS.sqlTableRebuildAllConsequence,
+    // Collecting statistics may purge cached queries, and clearing the fixed ones changes what the optimizer uses, so each warns first.
+    [SQL_TABLE_TUNE]: STRINGS.sqlTableTuneConsequence,
+    [SQL_TABLE_CLEAR_STATISTICS]: STRINGS.sqlTableClearStatisticsConsequence,
+  },
+  [EXPLORER_SQL_INDICES]: { rebuild: STRINGS.sqlTableRebuildConsequence },
+  [EXPLORER_SQL_SCHEMA]: { [SQL_SCHEMA_TUNE]: STRINGS.sqlSchemaTuneConsequence },
   // Story 20.15: a reset puts a screen back to the permissions its descriptor declares.
   [SCREEN_PERMISSIONS]: { [SCREEN_PERMISSIONS_RESET]: STRINGS.screenPermissionsResetConsequence },
   // Story 20.2: each production action but Start states the wait it makes, or what Recover does.
@@ -1167,6 +1198,8 @@ const WARNING_VALUES: Readonly<Record<string, Readonly<Record<string, WarningVal
   [JOURNAL_LIST]: { [JOURNAL_INTEGRITY]: { kind: 'flag', value: 'CheckDetails', labelKey: 'journalIntegrityEveryRecord' } },
   // Story 21.2: a freeze names how many seconds the instance suspends writes, from 1 to 600.
   [BACKUP_TASK_LIST]: { [BACKUP_FREEZE]: { kind: 'field', value: BACKUP_LIMIT_VALUE, labelKey: 'backupFreezeLimitLabel', hintKey: 'backupFreezeLimitHelp' } },
+  // Story 21.25: a schema's Tune all tables asks whether to clear the tables' fixed values.
+  [EXPLORER_SQL_SCHEMA]: { [SQL_SCHEMA_TUNE]: { kind: 'flag', value: 'ClearValues', labelKey: 'sqlTuneClearValuesLabel' } },
 };
 
 /**

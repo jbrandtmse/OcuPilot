@@ -209,6 +209,7 @@ XData Elsewhere
 <screen name="ExplorerSqlCachedQueries"/>
 <screen name="ExplorerSqlConstraints"/>
 <screen name="ExplorerSqlData"/>
+<screen name="ExplorerSqlFieldStatistics"/>
 <screen name="ExplorerSqlFields"/>
 <screen name="ExplorerSqlIndices"/>
 <screen name="ExplorerSqlPartitionMappings"/>

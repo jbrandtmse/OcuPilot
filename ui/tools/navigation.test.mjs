@@ -388,6 +388,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // two, by descriptor class name.
       'system-explorer/sql-tables/cached-queries',
       'system-explorer/sql-tables/constraints',
+      'system-explorer/sql-tables/field-statistics',
       'system-explorer/sql-tables/fields',
       'system-explorer/sql-tables/indices',
       'system-explorer/sql-tables/partition-mappings',
@@ -1382,7 +1383,8 @@ test('Story 20.38 QA: a schema tab\'s URL resolves to that tab and reads the dec
     }
     assert.deepEqual(parentCriteria(tab, `/${route}?ns=USER`), {}, `${route} with no id reads no schema, which the port refuses`);
     assert.equal(screenForToolName(`${identifier}.read`), tab, `${identifier}.read opens ${route}`);
-    assert.deepEqual(tab.rowActions, [], `${route} adds no row action`);
+    // Story 21.25: the Tables tab carries the schema's Tune all tables, a page action; the other two tabs add none.
+    assert.deepEqual(tab.rowActions, route === 'system-explorer/sql-schemas/document' ? [{ id: 'tune', selfProtection: '' }] : [], `${route} adds no row action beyond the Tables tab's tune`);
     assert.equal(tab.primaryAction.id, '', `${route} adds no primary action`);
     assert.equal(tab.refreshes, false, `${route} does not refresh`);
     assert.deepEqual(tab.read.criteria.fields.map((field) => field.param), ['schema'], `${route} declares the schema as its one criterion`);

@@ -24,6 +24,8 @@ import { NamespaceListPage } from '../areas/os-management/namespace-list.page';
 import { ServiceEditorPage } from '../areas/permissions/service-editor.page';
 import { LdapEditorPage } from '../areas/security/ldap-editor.page';
 import { CodeListPage } from '../areas/system-explorer/code-list.page';
+import { SqlSchemaPage } from '../areas/system-explorer/sql-schema.page';
+import { SqlTablePage } from '../areas/system-explorer/sql-table.page';
 import { DetailPage } from './detail-page';
 import { ExternalPage } from './external-page';
 import { ListPage } from './list-page';
@@ -631,6 +633,13 @@ describe('the descriptor map (DW-369)', () => {
     for (const list of ['Schemas', 'Tables', 'Views', 'Procedures']) {
       expect(await pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, `OcuPilot.Screen.Descriptor.ExplorerSql${list}`, 'list (server criteria)'))).toBe(CodeListPage);
     }
+  });
+
+  it('Story 21.25: a table Info tab and a schema Tables tab resolve to the pages that draw their writes', async () => {
+    // Mutation (Rule 19): drop ExplorerSqlSchema from `DESCRIPTOR_PAGES` -> it falls to the detail page and
+    // this goes red.
+    expect(await pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, 'OcuPilot.Screen.Descriptor.ExplorerSqlTable', 'detail'))).toBe(SqlTablePage);
+    expect(await pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, 'OcuPilot.Screen.Descriptor.ExplorerSqlSchema', 'detail'))).toBe(SqlSchemaPage);
   });
 
   it('Story 20.31: a message\u2019s Header tab resolves to its own page, while the Messages search and the other tabs keep their archetypes\u2019', async () => {

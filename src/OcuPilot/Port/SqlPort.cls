@@ -1,3 +1,5 @@
+Include %msql
+
 /// <p>The SQL console's port (AD-61's named case, Story 19.6): one caller statement, prepared whole
 /// with <code>%SQL.Statement.%Prepare(text, 1)</code> -- SQL privilege checks on -- in the target
 /// namespace, in the request's own process, as the signed-in user, and run there with its values
@@ -37,8 +39,14 @@
 /// <method>TuningInvoke</method> answers a statement or the whole index (<code>STATEMENT</code>), the cached queries a target holds
 /// (<code>PURGE</code>), the five statement writes and the purge, each as one vendor call made with the hash alone or with qualifiers
 /// built from the target alone.</p>
-/// <p>Seams a fixture subclass overrides: <method>GateClass</method>, <method>BoundSeconds</method> and
-/// <method>StatementCall</method>. Production overrides none.</p>
+/// <p><b>Table maintenance reads and writes a table's index here too</b> (AD-51's Story 21.25 case): <method>TablesInvoke</method> answers a table's
+/// statistics (<code>TABLESTATS</code>) and one of its indices (<code>INDEX</code>), each resolved through the caller's own information schema, and
+/// rebuilds one index or all of a table's (<code>REBUILD</code>, <code>REBUILDALL</code>), each as one vendor call made with the table's class and the
+/// index named by the instance's own row, in the request's process. It answers a schema (<code>SCHEMA</code>), collects a table's statistics
+/// (<code>TUNE</code>), removes its fixed statistics (<code>CLEARSTATS</code>) and collects every table's of a schema (<code>TUNESCHEMA</code>), each as one
+/// vendor call with display off and no log file, taking the tune's two declared booleans alone.</p>
+/// <p>Seams a fixture subclass overrides: <method>GateClass</method>, <method>BoundSeconds</method>, <method>StatementCall</method> and
+/// <method>TableCall</method>. Production overrides none.</p>
 Class OcuPilot.Port.SqlPort Extends (%RegisteredObject, OcuPilot.Kernel.RowFetch)
 {
 
@@ -55,7 +63,7 @@ Parameter TYPERUN = "RUN";
 /// <p>The writes this port composes from the caller's declared values, as <code>endpoint/type</code>
 /// (AD-51): the run, from its statement, values and Max rows; and the data browser's save, from its
 /// schema, table and staged changes.</p>
-Parameter COMPOSEDTYPES = "Sql/RUN,SqlData/RUN,Statements/FREEZE,Statements/UNFREEZE,Statements/CLEARSTATISTICS,Statements/CLEARERROR,Statements/CLEAN,CachedQueries/PURGEQUERIES";
+Parameter COMPOSEDTYPES = "Sql/RUN,SqlData/RUN,Statements/FREEZE,Statements/UNFREEZE,Statements/CLEARSTATISTICS,Statements/CLEARERROR,Statements/CLEAN,CachedQueries/PURGEQUERIES,Tables/REBUILD,Tables/REBUILDALL,Tables/TUNE,Tables/CLEARSTATS,Tables/TUNESCHEMA";
 
 /// <p>The tuning track's two endpoints (Story 21.6, AD-51): the namespace's statement index, whose
 /// <parameter>TYPESTATEMENT</parameter> read answers one statement by its hash, or the index itself for
@@ -84,6 +92,45 @@ Parameter TYPEPURGEQUERIES = "PURGEQUERIES";
 
 /// <p>The writes the <parameter>ENDPOINTSTATEMENTS</parameter> endpoint serves.</p>
 Parameter STATEMENTWRITES = "FREEZE,UNFREEZE,CLEARSTATISTICS,CLEARERROR,CLEAN";
+
+/// <p>The table maintenance endpoint (Story 21.25, AD-51): a table's statistics (<parameter>TYPETABLESTATS</parameter>, target
+/// <code>Schema.Table</code>) and one of its indices (<parameter>TYPEINDEX</parameter>, the composite <code>[Table, Map]</code>), and its writes
+/// <parameter>TABLEWRITES</parameter>: the rebuild of one index (<code>[Table, Map]</code>) and of every index of a table (<code>Schema.Table</code>), the
+/// collection of a table's statistics (<code>TUNE</code>, <code>Schema.Table</code>), the removal of its fixed statistics (<code>CLEARSTATS</code>,
+/// <code>Schema.Table</code>) and the collection of every table's of a schema (<code>TUNESCHEMA</code>, the schema's name). A schema's read is
+/// <parameter>TYPESCHEMA</parameter>.</p>
+Parameter ENDPOINTTABLES = "Tables";
+
+Parameter TYPETABLESTATS = "TABLESTATS";
+
+Parameter TYPEINDEX = "INDEX";
+
+Parameter TYPEREBUILD = "REBUILD";
+
+Parameter TYPEREBUILDALL = "REBUILDALL";
+
+Parameter TYPETUNE = "TUNE";
+
+Parameter TYPECLEARSTATS = "CLEARSTATS";
+
+Parameter TYPETUNESCHEMA = "TUNESCHEMA";
+
+Parameter TYPESCHEMA = "SCHEMA";
+
+Parameter TABLEWRITES = "REBUILD,REBUILDALL,TUNE,CLEARSTATS,TUNESCHEMA";
+
+/// <p>The query key carrying a schema tune's declared boolean, <code>true</code> or <code>false</code>: whether the schema's fixed values are cleared.
+/// <parameter>TYPETUNE</parameter> takes no value and always clears none.</p>
+Parameter CLEARVALUESKEY = "ClearValues";
+
+/// <p>The schema one name resolves to among the base tables the caller's own information schema shows, spelled as the instance holds it, and how
+/// many base tables it holds there, each bound with the schema's name, which the schema's read answers.</p>
+Parameter SCHEMANAMEQUERY = "SELECT TOP 1 TABLE_SCHEMA FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = ?";
+
+Parameter SCHEMATABLESQUERY = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = ?";
+
+/// <p>The word the instance's index type carries for the table's data map, which holds the rows and has no index to rebuild.</p>
+Parameter DATAMAPTYPE = "Data";
 
 /// <p>The target that names a namespace's whole statement index, or the whole of its cached queries.</p>
 Parameter ALLID = "*";
@@ -705,7 +752,7 @@ ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %Dyn
 /// <p>Serve <var>pEndpoint</var> (<parameter>ENDPOINTSQL</parameter> or
 /// <parameter>ENDPOINTDATA</parameter>) for request type <var>pType</var>, the write path's way in
 /// (AD-51, AD-52); <parameter>ENDPOINTSTATEMENTS</parameter> and <parameter>ENDPOINTCACHEDQUERIES</parameter> are
-/// <method>TuningInvoke</method>'s. <var>pQuery</var> carries <code>id</code>, which must be
+/// <method>TuningInvoke</method>'s, and <parameter>ENDPOINTTABLES</parameter> is <method>TablesInvoke</method>'s. <var>pQuery</var> carries <code>id</code>, which must be
 /// <parameter>IDVALUE</parameter>; <code>namespace</code>, or the request's resolved scope where it is
 /// absent; for the console, <code>statement</code>, <code>parameters</code> (JSON array text) and
 /// <code>maxRows</code>; for the data browser's save, <code>schema</code>, <code>table</code> and
@@ -726,6 +773,11 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Try {
         If (pEndpoint = ..#ENDPOINTSTATEMENTS) || (pEndpoint = ..#ENDPOINTCACHEDQUERIES) {
             Set tSC = ..TuningInvoke(pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            If $$$ISOK(tSC) Set pHttpStatus = 200
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTTABLES {
+            Set tSC = ..TablesInvoke(pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             If $$$ISOK(tSC) Set pHttpStatus = 200
             Quit
         }
@@ -1034,6 +1086,23 @@ ClassMethod PurgeTarget(pNamespace As %String, pId As %String, Output pKind As %
         Set pName = pId
         Quit $$$OK
     }
+    Set tSC = ..ResolveTable(pNamespace, pId, .tSchema, .tTable, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pKind = "table"
+    Set pName = tSchema _ "." _ tTable
+    Quit ..CountOf(pNamespace, ..#PURGETABLEQUERY, [($ClassMethod(tPort, "CatalogRelation", tSchema, tTable)), (..#CACHEDQUERYPREFIX)], .pCount, .pHttpStatus, .pFault)
+}
+
+/// <p>The base table <var>pId</var>, <code>Schema.Table</code>, names in <var>pNamespace</var> as the caller's own information schema shows it
+/// (<parameter>OcuPilot.Port.AtelierPort.CATALOGRESOLVEQUERY</parameter>), as <var>pSchema</var> and <var>pTable</var> spelled as the instance holds
+/// them. A name outside the table shape (no dot, over <parameter>OcuPilot.Port.AtelierPort.MAXTABLE</parameter> characters, or a control character)
+/// is 400 <code>PORT.VALIDATION</code>, a name the caller's schema shows no table for is 404 <code>PORT.NOTFOUND</code>, and one that matches more than
+/// one table is 400.</p>
+ClassMethod ResolveTable(pNamespace As %String, pId As %String, Output pSchema As %String, Output pTable As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pSchema = ""
+    Set pTable = ""
+    Set tPort = "OcuPilot.Port.AtelierPort"
     If (pId '[ ".") || ($Length(pId) > $Parameter(tPort, "MAXTABLE")) || ($ZStrip(pId, "*C") '= pId) {
         Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, $Parameter(tPort, "REASONCATALOGTABLE"), .pHttpStatus, .pFault)
     }
@@ -1046,11 +1115,9 @@ ClassMethod PurgeTarget(pNamespace As %String, pId As %String, Output pKind As %
     If tRows.%Size() > 1 {
         Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, $Parameter(tPort, "REASONCATALOGAMBIGUOUS"), .pHttpStatus, .pFault)
     }
-    Set tSchema = tRows.%Get(0).%Get(0)
-    Set tTable = tRows.%Get(0).%Get(1)
-    Set pKind = "table"
-    Set pName = tSchema _ "." _ tTable
-    Quit ..CountOf(pNamespace, ..#PURGETABLEQUERY, [($ClassMethod(tPort, "CatalogRelation", tSchema, tTable)), (..#CACHEDQUERYPREFIX)], .pCount, .pHttpStatus, .pFault)
+    Set pSchema = tRows.%Get(0).%Get(0)
+    Set pTable = tRows.%Get(0).%Get(1)
+    Quit $$$OK
 }
 
 /// <p>The cached-query purge's fresh read: <code>{Namespace, Target, Kind, CachedQueries}</code> for <var>pId</var>
@@ -1087,6 +1154,387 @@ ClassMethod PurgeWrite(pNamespace As %String, pId As %String, Output pAnswer As 
     Do pAnswer.%Set("Target", tName, "string")
     Set pHttpStatus = 200
     Quit $$$OK
+}
+
+/// <p>The table maintenance way in (Story 21.25, AD-51, AD-52): serve <var>pType</var> of <parameter>ENDPOINTTABLES</parameter>. <var>pQuery</var> carries
+/// <code>id</code>, the target (a table as <code>Schema.Table</code>, or for <parameter>TYPEINDEX</parameter> and <parameter>TYPEREBUILD</parameter> the
+/// composite <code>[Table, Map]</code>), and <code>namespace</code>, or the request's resolved scope where it is absent. <var>pResult</var> is the read's
+/// answer (<method>TableAnswer</method>), or a write's <code>{Namespace, Target}</code>.</p>
+/// <p><b>The order of every call is fixed.</b> A type this endpoint does not serve is 501 <code>PORT.NOTIMPLEMENTED</code>; then the gate
+/// (<method>Gate</method>, a write with <method>OcuPilot.Port.AtelierPort.WritePairs</method>), 403 naming the failed pair; then the target's shape, 400
+/// <code>PORT.VALIDATION</code>; then the table, resolved through the caller's own information schema (<method>ResolveTable</method>); then the call.
+/// Nothing is read or written before the gate has answered.</p>
+ClassMethod TablesInvoke(pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tWrite = ''$ListFind($ListFromString(..#TABLEWRITES), pType)
+    If 'tWrite && (pType '= ..#TYPETABLESTATS) && (pType '= ..#TYPEINDEX) && (pType '= ..#TYPESCHEMA) {
+        Quit ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ##class(OcuPilot.Port.AtelierPort).#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+    }
+    Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
+    If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+    Set tSC = ..Gate(tNamespace, .pHttpStatus, .pFault, tWrite)
+    If $$$ISERR(tSC) Quit tSC
+    Set tId = $Get(pQuery(..#IDKEY))
+    Set tValues = ""
+    If pType = ..#TYPETUNESCHEMA {
+        Set tSC = ..TuneValues(pType, .pQuery, .tValues, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    If (pType = ..#TYPESCHEMA) || (pType = ..#TYPETUNESCHEMA) {
+        Quit ..SchemaServe(tNamespace, pType, tId, tValues, .pResult, .pHttpStatus, .pFault)
+    }
+    Set tTableId = tId
+    Set tMap = ""
+    If (pType = ..#TYPEINDEX) || (pType = ..#TYPEREBUILD) {
+        Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(tId)
+        Set tMap = $ListGet(tParts, 2)
+        If ($ListLength(tParts) '= 2) || ($List(tParts, 1) = "") || (tMap = "") || ($Length(tMap) > ..#MAXNAME) || ($ZStrip(tMap, "*C") '= tMap) {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Api.Error).#REASONPORTFIELDSHAPE, .pHttpStatus, .pFault)
+        }
+        Set tTableId = $List(tParts, 1)
+    }
+    Set tSC = ..TableTarget(tNamespace, tTableId, tMap, .tFacts, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If 'tWrite {
+        Set pResult = ..TableAnswer(pType, tNamespace, tFacts)
+        Quit $$$OK
+    }
+    Quit ..TableWrite(tNamespace, pType, tId, tFacts, tValues, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p>The schema tune's declared boolean, as the text <method>TableCall</method> takes: <code>1</code> or <code>0</code> for whether the fixed values are
+/// cleared. The query key is <code>true</code> or <code>false</code>, and anything else, or none, is 400 <code>PORT.VALIDATION</code> before any call.</p>
+ClassMethod TuneValues(pType As %String, ByRef pQuery, Output pValues As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pValues = ""
+    Set tClear = $Get(pQuery(..#CLEARVALUESKEY))
+    If (tClear '= "true") && (tClear '= "false") {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Api.Error).#REASONPORTFIELDSHAPE, .pHttpStatus, .pFault)
+    }
+    Set pValues = (tClear = "true")
+    Quit $$$OK
+}
+
+/// <p>The schema's read (<parameter>TYPESCHEMA</parameter>, <code>{Namespace, Schema, Tables}</code>) and its tune (<parameter>TYPETUNESCHEMA</parameter>,
+/// <code>{Namespace, Target}</code>) for the schema <var>pSchemaId</var> of <var>pNamespace</var>, which the caller's own information schema must show
+/// at least one base table of (<parameter>SCHEMANAMEQUERY</parameter>, <parameter>SCHEMATABLESQUERY</parameter>): a name outside the schema shape is 400 <code>PORT.VALIDATION</code> and a schema it
+/// shows none of is 404 <code>PORT.NOTFOUND</code>. <code>Schema</code> is spelled as the instance holds it and <code>Tables</code> counts the base tables
+/// the caller sees; it also answers the declared boolean as <code>null</code>, so a merge of the value makes its row on the card. A tune is the one vendor call <method>TableCall</method> makes, with the declared <var>pValues</var>; a refusal the instance answers is
+/// 409 <code>SQL.TABLE.VENDOR</code>, its message in <code>detail.message</code> alone and never logged.</p>
+ClassMethod SchemaServe(pNamespace As %String, pType As %String, pSchemaId As %String, pValues As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tPort = "OcuPilot.Port.AtelierPort"
+    If (pSchemaId = "") || ($Length(pSchemaId) > $Parameter(tPort, "MAXSCHEMA")) || ($ZStrip(pSchemaId, "*C") '= pSchemaId) {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, $Parameter(tPort, "REASONCATALOGSCHEMA"), .pHttpStatus, .pFault)
+    }
+    Set tSC = ..ReadRows(pNamespace, ..#SCHEMANAMEQUERY, [(pSchemaId)], 3, .tRaw, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tRows = tRaw.%Get("rows")
+    If tRows.%Size() = 0 {
+        Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, $Parameter(tPort, "REASONCATALOGNOTFOUND"), .pHttpStatus, .pFault)
+    }
+    Set tSchema = tRows.%Get(0).%Get(0)
+    If pType = ..#TYPESCHEMA {
+        Set tSC = ..CountOf(pNamespace, ..#SCHEMATABLESQUERY, [(tSchema)], .tTables, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        Set pResult = {}
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Do pResult.%Set("Schema", tSchema, "string")
+        Do pResult.%Set("Tables", tTables, "number")
+        Do pResult.%Set(..#CLEARVALUESKEY, "", "null")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Quit ..TableWritten(pNamespace, pType, tSchema, pValues, pSchemaId, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p>What <var>pTableId</var> names in <var>pNamespace</var>, resolved through the caller's own information schema, with the instance's facts about it
+/// in <var>pFacts</var> (<method>TableFacts</method>) and the table as <code>Table</code>, <code>Schema.Table</code> spelled as the instance holds it.
+/// With <var>pMap</var>, the index of that SQL map name too; a table that has no class to address is 404 <code>PORT.NOTFOUND</code>, and a map the
+/// table does not hold is 400 <code>PORT.VALIDATION</code>.</p>
+ClassMethod TableTarget(pNamespace As %String, pTableId As %String, pMap As %String, Output pFacts As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pFacts = ""
+    Set tSC = ..ResolveTable(pNamespace, pTableId, .tSchema, .tTable, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..TableFacts(pNamespace, tSchema, tTable, pMap, .tFacts)
+    If $$$ISERR(tSC) Quit ..Fail("a table's statistics could not be read", tSC, .pHttpStatus, .pFault)
+    If tFacts.%Get("Class") = "" {
+        Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ##class(OcuPilot.Port.AtelierPort).#REASONCATALOGNOTFOUND, .pHttpStatus, .pFault)
+    }
+    If (pMap '= "") && 'tFacts.%Get("Found") {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Api.Error).#REASONPORTFIELDSHAPE, .pHttpStatus, .pFault)
+    }
+    Do tFacts.%Set("Table", tSchema _ "." _ tTable, "string")
+    Do tFacts.%Set("Schema", tSchema, "string")
+    Do tFacts.%Set("Name", tTable, "string")
+    Set pFacts = tFacts
+    Quit $$$OK
+}
+
+/// <p>What the instance holds about the table <var>pSchema</var>.<var>pTable</var> of <var>pNamespace</var>, read with vendor calls alone while switched
+/// to it (AD-16; the restore is the first line of the <code>Catch</code>), as <var>pFacts</var>: <code>Class</code>, the class the table's indices are
+/// built through (the parent's, for a collection child table, as the classic page uses it), <code>HasFixed</code>, <code>StatsKind</code>
+/// (<code>fixed</code>, <code>collected</code> or <code>none</code>), <code>ExtentSize</code> and <code>CollectedAt</code>. The extent size is the
+/// collected one unless the table has fixed statistics, which the optimizer then uses; a table with neither reads the instance's default. With
+/// <var>pMap</var>, <code>Found</code> and the index's <code>Index</code>, <code>Map</code>, <code>Type</code> and <code>Argument</code>, the name the
+/// instance builds the index by.</p>
+ClassMethod TableFacts(pNamespace As %String, pSchema As %String, pTable As %String, pMap As %String, Output pFacts As %DynamicObject) As %Status [ Private ]
+{
+    Set pFacts = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Set (tClass, tCollected, tAt, tIndex, tType, tArgument) = ""
+    Set (tHasFixed, tFound) = 0
+    Set tCurrent = 0
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tIQN = $$IntQualifiedName^%apiSQL(pSchema _ "." _ pTable)
+        If tIQN '= "" {
+            Set tClass = $$$GetClassNameFromIQN(tIQN)
+            Set tExtent = $$$GetExtentNameFromIQN(tIQN)
+            Set tInfo = $$$EXTsqlinfo($$$rEXT,tExtent)
+            If $$$SQLLocTableChildTableType(tInfo) '= "" Set tClass = $$$GetClassNameFromIQN($$$SQLLocTableParentTable(tInfo))
+        }
+        If tClass '= "" {
+            Set tHasFixed = ''##class(%SQL.Manager.Catalog).HasFixedStats(pSchema, pTable)
+            Set tCurrent = ##class(%SQL.Manager.Catalog).GetCurrentTableExtentSize(pSchema, pTable)
+            Kill tStat
+            Do ##class(%SQL.Manager.Catalog).DisplayExtentDBStats(pSchema, pTable, .tStatClass, .tStat, .tStatId)
+            If $IsObject($Get(tStat)) {
+                Set tCollected = tStat.ExtentSize
+                Set tAt = $Translate($Extract(##class(%Library.PosixTime).LogicalToOdbc(tStat.EndTime), 1, 19), " ", "T") _ "Z"
+            }
+            Set tStat = ""
+        }
+        If (tClass '= "") && (pMap '= "") {
+            Set tStatement = ##class(%SQL.Statement).%New()
+            Set tSC = tStatement.%PrepareClassQuery("%SQL.Manager.Catalog", "Indices")
+            If $$$ISOK(tSC) {
+                Set tResult = tStatement.%Execute(pSchema, pTable)
+                If tResult.%SQLCODE < 0 {
+                    Set tSC = $$$ERROR($$$GeneralError, "the index list was refused")
+                } Else {
+                    While tResult.%Next() {
+                        If tResult.%Get("SQL_MAP_NAME") = pMap {
+                            Set tFound = 1
+                            Set tIndex = tResult.%Get("INDEX_NAME")
+                            Set tType = tResult.%Get("TYPE")
+                            Set tArgument = tResult.%Get("BI_ARGUMENT")
+                            If tArgument = "" Set tArgument = tIndex
+                            Quit
+                        }
+                    }
+                }
+            }
+            Set tResult = ""
+            Set tStatement = ""
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Quit tSC
+    Set tKind = $Select(tHasFixed: "fixed", tCollected '= "": "collected", 1: "none")
+    Set pFacts = {}
+    Do pFacts.%Set("Class", tClass, "string")
+    Do pFacts.%Set("HasFixed", tHasFixed, "boolean")
+    Do pFacts.%Set("StatsKind", tKind, "string")
+    Do pFacts.%Set("ExtentSize", $Select(tKind = "collected": +tCollected, 1: +tCurrent), "number")
+    Do pFacts.%Set("CollectedAt", tAt, "string")
+    Do pFacts.%Set("Found", tFound, "boolean")
+    Do pFacts.%Set("Index", tIndex, "string")
+    Do pFacts.%Set("Map", $Select(tFound: pMap, 1: ""), "string")
+    Do pFacts.%Set("Type", tType, "string")
+    Do pFacts.%Set("Argument", tArgument, "string")
+    Quit $$$OK
+}
+
+/// <p>The read answer of <var>pType</var> (<parameter>TYPETABLESTATS</parameter> or <parameter>TYPEINDEX</parameter>) for the facts <var>pFacts</var>
+/// <method>TableTarget</method> answered: <code>{Namespace, Table, Class, ExtentSize, StatsKind, CollectedAt, HasFixed}</code> for the
+/// table, and <code>{Namespace, Table, Class, Index, Map, Type}</code> for the index.</p>
+ClassMethod TableAnswer(pType As %String, pNamespace As %String, pFacts As %DynamicObject) As %DynamicObject [ Private ]
+{
+    Set tAnswer = {}
+    Do tAnswer.%Set("Namespace", pNamespace, "string")
+    Do tAnswer.%Set("Table", pFacts.%Get("Table"), "string")
+    Do tAnswer.%Set("Class", pFacts.%Get("Class"), "string")
+    If pType = ..#TYPEINDEX {
+        Do tAnswer.%Set("Index", pFacts.%Get("Index"), "string")
+        Do tAnswer.%Set("Map", pFacts.%Get("Map"), "string")
+        Do tAnswer.%Set("Type", pFacts.%Get("Type"), "string")
+        Quit tAnswer
+    }
+    Do tAnswer.%Set("ExtentSize", pFacts.%Get("ExtentSize"), "number")
+    Do tAnswer.%Set("StatsKind", pFacts.%Get("StatsKind"), "string")
+    Do tAnswer.%Set("CollectedAt", pFacts.%Get("CollectedAt"), "string")
+    Do tAnswer.%Set("HasFixed", pFacts.%Get("HasFixed"), "boolean")
+    Quit tAnswer
+}
+
+/// <p>The table write <var>pType</var> (<parameter>TABLEWRITES</parameter>) on <var>pId</var>, whose facts are <var>pFacts</var>, in
+/// <var>pNamespace</var>, with the schema tune's declared boolean <var>pValues</var> (<method>TuneValues</method>). The write is the one vendor call
+/// <method>TableCall</method> makes. A rebuild of the table's data map is 409 <code>SQL.TABLE.DATAMAP</code>, the removal of fixed statistics from a table
+/// that has none is 409 <code>SQL.TABLE.NOFIXEDSTATS</code>, and a refusal the instance answers is 409 <code>SQL.TABLE.VENDOR</code>, its message in
+/// <code>detail.message</code> alone and never logged (AD-39).</p>
+ClassMethod TableWrite(pNamespace As %String, pType As %String, pId As %String, pFacts As %DynamicObject, pValues As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pAnswer = ""
+    If (pType = ..#TYPEREBUILD) && (pFacts.%Get("Type") [ ..#DATAMAPTYPE) {
+        Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#TABLEDATAMAP, ##class(OcuPilot.Api.AtelierError).#REASONTABLEDATAMAP, .pHttpStatus, .pFault)
+    }
+    If (pType = ..#TYPECLEARSTATS) && 'pFacts.%Get("HasFixed") {
+        Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#TABLENOFIXEDSTATS, ##class(OcuPilot.Api.AtelierError).#REASONTABLENOFIXEDSTATS, .pHttpStatus, .pFault)
+    }
+    If (pType = ..#TYPETUNE) || (pType = ..#TYPECLEARSTATS) {
+        Set tTarget = pFacts.%Get("Table")
+        Set tValues = ""
+    } Else {
+        Set tTarget = pFacts.%Get("Class")
+        Set tValues = $Select(pType = ..#TYPEREBUILD: pFacts.%Get("Argument"), 1: "")
+    }
+    Quit ..TableWritten(pNamespace, pType, tTarget, tValues, pId, .pAnswer, .pHttpStatus, .pFault)
+}
+
+/// <p>Table write <var>pType</var> made as <method>TableCall</method> makes it with <var>pTarget</var> and <var>pValues</var>, answering
+/// <code>{Namespace, Target}</code> with <var>pId</var> as the target as the caller named it. An unexpected raise is the internal fault, and an error
+/// status the instance answers is 409 <code>SQL.TABLE.VENDOR</code>.</p>
+ClassMethod TableWritten(pNamespace As %String, pType As %String, pTarget As %String, pValues As %String, pId As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pAnswer = ""
+    Set tSC = ..TableApplied(pNamespace, pType, pTarget, pValues, .tStatus)
+    If $$$ISERR(tSC) Quit ..Fail("a table write failed", tSC, .pHttpStatus, .pFault)
+    If $$$ISERR(tStatus) {
+        Set tDetail = {}
+        Do tDetail.%Set("message", $System.Status.GetErrorText(tStatus), "string")
+        Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#TABLEVENDOR, ##class(OcuPilot.Api.AtelierError).#REASONTABLEVENDOR, .pHttpStatus, .pFault, tDetail)
+    }
+    Set pAnswer = {}
+    Do pAnswer.%Set("Namespace", pNamespace, "string")
+    Do pAnswer.%Set("Target", pId, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The one vendor call of table write <var>pType</var>, in <var>pNamespace</var>, as its status: <code>RebuildIndices</code> of the class
+/// <var>pTarget</var> with the one index <var>pValues</var> names for <parameter>TYPEREBUILD</parameter>, and with none, which rebuilds every index,
+/// for <parameter>TYPEREBUILDALL</parameter>. The call purges each index and holds the table's extent lock while it builds. The tunes take the
+/// table as <code>Schema.Table</code> and the schema by its name, spelled as the instance holds them and not quoted, as the classic page passes them
+/// (the instance refuses a quoted schema name): <parameter>TYPETUNE</parameter> is <code>TuneTable</code> over
+/// <var>pTarget</var>, display off, no log file, the class definition left as it is and fixed values kept; <parameter>TYPECLEARSTATS</parameter> is
+/// <code>ClearTableStats</code>; <parameter>TYPETUNESCHEMA</parameter> is <code>TuneSchema</code> over the schema, with <var>pValues</var>
+/// <code>1</code> or <code>0</code> for whether the fixed values are cleared. A message the tune answers is its error status. A call that
+/// answers no status is <code>$$$OK</code>. The namespace is switched by save and restore around the vendor call alone, restored first when it throws, and
+/// the throw is passed on. Overridable so a fixture can feed an error status; production overrides none.</p>
+ClassMethod TableCall(pType As %String, pTarget As %String, pValues As %String, pNamespace As %String) As %Status
+{
+    Set tStatus = $$$ERROR($$$GeneralError, "no table call for " _ pType)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Kill tMessage
+        If pType = ..#TYPEREBUILD {
+            Set tStatus = ##class(%SQL.Manager.API).RebuildIndices(pTarget, $ListBuild(pValues))
+        } ElseIf pType = ..#TYPEREBUILDALL {
+            Set tStatus = ##class(%SQL.Manager.API).RebuildIndices(pTarget, "")
+        } ElseIf pType = ..#TYPETUNE {
+            Do ##class(%SYSTEM.SQL).TuneTable(pTarget, 1, 0, .tMessage, 0, 0, "")
+            Set tStatus = ..MessageStatus(.tMessage)
+        } ElseIf pType = ..#TYPECLEARSTATS {
+            Set tStatus = ##class(%SYSTEM.SQL.Stats.Table).ClearTableStats(pTarget)
+        } ElseIf pType = ..#TYPETUNESCHEMA {
+            Do ##class(%SYSTEM.SQL).TuneSchema(pTarget, 1, 0, .tMessage, 0, +pValues, "")
+            Set tStatus = ..MessageStatus(.tMessage)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Quit tStatus
+}
+
+/// <p>The error status of the message a tune answered in <var>pMessage</var>, its text and the text of each of its subscripts, or
+/// <code>$$$OK</code> when it holds none. A message of <code>0</code> or <code>""</code> is none.</p>
+ClassMethod MessageStatus(ByRef pMessage) As %Status [ Private ]
+{
+    Set tText = ""
+    If $Get(pMessage) '= "" && ($Get(pMessage) '= 0) Set tText = pMessage
+    Set tKey = ""
+    For {
+        Set tKey = $Order(pMessage(tKey))
+        If tKey = "" Quit
+        If $Get(pMessage(tKey)) '= "" Set tText = tText _ $Select(tText = "": "", 1: " ") _ pMessage(tKey)
+    }
+    If tText = "" Quit $$$OK
+    Quit $$$ERROR($$$GeneralError, tText)
+}
+
+/// <p><method>TableCall</method> answering its own status as <var>pStatus</var>; the returned status is an unexpected failure.</p>
+ClassMethod TableApplied(pNamespace As %String, pType As %String, pTarget As %String, pValues As %String, Output pStatus As %Status) As %Status [ Private ]
+{
+    Set pStatus = $$$OK
+    Set tSC = $$$OK
+    Try {
+        Set pStatus = ..TableCall(pType, pTarget, pValues, pNamespace)
+    } Catch ex {
+        Set tSC = $$$ERROR($$$GeneralError, "the write raised " _ ex.Name)
+    }
+    Quit tSC
+}
+
+/// <p>The table write <var>pType</var> as a script (AD-59) in the namespace <code>namespace</code> names: the one vendor call, the table's class found
+/// from its SQL name and, for one index, the name the instance builds it by read from the table's indices list as <method>TableFacts</method> reads
+/// it, each name shown as a string literal, so nothing the query carries runs as code.</p>
+ClassMethod TableSnippet(pType As %String, ByRef pQuery) As %DynamicArray [ Private ]
+{
+    Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite($Get(pQuery(..#IDKEY)))
+    Set tTable = $ListGet(tParts, 1)
+    Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
+    Set tClear = $Select($Get(pQuery(..#CLEARVALUESKEY)) = "true": 1, 1: 0)
+    If pType = ..#TYPETUNE {
+        Set tText = tText _ $Char(10) _ " Do $SYSTEM.SQL.TuneTable(" _ ..Literal($Get(pQuery(..#IDKEY))) _ ", 1, 0, .tMessage, 0, 0)"
+        Set tText = tText _ $Char(10) _ " If $Data(tMessage) ZWrite tMessage"
+        Quit ..SnippetSteps(tText)
+    }
+    If pType = ..#TYPECLEARSTATS {
+        Set tText = tText _ $Char(10) _ " Set tSC = $SYSTEM.SQL.Stats.Table.ClearTableStats(" _ ..Literal($Get(pQuery(..#IDKEY))) _ ")"
+        Set tText = tText _ $Char(10) _ " If $System.Status.IsError(tSC) Do $System.Status.DisplayError(tSC)"
+        Quit ..SnippetSteps(tText)
+    }
+    If pType = ..#TYPETUNESCHEMA {
+        Set tText = tText _ $Char(10) _ " Do $SYSTEM.SQL.TuneSchema(" _ ..Literal($Get(pQuery(..#IDKEY))) _ ", 1, 0, .tMessage, 0, " _ tClear _ ")"
+        Set tText = tText _ $Char(10) _ " If $Data(tMessage) ZWrite tMessage"
+        Quit ..SnippetSteps(tText)
+    }
+    Set tText = tText _ $Char(10) _ " Set tClass = ##class(%SQL.Manager.API).FindClassName(" _ ..Literal(tTable) _ ")"
+    If pType = ..#TYPEREBUILD {
+        Set tText = tText _ $Char(10) _ " Set tStatement = ##class(%SQL.Statement).%New()"
+        Set tText = tText _ $Char(10) _ " Set tSC = tStatement.%PrepareClassQuery(""%SQL.Manager.Catalog"", ""Indices"")"
+        Set tText = tText _ $Char(10) _ " Set tResult = tStatement.%Execute(" _ ..Literal($Piece(tTable, ".", 1)) _ ", " _ ..Literal($Piece(tTable, ".", 2, *)) _ ")"
+        Set tText = tText _ $Char(10) _ " Set tIndex = """""
+        Set tText = tText _ $Char(10) _ " While tResult.%Next() { If tResult.%Get(""SQL_MAP_NAME"") = " _ ..Literal($ListGet(tParts, 2)) _ " { Set tIndex = tResult.%Get(""BI_ARGUMENT"") Quit } }"
+        Set tIndices = "$ListBuild(tIndex)"
+    } Else {
+        Set tIndices = """"""
+    }
+    Set tText = tText _ $Char(10) _ " Set tSC = ##class(%SQL.Manager.API).RebuildIndices(tClass, " _ tIndices _ ")"
+    Set tText = tText _ $Char(10) _ " If $System.Status.IsError(tSC) Do $System.Status.DisplayError(tSC)"
+    Quit ..SnippetSteps(tText)
+}
+
+/// <p>The one <code>objectscript</code> step whose text is <var>pText</var>.</p>
+ClassMethod SnippetSteps(pText As %String) As %DynamicArray [ Private ]
+{
+    Set tStep = {}
+    Do tStep.%Set("kind", "objectscript", "string")
+    Do tStep.%Set("text", pText, "string")
+    Quit [(tStep)]
 }
 
 /// <p>The tuning write <var>pType</var> as a script (AD-59) in the namespace <code>namespace</code> names: the one vendor call, with
@@ -1141,6 +1589,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If ((pEndpoint = ..#ENDPOINTSQL) || (pEndpoint = ..#ENDPOINTDATA)) && (pType = ..#TYPERUN) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTSTATEMENTS) && $ListFind($ListFromString(..#STATEMENTWRITES), pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTCACHEDQUERIES) && (pType = ..#TYPEPURGEQUERIES) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTTABLES) && $ListFind($ListFromString(..#TABLEWRITES), pType) Quit "objectscript"
     Quit ""
 }
 
@@ -1155,6 +1604,7 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     If pEndpoint = ..#ENDPOINTDATA Quit ..SaveSnippet(.pQuery)
     If (pEndpoint = ..#ENDPOINTSTATEMENTS) || (pEndpoint = ..#ENDPOINTCACHEDQUERIES) Quit ..TuningSnippet(pType, .pQuery)
+    If pEndpoint = ..#ENDPOINTTABLES Quit ..TableSnippet(pType, .pQuery)
     Set tValues = ..ValuesFrom($Get(pQuery(..#PARAMETERSKEY)), .tReadable)
     Set tList = ""
     Set tIterator = tValues.%GetIterator()

@@ -1066,6 +1066,8 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['system-explorer/sql-tables/cached-queries', 'system-explorer/sql-tables/document', 8, 0],
     ['interoperability/productions/items/classes', 'interoperability/productions/items/document', 8, 0],
     ['system-explorer/sql-tables/statements', 'system-explorer/sql-tables/document', 9, 0],
+    // Story 21.25: the table's Field statistics, the tenth tab of the SQL tables group.
+    ['system-explorer/sql-tables/field-statistics', 'system-explorer/sql-tables/document', 10, 0],
   ]);
   assert.ok(emitted.every((screen) => 'tab' in screen), 'every screen emits tab, null when it is no tab');
 });
@@ -1605,6 +1607,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.ExplorerSearch',
       'OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries',
       'OcuPilot.Screen.Descriptor.ExplorerSqlConstraints',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlFieldStatistics',
       'OcuPilot.Screen.Descriptor.ExplorerSqlFields',
       'OcuPilot.Screen.Descriptor.ExplorerSqlIndices',
       'OcuPilot.Screen.Descriptor.ExplorerSqlPartitionMappings',
@@ -3271,6 +3274,8 @@ test('Story 19.1: the System Explorer reads through the atelier port, the eighth
     ExplorerSqlPartitionMappings: ['Catalog.PartitionMappings', 'table='],
     ExplorerSqlCachedQueries: ['Catalog.CachedQueries', 'table='],
     ExplorerSqlTableStatements: ['Catalog.TableStatements', 'table='],
+    // Story 21.25: a table's Field statistics tab.
+    ExplorerSqlFieldStatistics: ['Catalog.FieldStatistics', 'table='],
     ExplorerSqlView: ['Catalog.View', 'view='],
     ExplorerSqlViewFields: ['Catalog.ViewFields', 'view='],
     ExplorerSqlViewStatements: ['Catalog.ViewStatements', 'view='],

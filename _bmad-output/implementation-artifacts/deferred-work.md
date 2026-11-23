@@ -8542,6 +8542,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T17:29:36Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=lead note=reopened: staging 36741141564 shard 2/3 agent leg OnAfterOneTest found the held compact running; seed left
 - 2026-09-30T20:28:36Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=398c0190: teardown waits 60 s, unopenable row not ended; stall leg r252 red/r255-258 green; CI 36768363028
 - 2026-11-21T06:14:39Z by=epic-24-runner note=occurrence: BackgroundTasksLive red once in 24.14 Batch 4's local full sweep on ocupilot-b-ci (shard 10/17; a seeded compact ended before its pause), green on one re-run
+- 2026-11-23T12:23:43Z by=orchestrator note=occurrence: BackgroundTasksLive.TestAnAdminApiCompactIsListedAndPausedThroughAsyncResult Pause 409 TASK.BACKGROUND.STATE on CI run 45160592270 shard 2/8 (21.25 M 5282c9e77; seeded compact ended before its pause), green on one rerun
 
 ### DW-1830: BackgroundTasksLive.cls is 537 lines after 18.3 rework 2's bounded retry, over the ~500-line test-class guideline
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: in-story
@@ -14556,3 +14557,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-3.md (implement ca5626323, review d196f6de8) | severity: low | fix-risk: med | footprint: cross-story
 - evidence: implement shard 5 red -99 on ocupilot-b-ci; review run 1 on the 14:11:15Z rebuild green 6/6 as the route's first restricted use
 - 2026-11-23T14:29:07Z status=routed owner=burndown by=epic-24-runner note=orchestrator: raise to medium if -99 recurs; a restricted principal's cold first query could be a user-facing 500 (inference); no warm-up goes into the test
+### DW-2847: SqlPort.QuotedName's delimited-name branch (a schema or table whose name needs quotes) is run by no test, though 21.25's tune and schema-tune targets already pass every Tables-list name through it
+- source: spec-21-25-index-rebuild-and-tune-table.md (implement review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlPort.cls:1263 QuotedName quotes any name not matching ^[A-Za-z%][A-Za-z0-9_]*$; callers SqlPort.cls:1258 (schema tune) and :1411 (table tune target), both reachable from a name the Tables list shows
+- 2026-11-23T04:46:59Z status=routed owner=21-25-index-rebuild-and-tune-table by=orchestrator note=21.25's own writes reach a delimited name, so the test is 21.25's: a probe schema or table needing quotes, tuned and rebuilt through both callers, at the code review; 21.31 reuses the helper after
+- 2026-11-23T06:24:39Z status=resolved-by:21-25-index-rebuild-and-tune-table owner=21-25-index-rebuild-and-tune-table by=cr note=delimited probe tests both callers; quoting removed (instance refused a quoted schema), runs 60/61/64/65
+
+### DW-2848: AD-10's 21.25 table arm still justifies the refusal by keeping the class up to date, an option rework 1 dropped
+- source: spec-21-25-index-rebuild-and-tune-table.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ARCHITECTURE-SPINE.md:411 says keeping the class up to date rewrites OcuPilot's class definitions; no tool offers or passes it (AD-51 line 1271); the code comment was corrected in review
+- 2026-11-23T06:24:48Z status=open owner=21-25-index-rebuild-and-tune-table by=cr note=lead: delete the clause in the spine (Rule 20); the review stage may not edit the spine
+- 2026-11-23T06:29:48Z status=resolved-by:21-25-index-rebuild-and-tune-table by=lead note=098d97b0a: add-only spine line on AD-10's 21.25 arm (Rule 20)
+
+### DW-2851: A DROP TABLE of the last table in a schema whose name contains " leaves the schema in the SQL index, and every later INFORMATION_SCHEMA.SCHEMATA read in that namespace fails with <SYNTAX>GetNextSubscript+11^%SYS.SQLSEC; DROP SCHEMA cannot remove it
+- source: spec-21-25-index-rebuild-and-tune-table.md (rework 4 measurement) | severity: medium | fix-risk: medium | footprint: cross-story
+- evidence: Measured on ocupilot-ci in USER, three sequences on one instance with the residue removed between them: (i) CREATE then DROP of a "-named schema and table with no OcuPilot call breaks SCHEMATA at the DROP TABLE of the last table; (ii) OcuPilot's tune, clear statistics and rebuild and (iii) the vendor calls they make leave SCHEMATA at SQLCODE 100 until that DROP
+- 2026-11-23T08:10:50Z status=routed owner=burndown by=orchestrator note=vendor defect candidate; product answers 500 on the SQL schemas list (pinned by AtelierPortCatalog); DropSchema^%apiDDL clears it (internal entry, test probe only)

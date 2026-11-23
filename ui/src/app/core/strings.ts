@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:672 */
+  /** EXPERIENCE.md:673 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5558,6 +5558,40 @@ export const STRINGS = {
   sqlStatementRefusalVendor: 'The instance did not apply this change to the statement.',
   sqlStatementNotFoundReason: 'This namespace holds no SQL statement with that hash.',
   sqlCachedQueryNotFoundReason: 'This namespace holds no cached query by that name.',
+  // Story 21.25: the table maintenance writes. The sentences the rebuilds' dialogs and cards state, the refusals the instance answers and the
+  // refusal of one of OcuPilot's own tables.
+  sqlIndexRebuildAction: 'Rebuild index',
+  sqlTableRebuildAllAction: 'Rebuild all indices',
+  sqlTableRebuildConsequence: 'This index is emptied and built again from the table\'s rows. The table is locked against changes while it runs. Changes to the table wait meanwhile, and fail if the rebuild outlasts their lock timeout.',
+  sqlTableRebuildAllConsequence: 'Every index of this table is emptied and built again from its rows. The table is locked against changes while it runs. Changes to the table wait meanwhile, and fail if the rebuild outlasts their lock timeout.',
+  sqlTableRefusalDataMap: 'This is the table\'s data map, which has no index to rebuild.',
+  sqlTableRefusalVendor: 'The instance did not apply this change to the table.',
+  sqlTableRefusalOcuPilot: 'This table is one of OcuPilot\'s own, so OcuPilot does not rebuild or tune it.',
+  explorerSqlTableMaintenanceEmptyAgent: 'rebuild indices',
+  // Story 21.25: the statistics writes -- the action labels of the Table info and Tables tabs, the sentences their cards and dialogs state, the
+  // refusal of a table with no fixed statistics -- and the Field statistics tab.
+  sqlTableTuneAction: 'Collect statistics',
+  sqlTableClearStatisticsAction: 'Clear fixed statistics',
+  sqlSchemaTuneAction: 'Tune all tables',
+  sqlTableTuneConsequence: 'The table\'s extent size and each field\'s selectivity are measured from its current rows. Some cached queries may be purged, including ones on other tables, so their plans may change.',
+  sqlTableClearStatisticsConsequence: 'The fixed statistics saved for this table are removed. The optimizer uses collected statistics, or none.',
+  sqlSchemaTuneConsequence: 'Every table in this schema is measured as Collect statistics measures one.',
+  sqlTableRefusalNoFixed: 'This table has no fixed statistics.',
+  explorerSqlSchemaTuneEmptyAgent: 'tune table',
+  explorerSqlTabFieldStatistics: 'Field statistics',
+  explorerSqlColumnOutlierValue: 'Outlier value',
+  explorerSqlColumnOutlierSelectivity: 'Outlier selectivity',
+  explorerSqlColumnAverageFieldSize: 'Average field size',
+  explorerSqlColumnFixedSelectivity: 'Fixed selectivity',
+  explorerSqlColumnFixedOutlierValue: 'Fixed outlier value',
+  explorerSqlColumnFixedOutlierSelectivity: 'Fixed outlier selectivity',
+  explorerSqlColumnFixedAverageFieldSize: 'Fixed average field size',
+  explorerSqlFieldStatisticsEmpty: 'No field statistics are recorded for this table.',
+  explorerSqlFieldStatisticsPrompt1: 'Which fields have fixed selectivity?',
+  explorerSqlFieldStatisticsPrompt2: 'Do the collected and fixed values differ?',
+  explorerSqlFieldStatisticsPrompt3: 'Which field has an outlier value?',
+  // Story 21.25: the schema Tune dialog's value label.
+  sqlTuneClearValuesLabel: 'Clear values',
   // Story 18.6: License key and License servers -- their titles, License key's twelve field labels
   // beyond License usage's "License units", the authorization-key line, the activate dialog's
   // labels, validity, restart and reduction sentences and consequence, Print and its printed-by
@@ -9618,32 +9652,32 @@ export const STRINGS = {
   /** EXPERIENCE.md:629 */
   interopSuspendedPrompt3: 'Resubmit the suspended messages whose target is running.',
   // Story 24.16 Batch 3: Messages' Export dialog, its verdicts and outcome words, its consequence, its two refusals and its status lines.
-  /** EXPERIENCE.md:630 */
+  /** EXPERIENCE.md:631 */
   interopMessageExportTitle: 'Export <n> messages',
-  /** EXPERIENCE.md:630 */
+  /** EXPERIENCE.md:631 */
   interopMessageExportTitleOne: 'Export 1 message',
-  /** EXPERIENCE.md:630 */
+  /** EXPERIENCE.md:631 */
   interopMessageExportSeparator: 'Message separator',
-  /** EXPERIENCE.md:630 */
+  /** EXPERIENCE.md:631 */
   interopMessageExportCharset: 'Character set',
-  /** EXPERIENCE.md:630 */
+  /** EXPERIENCE.md:631 */
   interopExportVerdictExport: 'will be exported',
-  /** EXPERIENCE.md:630 */
+  /** EXPERIENCE.md:631 */
   interopExportVerdictNotext: 'its body cannot be exported as text',
-  /** EXPERIENCE.md:630 */
+  /** EXPERIENCE.md:631 */
   interopExportOutcomeExported: 'exported',
-  /** EXPERIENCE.md:630 */
+  /** EXPERIENCE.md:631 */
   interopExportOutcomeNotExported: 'not exported',
-  /** EXPERIENCE.md:630 */
+  /** EXPERIENCE.md:631 */
   interopMessageExportConsequence:
     'Exporting saves the body of each message marked to be exported to one file in this browser\'s downloads, in message id order, with the chosen separator between them. Each body exported is recorded in the audit log as viewed. Anyone who can open the file can read the messages.',
-  /** EXPERIENCE.md:630 */
+  /** EXPERIENCE.md:631 */
   interopExportRefusalNone: 'None of these messages can be exported. Each one\'s line says why.',
-  /** EXPERIENCE.md:630 */
+  /** EXPERIENCE.md:631 */
   interopExportRefusalChanged: 'These messages changed after they were reviewed, so nothing was exported. Review them again.',
-  /** EXPERIENCE.md:630 */
+  /** EXPERIENCE.md:631 */
   interopMessageExportSaved: 'Saved <n> messages as <file>.',
-  /** EXPERIENCE.md:630 */
+  /** EXPERIENCE.md:631 */
   interopMessageExportSavedOne: 'Saved 1 message as <file>.',
 } as const;
 

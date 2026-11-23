@@ -10,7 +10,11 @@
 /// through the information schema before it reads, and answers not found otherwise (AD-61 rule 7).
 /// Its privilege set is <parameter>OcuPilot.Port.AtelierPort.PAIRS</parameter>, beside READ on the
 /// namespace's code databases (AD-29). It replaces <code>%CSP.UI.Portal.SQL.Home</code>, whose
-/// custom resource also gates it (AD-44). No action and no refresh (AD-43).</p>
+/// custom resource also gates it (AD-44). It does not refresh (AD-43).</p>
+/// <p><b>Its entity type is <code>sql-index</code></b> (Story 21.25): a row's id is the composite <code>[Table, Map]</code>, its <code>Table</code> the
+/// one the port names on each row, and the target of <code>rebuild</code>, carried out by
+/// <class>OcuPilot.Screen.Tool.ExplorerSqlIndexRebuild</class> for both callers (AD-53). The table's data map has no index to rebuild, and an
+/// index of one of OcuPilot's own tables is refused for both.</p>
 Class OcuPilot.Screen.Descriptor.ExplorerSqlIndices Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -26,14 +30,14 @@ XData Declaration
   "refreshes": false,
   "refreshRates": [],
   "privileges": [{"resource": "%Development", "permission": "USE"}],
-  "entityType": "class",
+  "entityType": "sql-index",
   "secondaryEntityTypes": [],
   "scope": "namespace",
   "parentScope": "system-explorer/sql-tables",
-  "id": {"kind": "single", "parts": []},
+  "id": {"kind": "composite", "parts": ["Table", "Map"]},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
-  "context": {"fields": ["Index", "Map", "Fields", "Type", "SizeMB", "Inherited", "Global", "Status"], "secretFields": []},
+  "rowActions": [{"id": "rebuild", "selfProtection": ""}],
+  "context": {"fields": ["Table", "Index", "Map", "Fields", "Type", "SizeMB", "Inherited", "Global", "Status"], "secretFields": []},
   "emptyStateKey": "explorerSqlIndicesEmpty",
   "commandAliases": [],
   "suggestedPrompts": [
@@ -46,7 +50,7 @@ XData Declaration
   "read": {
     "row": "map or index of one SQL table",
     "source": {"port": "atelier", "endpoint": "Catalog.Indices", "type": "LIST"},
-    "fields": ["Index", "Map", "Fields", "Type", "BitmapArgument", "SizeMB", "Inherited", "Global", "Status"],
+    "fields": ["Table", "Index", "Map", "Fields", "Type", "BitmapArgument", "SizeMB", "Inherited", "Global", "Status"],
     "filter": ["Index", "Map", "Fields", "Global"],
     "sort": {"fields": ["Index", "Map", "Type"], "default": "Index", "direction": "asc"},
     "paging": "cap",
@@ -67,8 +71,8 @@ XData Declaration
       {"field": "Global", "labelKey": "explorerSqlColumnGlobal", "kind": "identifier"},
       {"field": "Status", "labelKey": "taskHistoryColumnStatus", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "explorerSqlTableMaintenanceEmptyAgent"
   },
   "tab": {"group": "system-explorer/sql-tables/document", "position": 3, "labelKey": "explorerSqlTabIndices"},
   "toolIdentifier": "explorer.sqlindices"

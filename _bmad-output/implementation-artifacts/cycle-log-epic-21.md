@@ -1021,3 +1021,41 @@
 2026-11-22T23:43:55Z	Story 21.6	sweep	shards=20/20_green head=47363d553
 2026-11-22T23:43:55Z	Story 21.6	smoke	container=ocupilot-ci executed=50 passed=50 failed=0 skipped=0
 2026-11-22T23:43:55Z	Story 21.6	story_complete	head=47363d553(gates,contains_feature_c655a65bd;no_M_needed) run=45070444672 fresh=pass sweep=20/20 smoke=50/50 vetoes=U-83,U-143,U-144 ledger_owned=0
+2026-11-22T23:44:21Z	Story 21.25	story_started	base=47363d553(+bookkeeping) doctrine=3d11cec9 policy=b9ff703e hold=none spec=ready-for-dev(planned_2026-11-16;ruling_U-146)
+2026-11-22T23:44:21Z	Story 21.25	stage_spawned	stage=implement spawn_at=2026-11-22T23:44:21Z model=sonnet agent_name=21-25-impl prior_lines_ended=verified(a455605c6)
+2026-11-22T23:48:38Z	Story 21.6	merged	feature=c141bd5b5 by=orchestrator
+2026-11-23T04:04:57Z	Story 21.25	stage_ended	stage=implement agent=a7b27a938 result=died(API_403_billing) committed=888433da8(B1),cd7ddadd4(B2) uncommitted=B4(12_modified+5_new,unverified)
+2026-11-23T04:04:57Z	Story 21.25	stage_spawned	stage=implement(resume) spawn_at=2026-11-23T04:04:57Z model=sonnet agent_name=21-25-impl-resume throwaway=rebuilt_from_scratch(04:04Z,LOADERRORS=0) prior_results=void
+2026-11-23T04:46:07Z	Story 21.25	stage_complete	stage=implement(resume) agent=a6786e6be result=done commit=1372d596a(B4) prior_results=re-run_void bashedits=none lines_ended=verified
+2026-11-23T04:46:07Z	Story 21.25	rework_opened	iteration=1 cause=orchestrator_ruling(alias_out,rebuild_+1_sentence,collect_purge_record,keep_class_remeasure_or_drop;vetoes_U-146,U-148)
+2026-11-23T04:46:07Z	Story 21.25	stage_spawned	stage=implement(rework1) spawn_at=2026-11-23T04:46:07Z model=sonnet agent_name=21-25-rework1 prior_lines_ended=verified(a6786e6be)
+2026-11-23T04:46:43Z	Epic 21	slip	what=bookkeeping_push_of_HEAD_dfb34f5a5_carried_unrun_21.25_code(888433da8,cd7ddadd4,1372d596a)_under_a_[skip_ci]_tip,before_integrating_d5974757e rule=32(code_head_alone)+integrate_first effect=no_CI_run_on_that_code;no_merge_impact(next_code_head_push_runs_CI_over_it) fix=push_bookkeeping_only_when_HEAD's_code_is_already_on_origin
+2026-11-23T04:46:59Z	Story 21.25	ledger_routed	id=DW-2847 owner=21-25 why=QuotedName_reached_by_21.25_tune(SqlPort:1258,:1411) test_at=code_review
+2026-11-23T05:51:20Z	Story 21.25	stage_complete	stage=implement(rework1) agent=a4337d8e8 result=done commit=3a9ee3ddc item4=dropped(KeepClassUpToDate_changes_no_stored_statistic;named_limit) alias=removed(Schema+Table) bashedits=none lines_ended=verified
+2026-11-23T05:51:20Z	Story 21.25	spine	sha=c026c9ade AD-51_21.25_case_+no_KeepClassUpToDate(add-only,Rule_20)
+2026-11-23T05:51:21Z	Story 21.25	integrated_forward	feature=d5974757e merge=M=fa37fc5c2(local,not_pushed) conflicts=11(lists_feature-first_then_sql-*;ReadTool_603/339;ToolWrite_176;ClassicPageGate_67;Descriptor_122;GovernanceBaseline_DISABLED=instance_order;EXPERIENCE_rows_union;taskCreate_cite_:671) red=CompositeMintSweep(SqlIndexMint_row_missing,21.25's) hold_push=until_CR_fixes
+2026-11-23T05:51:21Z	Story 21.25	stage_spawned	stage=code_review spawn_at=2026-11-23T05:51:21Z model=opus agent_name=21-25-cr must_fix=CompositeMintSweep_row,DW-2847
+2026-11-23T06:29:48Z	Story 21.25	stage_complete	stage=code_review agent=a8632fcfd result=done tier=full-opus high=0 med=6 low=4(3_patched,DW-2848_deferred->lead) must_fix=CompositeMintSweep_row(load-bearing),DW-2847(real_defect:TuneSchema_refuses_quoted;QuotedName_removed) protocol=two_test_runs_in_one_message(runs_69,70;discarded,re-run_alone;gates_rebuild_from_scratch) commit=571e34bf3
+2026-11-23T06:30:23Z	Story 21.25	rework_opened	iteration=2 cause=orchestrator_ruling(collect_purge_claim:other-table_select_purged_1_of_8)
+2026-11-23T06:30:23Z	Story 21.25	stage_spawned	stage=implement(rework2) spawn_at=2026-11-23T06:30:23Z model=sonnet agent_name=21-25-rework2 prior_lines_ended=verified(a8632fcfd)
+2026-11-23T06:54:40Z	Story 21.25	stage_complete	stage=implement(rework2) agent=a8a1c3812 result=done commit=3e263c249 branch=B_unrelated(other-table_select_purged_6/46;no_view/FK/class/storage_relation) sentence=changed veto=U-149 bashedits=none lines_ended=verified
+2026-11-23T06:55:06Z	Story 21.25	rework_opened	iteration=3 cause=orchestrator_ruling(names_as_arguments;quote_in_delimited_name)
+2026-11-23T06:55:06Z	Story 21.25	stage_spawned	stage=implement(rework3) spawn_at=2026-11-23T06:55:06Z model=sonnet agent_name=21-25-rework3 prior_lines_ended=verified(a8a1c3812)
+2026-11-23T07:26:28Z	Story 21.25	stage_complete	stage=implement(rework3) agent=ae8c83965 result=done commit=94d9e782a names=arguments_only(audited;no_concatenation) quote_in_name=allowed(probe+round-trip_both_callers) mutations=5 bashedits=none lines_ended=verified
+2026-11-23T07:26:28Z	Story 21.25	code_head_pushed	sha=94d9e782a run=45131040837 missing=none contains=d5974757e(M_fa37fc5c2)
+2026-11-23T07:26:28Z	Story 21.25	gate_step	step=fresh_check+full_sweep+smoke head=94d9e782a started=2026-11-23T07:26:28Z dir=e21u/21-25/gate
+2026-11-23T07:39:35Z	Story 21.25	gate_step	step=fresh_check result=red stopped_before_sweep reds=MappingDescriptor(CLASSICROSTER_missing_5_21.25_tools;lead_patch_uncommitted),system-explorer-sql_20.38(USER_SCHEMATA_SQLCODE_-400_SYNTAX_GetNextSubscript^%SYS.SQLSEC_after_quote-name_probe) escalated=4th_pass_ruling
+2026-11-23T07:41:03Z	Story 21.25	rework_cap_exceeded	granted_by=orchestrator reason=vendor_residue_from_rework_3's_probe iteration=4
+2026-11-23T07:41:03Z	Story 21.25	rework_opened	iteration=4 cause=SCHEMATA_-400_after_quote_probe+MappingDescriptor_roster throwaway=rebuilt_07:40Z
+2026-11-23T07:41:03Z	Story 21.25	stage_spawned	stage=implement(rework4) spawn_at=2026-11-23T07:41:03Z model=sonnet agent_name=21-25-rework4 prior_lines_ended=verified(ae8c83965)
+2026-11-23T08:10:14Z	Story 21.25	stage_complete	stage=implement(rework4) agent=a5743f258 result=done commit=a500f3bc5 measurement=sequence_i_(vendor_DROP_TABLE_alone)_breaks_SCHEMATA;tools_innocent residue=^rINDEXSQL(schema)_entry;removed_via_DropSchema^%apiDDL(internal) product=schemas_list_answers_500_INTERNAL(pinned) mappingdescriptor=committed bashedits=1_false_positive(sed_-n_read) lines_ended=verified
+2026-11-23T08:10:14Z	Story 21.25	code_head_pushed	sha=a500f3bc5 run=45136354856 missing=none contains=d5974757e
+2026-11-23T08:10:14Z	Story 21.25	gate_step	step=fresh_check+full_sweep+smoke head=a500f3bc5 started=2026-11-23T08:10:14Z dir=e21u/21-25/gate2
+2026-11-23T08:10:50Z	Story 21.25	ledger_routed	id=DW-2851 vendor_defect_candidate(DW-1527/1640_family) owner=burndown by=orchestrator
+2026-11-23T09:01:25Z	Story 21.25	ci_resolved	sha=a500f3bc5 run=45136354856 result=success
+2026-11-23T09:01:25Z	Story 21.25	fresh_check	env=recipe(ci-throwaway_rebuild) tests=31_classes+3_specs result=pass order=forward,reverse head=a500f3bc5
+2026-11-23T10:56:56Z	Story 21.25	sweep	shards=20/20_green head=a500f3bc5
+2026-11-23T10:56:56Z	Story 21.25	smoke	container=ocupilot-ci executed=50 passed=50 failed=0 skipped=0
+2026-11-23T10:56:56Z	Story 21.25	integrated_forward	feature=fa8ad88b8(24.16_B2) merge=M=5282c9e77 conflicts=8(resolved_in_temp_worktree_556eee2c2,replayed_with_hooks) counts=ReadTool_608,ToolWrite_180,ClassicPageGate_171 DISABLED+CLASSICROSTER=instance_order(106,218) strings.test_bound_5000 taskCreate_:672 rosters=20_green_one_per_call test:tools=2403 temp_worktree=removed
+2026-11-23T10:56:56Z	Story 21.25	code_head_pushed	sha=5282c9e77 run=45160592270 missing=none note=integrate-only_M
+2026-11-23T10:56:56Z	Story 21.25	story_complete	head=a500f3bc5(gates)+M=5282c9e77 run=45136354856(+45160592270) fresh=pass sweep=20/20 smoke=50/50 vetoes=U-146,U-148,U-149 spine=c026c9ade(AD-51),04fe358b6(AD-10) ledger_owned=0

@@ -612,9 +612,11 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // Story 21.10's System-wide security and Mobile phone providers literals take the table past 4200; the bound moves to 4600
   // under the same protocol (the spec's Verification names it).
   // Story 24.13 Batch 3's eighteen run-time variable and icon literals take the table to 4205, past the bound; it moves to 4600 as a drift tripwire (recorded in the spec for the lead's ruling).
+  // Story 21.25's SQL tuning literals, merged beside Story 24.16's purge and suspended-message rows, take the table to 4605, past the
+  // bound; it moves to 5000 under the same protocol (runner ruling at the integrate-forward, 2026-11-23).
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 4600,
-    `expected between 150 and 4600 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 5000,
+    `expected between 150 and 5000 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

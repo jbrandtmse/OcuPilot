@@ -11,7 +11,11 @@
 /// through the information schema before it reads, and answers not found otherwise (AD-61 rule 7).
 /// Its privilege set is <parameter>OcuPilot.Port.AtelierPort.PAIRS</parameter>, beside READ on the
 /// namespace's code databases (AD-29). It replaces <code>%CSP.UI.Portal.SQL.Home</code>, whose
-/// custom resource also gates it (AD-44). No action and no refresh (AD-43).</p>
+/// custom resource also gates it (AD-44). It does not refresh (AD-43).</p>
+/// <p><b>Its entity type is <code>sql-table</code></b> (Story 21.25): the table, keyed by <code>Schema.Table</code>, which the tab's page action
+/// <code>rebuild-indices</code>, <code>tune</code> and <code>clear-statistics</code> act on, carried out by
+/// <class>OcuPilot.Screen.Tool.ExplorerSqlTableRebuildIndices</class>, <class>OcuPilot.Screen.Tool.ExplorerSqlTableTune</class> and
+/// <class>OcuPilot.Screen.Tool.ExplorerSqlTableClearStatistics</class> for both callers (AD-53). A table of OcuPilot's own is refused for all three.</p>
 Class OcuPilot.Screen.Descriptor.ExplorerSqlTable Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -27,16 +31,16 @@ XData Declaration
   "refreshes": false,
   "refreshRates": [],
   "privileges": [{"resource": "%Development", "permission": "USE"}],
-  "entityType": "class",
+  "entityType": "sql-table",
   "secondaryEntityTypes": [],
   "scope": "namespace",
   "parentScope": "system-explorer/sql-tables",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "rebuild-indices", "selfProtection": ""}, {"id": "tune", "selfProtection": ""}, {"id": "clear-statistics", "selfProtection": ""}],
   "context": {"fields": ["Name", "Owner", "LastCompiled", "External", "ReadOnly", "Partitioned", "Class", "ExtentSize", "ExternalType"], "secretFields": []},
   "emptyStateKey": "explorerSqlTableEmpty",
-  "commandAliases": [],
+  "commandAliases": ["rebuild indices", "tune table"],
   "suggestedPrompts": [
     {"groupKey": "webAppPromptGroupCode", "textKey": "explorerSqlTablePrompt1"},
     {"groupKey": "webAppPromptGroupCode", "textKey": "explorerSqlTablePrompt2"},
@@ -69,8 +73,8 @@ XData Declaration
       {"field": "ExtentSize", "labelKey": "explorerSqlColumnExtentSize", "kind": "number"},
       {"field": "ExternalType", "labelKey": "explorerSqlColumnExternalType", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "explorerSqlTableMaintenanceEmptyAgent"
   },
   "tab": {"group": "system-explorer/sql-tables/document", "position": 1, "labelKey": "explorerSqlTabInfo"},
   "toolIdentifier": "explorer.sqltable"

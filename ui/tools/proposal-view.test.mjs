@@ -126,6 +126,11 @@ const {
   RESIDUE_COUNT_PLACEHOLDER,
   USER_NAME_PLACEHOLDER,
   consequenceSentence,
+  CONSEQUENCE_SQLTABLEREBUILD,
+  CONSEQUENCE_SQLTABLEREBUILDALL,
+  CONSEQUENCE_SQLTABLETUNE,
+  CONSEQUENCE_SQLTABLECLEARSTATISTICS,
+  CONSEQUENCE_SQLTABLETUNESCHEMA,
   countdownPhase,
   countdownRemaining,
   formatCountdown,
@@ -318,6 +323,18 @@ test('the two privilege-grant consequence codes resolve to their published sente
 test("the resource import's consequence code resolves to its published sentence", () => {
   assert.equal(CONSEQUENCE_RESOURCEFILEIMPORT, 'RESOURCEFILE.IMPORT');
   assert.equal(consequenceSentence(CONSEQUENCE_RESOURCEFILEIMPORT), STRINGS.resourceImportConsequence);
+});
+
+// Story 21.25: each table write's consequence code resolves to its own published sentence.
+//
+// Mutation (Rule 19): point the REBUILDALL branch of `consequenceSentence` at the single rebuild's sentence -> the REBUILDALL leg goes red.
+test("the table writes' consequence codes resolve to their published sentences", () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLTABLEREBUILD), STRINGS.sqlTableRebuildConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLTABLEREBUILDALL), STRINGS.sqlTableRebuildAllConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLTABLETUNE), STRINGS.sqlTableTuneConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLTABLECLEARSTATISTICS), STRINGS.sqlTableClearStatisticsConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLTABLETUNESCHEMA), STRINGS.sqlSchemaTuneConsequence);
+  assert.notEqual(STRINGS.sqlTableRebuildConsequence, STRINGS.sqlTableRebuildAllConsequence, 'the two rebuilds publish different sentences');
 });
 
 // Story 14.2, AC10: the agent's audit purge is minted destructive carrying the purge tool's own
