@@ -1039,3 +1039,5 @@
 2026-11-23T06:30:23Z	Story 21.25	rework_opened	iteration=2 cause=orchestrator_ruling(collect_purge_claim:other-table_select_purged_1_of_8)
 2026-11-23T06:30:23Z	Story 21.25	stage_spawned	stage=implement(rework2) spawn_at=2026-11-23T06:30:23Z model=sonnet agent_name=21-25-rework2 prior_lines_ended=verified(a8632fcfd)
 2026-11-23T06:54:40Z	Story 21.25	stage_complete	stage=implement(rework2) agent=a8a1c3812 result=done commit=3e263c249 branch=B_unrelated(other-table_select_purged_6/46;no_view/FK/class/storage_relation) sentence=changed veto=U-149 bashedits=none lines_ended=verified
+2026-11-23T06:55:06Z	Story 21.25	rework_opened	iteration=3 cause=orchestrator_ruling(names_as_arguments;quote_in_delimited_name)
+2026-11-23T06:55:06Z	Story 21.25	stage_spawned	stage=implement(rework3) spawn_at=2026-11-23T06:55:06Z model=sonnet agent_name=21-25-rework3 prior_lines_ended=verified(a8a1c3812)

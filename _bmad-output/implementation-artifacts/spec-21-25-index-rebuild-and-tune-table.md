@@ -2,7 +2,7 @@
 title: 'Story 21.25: Index rebuild and tune table'
 type: 'feature'
 created: '2026-11-16'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '8780e6fef5f140fecc1683273b0cfac5495448f0'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -225,6 +225,7 @@ Rejected:
   - Collect statistics' sentence stands; record in Design Notes which cached queries the measurement purged and which it kept.
   - Keep class up to date is measured once more before it ships: read the class dictionary before and after a collect with the box ticked and unticked (the storage `ExtentSize`, and each property's `Selectivity`, `OutlierSelectivity` and `AverageFieldSize` in its storage property definition). If anything differs, the consequence becomes, verbatim, "The class definition's stored statistics are updated with the measured values. The class is not recompiled." with the measured detail in Design Notes. If nothing differs on this build, the option is dropped from 21.25 entirely (no control with no effect) and recorded as a named limit.
 - 2026-11-23, orchestrator ruling (rework 2): rework 1's purge record has a collect on one table purging a single-table SELECT on the other table (1 of 8), which "Some of the table's cached queries may be purged" does not cover. Settle it by measurement: if that query is related to the tuned table (a view, a foreign key, a shared class or extent), the sentence stands and Design Notes name the relation; if it is unrelated, Collect statistics' consequence becomes, verbatim, "Some cached queries may be purged, including ones on other tables, so their plans may change." (server reason, `strings.ts`, EXPERIENCE.md and the self-protection pin), reported for a U-146 addendum.
+- 2026-11-23, orchestrator ruling (rework 3), since names reach the tunes bare: (1) confirm by measurement that every place a schema or table name reaches a vendor call does so as an argument, never concatenated into SQL text; (2) the copy-out scripts put the name inside an ObjectScript string literal (`SqlPort.Literal` doubles `"`; `SqlTableTune` pins it on a synthetic id): measure whether the instance allows `"` in a delimited schema or table name; if it does, add a probe and a test where the copy-out script and the real call round-trip it through both callers; if it does not, record that refusal in Design Notes as the reason no further escaping test is needed.
 
 ## Review Triage Log
 
