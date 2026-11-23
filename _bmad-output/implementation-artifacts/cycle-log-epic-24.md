@@ -768,3 +768,9 @@
 2026-11-23T00:00:13Z	Story 24.16	ruling	source=orchestrator M_gate=CI_45085970255(option_a) second_throwaway=declined collision=batch2_results_void_until_its_rebuild(rebuild_time_in_report) browser-shard_63=accepted lesson=one_owner_per_throwaway
 2026-11-23T00:30:41Z	Story 24.16	ci_red	scope=batch1 sha=e275b4956 run=45085970255 failed=shard8:Prohibited_covered-types_order(my_integrate_slip),shard2:ErrorLog_DW-1721(order_dependence) fix=e57a7f09a(COVEREDTYPES_reorder) new_run=45089102690
 2026-11-23T00:31:09Z	Ledger	reopened	DW-1721 routed burndown (orchestrator)
+2026-11-23T01:29:05Z	Story 24.16	ci_green	scope=batch1 M=e57a7f09a run=45089102690
+2026-11-23T01:30:46Z	Story 24.16	merged_to_feature	scope=batch1 feature=d5974757e(ff_e57a7f09a) batch2_must_contain=yes union_order_check=required
+2026-11-23T01:40:00Z	Story 24.16	stage_died	stage=implement scope=batch2 agent=a327053e358b6e0e2 cause=api_403_outage last=full_sweep_start tree=41_modified_18_untracked(unverified) results=void
+2026-11-23T04:04:00Z	Story 24.16	throwaway_checked	container=ocupilot-b-ci USER_production=none(state_2) mutated_files_vs_backups=identical(3)
+2026-11-23T04:06:41Z	Story 24.16	throwaway_rebuilt	container=ocupilot-b-ci up_start=04:06:09Z healthy=04:06:41Z source=working_tree owner_next=implement_resume
+2026-11-23T04:07:30Z	Story 24.16	stage_spawned	stage=implement spawn_at=2026-11-23T04:07:30Z model=sonnet agent_name=24-16-implement-batch2-resume cycle_iteration=2 story_base=a4f7a1fec resume=after_outage conditions=4(relayed)
