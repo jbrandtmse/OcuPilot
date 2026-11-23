@@ -8,6 +8,9 @@
 Class OcuPilot.Test.InteropArchiveSettingControl Extends OcuPilot.Test.InteropArchiveCase
 {
 
+/// <p>It runs no archive, so the messages HSCUSTOM holds are not its concern.</p>
+Parameter MOVESMESSAGES As BOOLEAN = 0;
+
 /// <p>The settings the port answers, as <code>Name=Value/Stored/Kind</code>, separated by <code>;</code>, for <var>pNamespace</var>.</p>
 ClassMethod Rows(pNamespace As %String = {..#SOURCE}) As %String
 {
@@ -124,10 +127,12 @@ Method TestABadValueOrNameIsRefusedAndNothingIsStored()
 }
 
 /// <p>AC1: in a namespace that has no other interoperability namespace to archive to (<code>USER</code>, whose list holds nothing but itself) Archive to namespace says so and accepts
-/// nothing, from the port and the agent's mint; nothing is written.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.ArchiveTargets</method> keep the namespace itself in the list -- this goes red.</p>
+/// nothing, from the port and the agent's mint; nothing is written. The namespace is left out whatever case it is named in.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.ArchiveTargets</method> keep the namespace itself in the list -- this goes red; compare the namespace's name as it was
+/// given -- the lower-case leg goes red.</p>
 Method TestWithNoOtherNamespaceTheTargetAcceptsNothing()
 {
+    Do $$$AssertEquals($ListToString($ClassMethod(..#PORT, "ArchiveTargets", $ZConvert(..#TARGET, "L"))), "", "USER named in lower case does not offer itself")
     Do ..Verdict("ArchiveSettings", "SETTING", .tRow, , ..#TARGETNAME, , , ..#TARGET)
     Do $$$AssertEquals($Select($IsObject($Get(tRow)): tRow.Accepts, 1: ""), ##class(OcuPilot.Api.InteropError).#ACCEPTSNOARCHIVETARGET, "the row says there is no other interoperability namespace")
     Do $$$AssertEquals(..Verdict("ArchiveSettings", "SETTINGSET", , , ..#TARGETNAME, {"Value": (..#SOURCE)}, , ..#TARGET), "400 CONFIG.SETTING.VALUE", "HSCUSTOM is not a namespace the page lists for USER, so it is refused")

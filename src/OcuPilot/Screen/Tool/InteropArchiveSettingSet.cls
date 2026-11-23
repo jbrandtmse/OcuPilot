@@ -2,7 +2,7 @@
 /// Archive Manager page, in the namespace the request is scoped to: Archive to namespace or Number of days before archiving. The archive class is shown and never set. It is
 /// <class>OcuPilot.Screen.Tool.InteropPurgeSettingSet</class>'s shape over the port's Archive settings endpoint: its fresh read is the port's <code>SETTING</code> row
 /// <code>{Name, Value, Stored, Kind, Accepts, ReadOnly, Namespace}</code>, a value is judged by <class>OcuPilot.Area.Interop.ArchiveSettingRules</class> at the mint, and again at
-/// the write in the namespace the proposal read, and its read-back compares <code>Value</code>. Each setting is set by itself; the other two keep what the namespace holds.</p>
+/// the write in the namespace the proposal read, and its read-back compares <code>Value</code>. Each setting is set by itself; the other two are stored at the values the namespace reads, as the classic Save stores all three.</p>
 /// <p>Its pairs are the screen's, which include WRITE on the classic page's own resource, and WRITE on the namespace's globals database (AD-8).</p>
 Class OcuPilot.Screen.Tool.InteropArchiveSettingSet Extends OcuPilot.Screen.Tool.InteropPurgeSettingSet
 {

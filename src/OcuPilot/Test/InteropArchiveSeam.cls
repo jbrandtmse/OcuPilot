@@ -2,7 +2,8 @@
 /// namespace it was written in, so a test reads what a refused or failed archive run put in the log (Story 24.16 Batch 4); whose <method>VendorArchive</method> answers what
 /// <code>^IRIS.Temp.OcuProbe2416ArcMode</code> says: <code>status</code> to answer an error status that carries a marker text, <code>fault</code> to raise an error, <code>lock</code> to
 /// take one more hold on the vendor's lock and raise, as a run cut short before the vendor's own release would, anything else the vendor's own call; and whose
-/// <method>ArchiveTargetHere</method> raises when the mode is <code>target</code>. The namespace each vendor call ran in is kept under the global's <code>ranIn</code> subscript.
+/// <method>ArchiveTargetHere</method> raises when the mode is <code>target</code>. The namespace each vendor call ran in is kept under the global's <code>ranIn</code> subscript,
+/// and whether this process held that namespace's archive lock at the call under <code>heldHere</code>.
 /// <method>ClearLog</method> forgets the lines.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.InteropArchiveSeam Extends OcuPilot.Port.InteropPort
@@ -61,6 +62,7 @@ ClassMethod VendorArchive() As %Status
 {
     Set tMode = $Get(^IRIS.Temp.OcuProbe2416ArcMode)
     Set ^IRIS.Temp.OcuProbe2416ArcMode("ranIn") = $NAMESPACE
+    Set ^IRIS.Temp.OcuProbe2416ArcMode("heldHere") = ($Get(^$LOCK($Name(^Ens.ArchiveManager("lock")), "OWNER")) = $Job)
     If tMode = "status" Quit $$$ERROR($$$GeneralError, ..#MARKER _ " answered")
     If tMode = "fault" Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, ..#MARKER _ " raised"))
     If tMode = "lock" {

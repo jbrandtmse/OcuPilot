@@ -7,7 +7,8 @@
 /// the call came from, and the lock is free on every exit, a vendor that was cut short with an extra hold on it included. The gate runs as real principals in a child process, each
 /// refused by name before any vendor call.</p>
 /// <p><b>What it needs from the environment:</b> what <class>OcuPilot.Test.InteropArchiveCase</class> needs, and <parameter>ARMINGVARIABLE</parameter>, because it creates and deletes users
-/// and roles named <code>OcuP2416a*</code>. It removes every probe, principal and role it creates and ends the lock-holding job it starts.</p>
+/// and roles named <code>OcuP2416a*</code>, and lists HSCUSTOM in <code>^%SYS("Ensemble","InstalledNamespace")</code> for one test. It removes every probe, principal, role and list entry it
+/// creates and ends the lock-holding job it starts.</p>
 Class OcuPilot.Test.InteropArchiveRefusals Extends OcuPilot.Test.InteropArchiveCase
 {
 
@@ -88,8 +89,8 @@ Method AssertRefusedByAllThree(pCode As %String, pWhere As %String)
 
 /// <p>AC3: a run while the vendor's lock is held by another process is 409 <code>INTEROP.ARCHIVE.RUNNING</code> from the port, the person's Run archive and the agent's mint, with
 /// the published sentence, and moves nothing; the state read says a run is running; once the holder lets go the run goes ahead and the lock is free after it.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.ArchiveTake</method> answer <code>1</code> whatever the lock holds -- the port's leg goes red, and the holder's
-/// messages are moved.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.ArchiveTake</method> answer <code>1</code> whatever the lock holds -- the port's leg goes red, answered 500 by the vendor's
+/// own lock wait.</p>
 Method TestARunWhileTheLockIsHeldIsRefusedAndMovesNothing()
 {
     Do ..Settings()
@@ -128,13 +129,17 @@ Method TestNoTargetAndAClassOtherThanTheVendorsAreRefused()
 }
 
 /// <p>AC3: a namespace holding exactly the cap's number of headers runs, and one holding one more is refused whole, 409 <code>INTEROP.ARCHIVE.TOOMANY</code>, from all three callers, with
-/// nothing moved. The cap is lowered to three by <class>OcuPilot.Test.InteropArchiveCapSeam</class>; the shipped one is ten thousand, a named limit.</p>
-/// <p>Mutation (Rule 19): change the compare in <method>OcuPilot.Port.InteropPort.ArchiveRefusal</method> from <code>&gt;</code> to <code>&gt;=</code> -- the at-the-cap leg goes red.</p>
+/// nothing moved. The cap is lowered to three by <class>OcuPilot.Test.InteropArchiveCapSeam</class>; the shipped one is five thousand, a named limit, and the shipped port's own judgment
+/// passes five thousand headers and refuses five thousand and one.</p>
+/// <p>Mutation (Rule 19): change the compare in <method>OcuPilot.Port.InteropPort.ArchiveRefusal</method> from <code>&gt;</code> to <code>&gt;=</code> -- the at-the-cap legs go red; drop
+/// the cap's line from it -- the one-over legs go red.</p>
 Method TestTheCapRunsAtTheCapAndRefusesOneOver()
 {
     Do ..Settings()
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "AllHeaders", ..#SOURCE), 0, "HSCUSTOM holds no header of its own, so the probes are all there is")
-    Do $$$AssertEquals($Parameter(..#PORT, "ARCHIVEMAXMESSAGES"), 10000, "the shipped cap is ten thousand")
+    Do $$$AssertEquals($Parameter(..#PORT, "ARCHIVEMAXMESSAGES"), 5000, "the shipped cap is five thousand")
+    Do $$$AssertEquals($ClassMethod(..#PORT, "ArchiveRefusal", ..#SOURCE, 0, "Ens.Archive.Manager", ..#TARGET, 5000), "", "the shipped port takes five thousand headers")
+    Do $$$AssertEquals($ClassMethod(..#PORT, "ArchiveRefusal", ..#SOURCE, 0, "Ens.Archive.Manager", ..#TARGET, 5001), ##class(OcuPilot.Api.InteropError).#ARCHIVETOOMANY, "and refuses five thousand and one")
     For tI = 1:1:3 {
         Do $$$AssertTrue($ClassMethod(..#FIXTURE, "Store", ..#SOURCE, "none", "Cap" _ tI) > 0, "probe " _ tI _ " is stored")
     }
@@ -150,7 +155,7 @@ Method TestTheCapRunsAtTheCapAndRefusesOneOver()
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "HeaderIds", ..#TARGET) _ "|" _ $Length($ClassMethod(..#FIXTURE, "HeaderIds", ..#SOURCE), ","), "|4", "and nothing was moved")
     Do ..Verdict("Archive", "ARCHIVESTATE", .tState, .tStateFault, , , ##class(OcuPilot.Port.InteropPort).#TYPEARCHIVE, , ..#CAPSEAM)
     Do $$$AssertEquals($Select($IsObject($Get(tStateFault)): tStateFault.%Get("code"), 1: ""), ##class(OcuPilot.Api.InteropError).#ARCHIVETOOMANY, "the review is refused with it too")
-    Do $$$AssertEquals(..RunVerdict(), "200 ", "and the shipped port, whose cap is ten thousand, runs the same four")
+    Do $$$AssertEquals(..RunVerdict(), "200 ", "and the shipped port, whose cap is five thousand, runs the same four")
 }
 
 /// <p>AC3: a target that already holds a header with the id of a back-dated message is 409 <code>INTEROP.ARCHIVE.TAKEN</code>: nothing is moved, and the target's own message is as it
@@ -216,12 +221,15 @@ Method TestAMessageTheVendorLogsAnErrorForMakesTheRunPartial()
 
 /// <p>AC4: the error list is capped by a named limit (<parameter>OcuPilot.Port.InteropPort.ARCHIVEERRORSMAX</parameter>, two under <class>OcuPilot.Test.InteropArchiveCapSeam</class>), and a
 /// caller's <code>maxRows</code> cuts it further; three errors read as three on the shipped port.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.ListArchiveErrors</method> ignore its cap -- this goes red.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.ListArchiveErrors</method> ignore its cap -- this goes red; answer the error's number as text -- the number leg goes
+/// red.</p>
 Method TestTheErrorListIsCappedAtItsNamedLimit()
 {
     Do $ClassMethod(..#FIXTURE, "SeedErrors", ..#SOURCE, 3)
     Do ..ErrorIds(.tCount)
     Do $$$AssertEquals(tCount, 3, "the shipped port lists the three errors")
+    Do ..Verdict("ArchiveErrors", "LIST", .tListed)
+    Do $$$AssertEquals($Select($IsObject($Get(tListed)) && (tListed.%Size() > 0): tListed.%GetTypeOf(0) _ "|" _ tListed.%Get(0).%GetTypeOf("ErrorNumber"), 1: ""), "object|number", "each error's number is a number, so the list sorts 2 before 10")
     Do ..ErrorIds(.tCapped, ..#CAPSEAM)
     Do $$$AssertEquals(tCapped, 2, "the lowered cap lists two")
     Kill tQuery
@@ -270,6 +278,27 @@ Method TestAFailedVendorRunIsA500LogsNoVendorTextAndLeavesTheLockFree()
         Do $ClassMethod(..#FIXTURE, "DropProbes")
         Do ..Settings()
     }
+}
+
+/// <p>AC5, AD-52: a run is taken in the namespace it archives, not in the one the call comes from. With HSCUSTOM listed beside USER for this test alone, a run of USER into HSCUSTOM,
+/// called from HSCUSTOM, holds USER's archive lock when it reaches the vendor and calls the vendor in USER; the vendor answers an error, so nothing moves.</p>
+/// <p>Mutation (Rule 19): drop the namespace switch around <method>OcuPilot.Port.InteropPort.VendorArchive</method> in <method>OcuPilot.Port.InteropPort.ArchiveRun</method> -- the
+/// vendor leg goes red; drop it from <method>OcuPilot.Port.InteropPort.ArchiveTake</method> -- the lock leg goes red.</p>
+Method TestARunIsTakenInTheNamespaceItArchives()
+{
+    Set tListed = $Data(^%SYS("Ensemble", "InstalledNamespace", ..#SOURCE))
+    Try {
+        If 'tListed Set ^%SYS("Ensemble", "InstalledNamespace", ..#SOURCE) = ""
+        Do $ClassMethod(..#FIXTURE, "PutSettings", ..#TARGET, ..#SOURCE, "<absent>", ..#RUNDAYS)
+        Set ^IRIS.Temp.OcuProbe2416ArcMode = "status"
+        Do $$$AssertEquals(..RunVerdict(.tFault, ..#SEAM, ..#TARGET), "500 INTERNAL", "a run of USER that the vendor answers with an error is a 500")
+        Do $$$AssertEquals($Get(^IRIS.Temp.OcuProbe2416ArcMode("ranIn")), ..#TARGET, "the vendor was called in USER, the namespace archived, not in HSCUSTOM, the one the call came from")
+        Do $$$AssertEquals($Get(^IRIS.Temp.OcuProbe2416ArcMode("heldHere")), 1, "and this process held USER's archive lock when it called")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the leg raised")
+    }
+    If 'tListed Kill ^%SYS("Ensemble", "InstalledNamespace", ..#SOURCE)
+    Do $$$AssertEquals($Data(^%SYS("Ensemble", "InstalledNamespace", ..#SOURCE)), tListed, "HSCUSTOM's place in the list is as it was")
 }
 
 /// <p>The child process <method>ProbeAs</method> starts: log in as <var>pUsername</var> and run each of <parameter>LEGS</parameter> through <class>OcuPilot.Port.InteropPort</class>, then

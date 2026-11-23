@@ -116,6 +116,42 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `f91004fa0`).
 
 ## Review Triage Log
 
+### 2026-11-23, Batch 4 review (four layers: adversarial, edge cases, verification gaps, acceptance)
+
+Patched:
+
+- R1 high: the run tests met `INTEROP.ARCHIVE.TAKEN` on a used instance (run 1054, 4 of 9 red), because USER held `Ens.ScheduleService` headers in HSCUSTOM's next id range and the fixture's `RaiseCounter` was never called; every probe stored in HSCUSTOM now raises its counter above USER's ids, and an archive class refuses to start while HSCUSTOM holds a foreign header.
+- R2 medium: nothing could tell whether the vendor call and the lock ran in the archived namespace (the `ranIn` assertion stays green with the switch removed); new `TestARunIsTakenInTheNamespaceItArchives` archives USER from HSCUSTOM.
+- R3 medium: `InteropArchiveElsewhere`'s running leg asserted only "not 200" and its doc's mutation could not redden it; it now pins `PROPOSAL.TARGETCHANGED`.
+- R4 medium: the README count test's key pattern skipped keys with digits; it now reads every `false` line and asserts it read them all.
+- R5 low: `ErrorNumber` was text, so the errors list sorted 1, 10, 2; it is a number.
+- R6 low: `ArchiveTargets` compared the namespace as given, so a lower-case name offered itself; it compares in upper case.
+- R7 low: the settings write reached `SETTINGSET` through `IsPurgeWrite`; it names its own type (no behavior change).
+- R8 low: `ActRun` dropped its namespace argument; the docs of `SeedErrors`, `InteropArchiveSettingSet`, the lock test's mutation and Decided in-stage 5, 8 and 13 said what the code does not.
+
+Rulings applied (orchestrator, via the lead): R9 `ARCHIVEMAXMESSAGES` 5,000 (TOOMANY's sentence names no number and reads true); R10 `Prohibited.cls` additive on (a), (b) and (c), all three hold, pinned with two mutations; R11 the README count is 107 `false` keys less 11 person-only (`ADVERTISED` 0), 96; R12 a timings refresh and browser-shard 71 in `65baf874c` accepted.
+
+R13, README off-list addendum (veto window, for the lead), inserted after "running SQL that changes data or the schema,": " clearing an SQL statement's run statistics, cleaning out the SQL statements no class or routine still holds, rebuilding one or all of a table's indices, removing a table's fixed statistics, collecting the statistics of every table in a schema,". It names the six advertised `false` keys the list missed: `explorer.sqlstatements.clearstatistics`, `explorer.sqlstatements.clean`, `explorer.sqlindices.rebuild`, `explorer.sqltable.rebuildindices`, `explorer.sqltable.clearstatistics`, `explorer.sqlschematables.tune`.
+
+Deferred: R14 medium (inference) a setting change while a run holds the lock is stored, and the vendor re-reads the days per header, so a run can move ids its taken check did not cover; the classic Save does not refuse it either, and a refusal would be a stricter posture (ledger candidate).
+
+Rejected:
+
+- R15: `ArchiveTake` at `:0` can meet `GetRunningStatus`'s momentary lock (the spec rules `:0`; reopen_if a false `RUNNING` is seen).
+- R16: a read-only target fails per message into a 500 partial (reopen_if reported).
+- R17: the target's counter is not raised after a run (Measured (d), a named limit).
+- R18: the history and settings lists sort by name, as the purge siblings do (reopen_if a person asks for the classic order).
+- R19: a failed run keeps the dialog's review, as the purge dialog does.
+- R20: `PRECONDITIONCODES` is a literal beside an unused `ArchivePreconditionCodes`, as the purge's (reopen_if they diverge).
+- R21: the description states 0 to 36500 in words, as the purge tool's states its days.
+- R22: `ListArchiveErrors` passes the query status unmapped; `ErrorsExecute` always answers OK.
+- R23: same-class helpers run while switched, as the purge family's; no other class and no log line does (Decided in-stage 8).
+- R24: days above the calendar, settable only from the classic page, are clamped untested.
+- R25: a full count above the cap; a fault reading counts after a run; a target whose message globals map elsewhere; the script's guard order; the dialog's namespace change; a 300 ms negative wait in the browser spec: each low and matching a sibling.
+- R26: "Setting" and "Stored" headings and the label-derived aliases are existing strings and the purge descriptors' pattern; the `strings.ts` citation shift and the `ci-throwaway.sh` comments are forced and add-only (the retry block is untouched).
+
+False: R27 the browser spec does read the history after the run (`waitForCell` on "Total messages archived" = 5).
+
 ## Veto items
 
 Each is the lead's to take to the veto gate; the recommended option is first.
@@ -172,24 +208,31 @@ No new dependency; no privilege, role or access grant.
 - (c) A target already holding a header with a moved id has it overwritten in place; the port refuses first (`ARCHIVETAKEN`), which is why the one-id-per-target refusal exists. (d) A header saved in USER after a run takes the counter's next id and never an archived one in this run (the hazard is a moved id above the target's counter, a named limit). (e) A back-dated Queued header is moved like the others.
 - (f) `%Ens_Portal:U`, `%Ens_ArchiveManager:RW`, `%DB_HSCUSTOM:RW` and `%DB_USER:RW` runs a full archive; `%DB_USER:RW` implies read, so the port names the WRITE pair on the target's database alone. With `%DB_USER:R` the vendor logs `<PROTECT>` on the body save in USER's database. `$USERNAME` and `$ROLES` are unchanged after `DoArchive`.
 - (g) With a child job holding `^Ens.ArchiveManager("lock")`, `GetRunningStatus` reads `running` and a `:0` lock fails; with the port holding it, `DoArchive` runs and the lock is held once after. The vendor takes it again when held, so the release loops on `^$LOCK(name,"OWNER") = $Job`.
-- (h) Per header: 0.02 ms to 0.28 ms for kept or non-XML probes; XML-writing probes 1.0 ms to 4.0 ms at 1,000 and 10.3 s, 11.0 s and 20.1 s for 10,000 (three runs). `ARCHIVEMAXMESSAGES` is 10,000, the largest multiple of 1,000 that ends inside 30 s in the slowest of them; the evidence is the 20.1 s run.
+- (h) Per header: 0.02 ms to 0.28 ms for kept or non-XML probes; XML-writing probes 1.0 ms to 4.0 ms at 1,000 and 10.3 s, 11.0 s and 20.1 s for 10,000 (three runs). 10,000 was the largest multiple of 1,000 that ended inside 30 s here (the 20.1 s run); `ARCHIVEMAXMESSAGES` is 5,000 by the orchestrator's ruling at review, so a run of it keeps a 1.5 margin on CI's slower runners.
 - Residue: the scratch class, `^OcuScratch`, the probe principals, every probe header and body and the test globals are gone; both `^Ens.ArchiveManager` trees read as before (`$Order` walk and the saved-tree comparison). USER holds `Ens.ScheduleService` headers made by other classes in the sweep, not by a probe.
 
 **Decided in-stage (implement).**
 
 1. `ARCHIVERUN` stands as drafted: Task 0 (b), (c) and (e) measured as it says. The vendor's loss of characters above 255 in an HL7 body and its stopping at the first error are vendor behavior, recorded here and not a contradiction.
-2. `ARCHIVEMAXMESSAGES` = 10,000 by (h); `ARCHIVEERRORSMAX` = 2,000 and `ARCHIVEMAXDAYS` = 36,500 (the vendor stores 36,501).
-3. V2: the README count is 107, the number of `false` keys in the committed tree's `Baseline.cls` (106 on feature plus `interop.archive.run`), pinned by `interop.test.mjs` from the Baseline. The plan's "85 plus five" reads 90; the 1.0.18 README said 85 against 91 `false` keys, so the two were never equal. The lead recounts after integrating feature.
+2. `ARCHIVEMAXMESSAGES` = 5,000 (orchestrator ruling at review: CI runners ran 1.4 to 1.6 times slower, and (h) measured 10.3, 11.0 and 20.1 s at 10,000); `ARCHIVEERRORSMAX` = 2,000 and `ARCHIVEMAXDAYS` = 36,500 (the vendor stores 36,501).
+3. V2: the README count is 96, the agent actions that ship switched off: the committed tree's 107 `false` keys in `Baseline.cls` less the 11 whose tool class declares `ADVERTISED` 0 (a person runs them alone; the README's next sentence names them), pinned by `interop.test.mjs` from the Baseline and the tool classes (orchestrator ruling at review, as 24.15 Batch 3). The lead recounts after integrating feature.
 4. The write needs one WRITE pair on the target's database; the READ pair of the plan is dropped because WRITE implies it (Task 0 (f)).
-5. `ArchiveCutoff` clamps the cutoff at `+$Horolog - 2`, so days 0 and 1 cannot move today's or yesterday's messages. (Two substitutions in `InteropPort.cls` were made through a Bash script rather than the Edit tool; verified by `grep` and by the green classes.)
+5. `ArchiveCutoff` reads days past the instance's calendar (above `+$Horolog - 2`, settable only from the classic page) as `+$Horolog - 2`, so the port's count and taken-id reads never raise; days 0 to 36,500 pass unchanged. (Two substitutions in `InteropPort.cls` were made through a Bash script rather than the Edit tool; the review re-read both hunks.)
 6. `InteropArchiveSettingSet.ConfirmProblem` skips the namespace-dependent choice judgment, which the port judges at the write, in the proposal's namespace.
 7. `InteropArchiveSettingSet` overrides `PrivilegePairs` so the descriptor's pairs, its own WRITE pair, the database pair and the classic pages come in the order `ClassicPageGate` pins.
-8. `ArchiveTargetHere` is an empty private hook inside the target-switched block, so a test can show that nothing of OcuPilot's is called while switched to the target. The vendor call and the facts read run in the source namespace, which is the same namespace as the call's origin on this instance, so a mutation moving them cannot be told apart here (named limit).
+8. `ArchiveTargetHere` is an empty private hook inside the target-switched block, so a test can show that no log line is written while switched to the target. The vendor call and the lock are pinned to the archived namespace by `InteropArchiveRefusals.TestARunIsTakenInTheNamespaceItArchives`, which archives USER from HSCUSTOM.
 9. The Archive manager's running status is not a published string of its own: `interopArchiveStatusRunning` and the literal "running" in EXPERIENCE were removed because `strings.test.mjs` forbids a duplicate value.
 10. The Archive manager's Run archive action sits on the "Total messages archived" row; the list stays filtered by the row action, and the counts read through `GetRunningCount`.
 11. Tests: every archive class extends `InteropArchiveCase` (`EMPTYTREES`), saves and restores both trees, drops its probes, and ends any child job; `InteropArchiveCapSeam` and `InteropArchiveSeam` override `ARCHIVEMAXMESSAGES`, `ARCHIVEERRORSMAX` and the seams, so each compiles per subclass.
 12. DW-2859 carried on the orchestrator's ruling: the `ci.yml` client suite step bound is 18 minutes and `ci.test.mjs` pins `LARGEST_OBSERVED_CLIENT_SUITE_SECONDS = 705` (run 45062235807) with a floor of 1.5 times that, below the job's 30.
-13. The relay's timings refresh from run 45197647823 and the browser-shard bound were not done: `ci-shards.mjs refresh` failed twice on GitHub's `503 Egress is over the account limit` and wrote nothing, and the orchestrator's copy is not to be copied over. `ci-timings.json` and the browser-shard `timeout-minutes` (63) are unchanged; the lead completes both.
+13. The timings refresh from run 45197647823 and the browser-shard bound were left to the lead after `ci-shards.mjs refresh` failed on GitHub's `503 Egress is over the account limit`; the lead did both in `65baf874c` (`ci-timings.json` refreshed, browser-shard `timeout-minutes` 63 to 71).
+
+**Decided in-stage (review).**
+
+1. Three orchestrator rulings relayed by the lead are applied: `ARCHIVEMAXMESSAGES` 5,000, with the shipped port's own judgment pinned at 5,000 and 5,001; `Prohibited.cls`'s two `TYPE*` parameters and arms stand as additive (new types last in `COVEREDTYPES` and `TYPES`, the uncovered guard extended by suffix, the arms matching only the new types after every earlier arm), pinned by `Test/Prohibited.TestTheArchiveArmsLeaveEarlierTypesTheirOwnVerdicts`; the README count is the agent actions that ship off (96), and its off list gains the five Epic 21 SQL clauses quoted in Review Triage Log R13 (a veto addendum for the lead).
+2. A probe stored in HSCUSTOM first raises HSCUSTOM's header id counter above every id USER holds or has given out (`InteropArchiveFixture.RaiseAboveTarget`), and an archive class refuses to start while HSCUSTOM holds a header that is not its probe (`InteropArchiveCase.MOVESMESSAGES`): the run tests met `TAKEN` on a used instance whose USER held `Ens.ScheduleService` headers in HSCUSTOM's id range.
+3. `ArchiveTargets` compares the namespace in upper case; the archive errors' `ErrorNumber` is a number, so the list sorts 2 before 10; the settings write's action test names `TYPEARCHIVESETTINGSET`, and `IsAnyWrite` names it, rather than reaching it through the purge's equal type value.
+4. A setting change while a run holds the lock is not refused here: the classic Save does not refuse it either (ledger candidate).
 
 **Story end (the lead's, not the implement stage's).**
 
@@ -241,6 +284,15 @@ No new dependency; no privilege, role or access grant.
 - mutation: the `interop.archivesettings.set` draft row removed -> `DraftRegistry` red; `CHECKEDFLOOR` raised to 400 -> `ConfirmNamespaceRoster` red (146 asserted).
 - mutation: DW-2859 the client suite step bound 17 -> `ci.test.mjs` red in the floor test alone; 30 -> red in the below-the-job test alone.
 
+**Mutations run (review; each on `ocupilot-b-ci` with the class and its subclasses reloaded, then reverted and `cmp`-identical to the copy taken before).**
+
+- mutation: `ArchiveRefusal`'s cap compare `>` made `>=` -> `InteropArchiveRefusals` red (the 5,000 leg and the seam's at-cap legs); the cap line dropped -> red (the 5,001 leg and the one-over legs); the class line dropped -> red (class legs); the taken refusal dropped -> red (taken legs).
+- mutation: the switch before `VendorArchive` dropped -> `InteropArchiveRefusals` red in `TestARunIsTakenInTheNamespaceItArchives` alone; the switch in `ArchiveTake` dropped -> red there (lock leg).
+- mutation: `ErrorNumber` answered as text -> `InteropArchiveRefusals` red (number leg); `ArchiveTargets` comparing the name as given -> `InteropArchiveSettingControl` red (lower-case leg); `ArchiveFacts` reading no run running -> `InteropArchiveElsewhere` red (`RUNNING` in place of `TARGETCHANGED`).
+- mutation: the `interop-archive` arm moved ahead of the table arm, widened to `sql-table` -> `Test/Prohibited` red (the new test's table leg and 21.25's table test); the `interop-archive-setting` arm widened to `interop-purge` ahead of the purge arm -> red (purge leg alone).
+- mutation: `osmgmt.licensekey.activate` left out of the person-only keys -> `interop.test.mjs` red (the README count).
+- demonstration: a foreign HSCUSTOM header -> `InteropArchiveElsewhere` refused at `OnBeforeAllTests`, naming it; the header removed.
+
 **Results (`ocupilot-b-ci`).** The 17 `ci-runner` shards over 889 classes: 1 51/306, 2 51/333, 3 52/395, 4 51/434, 5 52/377, 6 53/378, 7 52/384, 8 52/391, 9 52/432, 10 52/417, 11 53/370, 12 53/440, 13 53/406, 14 53/433, 15 53/432, 16 53/393, 17 53/403 (classes/tests), 6,724 tests, none failed. Shard 14 failed on first run (two `InteropArchiveRefusals` tests, the seam ones) after the mutation work and shards 1 to 13 had left stale compiled subclasses on the instance; after `InteropPort` and its subclasses were reloaded it passed in isolation and as a whole shard (cause not isolated; a CI shard starts on a fresh throwaway). Browser: `interop-archive`, `interop-purge` and `interop-message-export` green on a rebuilt, redeployed bundle. Smoke 49 of 49 executed, 1 skipped. `npm run test:tools` 2,413 of 2,413; the component runner 333 files, 3,932 tests; `ci.test.mjs` 109; `check-objectscript` 0 problems; `lint-docs` clean.
 
 ## Auto Run Result
@@ -248,6 +300,6 @@ No new dependency; no privilege, role or access grant.
 Status: in-review
 Blocking condition: none
 
-**Implemented (implement stage, Batch 4).** The local archive manager through `InteropPort` (`ArchiveSettings`, `Archive`, `ArchiveErrors`, the guarded run with the vendor's lock, the partial-outcome rule), three screens, the settings tool and Run archive for the person and the agent, the six `ARCHIVE*` codes, DW-2856's sentence, the README clauses (107), the baseline key `interop.archive.run`, and DW-2859's step bound. Task 0 measured as `ARCHIVERUN` says; `ARCHIVEMAXMESSAGES` is 10,000. Decided in-stage and Results are above; the timings refresh and the browser-shard bound the orchestrator added are not done (Decided in-stage 13).
+**Reviewed (review stage, Batch 4).** Implemented in `2328ab5cc` (Decided in-stage (implement)). This pass applied the three orchestrator rulings (`ARCHIVEMAXMESSAGES` 5,000; `Prohibited.cls` additive, pinned; the README count 96 with the SQL clauses of R13) and patched R1 to R8 (Review Triage Log), each with a mutation above. Verified on `ocupilot-b-ci` rebuilt at 2026-11-23T19:53:51Z (healthy 19:54:13Z): the four `InteropArchive*` classes forward then reversed, the twenty rosters, the purge, export and suspended classes and `InteropSessionRoute`, all green; the archive, purge, export and suspended browser specs green on a rebuilt, redeployed bundle; `npm run build`, `npm run test:tools` 2,413 of 2,413, the component runner 333 files and 3,932 tests, `ci.test.mjs` 109 of 109, `check-objectscript` 0 problems and `lint-docs` clean. R14 is deferred as a ledger candidate.
 
 **Plan.** Batch 4 of four: the local archive manager through `InteropPort` (three screens; the settings set and Run archive, each reached by the screen and the agent; every proposal keeps its namespace and every confirm judges there), DW-2856's sentence, and the story's README clauses. Veto items 1 to 7; the consolidated story-end spine lines and the tracker step are under Design Notes. Read-only probes on `ocupilot-b-ci` (Measured at plan); nothing was written to the instance.

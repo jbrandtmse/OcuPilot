@@ -1222,7 +1222,7 @@ ClassMethod IsStartupWrite(pType As %String) As %Boolean
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
 ClassMethod IsAnyWrite(pType As %String) As %Boolean
 {
-    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsPurgeWrite(pType) || ..IsArchiveWrite(pType) || ..IsSuspendedWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
+    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsPurgeWrite(pType) || ..IsArchiveWrite(pType) || (pType = ..#TYPEARCHIVESETTINGSET) || ..IsSuspendedWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
 }
 
 /// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads, Story 20.30's session trace and Story 24.4's three session reads. Each serves
@@ -10535,9 +10535,9 @@ Parameter ARCHIVEMAXDAYS As INTEGER = 36500;
 
 Parameter ARCHIVECLASSNAME = "Ens.Archive.Manager";
 
-/// <p>The most message headers a namespace may hold for one archive run here to take: the vendor's run opens every header and body of the namespace, and a run of this many ended
-/// within 30 seconds on the throwaway (measured). A namespace above it is refused whole.</p>
-Parameter ARCHIVEMAXMESSAGES As INTEGER = 10000;
+/// <p>The most message headers a namespace may hold for one archive run here to take: the vendor's run opens every header and body of the namespace. A run of twice this many took
+/// at most 20.1 seconds on the throwaway (measured), and half of that, times 1.5, stays inside 30 seconds on a runner that is slower (inference). A namespace above it is refused whole.</p>
+Parameter ARCHIVEMAXMESSAGES As INTEGER = 5000;
 
 /// <p>The most error rows the Archive errors list answers when the call gives no cap.</p>
 Parameter ARCHIVEERRORSMAX As INTEGER = 2000;
@@ -10566,7 +10566,7 @@ ClassMethod ArchiveTargets(pNamespace As %String) As %List
     For {
         Set tName = $Order(^%SYS("Ensemble", "InstalledNamespace", tName))
         If tName = "" Quit
-        If tName '= pNamespace Set tList = tList _ $ListBuild(tName)
+        If tName '= $ZConvert(pNamespace, "U") Set tList = tList _ $ListBuild(tName)
     }
     Quit tList
 }
@@ -10710,7 +10710,7 @@ ClassMethod InvokeArchiveSettings(pNamespace As %String, pType As %String, ByRef
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
             Quit
         }
-        Set tAction = $Select(..IsPurgeWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        Set tAction = $Select(pType = ..#TYPEARCHIVESETTINGSET: pType, 1: $Get(pQuery(..#ACTIONKEY)))
         If (tAction '= "") && (tAction '= ..#TYPEARCHIVESETTINGSET) {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
             Quit
@@ -10917,7 +10917,7 @@ ClassMethod ListArchiveErrors(pNamespace As %String, pMax As %Integer, Output pR
     Set pRows = []
     For tI = 1:1:tFound {
         Set tRow = {}
-        Do tRow.%Set("ErrorNumber", $List(tFound(tI), 1) _ "", "string")
+        Do tRow.%Set("ErrorNumber", +$List(tFound(tI), 1), "number")
         Do tRow.%Set("Time", $List(tFound(tI), 2) _ "", "string")
         Do tRow.%Set("Description", $List(tFound(tI), 3) _ "", "string")
         Do tRow.%Set("MessageId", $List(tFound(tI), 4) _ "", "string")

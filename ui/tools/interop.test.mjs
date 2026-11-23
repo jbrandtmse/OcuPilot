@@ -10,7 +10,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -319,13 +319,63 @@ function numberWords(value) {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-// Story 24.16 Batch 4, AC8. Mutation (Rule 19): type the count in the README as one less, or drop the archive clause from its off list -> red here.
-test('the README states the count of the baseline\'s switched-off keys and carries the archive, purge and suspended message clauses', () => {
+const SOURCE_ROOT = join(REPO_ROOT, 'src');
+
+/** Every class under `src/` by name: its superclasses, each package-qualified, and the parameters it declares itself. */
+function classIndex() {
+  const index = new Map();
+  for (const entry of readdirSync(SOURCE_ROOT, { recursive: true })) {
+    if (!String(entry).endsWith('.cls')) continue;
+    const text = readFileSync(join(SOURCE_ROOT, String(entry)), 'utf8');
+    const head = /^Class (\S+)(?: Extends (\([^)]*\)|[^\s[]+))?/m.exec(text);
+    if (!head) continue;
+    const pkg = head[1].slice(0, head[1].lastIndexOf('.'));
+    const supers = (head[2] ?? '').replace(/[()]/g, '').split(',').map((name) => name.trim()).filter(Boolean).map((name) => (name.includes('.') ? name : `${pkg}.${name}`));
+    const params = new Map([...text.matchAll(/^Parameter (\w+)(?: As \w+)? = "?([^";\n]*)"?;/gm)].map((match) => [match[1], match[2]]));
+    index.set(head[1], { supers, params });
+  }
+  return index;
+}
+
+/** The value of `parameter` on class `name`, declared there or inherited, or `undefined`. */
+function parameterOf(index, name, parameter) {
+  const entry = index.get(name);
+  if (!entry) return undefined;
+  if (entry.params.has(parameter)) return entry.params.get(parameter);
+  for (const parent of entry.supers) {
+    const value = parameterOf(index, parent, parameter);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+// Story 24.16 Batch 4, AC8. The README's count is of agent actions that ship switched off: the baseline's `false` keys less the keys of tools a
+// person alone runs (ADVERTISED 0, read from each tool class's own declaration), which its next sentence names separately. A key added `false` to
+// the baseline reddens this until the README's count and list say so.
+// Mutation (Rule 19): type the count in the README as one less, or drop the archive clause from its off list -> red here; leave
+// `explorer.command.run` out of the person-only keys -> red here.
+test('the README states the count of the agent actions that ship switched off and carries their clauses', () => {
   const keys = /XData Keys[^\n]*\n\{\n([\s\S]*?)\n\}\n\}/.exec(readFileSync(BASELINE, 'utf8'))?.[1] ?? '';
-  const off = [...keys.matchAll(/"([a-z.]+)": false/g)].length;
-  assert.ok(off > 0, 'the baseline lists switched-off keys');
+  const offKeys = [...keys.matchAll(/"([^"]+)": false/g)].map((match) => match[1]);
+  assert.equal(offKeys.length, (keys.match(/: false/g) ?? []).length, 'every switched-off line of the baseline is read as a key');
+  assert.ok(offKeys.length > 0, 'the baseline lists switched-off keys');
+  const index = classIndex();
+  const toolClasses = new Map();
+  for (const [name, entry] of index) {
+    if (name.startsWith('OcuPilot.Test.') || !entry.params.has('TOOLNAME')) continue;
+    toolClasses.set(entry.params.get('TOOLNAME'), [...(toolClasses.get(entry.params.get('TOOLNAME')) ?? []), name]);
+  }
+  const unowned = offKeys.filter((key) => (toolClasses.get(key) ?? []).length !== 1);
+  assert.deepEqual(unowned, [], 'each switched-off key is the TOOLNAME of exactly one tool class');
+  const personOnly = offKeys.filter((key) => parameterOf(index, toolClasses.get(key)[0], 'ADVERTISED') === '0');
+  assert.ok(personOnly.includes('explorer.command.run') && personOnly.includes('explorer.globalnodes.save'), `the person-only keys are read from the tool classes: ${personOnly.join(', ')}`);
+  const off = offKeys.length - personOnly.length;
   const readme = readFileSync(README, 'utf8').replace(/\s+/g, ' ');
-  assert.ok(readme.includes(`${numberWords(off)} agent actions ship switched off`), `the README says ${numberWords(off)} agent actions ship switched off, the number of false lines in the baseline`);
+  assert.ok(readme.includes(`${numberWords(off)} agent actions ship switched off`), `the README says ${numberWords(off)} agent actions ship switched off: the ${offKeys.length} false keys of the baseline less the ${personOnly.length} a person alone runs`);
+  assert.ok(
+    readme.includes('running SQL that changes data or the schema, clearing an SQL statement\'s run statistics, cleaning out the SQL statements no class or routine still holds, rebuilding one or all of a table\'s indices, removing a table\'s fixed statistics, collecting the statistics of every table in a schema, purging the audit database'),
+    'the off list names the SQL statement, index, statistics and schema writes'
+  );
   assert.ok(
     readme.includes('removing a default setting, a credential or a schedule spec, purging interoperability management data, resubmitting, editing and resubmitting or deleting a suspended message, archiving interoperability messages into another namespace, building'),
     'the off list names the purge, the suspended message writes and the archive run'

@@ -51,6 +51,7 @@ ClassMethod Store(pNamespace As %String, pKind As %String, pSuffix As %String = 
     Set tOrigNS = $NAMESPACE
     ; The stamp is made before the switch: the test package is not visible from a namespace that does not hold it.
     Set tCreated = ##class(OcuPilot.Test.InteropMessageRead).UtcAgo(pDays * 86400)
+    If pNamespace = ..#SOURCE Do ..RaiseAboveTarget()
     Try {
         Set $NAMESPACE = pNamespace
         Set tSC = $$$OK
@@ -137,6 +138,7 @@ ClassMethod StoreBroken(pNamespace As %String, pSuffix As %String = "", pDays As
     Set tId = 0
     Set tOrigNS = $NAMESPACE
     Set tCreated = ##class(OcuPilot.Test.InteropMessageRead).UtcAgo(pDays * 86400)
+    If pNamespace = ..#SOURCE Do ..RaiseAboveTarget()
     Try {
         Set $NAMESPACE = pNamespace
         Set tHeader = ##class(Ens.MessageHeader).%New()
@@ -225,6 +227,25 @@ ClassMethod RaiseCounter(pNamespace As %String, pValue As %Integer) As %Integer
         Set $NAMESPACE = tOrigNS
     }
     Quit tCounter
+}
+
+/// <p>Raise the source's message header id counter above every id the target holds or has given out, so a probe stored in the source never shares an id with a message
+/// another class left in the target, which a run would refuse as taken. <method>Store</method> and <method>StoreBroken</method> call it for each probe stored in the source.
+/// Answer the source's counter.</p>
+ClassMethod RaiseAboveTarget() As %Integer
+{
+    Set tOrigNS = $NAMESPACE
+    Set tHighest = 0
+    Try {
+        Set $NAMESPACE = ..#TARGET
+        Set tHighest = +$Get(^Ens.MessageHeaderD)
+        Set tLast = +$Order(^Ens.MessageHeaderD(""), -1)
+        If tLast > tHighest Set tHighest = tLast
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit ..RaiseCounter(..#SOURCE, tHighest)
 }
 
 /// <p>How many probe headers <var>pNamespace</var> holds, or -1 when it cannot be read.</p>
@@ -525,7 +546,7 @@ ClassMethod RestoreTrees(pSaved As %String) As %Status
 }
 
 /// <p>Record <var>pCount</var> errors in <var>pNamespace</var>'s last run as the vendor's run records them (an error status, the time, a message id), so the error list can be read
-/// past a cap without a run: the vendor's own run ends at its first error, so a run cannot make more than one.</p>
+/// past a cap without a run: a run ends at the first error the vendor's trap catches, as a body class that does not exist raises, so such a run makes only one.</p>
 ClassMethod SeedErrors(pNamespace As %String, pCount As %Integer)
 {
     Set tOrigNS = $NAMESPACE

@@ -72,8 +72,10 @@ Method TestTheRunIsConfirmedInTheNamespaceItWasReadIn()
 }
 
 /// <p>AC5: the lock test at the confirm runs in the proposal's namespace: with HSCUSTOM's archive lock held by a child job, the agent's run minted in HSCUSTOM and confirmed from USER,
-/// whose lock is free, is refused and moves nothing.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.ArchiveTake</method> take the lock in USER -- this goes red.</p>
+/// whose lock is free, is closed target-changed, because the fresh read in HSCUSTOM now reads a run running, and moves nothing. That the port takes the lock in the namespace it
+/// archives is <class>OcuPilot.Test.InteropArchiveRefusals</class>' to pin.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.ArchiveFacts</method> read no run running -- the confirm reaches the port and is refused by another code, and this goes
+/// red.</p>
 Method TestTheRunConfirmedElsewhereIsRefusedWhileItsOwnNamespaceIsArchiving()
 {
     Do ..Settings()
@@ -85,7 +87,7 @@ Method TestTheRunConfirmedElsewhereIsRefusedWhileItsOwnNamespaceIsArchiving()
         If '$IsObject($Get(tProposal)) Quit
         Do $$$AssertTrue(##class(OcuPilot.Test.InteropArchiveRefusals).StartHolder(), "the lock-holding job holds HSCUSTOM's lock")
         Set tSC = ..Confirm(tProposal.proposalId, .tStatus, .tRaw, .tAnswer, ..#TARGET)
-        Do $$$AssertTrue(tStatus '= 200, "the confirm from USER is refused while HSCUSTOM is archiving: " _ $Extract($Get(tRaw), 1, 300))
+        Do $$$AssertEquals($Select($IsObject($Get(tAnswer)): tAnswer.%Get("code"), 1: tStatus), "PROPOSAL.TARGETCHANGED", "the confirm from USER is closed target-changed while HSCUSTOM is archiving: " _ $Extract($Get(tRaw), 1, 300))
         Do $$$AssertEquals($ClassMethod(..#FIXTURE, "HeaderIds", ..#TARGET) _ "|" _ $ClassMethod(..#FIXTURE, "HeaderIds", ..#SOURCE), "|" _ ..OldIds(.tIds) _ "," _ tIds("current"), "and nothing was moved")
         Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tTurn))
     } Catch ex {

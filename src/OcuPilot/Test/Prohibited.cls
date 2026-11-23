@@ -1048,6 +1048,34 @@ Method TestASchemaIsRefusedForItsNameAndForAFailedRead()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
 }
 
+/// <p>Story 24.16 Batch 4's two archive arms come after every arm an earlier type reaches, so each earlier type keeps its own verdict: a table of OcuPilot's own is still refused by
+/// Story 21.25's table arm, a purge that changes a field is refused <code>PROHIBITED.UNCOVEREDFIELD</code> and a purge setting may change its value; an archive setting may change
+/// its value and nothing else, and an archive run may change nothing.</p>
+/// <p>Mutation (Rule 19): move the <code>interop-archive</code> arm of <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> ahead of the table arm and widen it to
+/// <code>sql-table</code> -- the table leg goes red.</p>
+Method TestTheArchiveArmsLeaveEarlierTypesTheirOwnVerdicts()
+{
+    Set tUncovered = ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELD
+    Set tCases = $ListBuild($ListBuild("sql-table", "OcuProbe225.T1", "explorer.sqltable.rebuildindices", "{""Table"":""OcuProbe225.T1"",""Class"":""OcuPilot.Probe225.Row""}", "{""Namespace"":""USER""}", "", "1|PROHIBITED.OCUPILOTTABLE", "a table of OcuPilot's own, by the table arm"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-purge", "USER", "interop.purge.run", "{""Value"":""before""}", "{""Value"":""after""}", "Value", "1|" _ tUncovered, "a purge that changes a field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-purge-setting", "Description", "interop.purgesettings.set", "{""Value"":""before""}", "{""Value"":""after""}", "Value", "0|", "a purge setting's value"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-archive-setting", "Number of days before archiving", "interop.archivesettings.set", "{""Value"":""before""}", "{""Value"":""after""}", "Value", "0|", "an archive setting's value"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-archive-setting", "Number of days before archiving", "interop.archivesettings.set", "{""Value"":""before""}", "{""Value"":""before"",""Foo"":""x""}", "Foo", "1|" _ tUncovered, "an archive setting's other field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-archive", "USER", "interop.archive.run", "{""Value"":""before""}", "{""Value"":""after""}", "Value", "1|" _ tUncovered, "an archive run that changes a field"))
+    Do ##class(OcuPilot.Kernel.Scope).Set("USER")
+    For tI = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tI)
+        Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key($List(tCase, 1), "USER", $List(tCase, 2), .tRef)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 8) _ ": the target has a key")
+        If $$$ISERR(tSC) Continue
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm($List(tCase, 4))
+        Set tSC = $ClassMethod(..#SET, "Prohibits", $List(tCase, 3), tRef, $List(tCase, 5), ##class(OcuPilot.Test.ProhibitedFixture).Diff($List(tCase, 6)), .tProhibits, .tCode, .tReason)
+        Do $$$AssertEquals($Select($$$ISERR(tSC): "error", 1: tProhibits _ "|" _ tCode), $List(tCase, 7), $List(tCase, 8))
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+}
+
 /// <p>The values <var>pClass</var>'s screen actions declare (AD-56 (ii)), each once, in declaration
 /// order, as a <class>%List</class>.</p>
 ClassMethod ActionValues(pClass As %String) As %List

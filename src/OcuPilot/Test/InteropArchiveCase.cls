@@ -43,6 +43,9 @@ Parameter RUNDAYS = 3650;
 /// <p>Both namespaces' archive trees as every test starts from them: no node.</p>
 Parameter EMPTYTREES = "{""HSCUSTOM"":[],""USER"":[]}";
 
+/// <p>Whether the class runs archives of HSCUSTOM, which move and count every message it holds, so it refuses to start while HSCUSTOM holds a message header that is not its own probe.</p>
+Parameter MOVESMESSAGES As BOOLEAN = 1;
+
 /// <p>What both namespaces' archive trees held when the class started.</p>
 Property PreparedTrees As %String;
 
@@ -59,8 +62,12 @@ Method OnBeforeAllTests() As %Status
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, ..%ClassName(1) _ " stores probe messages in HSCUSTOM, moves them into USER, writes both namespaces' archive settings and creates principals on this instance, and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was changed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
-    Set ..PreparedTrees = $ClassMethod(..#FIXTURE, "SaveTrees")
     Do $ClassMethod(..#FIXTURE, "DropProbes")
+    If ..#MOVESMESSAGES {
+        Set tForeign = $ClassMethod(..#FIXTURE, "AllHeaders", ..#SOURCE)
+        If tForeign '= 0 Quit $$$ERROR($$$GeneralError, ..%ClassName(1) _ " archives every message HSCUSTOM holds and counts them, and HSCUSTOM holds " _ tForeign _ " message headers that are not its probes, so nothing was run. A class that ran before it left them.")
+    }
+    Set ..PreparedTrees = $ClassMethod(..#FIXTURE, "SaveTrees")
     Quit $$$OK
 }
 
@@ -116,7 +123,7 @@ ClassMethod Call(pMethod As %String, pPath As %String, pBody, Output pStatus As 
 ClassMethod ActRun(Output pAnswer, pNamespace As %String = {..#SOURCE}) As %String
 {
     Set tBody = {"action": "archive", "id": (pNamespace)}
-    Do ..Call("POST", ..#RUNSCREEN _ "/action", tBody, .tStatus, .pAnswer)
+    Do ..Call("POST", ..#RUNSCREEN _ "/action", tBody, .tStatus, .pAnswer, pNamespace)
     Quit tStatus _ " " _ $Select($IsObject(pAnswer): pAnswer.%Get("code"), 1: "")
 }
 
