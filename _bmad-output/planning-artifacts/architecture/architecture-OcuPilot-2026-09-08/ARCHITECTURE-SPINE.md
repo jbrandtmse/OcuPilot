@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-11-22'
+updated: '2026-11-23'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -1267,6 +1267,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   Story 21.6's case: `SqlPort` answers the statement tools' fresh read through a port-composed `STATEMENT` type, the statement-index row of the target hash in the target namespace (its plan state, frozen-differs flag and plan error; statistics are not in the subject), and calls `$SYSTEM.SQL.Statement` `FreezeStatement`, `UnfreezeStatement`, `ClearStatement` and the clear-error update with the hash alone, and `Clean`, which takes no argument, for the namespace's stale entries; it builds `$SYSTEM.SQL.PurgeQueries`' qualifiers from the purge tools' target alone (none for the namespace, `table` for a table, `class` for one cached query) and answers their fresh read through a port-composed `PURGE` type, the target's cached-query count. [AMENDED 2026-11-16, Story 21.6, owner answer U-76]
 
   Story 21.25's case: `SqlPort` answers the table tools' fresh read through port-composed `TABLESTATS`, `INDEX`, `FIELDSTATS` and `SCHEMA` types, read in the target namespace for the table or schema its target names, resolved through the caller's own information schema. It calls `%SQL.Manager.API.RebuildIndices` with the table's class and the target index or none. It calls `$SYSTEM.SQL.TuneTable`, `$SYSTEM.SQL.TuneSchema` and `$SYSTEM.SQL.Stats.Table.ClearTableStats` with display off and no log file, taking the tune tools' declared `KeepClassUpToDate` and `ClearValues` booleans. It builds `%SQL.Manager.Catalog` `SetTableExtentSize`, `SetFieldSelectivity` and `SetMapBlockCount` from the declared `ExtentSize`, `Selectivity`, `OutlierSelectivity`, `OutlierValue`, `AverageFieldSize` and `SizeMB`, each refused before the call when it is outside its declared shape. No value reaches a file name, SQL text or code. [AMENDED 2026-11-16, Story 21.25, owner answer U-84]
+
+  **The tune tools declare no `KeepClassUpToDate`** [AMENDED 2026-11-23, Story 21.25 rework 1, orchestrator ruling, Rule 20]: on this build it changes no stored statistic in the class definition (measured: the storage `ExtentSize` and each property's stored `Selectivity`, `OutlierSelectivity` and `AverageFieldSize` read the same with it on and off), so the port passes 0 to `TuneTable` and `TuneSchema` and no control offers it; `TuneSchema`'s `ClearValues` stays declared.
 
 ### AD-52 — A write tool declares the port it reaches its target through
 
