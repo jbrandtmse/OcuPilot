@@ -124,24 +124,16 @@ describe('the Table info tab', () => {
     expect(events.map((event) => `${event.type}/${event.id}/${event.action}`)).toEqual([`sql-table/${TABLE}/updated`]);
   });
 
-  // Mutation (Rule 19): the handler stops sending the box's state (`{}` for `values`) -> both requests go red.
-  it('Collect statistics asks whether to keep the class up to date and sends the box as its one value, either way', async () => {
-    const { fixture, actions, calls, handler } = mount([applied(TABLE), applied(TABLE)]);
+  // Mutation (Rule 19): the handler draws a box on the warning, or sends a value with the request -> the two assertions on the dialog and the request go red.
+  it('Collect statistics warns with its sentence, draws no box and sends no value', async () => {
+    const { fixture, actions, calls, handler } = mount([applied(TABLE)]);
     actions.run(EXPLORER_SQL_TABLE, SQL_TABLE_TUNE);
     await settle(fixture);
     expect(handler.pending()?.consequence).toBe(STRINGS.sqlTableTuneConsequence);
-    expect(handler.pending()?.flagLabel).toBe(STRINGS.sqlTuneKeepClassLabel);
-    expect(handler.pending()?.flag2Label).toBe('');
-    handler.confirmPending(true);
-    await settle(fixture);
-    actions.run(EXPLORER_SQL_TABLE, SQL_TABLE_TUNE);
-    await settle(fixture);
+    expect(handler.pending()?.flagLabel).toBe('');
     handler.confirmPending(false);
     await settle(fixture);
-    expect(calls.map((call) => JSON.parse(call.body))).toEqual([
-      { action: SQL_TABLE_TUNE, id: TABLE, values: { KeepClassUpToDate: 'true' } },
-      { action: SQL_TABLE_TUNE, id: TABLE, values: { KeepClassUpToDate: 'false' } },
-    ]);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: SQL_TABLE_TUNE, id: TABLE });
   });
 
   it('Clear fixed statistics warns with its sentence and sends no value', async () => {

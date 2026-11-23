@@ -40,7 +40,7 @@ XData Declaration
   "rowActions": [{"id": "tune", "selfProtection": ""}],
   "context": {"fields": ["Table", "Class", "Owner", "Sharded", "Partitioned"], "secretFields": []},
   "emptyStateKey": "explorerSqlSchemaTablesEmpty",
-  "commandAliases": ["tune table", "table statistics"],
+  "commandAliases": ["tune table"],
   "suggestedPrompts": [
     {"groupKey": "webAppPromptGroupCode", "textKey": "explorerSqlTablesPrompt2"},
     {"groupKey": "webAppPromptGroupCode", "textKey": "explorerSqlTablesPrompt3"},

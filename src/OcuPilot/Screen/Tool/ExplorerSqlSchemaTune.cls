@@ -1,5 +1,5 @@
 /// <p>SQL schema's Tune all tables (Story 21.25, AD-6, AD-7, AD-51, AD-53, AD-56, AD-58): measure every table of one schema as Collect statistics measures
-/// one. Two callers reach it: the schema's Tables tab's Tune all tables page action, whose values are <code>KeepClassUpToDate</code> and
+/// one. Two callers reach it: the schema's Tables tab's Tune all tables page action, whose one value is
 /// <code>ClearValues</code>, and the agent's proposal and confirmation. The tune runs in the request, with display off and no log file, and answers when
 /// it ends; a message the instance answers is its refusal. A schema the caller's own information schema shows no table of is refused at the fresh read,
 /// 404, and a schema of OcuPilot's own is refused, for both callers, before anything is written. Its governance key ships disabled.</p>
@@ -16,18 +16,18 @@ Parameter WRITETYPE = "TUNESCHEMA";
 
 Parameter SCREENACTIONS = "tune";
 
-Parameter SCREENVALUES = "tune=KeepClassUpToDate:ClearValues";
+Parameter SCREENVALUES = "tune=ClearValues";
 
-Parameter VALUENAMES = "KeepClassUpToDate,ClearValues";
+Parameter VALUENAMES = "ClearValues";
 
 /// <p>The schema's read, which counts its tables.</p>
 Parameter READTYPE = "SCHEMA";
 
-Parameter READANSWERS = "Namespace,Schema,Tables,KeepClassUpToDate,ClearValues";
+Parameter READANSWERS = "Namespace,Schema,Tables,ClearValues";
 
-/// <p>The namespace, how many tables the tune measures and the two declared values: a table added or dropped since the proposal is not the tune the
+/// <p>The namespace, how many tables the tune measures and the declared value: a table added or dropped since the proposal is not the tune the
 /// person reviewed.</p>
-Parameter FINGERPRINTSUBJECT = "Namespace,Tables,KeepClassUpToDate,ClearValues";
+Parameter FINGERPRINTSUBJECT = "Namespace,Tables,ClearValues";
 
 Parameter PRECONDITIONFIELD = "Tables";
 

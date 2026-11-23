@@ -822,18 +822,6 @@ export function consequenceSentence(code: string | undefined): string {
 }
 
 /**
- * The card's consequence sentence, with a tune's Keep class up to date sentence after it while the proposal's `KeepClassUpToDate` row reads `true`
- * (Story 21.25). Any other proposal answers `consequenceSentence`'s.
- */
-export function consequenceSentenceOf(view: Pick<ProposalCardView, 'consequence' | 'changed'>): string {
-  const sentence = consequenceSentence(view.consequence);
-  const tune = view.consequence === CONSEQUENCE_SQLTABLETUNE || view.consequence === CONSEQUENCE_SQLTABLETUNESCHEMA;
-  if (!tune || sentence === '') return sentence;
-  const kept = view.changed.some((row) => row.field === 'KeepClassUpToDate' && row.after === 'true');
-  return kept ? `${sentence} ${STRINGS.sqlTuneKeepClassConsequence}` : sentence;
-}
-
-/**
  * Where one card is in the proposal lifecycle: live, the in-flight Confirm, and the eight terminal
  * states EXPERIENCE.md's status-line row publishes a sentence for.
  */

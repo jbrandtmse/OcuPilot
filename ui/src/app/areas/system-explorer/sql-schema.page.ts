@@ -12,8 +12,8 @@ import { EXPLORER_SQL_SCHEMA, SQL_SCHEMA_TUNE, ScreenActionHandler } from '../..
  * A SQL schema's Tables tab (Story 21.25, AD-5): the shared detail page, with Tune all tables registered on it.
  *
  * **The action is this page's own.** It names no row, so the shell's handler leaves it undrawn and this page registers it after injecting that handler.
- * It starts the handler's own flow on the schema the route names, reporting to the tab's store: the handler warns first, asking whether to keep the
- * class up to date and whether to clear values, sends it, and publishes the change event the tab re-reads on (AD-14).
+ * It starts the handler's own flow on the schema the route names, reporting to the tab's store: the handler warns first, asking whether to clear
+ * values, sends it, and publishes the change event the tab re-reads on (AD-14).
  */
 @Component({
   selector: 'app-sql-schema-page',

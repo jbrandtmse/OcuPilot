@@ -1,5 +1,5 @@
 /// <p>Pins Story 21.25's statistics writes on both permitted callers (AC1, AC3, AC5; AD-6, AD-7, AD-10, AD-22, AD-51, AD-53, AD-56, AD-58): the collection of
-/// a table's statistics with and without the class kept up to date, the removal of fixed statistics, and the collection of every table's in a schema, each
+/// a table's statistics, which leaves its class definition as it was, the removal of fixed statistics, and the collection of every table's in a schema, each
 /// made by the screen's action and by the agent's confirmed proposal and answered only once the statistics read as the rows; the declared values reaching the
 /// instance as sent; a table with no fixed statistics refused before any write; a proposal whose table changed after it was minted closed target-changed;
 /// a table or schema of OcuPilot's own refused <code>PROHIBITED.OCUPILOTTABLE</code> on both callers before any write; the schema read and every hostile id
@@ -104,16 +104,6 @@ ClassMethod Agent(pTool As %String, pId As %String, pArgs As %DynamicObject, pNa
     Quit $ClassMethod("OcuPilot.Test.LicenseProbe", "Confirm", pProposal, .pResult)
 }
 
-/// <p>The <code>after</code> of the <code>KeepClassUpToDate</code> row in <var>pProposal</var>'s changed rows, or <code>absent</code>.</p>
-ClassMethod KeepAfter(pProposal As %DynamicObject) As %String
-{
-    Set tAfter = "absent"
-    For tAt = 0:1:pProposal.changed.%Size() - 1 {
-        If pProposal.changed.%Get(tAt).field = "KeepClassUpToDate" Set tAfter = pProposal.changed.%Get(tAt).after
-    }
-    Quit tAfter
-}
-
 /// <p>The table <var>pTable</var>'s statistics as the port reads them: <code>kind size fixed</code>.</p>
 ClassMethod Stats(pTable As %String) As %String
 {
@@ -123,7 +113,7 @@ ClassMethod Stats(pTable As %String) As %String
 }
 
 /// <p>What the table <var>pTable</var>'s class holds that a change to the class would move, in the <code>USER</code> namespace: the time its source
-/// changed, whether it is up to date, and its storage's extent size.</p>
+/// changed, the time its compiled form records, whether it is up to date, and its storage's extent size.</p>
 ClassMethod ClassState(pTable As %String) As %String
 {
     Set tState = ""
@@ -131,13 +121,29 @@ ClassMethod ClassState(pTable As %String) As %String
     Try {
         Set $NAMESPACE = ..#NAMESPACE
         Set tClass = ##class(%Dictionary.ClassDefinition).%OpenId(pTable)
+        Set tCompiled = ##class(%Dictionary.CompiledClass).%OpenId(pTable)
         Set tStorage = ##class(%Dictionary.StorageDefinition).%OpenId(pTable _ "||Default")
-        Set tState = tClass.TimeChanged _ "|" _ $SYSTEM.OBJ.IsUpToDate(pTable) _ "|" _ $Select($IsObject(tStorage): tStorage.ExtentSize, 1: "no storage")
+        Set tState = tClass.TimeChanged _ "|" _ tCompiled.TimeCreated _ "|" _ $SYSTEM.OBJ.IsUpToDate(pTable) _ "|" _ $Select($IsObject(tStorage): tStorage.ExtentSize, 1: "no storage")
     } Catch ex {
         Set tState = "unread " _ ex.Name
     }
     Set $NAMESPACE = tOrigNS
     Quit tState
+}
+
+/// <p>Store a fixed extent size in <var>pTable</var>'s class definition in <code>USER</code>, through the instance's own call with the class kept up to
+/// date, so the class holds a stored statistic a collection could touch.</p>
+ClassMethod StoreInClass(pTable As %String) As %Status
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tSC = ##class(%SQL.Manager.Catalog).SetTableExtentSize($Piece(pTable, ".", 1), $Piece(pTable, ".", 2), 777, 1)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
 }
 
 /// <p>Fix the collected statistics of <var>pTable</var> in <code>USER</code>, then field <code>B</code>'s selectivity at <code>2.5%</code>, through the
@@ -188,7 +194,7 @@ ClassMethod DirectRows(pTable As %String, Output pRows) As %Status
 /// <p>Mutation (Rule 19): set <code>DESTRUCTIVE</code> 1 on the schema tune -> the destructive assertion goes red.</p>
 Method TestTheToolsDeclareTheirWritePath()
 {
-    For tCase = $ListBuild(..#TUNETOOL, "explorer.sqltable.tune", "TABLESTATS", "TUNE", "tune", "tune=KeepClassUpToDate", "SQL.TABLE.TUNE", 1), $ListBuild(..#CLEARTOOL, "explorer.sqltable.clearstatistics", "TABLESTATS", "CLEARSTATS", "clear-statistics", "", "SQL.TABLE.CLEARSTATISTICS", 0), $ListBuild(..#SCHEMATOOL, "explorer.sqlschematables.tune", "SCHEMA", "TUNESCHEMA", "tune", "tune=KeepClassUpToDate:ClearValues", "SQL.TABLE.TUNESCHEMA", 0) {
+    For tCase = $ListBuild(..#TUNETOOL, "explorer.sqltable.tune", "TABLESTATS", "TUNE", "tune", "", "SQL.TABLE.TUNE", 1), $ListBuild(..#CLEARTOOL, "explorer.sqltable.clearstatistics", "TABLESTATS", "CLEARSTATS", "clear-statistics", "", "SQL.TABLE.CLEARSTATISTICS", 0), $ListBuild(..#SCHEMATOOL, "explorer.sqlschematables.tune", "SCHEMA", "TUNESCHEMA", "tune", "tune=ClearValues", "SQL.TABLE.TUNESCHEMA", 0) {
         Set tTool = $List(tCase, 1)
         Do $$$AssertEquals($Parameter(tTool, "TOOLNAME") _ "|" _ $ClassMethod(tTool, "PortClass") _ "|" _ $ClassMethod(tTool, "Endpoint") _ "|" _ $ClassMethod(tTool, "ReadType") _ "|" _ $ClassMethod(tTool, "WriteType"), $List(tCase, 2) _ "|OcuPilot.Port.SqlPort|Tables|" _ $List(tCase, 3) _ "|" _ $List(tCase, 4), $List(tCase, 2) _ ": name, port, endpoint and request types")
         Do $$$AssertEquals($ClassMethod(tTool, "Advertised") _ $ClassMethod(tTool, "Destructive") _ $ClassMethod(tTool, "SendsBody") _ "|" _ $ListToString($ClassMethod(tTool, "ScreenActionIds")) _ "|" _ $Parameter(tTool, "SCREENVALUES"), "100|" _ $List(tCase, 5) _ "|" _ $List(tCase, 6), $List(tCase, 2) _ ": advertised, not destructive, no body, its screen action and its values")
@@ -198,13 +204,13 @@ Method TestTheToolsDeclareTheirWritePath()
         Set tPairs = $ClassMethod(tTool, "PrivilegePairs", "", .tResolved)
         Do $$$AssertTrue(tResolved && ($ListFind(tPairs, $ListBuild("%Development", "USE")) > 0), $List(tCase, 2) _ ": its pairs hold the Explorer's")
     }
-    Do $$$AssertEquals($ListToString($ClassMethod(..#TUNETOOL, "SettableFields")) _ "|" _ $ListToString($ClassMethod(..#SCHEMATOOL, "SettableFields")) _ "|" _ $ListToString($ClassMethod(..#CLEARTOOL, "SettableFields")), "KeepClassUpToDate|KeepClassUpToDate,ClearValues|", "the values each tool admits")
+    Do $$$AssertEquals($ListToString($ClassMethod(..#TUNETOOL, "SettableFields")) _ "|" _ $ListToString($ClassMethod(..#SCHEMATOOL, "SettableFields")) _ "|" _ $ListToString($ClassMethod(..#CLEARTOOL, "SettableFields")), "|ClearValues|", "the values each tool admits: the collection of a table and the removal take none")
     Set tSC = $ClassMethod(..#CLEARTOOL, "StateDiff", {"HasFixed": true}, .tRows, .tProblem)
     Do $$$AssertEquals($$$ISOK(tSC) _ "|" _ tRows.%Size() _ "|" _ tProblem, "1|0|", "a table with fixed statistics shows no state row")
     Set tSC = $ClassMethod(..#CLEARTOOL, "StateDiff", {"HasFixed": false}, .tRows, .tProblem)
     Do $$$AssertEquals($$$ISOK(tSC) _ "|" _ tRows.%Size() _ "|" _ tProblem, "1|0|" _ ##class(OcuPilot.Api.AtelierError).#REASONTABLENOFIXEDSTATS, "a table with none is refused with the published sentence")
     Do $$$AssertEquals($ClassMethod(..#SCHEMATOOL, "IdProblem", ..#SCHEMA) _ "|" _ ($ClassMethod(..#SCHEMATOOL, "IdProblem", "") '= "") _ "|" _ ($ClassMethod(..#SCHEMATOOL, "IdProblem", ..#SCHEMA _ $Char(7)) '= "") _ "|" _ ($ClassMethod(..#TUNETOOL, "IdProblem", ..#SCHEMA) '= ""), "|1|1|1", "the schema tool takes a schema name alone, and the table tools a table name")
-    Set tSC = $ClassMethod(..#TUNETOOL, "ArgumentProblem", "OcuProbe225.T1", {"KeepClassUpToDate": "true"}, .tProblem)
+    Set tSC = $ClassMethod(..#SCHEMATOOL, "ArgumentProblem", ..#SCHEMA, {"ClearValues": "true"}, .tProblem)
     Do $$$AssertTrue(tProblem '= "", "a value that is not a boolean is refused at the mint: " _ tProblem)
 }
 
@@ -216,32 +222,29 @@ Method TestCollectStatisticsOnBothCallers()
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 1, 5, .tFirst), "the first probe table is created")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 2, 7, .tSecond), "the second is created")
     Do $$$AssertEquals($Piece(..Stats(tFirst), " ", 1) _ "|" _ $Piece(..Stats(tSecond), " ", 1), "none|none", "no statistics are collected yet")
-    Set tConfirm = ..Agent(..#TUNETOOL, tFirst, {"KeepClassUpToDate": false}, , .tProposal, .tResult)
+    Set tConfirm = ..Agent(..#TUNETOOL, tFirst, {}, , .tProposal, .tResult)
     Do $$$AssertEquals(tConfirm _ "|" _ ##class(OcuPilot.Test.EcpDataServerWrite).Verdict($Get(tResult)) _ "|" _ ..Stats(tFirst), "200 |nothingSent|collected 5 0", "the agent's collection reads the rows' count: " _ tConfirm)
-    Set tStatus = ..Act(..#TABLESCREEN, "tune", tSecond, {"KeepClassUpToDate": "false"}, , .tAnswer)
+    Set tStatus = ..Act(..#TABLESCREEN, "tune", tSecond, "", , .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ ##class(OcuPilot.Test.EcpDataServerWrite).Verdict(tAnswer) _ "|" _ ..Stats(tSecond), "200|nothingSent|collected 7 0", "the screen's collection reads the rows' count")
 }
 
-/// <p>AC3. The class-up-to-date value reaches the instance as declared, both ways, and changes nothing about the class: the agent's confirms record
-/// <code>1</code> and <code>0</code> at the instance's call, the screen's action with the box checked collects, and the class's source time, up-to-date
-/// flag and storage extent size are the ones they were.</p>
-/// <p>Mutation (Rule 19): <code>SqlPort.TableWrite</code> hands the seam <code>0</code> for the value whatever was sent -> the <code>1</code> assertion goes
-/// red.</p>
-Method TestTheClassUpToDateValueReachesTheInstanceAsDeclared()
+/// <p>AC3. A collection leaves the table's class definition as it was, from both callers: the agent's confirm reaches the instance as one table tune with
+/// no value, and the class's source time, the time its compiled form records, its up-to-date flag and its storage extent size are the ones they were,
+/// for a class that holds a stored extent size.</p>
+/// <p>Mutation (Rule 19): <code>SqlPort.TableCall</code> passes <code>1</code> for the tune's class-up-to-date argument -> the compiled-time
+/// assertions go red.</p>
+Method TestACollectionLeavesTheClassDefinitionAsItWas()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 1, 5, .tTable), "the probe table is created")
+    Do $$$AssertStatusOK(..StoreInClass(tTable), "the class stores a fixed extent size of 777")
     Set tBefore = ..ClassState(tTable)
-    Do $$$AssertTrue(($Piece(tBefore, "|", 2) = 1) && ($Extract(tBefore, 1, 6) '= "unread"), "the class is up to date before: " _ tBefore)
-    Set tConfirm = ..Agent(..#TUNETOOL, tTable, {"KeepClassUpToDate": true}, , .tProposal, .tResult, ..#FIXTURE)
-    Do $$$AssertEquals(tConfirm _ "|" _ $ClassMethod(..#SEAM, "TableCalls"), "200 |TUNE|1", "the agent's collection with the box checked reaches the instance with 1: " _ tConfirm)
-    Do $$$AssertEquals(..ClassState(tTable), tBefore, "and the class's source time, up-to-date flag and storage extent size are unchanged")
-    Do $$$AssertEquals(..KeepAfter(tProposal), "true", "and the minted proposal's changed rows carry the value as true, which the card states from")
-    Do $ClassMethod(..#SEAM, "Reset")
-    Set tConfirm = ..Agent(..#TUNETOOL, tTable, {"KeepClassUpToDate": false}, , .tProposal, .tResult, ..#FIXTURE)
-    Do $$$AssertEquals(tConfirm _ "|" _ $ClassMethod(..#SEAM, "TableCalls"), "200 |TUNE|0", "and with the box clear with 0")
-    Do $$$AssertEquals(..KeepAfter(tProposal), "false", "and the proposal's changed rows carry it as false")
-    Set tStatus = ..Act(..#TABLESCREEN, "tune", tTable, {"KeepClassUpToDate": "true"}, , .tAnswer)
-    Do $$$AssertEquals(tStatus _ "|" _ ..Stats(tTable) _ "|" _ (..ClassState(tTable) = tBefore), "200|collected 5 0|1", "the screen's collection with the box checked collects and leaves the class as it was")
+    Do $$$AssertTrue(($Piece(tBefore, "|", 3) = 1) && ($Extract(tBefore, 1, 6) '= "unread") && ($Piece(tBefore, "|", 4) = 777), "the class is up to date and holds the size before: " _ tBefore)
+    Set tConfirm = ..Agent(..#TUNETOOL, tTable, {}, , .tProposal, .tResult, ..#FIXTURE)
+    Do $$$AssertEquals(tConfirm _ "|" _ $ClassMethod(..#SEAM, "TableCalls"), "200 |TUNE|", "the agent's collection reaches the instance as one table tune with no value: " _ tConfirm)
+    Set tConfirm = ..Agent(..#TUNETOOL, tTable, {}, , .tProposal, .tResult)
+    Do $$$AssertEquals(tConfirm _ "|" _ ..Stats(tTable) _ "|" _ (..ClassState(tTable) = tBefore), "200 |fixed 777 1|1", "the real collection keeps the fixed size and the class as it was: " _ tConfirm _ " " _ ..ClassState(tTable))
+    Set tStatus = ..Act(..#TABLESCREEN, "tune", tTable, "", , .tAnswer)
+    Do $$$AssertEquals(tStatus _ "|" _ (..ClassState(tTable) = tBefore), "200|1", "and the screen's collection leaves the class as it was")
 }
 
 /// <p>AC3. Fixed statistics are removed by the agent's confirmed proposal and by the screen's action, each leaving the table with none; a table with none
@@ -269,18 +272,34 @@ Method TestFixedStatisticsAreClearedOnBothCallersAndATableWithNoneIsRefused()
 
 /// <p>AC3. Every table of a schema is collected by the agent's confirmed proposal and by the screen's page action: with the fixed values kept
 /// (<code>ClearValues</code> false) a table's fixed size stays, and with them cleared it goes. The two tables' extent sizes read their rows.</p>
-/// <p>Mutation (Rule 19): <code>SqlPort.TableCall</code> passes <code>0</code> for <code>ClearValues</code> -> the cleared assertion goes red.</p>
+/// <p>Mutation (Rule 19): <code>SqlPort.TableCall</code> passes <code>0</code> for <code>ClearValues</code> -> the cleared assertion goes red;
+/// it passes <code>1</code> for the schema tune's class-up-to-date argument -> the class-state assertion goes red.</p>
 Method TestASchemasTablesAreTunedOnBothCallers()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 1, 3, .tFirst), "the first probe table is created")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 2, 6, .tSecond), "the second is created")
-    Set tConfirm = ..Agent(..#SCHEMATOOL, ..#SCHEMA, {"KeepClassUpToDate": false, "ClearValues": false}, , .tProposal, .tResult, ..#FIXTURE)
-    Do $$$AssertEquals(tConfirm _ "|" _ ##class(OcuPilot.Test.EcpDataServerWrite).Verdict($Get(tResult)) _ "|" _ $ClassMethod(..#SEAM, "TableCalls") _ "|" _ ..Stats(tFirst) _ "|" _ ..Stats(tSecond), "200 |nothingSent|TUNESCHEMA|0,0|collected 3 0|collected 6 0", "the agent's tune of the schema reads both tables' rows, with the two values as sent: " _ tConfirm)
+    Set tConfirm = ..Agent(..#SCHEMATOOL, ..#SCHEMA, {"ClearValues": false}, , .tProposal, .tResult, ..#FIXTURE)
+    Do $$$AssertEquals(tConfirm _ "|" _ ##class(OcuPilot.Test.EcpDataServerWrite).Verdict($Get(tResult)) _ "|" _ $ClassMethod(..#SEAM, "TableCalls") _ "|" _ ..Stats(tFirst) _ "|" _ ..Stats(tSecond), "200 |nothingSent|TUNESCHEMA|0|collected 3 0|collected 6 0", "the agent's tune of the schema reads both tables' rows, with the value as sent: " _ tConfirm)
     Do $ClassMethod(..#READS, "Statistics", "fix", tFirst)
-    Set tStatus = ..Act(..#SCHEMASCREEN, "tune", ..#SCHEMA, {"KeepClassUpToDate": "false", "ClearValues": "false"}, , .tAnswer)
+    Do $$$AssertStatusOK(..StoreInClass(tFirst), "the first table's class stores a fixed extent size of 777")
+    Set tBefore = ..ClassState(tFirst)
+    Set tStatus = ..Act(..#SCHEMASCREEN, "tune", ..#SCHEMA, {"ClearValues": "false"}, , .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ ..Stats(tFirst), "200|fixed 777 1", "the screen's tune with the fixed values kept leaves the fixed size")
-    Set tStatus = ..Act(..#SCHEMASCREEN, "tune", ..#SCHEMA, {"KeepClassUpToDate": "false", "ClearValues": "true"}, , .tAnswer)
+    Do $$$AssertTrue(($Extract(tBefore, 1, 6) '= "unread") && (..ClassState(tFirst) = tBefore), "and leaves the class as it was: " _ ..ClassState(tFirst) _ " from " _ tBefore)
+    Set tStatus = ..Act(..#SCHEMASCREEN, "tune", ..#SCHEMA, {"ClearValues": "true"}, , .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ ##class(OcuPilot.Test.EcpDataServerWrite).Verdict(tAnswer) _ "|" _ $Piece(..Stats(tFirst), " ", 3) _ "|" _ $Piece(..Stats(tSecond), " ", 2), "200|nothingSent|0|6", "and with them cleared the fixed size goes and the other table still reads its rows")
+}
+
+/// <p>AC3. The table's Info tab and the schema's Tables tab declare the command aliases the story rules, and no other: "table statistics" is not one.</p>
+/// <p>Mutation (Rule 19): add <code>"table statistics"</code> to <class>OcuPilot.Screen.Descriptor.ExplorerSqlSchema</class>'s <code>commandAliases</code>
+/// -> the schema assertion goes red.</p>
+Method TestTheTabsDeclareOnlyTheirRuledCommandAliases()
+{
+    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Screen.Descriptor.ExplorerSqlTable", "DeclarationJson", .tTable), "the table's declaration parses")
+    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Screen.Descriptor.ExplorerSqlSchema", "DeclarationJson", .tSchema), "the schema's declaration parses")
+    If '$IsObject($Get(tTable)) || '$IsObject($Get(tSchema)) Quit
+    Do $$$AssertEquals(tTable.commandAliases.%ToJSON(), "[""rebuild indices"",""tune table""]", "the table's aliases")
+    Do $$$AssertEquals(tSchema.commandAliases.%ToJSON(), "[""tune table""]", "the schema's aliases")
 }
 
 /// <p>A proposal whose table's statistics were collected after it was minted, and one whose schema gained a table after it was minted, are refused
@@ -292,13 +311,13 @@ Method TestAChangedTargetIsRefusedTargetChanged()
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 1, 5, .tTable), "the probe table is created")
     Do ##class(OcuPilot.Kernel.Scope).Set(..#NAMESPACE)
     Set ^||OcuPilotDatabaseWritePort = $Parameter(..#TUNETOOL, "PORTCLASS")
-    Set tSC = $ClassMethod(..#HELPERS, "Mint", ..#TUNETOOL, tTable, {"Table": (tTable), "KeepClassUpToDate": false}, .tProposal, .tHttp, .tProblem)
+    Set tSC = $ClassMethod(..#HELPERS, "Mint", ..#TUNETOOL, tTable, {"Table": (tTable)}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertStatusOK(tSC, "the proposal is minted: " _ $Get(tProblem))
     If '$IsObject($Get(tProposal)) Quit
     Do $ClassMethod(..#READS, "Statistics", "collect", tTable)
     Set tConfirm = $ClassMethod("OcuPilot.Test.LicenseProbe", "Confirm", tProposal, .tResult)
     Do $$$AssertEquals(tConfirm, "409 PROPOSAL.TARGETCHANGED", "the confirm after the statistics were collected is refused target-changed: " _ tConfirm)
-    Set tSC = $ClassMethod(..#HELPERS, "Mint", ..#SCHEMATOOL, ..#SCHEMA, {"Schema": (..#SCHEMA), "KeepClassUpToDate": false, "ClearValues": false}, .tProposal, .tHttp, .tProblem)
+    Set tSC = $ClassMethod(..#HELPERS, "Mint", ..#SCHEMATOOL, ..#SCHEMA, {"Schema": (..#SCHEMA), "ClearValues": false}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertStatusOK(tSC, "the schema's proposal is minted: " _ $Get(tProblem))
     If '$IsObject($Get(tProposal)) Quit
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 2, 4, .tOther), "a second table joins the schema")
@@ -315,19 +334,19 @@ Method TestAChangedTargetIsRefusedTargetChanged()
 Method TestATableAndASchemaOfOcuPilotsOwnAreRefusedOnBothCallers()
 {
     Set tReason = ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor("PROHIBITED.OCUPILOTTABLE")
-    For tCase = $ListBuild(..#TABLESCREEN, "tune", ..#OWNTABLE, "{""KeepClassUpToDate"":""false""}"), $ListBuild(..#TABLESCREEN, "clear-statistics", ..#OWNTABLE, "{}"), $ListBuild(..#SCHEMASCREEN, "tune", ..#OWNSCHEMA, "{""KeepClassUpToDate"":""false"",""ClearValues"":""false""}") {
+    For tCase = $ListBuild(..#TABLESCREEN, "tune", ..#OWNTABLE, "{}"), $ListBuild(..#TABLESCREEN, "clear-statistics", ..#OWNTABLE, "{}"), $ListBuild(..#SCHEMASCREEN, "tune", ..#OWNSCHEMA, "{""ClearValues"":""false""}") {
         Set tStatus = ..Act($List(tCase, 1), $List(tCase, 2), $List(tCase, 3), ##class(%DynamicAbstractObject).%FromJSON($List(tCase, 4)), ..#OWNNAMESPACE, .tAnswer)
         Do $$$AssertEquals($ClassMethod(..#HELPERS, "Verdict", tStatus, tAnswer) _ "|" _ $Select($IsObject(tAnswer): tAnswer.reason, 1: ""), "403 PROHIBITED.OCUPILOTTABLE|" _ tReason, "the screen's " _ $List(tCase, 2) _ " of " _ $List(tCase, 3) _ " is refused with the published sentence")
     }
-    For tCase = $ListBuild(..#TUNETOOL, ..#OWNTABLE, "{""KeepClassUpToDate"":false}"), $ListBuild(..#CLEARTOOL, ..#OWNTABLE, "{}"), $ListBuild(..#SCHEMATOOL, ..#OWNSCHEMA, "{""KeepClassUpToDate"":false,""ClearValues"":false}") {
+    For tCase = $ListBuild(..#TUNETOOL, ..#OWNTABLE, "{}"), $ListBuild(..#CLEARTOOL, ..#OWNTABLE, "{}"), $ListBuild(..#SCHEMATOOL, ..#OWNSCHEMA, "{""ClearValues"":false}") {
         Set tConfirm = ..Agent($List(tCase, 1), $List(tCase, 2), ##class(%DynamicAbstractObject).%FromJSON($List(tCase, 3)), ..#OWNNAMESPACE, .tProposal, .tResult, ..#FIXTURE)
         Do $$$AssertTrue(tConfirm [ "PROHIBITED.OCUPILOTTABLE", "the agent's " _ $Parameter($List(tCase, 1), "TOOLNAME") _ " of " _ $List(tCase, 2) _ " is refused: " _ tConfirm)
     }
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls"), 0, "no vendor call was made for OcuPilot's own table or schema")
 }
 
-/// <p>AC3. The port's <code>SCHEMA</code> read answers <code>{Namespace, Schema, Tables, KeepClassUpToDate, ClearValues}</code>, the schema spelled as the
-/// instance holds it whatever case the caller used and the base tables the caller sees counted, the two values <code>null</code>. A schema that shows
+/// <p>AC3. The port's <code>SCHEMA</code> read answers <code>{Namespace, Schema, Tables, ClearValues}</code>, the schema spelled as the
+/// instance holds it whatever case the caller used and the base tables the caller sees counted, the value <code>null</code>. A schema that shows
 /// no table is 404 <code>PORT.NOTFOUND</code>, a name outside the schema shape and a missing or non-boolean value are 400 <code>PORT.VALIDATION</code>,
 /// each before any call.</p>
 /// <p>Mutation (Rule 19): <code>SqlPort.SchemaServe</code> reads no row as a table count of 0 instead of refusing -> the absent-schema assertion goes red.</p>
@@ -338,14 +357,14 @@ Method TestTheSchemaIsReadAndEveryHostileIdOrValueIsRefusedBeforeAnyCall()
     Set tVerdict = $ClassMethod(..#READS, "Read", "SCHEMA", $ZConvert(..#SCHEMA, "L"), .tAnswer, .tFault)
     Do $$$AssertEquals(tVerdict, "200 ", "the read answers")
     If '$IsObject($Get(tAnswer)) Quit
-    Do $$$AssertEquals(tAnswer.Namespace _ "|" _ tAnswer.Schema _ "|" _ tAnswer.Tables _ "|" _ tAnswer.%GetTypeOf("Tables") _ "|" _ tAnswer.%GetTypeOf("KeepClassUpToDate") _ "|" _ tAnswer.%GetTypeOf("ClearValues"), "USER|" _ ..#SCHEMA _ "|2|number|null|null", "the schema as the instance spells it, its two tables and the two null values")
+    Do $$$AssertEquals(tAnswer.Namespace _ "|" _ tAnswer.Schema _ "|" _ tAnswer.Tables _ "|" _ tAnswer.%GetTypeOf("Tables") _ "|" _ tAnswer.%GetTypeOf("ClearValues"), "USER|" _ ..#SCHEMA _ "|2|number|null", "the schema as the instance spells it, its two tables and the null value")
     Set tVerdict = $ClassMethod(..#READS, "Read", "SCHEMA", "OcuProbe225Absent", .tAnswer, .tFault)
     Do $$$AssertEquals(tVerdict _ "|" _ tFault.reason, "404 PORT.NOTFOUND|" _ ##class(OcuPilot.Port.AtelierPort).#REASONCATALOGNOTFOUND, "a schema that shows no table is not found")
     For tId = "", $Translate($Justify("", 129), " ", "a"), ..#SCHEMA _ $Char(7) {
         Set tVerdict = $ClassMethod(..#READS, "Read", "SCHEMA", tId, .tAnswer, .tFault)
         Do $$$AssertEquals(tVerdict _ "|" _ tFault.reason, "400 PORT.VALIDATION|" _ ##class(OcuPilot.Port.AtelierPort).#REASONCATALOGSCHEMA, "a schema id outside the shape is refused: '" _ $Extract($Translate(tId, $Char(7), "!"), 1, 12) _ "'")
     }
-    For tCase = $ListBuild("TUNE", tFirst, ""), $ListBuild("TUNE", tFirst, "KeepClassUpToDate=yes"), $ListBuild("TUNESCHEMA", ..#SCHEMA, "KeepClassUpToDate=true"), $ListBuild("TUNESCHEMA", ..#SCHEMA, "KeepClassUpToDate=true,ClearValues=1") {
+    For tCase = $ListBuild("TUNESCHEMA", ..#SCHEMA, ""), $ListBuild("TUNESCHEMA", ..#SCHEMA, "ClearValues=yes"), $ListBuild("TUNESCHEMA", ..#SCHEMA, "ClearValues=1") {
         Kill tQuery
         Set tQuery("namespace") = ..#NAMESPACE
         Set tQuery("id") = $List(tCase, 2)
@@ -360,7 +379,8 @@ Method TestTheSchemaIsReadAndEveryHostileIdOrValueIsRefusedBeforeAnyCall()
 
 /// <p>Each statistics write's script (AD-59) is its one vendor call with the target shown as a string literal, so a name that holds a quote never runs
 /// as code, and the values it was sent.</p>
-/// <p>Mutation (Rule 19): <code>SqlPort.TableSnippet</code> renders <code>0</code> for the class-up-to-date value -> the value assertion goes red.</p>
+/// <p>Mutation (Rule 19): <code>SqlPort.TableSnippet</code> renders <code>0</code> for the schema tune's <code>ClearValues</code> -> the value assertion
+/// goes red; renders <code>1</code> for the table tune's class-up-to-date argument -> the table tune's assertion goes red.</p>
 Method TestEachStatisticsWritesScriptIsItsOneVendorCall()
 {
     Set tPort = ..#FIXTURE
@@ -368,15 +388,14 @@ Method TestEachStatisticsWritesScriptIsItsOneVendorCall()
     Kill tQuery
     Set tQuery("namespace") = ..#NAMESPACE
     Set tQuery("id") = "OcuProbe225.T""1"
-    Set tQuery("KeepClassUpToDate") = "true"
     Set tScript = $ClassMethod(tPort, "Snippet", "Tables", "TUNE", .tQuery).%Get(0).%Get("text")
-    Do $$$AssertTrue(tScript [ "TuneTable(""OcuProbe225.T""""1"", 1, 0, .tMessage, 1, 0)", "the table tune: its table with the quote doubled, display off and the value sent: " _ tScript)
+    Do $$$AssertTrue(tScript [ "TuneTable(""OcuProbe225.T""""1"", 1, 0, .tMessage, 0, 0)", "the table tune: its table with the quote doubled, display off and the class left as it is: " _ tScript)
     Set tScript = $ClassMethod(tPort, "Snippet", "Tables", "CLEARSTATS", .tQuery).%Get(0).%Get("text")
     Do $$$AssertTrue(tScript [ "ClearTableStats(""OcuProbe225.T""""1"")", "the removal of fixed statistics: " _ tScript)
     Set tQuery("id") = "OcuProbe225"
     Set tQuery("ClearValues") = "true"
     Set tScript = $ClassMethod(tPort, "Snippet", "Tables", "TUNESCHEMA", .tQuery).%Get(0).%Get("text")
-    Do $$$AssertTrue(tScript [ "TuneSchema(""OcuProbe225"", 1, 0, .tMessage, 1, 1)", "the schema tune: both values: " _ tScript)
+    Do $$$AssertTrue(tScript [ "TuneSchema(""OcuProbe225"", 1, 0, .tMessage, 0, 1)", "the schema tune: the class left as it is and the value sent: " _ tScript)
 }
 
 /// <p>AC1. The Field statistics tab's rows and the agent's <code>explorer.sqlfieldstatistics.read</code> are one: each field's collected and fixed

@@ -10,8 +10,6 @@ let dialogCount = 0;
 export interface WarningAnswer {
   readonly flag?: boolean;
   readonly value?: string;
-  /** The second checkbox's state, where one is drawn. */
-  readonly flag2?: boolean;
 }
 
 /** A whole number of megabytes as the field takes it: digits only, surrounding space ignored. */
@@ -75,17 +73,8 @@ const WHOLE_NUMBER = /^[0-9]{1,9}$/;
     }
     @if (flagVisible) {
       <label class="ocu-criteria-marker" data-slot="flag">
-        <input #flagInput type="checkbox" (change)="onFlagChange($event)" />
+        <input #flagInput type="checkbox" />
         {{ flagLabel() }}
-      </label>
-      @if (flagNoteVisible) {
-        <p class="ocu-field-caption" data-slot="flag-note">{{ flagNote() }}</p>
-      }
-    }
-    @if (flag2Visible) {
-      <label class="ocu-criteria-marker" data-slot="flag2">
-        <input #flag2Input type="checkbox" />
-        {{ flag2Label() }}
       </label>
     }
     <button
@@ -112,12 +101,6 @@ export class WarningDialog {
 
   /** The published label of an optional checkbox, or `''` for none. */
   readonly flagLabel = input('');
-
-  /** A published sentence drawn under the checkbox while it is ticked, or `''` for none. */
-  readonly flagNote = input('');
-
-  /** The published label of an optional second checkbox, drawn after the first, or `''` for none. */
-  readonly flag2Label = input('');
 
   /** The published label of an optional whole-number field, or `''` for none. */
   readonly fieldLabel = input('');
@@ -147,11 +130,6 @@ export class WarningDialog {
 
   private readonly flagInput = viewChild<ElementRef<HTMLInputElement>>('flagInput');
 
-  private readonly flag2Input = viewChild<ElementRef<HTMLInputElement>>('flag2Input');
-
-  /** Whether the checkbox is ticked, which is when its note is drawn. */
-  private readonly flagOn = signal(false);
-
   /** What the field holds. */
   protected readonly typed = signal('');
 
@@ -164,14 +142,6 @@ export class WarningDialog {
 
   protected get flagVisible(): boolean {
     return this.flagLabel() !== '';
-  }
-
-  protected get flagNoteVisible(): boolean {
-    return this.flagNote() !== '' && this.flagOn();
-  }
-
-  protected get flag2Visible(): boolean {
-    return this.flag2Label() !== '';
   }
 
   protected get fieldVisible(): boolean {
@@ -205,10 +175,6 @@ export class WarningDialog {
     this.typed.set((event.target as HTMLInputElement).value);
   }
 
-  protected onFlagChange(event: Event): void {
-    this.flagOn.set((event.target as HTMLInputElement).checked);
-  }
-
   protected onEnter(event: Event): void {
     event.preventDefault();
     this.onProceed();
@@ -216,9 +182,8 @@ export class WarningDialog {
 
   protected onProceed(): void {
     if (this.proceedDisabled !== null) return;
-    const answer: { flag?: boolean; value?: string; flag2?: boolean } = {};
+    const answer: { flag?: boolean; value?: string } = {};
     if (this.flagVisible) answer.flag = this.flagInput()?.nativeElement.checked ?? false;
-    if (this.flag2Visible) answer.flag2 = this.flag2Input()?.nativeElement.checked ?? false;
     if (this.fieldVisible) answer.value = this.typed().trim();
     this.confirmed.emit(answer);
   }

@@ -1,5 +1,5 @@
-/// <p>The base of the statistics writes that take the tune's declared booleans (Story 21.25, AD-6, AD-10, AD-21, AD-51, AD-53, AD-56): the collection of a
-/// table's statistics and of every table's in a schema, through <class>OcuPilot.Port.SqlPort</class>'s <code>Tables</code> endpoint. Each value named in
+/// <p>The base of the statistics writes that take a declared boolean (Story 21.25, AD-6, AD-10, AD-21, AD-51, AD-53, AD-56): the collection of every
+/// table's statistics in a schema, through <class>OcuPilot.Port.SqlPort</class>'s <code>Tables</code> endpoint. Each value named in
 /// <parameter>VALUENAMES</parameter> is a required boolean argument, <code>true</code> or <code>false</code>, which reaches the port in its query
 /// (<method>PortQuery</method>) and is part of the fingerprint's subject, so a confirm writes the values the person reviewed.</p>
 /// <p>The fresh read answers each value as <code>null</code>, so the merge of the arguments makes a row on the card for each value and the stored payload
@@ -8,10 +8,10 @@ Class OcuPilot.Screen.Tool.SqlTableTuneAction Extends OcuPilot.Screen.Tool.SqlTa
 {
 
 /// <p>The boolean arguments this tool admits, comma-separated, in the order the dialog draws them.</p>
-Parameter VALUENAMES = "KeepClassUpToDate";
+Parameter VALUENAMES = "ClearValues";
 
 /// <p>The description the input schema gives each of the booleans, as <code>name=description</code> entries separated by <code>|</code>.</p>
-Parameter VALUEDESCRIPTIONS = "KeepClassUpToDate=true passes the instance's Keep class up to date option, as the classic Tune Table window's box does; the class is not recompiled and is not marked out of date.|ClearValues=true also clears the fixed selectivity and extent size saved for each table, so the optimizer uses the collected ones.";
+Parameter VALUEDESCRIPTIONS = "ClearValues=true also clears the fixed selectivity and extent size saved for each table, so the optimizer uses the collected ones.";
 
 /// <p>The declared booleans as a list.</p>
 ClassMethod SettableFields() As %List

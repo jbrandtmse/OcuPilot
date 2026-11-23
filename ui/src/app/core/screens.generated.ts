@@ -15998,8 +15998,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "emptyStateKey": "explorerSqlSchemaTablesEmpty",
     "commandAliases": [
-      "tune table",
-      "table statistics"
+      "tune table"
     ],
     "suggestedPrompts": [
       {
@@ -16851,8 +16850,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "emptyStateKey": "explorerSqlTableEmpty",
     "commandAliases": [
       "rebuild indices",
-      "tune table",
-      "table statistics"
+      "tune table"
     ],
     "suggestedPrompts": [
       {

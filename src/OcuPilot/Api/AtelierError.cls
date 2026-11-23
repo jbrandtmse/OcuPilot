@@ -413,11 +413,11 @@ Parameter REASONTABLEDATAMAP = "This is the table's data map, which has no index
 /// <p>The consequence codes the proposal card and the dialog of each table write carry (Story 21.25).</p>
 Parameter TABLEREBUILD = "SQL.TABLE.REBUILD";
 
-Parameter REASONTABLEREBUILD = "This index is emptied and built again from the table's rows. The table is locked against changes while it runs.";
+Parameter REASONTABLEREBUILD = "This index is emptied and built again from the table's rows. The table is locked against changes while it runs. Changes to the table wait meanwhile, and fail if the rebuild outlasts their lock timeout.";
 
 Parameter TABLEREBUILDALL = "SQL.TABLE.REBUILDALL";
 
-Parameter REASONTABLEREBUILDALL = "Every index of this table is emptied and built again from its rows. The table is locked against changes while it runs.";
+Parameter REASONTABLEREBUILDALL = "Every index of this table is emptied and built again from its rows. The table is locked against changes while it runs. Changes to the table wait meanwhile, and fail if the rebuild outlasts their lock timeout.";
 
 /// <p>The removal of fixed statistics from a table that has none (Story 21.25).</p>
 Parameter TABLENOFIXEDSTATS = "SQL.TABLE.NOFIXEDSTATS";

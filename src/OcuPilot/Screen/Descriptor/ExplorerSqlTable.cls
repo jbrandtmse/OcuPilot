@@ -40,7 +40,7 @@ XData Declaration
   "rowActions": [{"id": "rebuild-indices", "selfProtection": ""}, {"id": "tune", "selfProtection": ""}, {"id": "clear-statistics", "selfProtection": ""}],
   "context": {"fields": ["Name", "Owner", "LastCompiled", "External", "ReadOnly", "Partitioned", "Class", "ExtentSize", "ExternalType"], "secretFields": []},
   "emptyStateKey": "explorerSqlTableEmpty",
-  "commandAliases": ["rebuild indices", "tune table", "table statistics"],
+  "commandAliases": ["rebuild indices", "tune table"],
   "suggestedPrompts": [
     {"groupKey": "webAppPromptGroupCode", "textKey": "explorerSqlTablePrompt1"},
     {"groupKey": "webAppPromptGroupCode", "textKey": "explorerSqlTablePrompt2"},

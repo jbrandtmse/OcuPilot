@@ -80,8 +80,6 @@ import { WarningDialog, type WarningAnswer } from './warning-dialog';
         [flagLabel]="pending.flagLabel"
         [fieldLabel]="pending.fieldLabel ?? ''"
         [fieldHint]="pending.fieldHint ?? ''"
-        [flagNote]="pending.flagNote ?? ''"
-        [flag2Label]="pending.flag2Label ?? ''"
         (confirmed)="onWarning($event)"
         (cancelled)="onCancel()"
       />
@@ -197,7 +195,7 @@ export class ScreenActionDialogs {
   /** The warning was proceeded past, with its checkbox's state and its field's value where drawn (Story 18.4). */
   protected onWarning(answer: WarningAnswer): void {
     this.acting.emit();
-    this.handler.confirmPending(answer.flag ?? false, answer.value ?? '', answer.flag2 ?? false);
+    this.handler.confirmPending(answer.flag ?? false, answer.value ?? '');
   }
 
   /** The set-password dialog's value goes straight to the handler and is held nowhere here. */

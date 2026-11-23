@@ -19,8 +19,8 @@ import {
  * registered on it.
  *
  * **The three actions are this page's own.** None names a row, so the shell's handler leaves each declared action undrawn and this page registers them
- * after injecting that handler. Each starts the handler's own flow on the table the route names, reporting to the tab's store: the handler warns first
- * (Collect statistics also asks whether to keep the class up to date), sends it, and publishes the change event the tab re-reads on (AD-14).
+ * after injecting that handler. Each starts the handler's own flow on the table the route names, reporting to the tab's store: the handler warns first,
+ * sends it, and publishes the change event the tab re-reads on (AD-14).
  */
 @Component({
   selector: 'app-sql-table-page',

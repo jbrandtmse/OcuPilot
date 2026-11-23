@@ -3,8 +3,8 @@
  * refusal of OcuPilot's own table (AD-5, AD-7, AD-10, AD-29, AD-51, AD-53).
  *
  * What it pins: on the probe table's Indices tab, Rebuild index on a killed index warns, confirms, and the index holds every row again while its
- * untouched sibling is as it was; on the Table info tab, Collect statistics warns, offers the Keep class up to date box with its sentence once ticked,
- * and the table's extent size then reads the probe's rows; Clear fixed statistics removes the extent size the fixture fixed; and Collect statistics on
+ * untouched sibling is as it was; on the Table info tab, Collect statistics warns, offers no box, and the table's extent size then reads the
+ * probe's rows; Clear fixed statistics removes the extent size the fixture fixed; and Collect statistics on
  * one of OcuPilot's own tables shows the published refusal and changes nothing. Each step waits for the shell's answered signal and then for the
  * instance, read through the vendor's own calls, to show the result.
  *
@@ -188,7 +188,7 @@ test('AC2: Rebuild index on a killed index warns, confirms, and the index holds 
   }
 });
 
-test('AC3: Collect statistics offers the Keep class up to date box, and the extent size then reads the probe\'s rows', async () => {
+test('AC3: Collect statistics warns with no box, and the extent size then reads the probe\'s rows', async () => {
   const table = tables.measured;
   assert.ok(!statistics(table).startsWith('collected'), `the table holds no collected statistics yet: ${statistics(table)}`);
   const { context, page } = await signedInAt(browser, config, route('document', table), VIEWPORTS.wide);
@@ -200,12 +200,7 @@ test('AC3: Collect statistics offers the Keep class up to date box, and the exte
     // the command bar never draws Collect statistics and the label assertion goes red.
     await bar(page, STRINGS.sqlTableTuneAction);
     await warningStates(page, STRINGS.sqlTableTuneConsequence);
-    assert.equal(await page.$('[data-slot="flag-note"]'), null, 'the box starts unticked and states nothing');
-    await page.click('[data-slot="flag"] input');
-    await page.waitForSelector('[data-slot="flag-note"]', { timeout: config.navigationTimeoutMs });
-    assert.equal(await page.$eval('[data-slot="flag-note"]', (node) => node.textContent.trim()), STRINGS.sqlTuneKeepClassConsequence, 'ticked, it states what it does');
-    assert.equal(await page.$eval('[data-slot="flag"]', (node) => node.textContent.trim()), STRINGS.sqlTuneKeepClassLabel, 'under the published label');
-    await page.click('[data-slot="flag"] input');
+    assert.equal(await page.$('[data-slot="flag"]'), null, 'the warning draws no box');
     await proceed(page);
     assert.equal(await waitForInstance(() => statistics(table), `collected ${ROWS.measured}`), `collected ${ROWS.measured}`, 'the extent size reads the probe\'s rows');
   } finally {

@@ -91,26 +91,25 @@ describe('the schema Tables tab', () => {
     expect(actions.has(EXPLORER_SQL_SCHEMA, SQL_SCHEMA_TUNE)).toBe(true);
   });
 
-  // Mutation (Rule 19): the handler sends the second box as the first's state -> the second request's ClearValues goes red.
-  it('Tune all tables warns with both boxes and sends both values on the schema the route names', async () => {
+  // Mutation (Rule 19): the handler sends the box as ticked whatever its state -> the second request's ClearValues goes red.
+  it('Tune all tables warns with its box and sends its value on the schema the route names', async () => {
     const { fixture, actions, calls, events, handler } = mount([applied(SCHEMA), applied(SCHEMA)]);
     actions.run(EXPLORER_SQL_SCHEMA, SQL_SCHEMA_TUNE);
     await settle(fixture);
     expect(handler.pending()?.kind).toBe('warning');
     expect(handler.pending()?.consequence).toBe(STRINGS.sqlSchemaTuneConsequence);
-    expect(handler.pending()?.flagLabel).toBe(STRINGS.sqlTuneKeepClassLabel);
-    expect(handler.pending()?.flag2Label).toBe(STRINGS.sqlTuneClearValuesLabel);
+    expect(handler.pending()?.flagLabel).toBe(STRINGS.sqlTuneClearValuesLabel);
     expect(calls).toHaveLength(0);
-    handler.confirmPending(false, '', true);
+    handler.confirmPending(true);
     await settle(fixture);
     actions.run(EXPLORER_SQL_SCHEMA, SQL_SCHEMA_TUNE);
     await settle(fixture);
-    handler.confirmPending(true, '', false);
+    handler.confirmPending(false);
     await settle(fixture);
     expect(calls.map((call) => call.path)).toEqual(['/api/ocupilot/screens/explorer.sqlschematables/action', '/api/ocupilot/screens/explorer.sqlschematables/action']);
     expect(calls.map((call) => JSON.parse(call.body))).toEqual([
-      { action: SQL_SCHEMA_TUNE, id: SCHEMA, values: { KeepClassUpToDate: 'false', ClearValues: 'true' } },
-      { action: SQL_SCHEMA_TUNE, id: SCHEMA, values: { KeepClassUpToDate: 'true', ClearValues: 'false' } },
+      { action: SQL_SCHEMA_TUNE, id: SCHEMA, values: { ClearValues: 'true' } },
+      { action: SQL_SCHEMA_TUNE, id: SCHEMA, values: { ClearValues: 'false' } },
     ]);
     expect(events.map((event) => `${event.type}/${event.id}/${event.action}`)).toEqual([`sql-schema/${SCHEMA}/updated`, `sql-schema/${SCHEMA}/updated`]);
   });

@@ -5562,8 +5562,8 @@ export const STRINGS = {
   // refusal of one of OcuPilot's own tables.
   sqlIndexRebuildAction: 'Rebuild index',
   sqlTableRebuildAllAction: 'Rebuild all indices',
-  sqlTableRebuildConsequence: 'This index is emptied and built again from the table\'s rows. The table is locked against changes while it runs.',
-  sqlTableRebuildAllConsequence: 'Every index of this table is emptied and built again from its rows. The table is locked against changes while it runs.',
+  sqlTableRebuildConsequence: 'This index is emptied and built again from the table\'s rows. The table is locked against changes while it runs. Changes to the table wait meanwhile, and fail if the rebuild outlasts their lock timeout.',
+  sqlTableRebuildAllConsequence: 'Every index of this table is emptied and built again from its rows. The table is locked against changes while it runs. Changes to the table wait meanwhile, and fail if the rebuild outlasts their lock timeout.',
   sqlTableRefusalDataMap: 'This is the table\'s data map, which has no index to rebuild.',
   sqlTableRefusalVendor: 'The instance did not apply this change to the table.',
   sqlTableRefusalOcuPilot: 'This table is one of OcuPilot\'s own, so OcuPilot does not rebuild or tune it.',
@@ -5590,10 +5590,8 @@ export const STRINGS = {
   explorerSqlFieldStatisticsPrompt1: 'Which fields have fixed selectivity?',
   explorerSqlFieldStatisticsPrompt2: 'Do the collected and fixed values differ?',
   explorerSqlFieldStatisticsPrompt3: 'Which field has an outlier value?',
-  // Story 21.25: the Tune dialogs' two value labels, and the sentence the Keep class up to date box adds to the dialog and the card once ticked.
-  sqlTuneKeepClassLabel: 'Keep class up to date',
+  // Story 21.25: the schema Tune dialog's value label.
   sqlTuneClearValuesLabel: 'Clear values',
-  sqlTuneKeepClassConsequence: 'The class is not recompiled and is not marked out of date.',
   // Story 18.6: License key and License servers -- their titles, License key's twelve field labels
   // beyond License usage's "License units", the authorization-key line, the activate dialog's
   // labels, validity, restart and reduction sentences and consequence, Print and its printed-by
