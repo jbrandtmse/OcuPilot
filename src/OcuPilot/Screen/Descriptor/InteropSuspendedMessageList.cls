@@ -45,6 +45,7 @@ XData Declaration
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "row": "suspended message",
+    "label": "Interoperability message headers in this namespace whose status is Suspended, newest first, at most 2,000; message headers of every status are interop.messages.",
     "source": {"port": "interop", "endpoint": "SuspendedMessages", "type": "LIST"},
     "fields": ["ID", "TimeCreated", "SessionId", "Error", "Type", "Source", "Target", "BodyClass"],
     "filter": ["Type", "Source", "Target", "BodyClass", "SessionId"],

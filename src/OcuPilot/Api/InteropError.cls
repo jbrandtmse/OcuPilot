@@ -737,11 +737,8 @@ Parameter SUSPENDEDDELETE = "INTEROP.SUSPENDED.DELETE";
 
 Parameter REASONSUSPENDEDDELETE = "Deleting removes each message marked to be deleted, its body when no other message uses it, and its search table entries. It cannot be undone.";
 
-/// <p>The verdicts a suspended message reads beyond <parameter>VERDICTS</parameter>' (Story 24.16), and the words that say each: no longer suspended, and what each
-/// action will do. <parameter>VERDICTS</parameter>' <code>gone</code>, <code>nobody</code>, <code>targetoff</code> and <code>noreplyqueue</code> are read for
-/// them too, in the same order after <code>notsuspended</code>.</p>
-Parameter SUSPENDEDVERDICTS = "notsuspended,resubmit,discard,delete";
-
+/// <p>The words of the verdicts a suspended message reads beyond <parameter>VERDICTS</parameter>' (Story 24.16): no longer suspended, and what each action will do.
+/// <parameter>OcuPilot.Port.InteropPort.SUSPENDEDVERDICTS</parameter> lists every verdict a suspended action reads.</p>
 Parameter VERDICTNOTSUSPENDED = "is no longer suspended";
 
 Parameter VERDICTRESUBMIT = "will be resubmitted";

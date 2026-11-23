@@ -524,7 +524,7 @@ ClassMethod Suspended(pText As %String, pTarget As %String = {..#OPNAME}, Output
 }
 
 /// <p>Store a second request header in <code>USER</code>, read <code>Completed</code>, that names the body the header <var>pId</var> names (Story 24.16): the body two headers share,
-/// the header's id in <var>pOtherId</var>. The second header's own body is the one <method>Request</method> made and stays an orphan the suite's sweep removes.</p>
+/// the header's id in <var>pOtherId</var>. The second header's own body, the one <method>Request</method> made, is deleted once no header names it.</p>
 ClassMethod ShareBody(pId As %String, Output pOtherId As %String) As %Status
 {
     Set tSC = ..Request("shares the body of " _ pId, ..#OPNAME, .pOtherId)

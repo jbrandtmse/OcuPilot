@@ -128,6 +128,35 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a4f7a1fec`).
   - `[false]` `[reject]` intent-alignment: collateral edits to `InteropMessageAction`, `InteropMessageEditResend`, rosters and one `ci-throwaway.sh` block — each is an add-only or parameter extension within the contended-file rules.
   - `[low]` `[reject]` intent-alignment: no test audits an all-failed set — the audit runs whenever any id is done or failed, and the mixed set is asserted; reopen_if a failed-only discard writes no row.
 
+### 2026-11-23 — QA and code review (Opus)
+
+- verdicts: 28 findings — high 0, medium 7, low 19, false 1, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` verification-gap: Decided in-stage 9 was untested (the earlier `[low]` reject) — new HTTP test holds the body's lock so the instance's delete fails: both callers read `not deleted`, the header and body stay, each change row names it failed; mutation line recorded.
+  - `[medium]` `[patch]` intent-alignment: `DeleteHeaderHere` called `LogFault` while switched to the message's namespace (one-port rule) — the status is handed out and logged after the restore, through an overridable `VendorRemoveSearchEntries`; seam hook and test; mutation line recorded.
+  - `[medium]` `[patch]` intent-alignment (AD-59): the copy-out scripts checked no status, deleted the header after a failed body delete and ignored the header delete's SQLCODE, under a comment saying the script judged — the scripts check Suspended and mirror `DeleteHeaderHere`; moved-message legs; mutation line recorded.
+  - `[medium]` `[patch]` verification-gap: condition 4's resend leg had no mutation and could not tell a new copy from the original — asserts a new id and the original still Discarded with its body; mutation line recorded.
+  - `[medium]` `[patch]` verification-gap: no test read the `not discarded` / `not deleted` outcome words — `WriteOutput` leg and the body-delete test; mutation line recorded.
+  - `[medium]` `[patch]` verification-gap: the typed count of a Discard or Delete over several rows was untested — two component cases; mutation line recorded.
+  - `[medium]` `[patch]` intent-alignment (orchestrator): Decided in-stage 8 dropped the read tool's agent-facing label — restored, and the tool joins `ReadDescriptions`' Logs group; mutation line recorded.
+  - `[low]` `[patch]` edge-case: a gone header answered OcuPilot sentences outside EXPERIENCE.md in an outcome line — the vendor's 5809 and 5810 statuses (Decided in-stage (review) 3).
+  - `[low]` `[patch]` verification-gap: `InteropSuspendedCase.OnAfterAllTests` dropped probes on an unarmed instance — guarded by the arming variable.
+  - `[low]` `[patch]` adversarial: the resubmit tool's description left out `noreplyqueue`; `InteropError.SUSPENDEDVERDICTS` was unused; two stale doc comments (`InteropHostDescriptor`, `ShareBody`) — fixed.
+  - `[low]` `[reject]` edge-case: the write does not re-read Suspended at the vendor call — the judgment runs just before the loop, as the spec states, and a re-check needs an outcome text not in EXPERIENCE.md; reopen_if a concurrent writer is seen to move a reviewed message mid-write.
+  - `[low]` `[reject]` intent-alignment: a `<PROTECT>`-stopped id is not in the change row's `failed` — the write answers 403 and did not act on it; reopen_if an audit reader needs the stopping id.
+  - `[low]` `[reject]` intent-alignment: a privilege or `<PROTECT>` status keeps its text in the log — Batch 1's `PurgeVendorStatus` rule, kept so `Statused` maps it; reopen_if such a text is seen to carry message content.
+  - `[low]` `[defer]` intent-alignment: Discard, not destructive, confirms through the typed-name dialog with the destructive button — needs a non-destructive review dialog in the shared handler (an EXPERIENCE confirm-dialog decision), beyond this batch; stricter, not looser.
+  - `[low]` `[defer]` adversarial: edit and resubmit leaves the original body that no header names, which a purge never reaches (vendor parity, inference) — a product and string decision beyond this batch.
+  - `[low]` `[reject]` edge-case: `maxRows` above 2,000 lifts the list's cap — `ListMessages` takes `pMax` the same way and the kernel's read cap supplies it (AD-36); reopen_if a caller is seen passing an unbounded value.
+  - `[false]` `[reject]` edge-case: an empty body class binds as NULL and orphans an `Ens.MessageBody` — the classic page's embedded host variable does the same.
+  - `[low]` `[reject]` edge-case: a header delete matching no row reads `deleted`; a `SetStatus` whose `%Save` fails reads `not discarded`; a header delete failing after its body went — the header is gone either way, and the other two are the classic page's behavior; reopen_if seen.
+  - `[low]` `[reject]` edge-case: the change row's id lists done before failed — Decided in-stage (implement) 3.
+  - `[maybe-false]` `[reject]` edge-case: Edit and resubmit with several rows checked edits the first — it acts on the selected row, which is one; checked rows are a separate set.
+  - `[low]` `[reject]` edge-case: a review answer arriving after the form was closed and reopened — Story 20.31's code, which condition 3 keeps unchanged; reopen_if seen.
+  - `[low]` `[reject]` verification-gap: `MessageVerdict`'s new order has no unarmed matrix row — the armed classes pin it with recorded mutations.
+  - `[low]` `[reject]` verification-gap: an `OnBeforeOneTest` failure leaves the probe running until `OnAfterAllTests` — `InteropResendCase`'s design, which settles, removes and asserts `Gone()` for the class.
+  - `[low]` `[reject]` verification-gap: `InteropSuspendedElsewhere`'s edit test quits before `DropBody` on a non-200 confirm — failure path only; reopen_if a leftover body is seen.
+
 ## Design Notes
 
 **Veto items (recommended option first).**
@@ -178,8 +207,14 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a4f7a1fec`).
 5. The arming check of `ProductionProbe` sits in `CheckOwn` and reads `OCUPILOT_ALLOW_PRINCIPALS`; the six new classes declare it as their `ARMINGVARIABLE`, with a `# classes:` block in `ci-throwaway.sh`.
 6. The edit dialog reuses the Review button and the credential caption keys Messages already carries; the 25 new keys are quoted in one Fixed-strings row (EXPERIENCE.md:628), and `taskCreate`'s citation moved to :670. Tool descriptions and input-schema text are agent-facing, not user-facing strings.
 7. The handler's `SCREEN_ACTION_DESCRIPTORS` carries the new descriptor, which registers Resubmit, Discard and Delete; the page registers Edit and resubmit.
-8. The descriptor declares no `read.label`, as Batch 1's purge list: `ReadDescriptions` requires every labeled read tool to sit in a confusable group, and the list is in none; the mirror and `Titles.cls` were regenerated.
+8. The descriptor's `read.label` (agent-facing, in the read tool's description) names the list and points at `interop.messages`; the tool sits in `ReadDescriptions`' Logs group beside `interop.messages`, which that test requires of every labeled read tool.
 9. A delete whose body cannot be deleted for a reason other than "already gone" leaves the header in place and reports the message as not deleted; the classic page deletes the header anyway unless the failure is `<PROTECT>`. Stricter, and a retry finds the body.
+
+**Decided in-stage (review).**
+
+1. Decided in-stage 9 stands (orchestrator). Each caller reads the failure as the outcome line `<id>: not deleted: <vendor text>` inside a 200 answer that also carries `Failed`, the resend family's contract for a partly acted-on set; nothing reads it as deleted, and the change row names it under `failed`.
+2. The copy-out scripts check the header's status themselves, so an id the review did not read is safe to render, and the delete script does what `DeleteHeaderHere` does (tolerated codes, header kept on a body failure, a refused header delete kept in `tSC`).
+3. A gone header in a discard or a delete answers the vendor's own load and delete statuses (5809, 5810), so no OcuPilot sentence outside EXPERIENCE.md reaches an outcome line.
 
 **Governing ADs (Rule 6):** AD-3, AD-6, AD-7, AD-8, AD-10, AD-11, AD-13, AD-14, AD-15, AD-16, AD-21, AD-22, AD-29, AD-34, AD-36, AD-44, AD-51, AD-52, AD-53, AD-56, AD-58, AD-59, AD-60, AD-62 (items 1-5, 15, 17). Not engaged: AD-9 (no `$ROLES` frame unless Task 0 (g) finds an escalation, which HALTs), AD-23, AD-35, AD-54, AD-63, AD-65, AD-66.
 
@@ -218,7 +253,7 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a4f7a1fec`).
 - mutation: both `DropProbes` calls in the case's `OnBeforeOneTest` and `OnAfterOneTest` removed -> `InteropSuspendedElsewhere` red, its discard, edit and resubmit tests (AC7).
 - mutation: the discard and delete audit row recorded under entity type `interop-messages` -> `InteropSuspendedRemove` red, five tests (the row is not found under the shipped type).
 - Each mutated file was restored through the Edit tool and compared byte-identical to a copy taken before the edits (`cmp`), then reloaded with its subclasses. The sweep below ran after every revert.
-- Condition 4 (a Discarded header can still be resent): `InteropSuspendedRemove.TestThePersonsDiscardKeepsHeaderAndBodyAndIsAuditedOnce` now sends the discarded header through the Messages resend write and waits for the copy to complete; no mutation was run on that new leg.
+- Condition 4 (a Discarded header can still be resent): `InteropSuspendedRemove.TestThePersonsDiscardKeepsHeaderAndBodyAndIsAuditedOnce` sends the discarded header through the Messages resend write, waits for the new copy to complete, and reads the original still Discarded with its body; mutation line below (review pass).
 - Condition 3 (edit-flow extraction), side by side: `interop-message-header.page.spec.ts` 9 pass before (worktree of `a4f7a1fec`) and 9 after; `interop-message-resend.browser-spec.mjs` 5 pass before and 5 after (6 with the new spec in one run); the resend classes after: `InteropResend` 9, `InteropEditResend` 13, `InteropResendDescriptor` 8, `InteropResendLimits` 8, `InteropResendSweep` 2, all green.
 - Condition 1 (delete): `EnsPortal.SuspendedMsg.DeleteMessage` (`irislib/`, :446-528) was read against `DeleteHeaderHere` step by step: the body is read from the header, counted among headers, deleted only when one header holds it, with the `Ens.MessageBody` default for an id-only body, the persistent-or-stream and `ENSPURGE` test, the tolerated codes, the search-table call, then the header delete. Two differences, both on the safe side: no journaling suspension or bitmap purge (Design Notes 5), and a body delete that fails for another reason leaves the header in place, where the classic page deletes the header unless the failure is `<PROTECT>`.
 - Condition 2 (probe arming): every class that starts the probe declares `OCUPILOT_ALLOW_PRINCIPALS` as its arming variable, except `CompileWithoutInterop`, which declares `OCUPILOT_ALLOW_DATABASE_CONFIG` and refuses itself unless `OCUPILOT_ALLOW_PRINCIPALS` reads 1; `InteropResendCase` stops the probe after every test and removes it, asserting it gone, after the last. `node --test tools/ci.test.mjs` 107 of 107.
@@ -227,6 +262,18 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a4f7a1fec`).
 - Browser, on a freshly built and deployed bundle: `interop-suspended-messages.browser-spec.mjs` and `interop-message-resend.browser-spec.mjs` 6 of 6. Smoke: executed 50, passed 50.
 - Client: `npm run build` (every prebuild checker) clean; `npm run test:tools` 2400 of 2400; `npm run test:components` 326 files, 3890 tests; `check-objectscript` 0 problems; `lint-docs` clean after the Triage Log headings were spaced.
 
+**Recorded, review pass (`ocupilot-b-ci`; mutations on the instance the implement pass left, each file restored with the Edit tool and `cmp`-identical to a copy taken before, then reloaded with every subclass; the instance was then rebuilt with `ci-throwaway.sh down` and `up` at 2026-11-23T07:45:10Z, healthy 07:45:32Z, and every class below ran there, one per call).**
+
+- mutation: `DeleteHeaderHere` deletes the header after a body delete that failed (`Quit tBodySC` made `Set tBodySC = $$$OK`) -> `InteropSuspendedRemove.TestABodyThatCannotBeDeletedKeepsItsHeaderAndEachCallerIsToldItWasNotDeleted` red (Decided in-stage 9).
+- mutation: the search table failure logged from `DeleteHeaderHere`, while switched -> `InteropSuspendedRemove.TestASearchTableRemovalThatFailsIsLoggedInThePortsOwnNamespace` red.
+- mutation: the scripts' status check in `SuspendedSnippet` reduced to `$IsObject(tHeader)` -> `InteropSuspendedRemove.TestTheCopyOutDraftsOfADiscardAndADeleteRenderTheirScriptsAndRunningThemDoesTheSame` red, both moved-message legs.
+- mutation: `JudgeMessages` reads a Discarded header as `nobody` for a Messages resend -> `InteropSuspendedRemove.TestThePersonsDiscardKeepsHeaderAndBodyAndIsAuditedOnce` red at its resend legs (condition 4).
+- mutation: `InteropMessageAction.FailureLine` gives the resend's word -> `InteropSuspendedRemove` red, the body-delete test and `TestAVendorRefusalOfOneMessageLeavesTheRestActedOnAndLogsNoText`.
+- mutation: the discard and delete entries dropped from `REVIEW_VERDICTS` -> `interop-suspended-message-list.page.spec.ts` red, its two new typed-count cases (jsdom).
+- mutation: the restored `read.label` removed -> `ReadDescriptions` red, two tests.
+- Fresh instance, one class per call, all green: `ReadDescriptions` 9, `ReadTool` 28, `Descriptor` 60, `SurfaceCoverage` 4, `InteropSuspendedRemove` 9, `InteropSuspendedResubmit` 6, `InteropSuspendedList` 5, `InteropSuspendedRefusals` 7, `InteropSuspendedElsewhere` 4, `InteropResend` 9, `InteropResendDescriptor` 8, `InteropResendGate` 4, `InteropResendLimits` 8, `InteropResendSweep` 2, `InteropEditResend` 13, `ToolDispatch` 19, `ToolEmit` 11, `ToolRoundTrip` 2, `ToolWrite` 33, `Navigation` 14, `MappingDescriptor` 6, `InteropDescriptor` 12, `InteropHostDescriptor` 8, `StageTwoTools` 4, `Governance` 14, `GovernanceBaseline` 3, `ClassicPageGate` 9, `ConfirmNamespaceRoster` 3, `DraftRegistry` 9, `Prohibited` 17, `InteropFloor` 8; no probe leftovers; `interop-suspended-messages.browser-spec.mjs` 1 of 1; no production in USER after the last test.
+- Client: `npm run build` clean (initial 2.26 MB); `npm run test:tools` 2400 of 2400 (`ci.test.mjs` among them); components 326 files, 3892 tests; `check-objectscript` 0 problems.
+
 ## Auto Run Result
 
 Status: in-review
@@ -234,4 +281,4 @@ Blocking condition: none
 
 **Plan.** Batch 2 of four: Suspended messages through `InteropPort`, four writes (resubmit, edit-and-resubmit, discard, delete) on at most 100 reviewed ids, each reached by the screen and the agent, extending Story 20.31's resend family; every proposal keeps its namespace and every confirm judges there. Veto items: Design Notes 1 to 6. Read-only checks on `ocupilot-b-ci` (port 52777, image `irishealth-community:2026.2`): no production runs in USER or HSCUSTOM and neither holds a suspended message, so the tests bring up `ProductionProbe` in USER and remove it. Nothing was written to the instance.
 
-**Implement pass (resume after an outage).** The earlier pass's tree was re-read and every earlier result discarded; on a fresh throwaway the four orchestrator conditions were shown, twelve mutations re-run, and the full 17-shard sweep, browser, smoke and client gates measured as under Verification. The pass changed three things: the descriptor's read label was dropped (Decided in-stage 8), a real resend of a discarded header was added to `InteropSuspendedRemove`, and the Triage Log headings were spaced for lint.
+**Review pass (QA and code review, Opus).** Four review layers; 28 findings, no high, seven mediums patched (Review Triage Log, 2026-11-23). The pass made a failed body delete visible and tested for both callers, moved the search table failure's log line out of the switched namespace, made the copy-out scripts check Suspended and mirror the port's delete, restored the read tool's label, strengthened the discard's resend leg and the outcome and typed-count tests, and replaced two unpublished error sentences with the vendor's. Seven mutations ran red and reverted byte-identical; the throwaway was rebuilt and the review's class list, the browser spec and the client gates read green (Verification, review pass).

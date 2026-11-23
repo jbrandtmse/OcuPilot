@@ -23698,6 +23698,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "read": {
       "row": "suspended message",
+      "label": "Interoperability message headers in this namespace whose status is Suspended, newest first, at most 2,000; message headers of every status are interop.messages.",
       "source": {
         "port": "interop",
         "endpoint": "SuspendedMessages",

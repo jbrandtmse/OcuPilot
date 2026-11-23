@@ -230,6 +230,25 @@ describe('the Suspended messages page (Story 24.16)', () => {
     expect([...host.querySelectorAll('[data-ocu-outcome] li')].map((item) => item.textContent)).toEqual(['11: resubmitted', '12: resubmitted']);
   });
 
+  it.each([
+    [SUSPENDED_DISCARD, STRINGS.interopSuspendedDiscardAction, STRINGS.interopSuspendedVerdictDiscard, STRINGS.interopSuspendedDiscardConsequence],
+    ['delete', STRINGS.actionDelete, STRINGS.interopSuspendedVerdictDelete, STRINGS.interopSuspendedDeleteConsequence],
+  ])('types the count of the messages a %s will act on, which are the lines that read its own verdict', async (action, label, verdict, consequence) => {
+    // Mutation (Rule 19): drop the action's entry from `REVIEW_VERDICTS` -> no line counts, the title reads 0 and this goes red.
+    const lines = [
+      `11 ${DOT} Svc ${ARROW} Op: ${verdict}`,
+      `12 ${DOT} Svc ${ARROW} Op: ${STRINGS.interopSuspendedVerdictNotSuspended}`,
+      `13 ${DOT} Svc ${ARROW} Op: ${verdict}`,
+      `14 ${DOT} Svc ${ARROW} Op: ${verdict}`,
+    ];
+    const { fixture, host, handler, store, calls } = mount([reviewAnswer(lines)], false);
+    await handler.startDryRun(INTEROP_SUSPENDED_LIST, action, '11,12,13,14', undefined, store);
+    await settle(fixture);
+    expect(calls[0]).toEqual({ path: DRY_RUN, method: 'POST', body: { action, id: '11,12,13,14' } });
+    expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(`${label} 3`);
+    expect(host.querySelector('.ocu-typed-name-consequence')?.textContent?.trim()).toBe(consequence);
+  });
+
   it('refuses a review whose problem is the published sentence with that sentence, not the generic refusal', async () => {
     // Mutation (Rule 19): drop the suspended sentence from `DRY_RUN_SENTENCES` -> the banner reads the generic refusal and this goes red.
     const problem = `${STRINGS.interopSuspendedRefusalNone}\n13: ${STRINGS.interopResendVerdictGone}`;

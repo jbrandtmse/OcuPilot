@@ -6049,7 +6049,7 @@ ClassMethod InvokeMessageAction(pNamespace As %String, pType As %String, ByRef p
 /// <parameter>NAMESPACEKEY</parameter> names; a class they cannot be read for gives the lines without a field. Every id, name and
 /// value is a string literal, so nothing the payload carries runs as code, and every line closes any block it opens. A
 /// credential-named field is left out. With <var>pResubmit</var> (Story 24.16) the edit's last line is <code>ResubmitMessage</code> of the
-/// suspended header with the clone and no new target, which keeps the header's id.</p>
+/// suspended header with the clone and no new target, which keeps the header's id, run only while the header still reads Suspended.</p>
 ClassMethod MessageSnippet(pType As %String, pId As %String, ByRef pQuery, pContext As %DynamicObject, pResubmit As %Boolean = 0) As %String [ Private ]
 {
     Set tNL = $Char(10)
@@ -6138,7 +6138,7 @@ ClassMethod MessageSnippet(pType As %String, pId As %String, ByRef pQuery, pCont
         }
         Set tText = tText _ tNL _ " Set tSC = tClone.%ValidateObject()"
     }
-    If pResubmit Quit tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = ##class(Ens.MessageHeader).ResubmitMessage(" _ tId _ ", """", tClone)"
+    If pResubmit Quit tText _ tNL _ " If $System.Status.IsOK(tSC) && (tHeader.Status = " _ ..#STATUSSUSPENDEDVALUE _ ") Set tSC = ##class(Ens.MessageHeader).ResubmitMessage(" _ tId _ ", """", tClone)"
     Quit tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = ##class(Ens.MessageHeader).ResendDuplicatedMessage(" _ tId _ ", .tNew, """", tClone)"
 }
 
@@ -12070,13 +12070,15 @@ ClassMethod DeleteTolerated(pStatus As %Status) As %Boolean [ Private ]
 /// <p>Delete the message header <var>pId</var> as the classic Suspended Messages page's delete does (Story 24.16), in the namespace the caller has already
 /// switched to: its body, with its search table entries, when no other header names it and the class is one <method>BodyPurgeableHere</method> admits, then
 /// the header by a bound delete. The classic page's journaling suspension and bitmap clean-up are not part of it. A body that cannot be deleted leaves the
-/// header in place; a header that is gone or a delete SQL refuses is an error status. Every value is bound.</p>
-ClassMethod DeleteHeaderHere(pId As %String) As %Status [ Private ]
+/// header in place; a header that is gone or a delete SQL refuses is an error status. A search table removal that fails does not stop the delete: its status
+/// is <var>pSearchSC</var>, for the caller to log once the namespace is restored. Every value is bound.</p>
+ClassMethod DeleteHeaderHere(pId As %String, Output pSearchSC As %Status) As %Status [ Private ]
 {
+    Set pSearchSC = $$$OK
     Set tStatement = ##class(%SQL.Statement).%New()
     Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, ..#DELETEBODYSQL, pId)
     If tResult.%SQLCODE < 0 Quit $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
-    If 'tResult.%Next() Quit $$$ERROR($$$GeneralError, "the message header is gone")
+    If 'tResult.%Next() Quit $$$ERROR($$$DeleteObjectNotFound, "Ens.MessageHeader", pId)
     Set tBodyId = tResult.%GetData(1)
     Set tClass = tResult.%GetData(2)
     Set tResult = ""
@@ -12094,8 +12096,8 @@ ClassMethod DeleteHeaderHere(pId As %String) As %Status [ Private ]
                     Set tBodySC = ex.AsStatus()
                 }
                 If $$$ISOK(tBodySC) || ..DeleteTolerated(tBodySC) {
-                    Set tSearchSC = ##class(Ens.SearchTableBase).RemoveSearchTableEntries(tClass, tBodyId, 1)
-                    If $$$ISERR(tSearchSC) && '..DeleteTolerated(tSearchSC) Do ..LogFault("the search table entries of a deleted message body could not be removed", ..VendorCodesStatus(tSearchSC, "the search table removal"))
+                    Set tSearchSC = ..VendorRemoveSearchEntries(tClass, tBodyId)
+                    If $$$ISERR(tSearchSC) && '..DeleteTolerated(tSearchSC) Set pSearchSC = tSearchSC
                 } Else {
                     Quit tBodySC
                 }
@@ -12107,14 +12109,23 @@ ClassMethod DeleteHeaderHere(pId As %String) As %Status [ Private ]
     Quit $$$OK
 }
 
+/// <p><code>Ens.SearchTableBase.RemoveSearchTableEntries</code> of the deleted body <var>pId</var> of class <var>pClass</var>, as the classic page's delete calls it
+/// (Story 24.16). Called while the message's namespace is switched. Overridable so a test can fail it; production never overrides it.</p>
+ClassMethod VendorRemoveSearchEntries(pClass As %String, pId As %String) As %Status [ Private ]
+{
+    Quit ##class(Ens.SearchTableBase).RemoveSearchTableEntries(pClass, pId, 1)
+}
+
 /// <p>The vendor's act on the suspended header <var>pId</var> in <var>pNamespace</var>, switched by explicit save and restore (Story 24.16): <code>resubmit</code>
 /// is <code>Ens.MessageHeader.ResubmitMessage</code>, which keeps the id; <code>discard</code> opens the header, <code>SetStatus</code> to Discarded and saves it, as the
 /// classic page does; <code>delete</code> is <method>DeleteHeaderHere</method>. A thrown fault is <var>pCaught</var>. Only vendor classes and this class run while it
-/// is switched. Overridable so a test can fail one message; production never overrides it.</p>
+/// is switched; a search table removal the delete could not make is logged, as its error codes alone, once the namespace is restored. Overridable so a test can
+/// fail one message; production never overrides it.</p>
 ClassMethod VendorSuspended(pNamespace As %String, pKind As %String, pId As %String, Output pCaught) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pCaught = ""
+    Set tSearchSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
@@ -12125,26 +12136,29 @@ ClassMethod VendorSuspended(pNamespace As %String, pKind As %String, pId As %Str
             If $IsObject(tHeader) {
                 Do tHeader.SetStatus(..#STATUSDISCARDEDVALUE)
                 Set tSC = tHeader.%Save()
-            } Else {
-                Set tSC = $$$ERROR($$$GeneralError, "the message header could not be opened")
+            } ElseIf $$$ISOK(tSC) {
+                Set tSC = $$$ERROR($$$LoadObjectNotFound, "Ens.MessageHeader", pId)
             }
             Set tHeader = ""
         } Else {
-            Set tSC = ..DeleteHeaderHere(pId)
+            Set tSC = ..DeleteHeaderHere(pId, .tSearchSC)
         }
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set pCaught = ex
     }
+    If $$$ISERR(tSearchSC) Do ..LogFault("the search table entries of a deleted message body could not be removed", ..VendorCodesStatus(tSearchSC, "the search table removal"))
     Quit tSC
 }
 
 /// <p>The lines <method>Snippet</method> adds for the Suspended messages write <var>pType</var> (Story 24.16), from the stored payload of <var>pContext</var> and
 /// the query <var>pQuery</var>: for a resubmit, a discard or a delete, one block for each id of the set <var>pId</var> names (<method>MessageSet</method>) that the payload's
 /// <code>Verdicts</code> does not read as another verdict, each failure kept in <code>tSC</code>; for an edit-and-resubmit, <method>MessageSnippet</method>'s lines ending in
-/// <code>ResubmitMessage</code>. An id that is not of the shape <parameter>MESSAGEIDPATTERN</parameter> makes <code>""</code> (no draft is rendered). Every id, name and value is
-/// a string literal, so nothing the payload carries runs as code.</p>
+/// <code>ResubmitMessage</code>. Each block acts only on a header whose status still reads Suspended when the script runs, and a delete's block does what
+/// <method>DeleteHeaderHere</method> does: a body it cannot delete keeps the header, and a refused header delete is kept in <code>tSC</code>. An id that is not of the
+/// shape <parameter>MESSAGEIDPATTERN</parameter> makes <code>""</code> (no draft is rendered). Every id, name and value is a string literal, so nothing the payload carries
+/// runs as code.</p>
 ClassMethod SuspendedSnippet(pType As %String, pId As %String, ByRef pQuery, pContext As %DynamicObject) As %String [ Private ]
 {
     Set tKind = ..SuspendedKind(pType)
@@ -12163,30 +12177,32 @@ ClassMethod SuspendedSnippet(pType As %String, pId As %String, ByRef pQuery, pCo
             If $Match($Piece(tPair, "=", 1), ..#MESSAGEIDPATTERN) && $ListFind($ListFromString(..#SUSPENDEDVERDICTS), $Piece(tPair, "=", 2)) Set tReviewed($Piece(tPair, "=", 1)) = $Piece(tPair, "=", 2)
         }
     }
-    ; An id the review read as another verdict is left out; one it did not read is in the set the target names and is judged by the script's own run.
+    ; An id the review read as another verdict is left out; one it did not read is in the set the target names, and every block checks the status itself.
     Set tIds = ""
     For tI = 1:1:$ListLength(tAll) {
         If $Data(tReviewed($List(tAll, tI))) && (tReviewed($List(tAll, tI)) '= tKind) Continue
         Set tIds = tIds _ $ListBuild($List(tAll, tI))
     }
     Set tNL = $Char(10)
+    Set tSuspended = "$IsObject(tHeader) && (tHeader.Status = " _ ..#STATUSSUSPENDEDVALUE _ ")"
     Set tText = tNL _ " Set tSC = 1"
     For tI = 1:1:$ListLength(tIds) {
         Set tId = ..Literal($List(tIds, tI))
+        Set tText = tText _ tNL _ " Set tHeader = ##class(Ens.MessageHeader).%OpenId(" _ tId _ ")"
         If tKind = "resubmit" {
-            Set tText = tText _ tNL _ " Set tSC = $System.Status.AppendStatus(tSC, ##class(Ens.MessageHeader).ResubmitMessage(" _ tId _ "))"
+            Set tText = tText _ tNL _ " Set tGo = " _ tSuspended _ ", tHeader = """""
+            Set tText = tText _ tNL _ " If tGo Set tSC = $System.Status.AppendStatus(tSC, ##class(Ens.MessageHeader).ResubmitMessage(" _ tId _ "))"
         } ElseIf tKind = "discard" {
-            Set tText = tText _ tNL _ " Set tHeader = ##class(Ens.MessageHeader).%OpenId(" _ tId _ ")"
-            Set tText = tText _ tNL _ " If $IsObject(tHeader) { Do tHeader.SetStatus(" _ ..#STATUSDISCARDEDVALUE _ ") Set tSC = $System.Status.AppendStatus(tSC, tHeader.%Save()) }"
+            Set tText = tText _ tNL _ " If " _ tSuspended _ " { Do tHeader.SetStatus(" _ ..#STATUSDISCARDEDVALUE _ ") Set tSC = $System.Status.AppendStatus(tSC, tHeader.%Save()) }"
             Set tText = tText _ tNL _ " Set tHeader = """""
         } Else {
-            Set tText = tText _ tNL _ " Set tHeader = ##class(Ens.MessageHeader).%OpenId(" _ tId _ ")"
-            Set tText = tText _ tNL _ " If $IsObject(tHeader) { Set tBodyClass = tHeader.MessageBodyClassName, tBodyId = tHeader.MessageBodyId } Else { Set tBodyClass = """", tBodyId = """" }"
+            Set tText = tText _ tNL _ " If " _ tSuspended _ " { Set tGo = 1, tBodyClass = tHeader.MessageBodyClassName, tBodyId = tHeader.MessageBodyId } Else { Set tGo = 0, tBodyClass = """", tBodyId = """" }"
             Set tText = tText _ tNL _ " Set tHeader = """""
             Set tText = tText _ tNL _ " Set tHolders = 0 If tBodyId '= """" { Set tResult = ##class(%SQL.Statement).%ExecDirect(, ""SELECT COUNT(*) FROM Ens.MessageHeader WHERE MessageBodyId = ? AND MessageBodyClassName = ?"", tBodyId, tBodyClass) If tResult.%Next() Set tHolders = tResult.%GetData(1) }"
             Set tText = tText _ tNL _ " If (tHolders = 1) && (tBodyClass = """") && (tBodyId = +tBodyId) Set tBodyClass = ""Ens.MessageBody"""
-            Set tText = tText _ tNL _ " If (tHolders = 1) && (tBodyClass '= """") && ##class(%Dictionary.CompiledClass).%ExistsId(tBodyClass) && ($ClassMethod(tBodyClass, ""%IsA"", ""%Library.Persistent"") || $ClassMethod(tBodyClass, ""%IsA"", ""%Stream.Object"")) && ($Parameter(tBodyClass, ""ENSPURGE"") '= 0) { Set tSC = $System.Status.AppendStatus(tSC, $ClassMethod(tBodyClass, ""%DeleteId"", tBodyId)) Do ##class(Ens.SearchTableBase).RemoveSearchTableEntries(tBodyClass, tBodyId, 1) }"
-            Set tText = tText _ tNL _ " Set tResult = ##class(%SQL.Statement).%ExecDirect(, ""DELETE FROM Ens.MessageHeader WHERE ID = ?"", " _ tId _ ")"
+            Set tText = tText _ tNL _ " Set tBodySC = 1 If (tHolders = 1) && (tBodyClass '= """") && ##class(%Dictionary.CompiledClass).%ExistsId(tBodyClass) && ($ClassMethod(tBodyClass, ""%IsA"", ""%Library.Persistent"") || $ClassMethod(tBodyClass, ""%IsA"", ""%Stream.Object"")) && ($Parameter(tBodyClass, ""ENSPURGE"") '= 0) { Set tBodySC = $ClassMethod(tBodyClass, ""%DeleteId"", tBodyId) If $System.Status.IsOK(tBodySC) || $System.Status.Equals(tBodySC, " _ ..#DELETETOLERATEDCODES _ ") { Set tBodySC = 1 Do ##class(Ens.SearchTableBase).RemoveSearchTableEntries(tBodyClass, tBodyId, 1) } }"
+            Set tText = tText _ tNL _ " Set tSC = $System.Status.AppendStatus(tSC, tBodySC)"
+            Set tText = tText _ tNL _ " If tGo && $System.Status.IsOK(tBodySC) { Set tResult = ##class(%SQL.Statement).%ExecDirect(, ""DELETE FROM Ens.MessageHeader WHERE ID = ?"", " _ tId _ ") If tResult.%SQLCODE < 0 Set tSC = $System.Status.AppendStatus(tSC, $System.Error.FromSQLCode(tResult.%SQLCODE, tResult.%Message).Status) }"
         }
     }
     Quit tText

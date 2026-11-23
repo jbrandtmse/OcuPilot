@@ -58,10 +58,12 @@ Method OnAfterOneTest() As %Status
     Quit tSC
 }
 
-/// <p>The case's own cleanup, then a failing status when a probe header survives in either namespace.</p>
+/// <p>The case's own cleanup, then a failing status when a probe header survives in either namespace. Where <parameter>ARMINGVARIABLE</parameter> does not read 1 nothing
+/// ran, so nothing is removed.</p>
 Method OnAfterAllTests() As %Status
 {
     Set tSC = ##super()
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit tSC
     If '$ClassMethod(..#PURGEFIXTURE, "DropProbes") Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, ..%ClassName(1) _ " left probe headers in USER or HSCUSTOM"))
     Quit tSC
 }
