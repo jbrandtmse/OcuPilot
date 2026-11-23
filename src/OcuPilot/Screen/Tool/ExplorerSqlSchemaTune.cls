@@ -10,7 +10,7 @@ Parameter TOOLNAME = "explorer.sqlschematables.tune";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.ExplorerSqlSchema";
 
-Parameter DESCRIPTION = "Propose collecting the statistics of every table in one SQL schema: each table's extent size and each field's selectivity are measured from its current rows, and some cached queries may be purged. With ClearValues true the fixed values each table holds are cleared first. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the schema as explorer.sqlschemas.read reports it in its Schema column. A schema this namespace shows you no table of is refused, and so is a schema of OcuPilot's own.";
+Parameter DESCRIPTION = "Propose collecting the statistics of every table in one SQL schema: each table's extent size and each field's selectivity are measured from its current rows, and some cached queries may be purged, including ones on other tables. With ClearValues true the fixed values each table holds are cleared first. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the schema as explorer.sqlschemas.read reports it in its Schema column. A schema this namespace shows you no table of is refused, and so is a schema of OcuPilot's own.";
 
 Parameter WRITETYPE = "TUNESCHEMA";
 

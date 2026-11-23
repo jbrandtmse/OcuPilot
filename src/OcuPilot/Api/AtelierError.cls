@@ -428,7 +428,7 @@ Parameter REASONTABLENOFIXEDSTATS = "This table has no fixed statistics.";
 /// of every table's in a schema (Story 21.25).</p>
 Parameter TABLETUNE = "SQL.TABLE.TUNE";
 
-Parameter REASONTABLETUNE = "The table's extent size and each field's selectivity are measured from its current rows. Some of the table's cached queries may be purged, so their plans may change.";
+Parameter REASONTABLETUNE = "The table's extent size and each field's selectivity are measured from its current rows. Some cached queries may be purged, including ones on other tables, so their plans may change.";
 
 Parameter TABLECLEARSTATISTICS = "SQL.TABLE.CLEARSTATISTICS";
 

@@ -5573,7 +5573,7 @@ export const STRINGS = {
   sqlTableTuneAction: 'Collect statistics',
   sqlTableClearStatisticsAction: 'Clear fixed statistics',
   sqlSchemaTuneAction: 'Tune all tables',
-  sqlTableTuneConsequence: 'The table\'s extent size and each field\'s selectivity are measured from its current rows. Some of the table\'s cached queries may be purged, so their plans may change.',
+  sqlTableTuneConsequence: 'The table\'s extent size and each field\'s selectivity are measured from its current rows. Some cached queries may be purged, including ones on other tables, so their plans may change.',
   sqlTableClearStatisticsConsequence: 'The fixed statistics saved for this table are removed. The optimizer uses collected statistics, or none.',
   sqlSchemaTuneConsequence: 'Every table in this schema is measured as Collect statistics measures one.',
   sqlTableRefusalNoFixed: 'This table has no fixed statistics.',

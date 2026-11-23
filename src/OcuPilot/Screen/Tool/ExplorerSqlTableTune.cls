@@ -10,7 +10,7 @@ Parameter TOOLNAME = "explorer.sqltable.tune";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.ExplorerSqlTable";
 
-Parameter DESCRIPTION = "Propose collecting one SQL table's statistics: its extent size and each field's selectivity are measured from its current rows, and some of its cached queries may be purged. The fixed values the table holds are kept. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the table as Schema.Table, as explorer.sqltables.read reports it in its Table column. A table this namespace does not show you is refused, and so is a table of OcuPilot's own.";
+Parameter DESCRIPTION = "Propose collecting one SQL table's statistics: its extent size and each field's selectivity are measured from its current rows, and some cached queries may be purged, including ones on other tables. The fixed values the table holds are kept. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the table as Schema.Table, as explorer.sqltables.read reports it in its Table column. A table this namespace does not show you is refused, and so is a table of OcuPilot's own.";
 
 Parameter WRITETYPE = "TUNE";
 
