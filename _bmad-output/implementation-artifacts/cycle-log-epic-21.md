@@ -1044,3 +1044,4 @@
 2026-11-23T07:26:28Z	Story 21.25	stage_complete	stage=implement(rework3) agent=ae8c83965 result=done commit=94d9e782a names=arguments_only(audited;no_concatenation) quote_in_name=allowed(probe+round-trip_both_callers) mutations=5 bashedits=none lines_ended=verified
 2026-11-23T07:26:28Z	Story 21.25	code_head_pushed	sha=94d9e782a run=45131040837 missing=none contains=d5974757e(M_fa37fc5c2)
 2026-11-23T07:26:28Z	Story 21.25	gate_step	step=fresh_check+full_sweep+smoke head=94d9e782a started=2026-11-23T07:26:28Z dir=e21u/21-25/gate
+2026-11-23T07:39:35Z	Story 21.25	gate_step	step=fresh_check result=red stopped_before_sweep reds=MappingDescriptor(CLASSICROSTER_missing_5_21.25_tools;lead_patch_uncommitted),system-explorer-sql_20.38(USER_SCHEMATA_SQLCODE_-400_SYNTAX_GetNextSubscript^%SYS.SQLSEC_after_quote-name_probe) escalated=4th_pass_ruling
