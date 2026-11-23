@@ -1270,6 +1270,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **The tune tools declare no `KeepClassUpToDate`** [AMENDED 2026-11-23, Story 21.25 rework 1, orchestrator ruling, Rule 20]: on this build it changes no stored statistic in the class definition (measured: the storage `ExtentSize` and each property's stored `Selectivity`, `OutlierSelectivity` and `AverageFieldSize` read the same with it on and off), so the port passes 0 to `TuneTable` and `TuneSchema` and no control offers it; `TuneSchema`'s `ClearValues` stays declared.
 
+  **Story 21.31's case** [AMENDED 2026-11-23, Story 21.31 spec gate, orchestrator ruling U-151, Rule 20]: `INDEX` answers the map's `SizeMB` and `FIELDSTATS` answers one field's row, each the value in use. A selectivity's outlier selectivity, outlier value and average size are optional; an omitted one is the field's fixed value read just before the call. Any preparatory vendor call runs only inside the confirmed write, after the prohibited check and the value-shape check, never at mint or preview.
+
 ### AD-52 — A write tool declares the port it reaches its target through
 
 - **Binds:** every write tool; Story 5.13 (application-error deletes) and every later write whose target is not an admin API endpoint; AD-2, AD-6, AD-29, AD-34, AD-40, AD-48
