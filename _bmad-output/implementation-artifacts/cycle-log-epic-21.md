@@ -1065,3 +1065,4 @@
 2026-11-23T11:09:13Z	Story 21.31	escalation_sent	to=orchestrator items=strings,sql-field,AD-51 at=2026-11-23T11:09:13Z
 2026-11-23T11:10:45Z	Story 21.31	spec_gate	result=pass ruling=U-151(sql-field,strings_as_written+measure-first,extent_bound_constant+boundary_test,AD-51_add-only,FixTableStats_ordering_pin) spine=4ac5b13c4
 2026-11-23T11:11:16Z	Story 21.31	stage_spawned	stage=implement spawn_at=2026-11-23T11:11:16Z model=sonnet agent_name=21-31-impl prior_lines_ended=verified(ac0370005)
+2026-11-23T12:25:41Z	Story 21.25	merged	feature=9e09385c8 by=orchestrator rerun=45160592270(BackgroundTasksLive_DW-1829_family)
