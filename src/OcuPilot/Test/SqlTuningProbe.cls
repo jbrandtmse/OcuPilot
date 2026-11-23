@@ -384,6 +384,64 @@ ClassMethod FixExtent(pNamespace As %String, pTable As %String, pSize As %Intege
     Quit tSC
 }
 
+/// <p>Set the fixed selectivity of field <var>pField</var> of <var>pTable</var> in <var>pNamespace</var> to <var>pSelectivity</var> with the outlier
+/// selectivity, outlier value and average size <var>pOutlierSelectivity</var>, <var>pOutlierValue</var> and <var>pAverage</var>, through the vendor's own
+/// call and after saving the table's collected statistics as its fixed ones, so a test puts the field in a state a setter then acts on (Story 21.31).
+/// A precondition only.</p>
+ClassMethod FixField(pNamespace As %String, pTable As %String, pField As %String, pSelectivity As %String, pOutlierSelectivity As %String = "", pOutlierValue As %String = "", pAverage As %String = "") As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        If '##class(%SQL.Manager.Catalog).HasFixedStats($Piece(pTable, ".", 1), $Piece(pTable, ".", 2)) Set tSC = $SYSTEM.SQL.Stats.Table.FixTableStats(pTable)
+        If $$$ISOK(tSC) Set tSC = ##class(%SQL.Manager.Catalog).SetFieldSelectivity($Piece(pTable, ".", 1), $Piece(pTable, ".", 2), pField, pSelectivity, 0, pOutlierSelectivity, pOutlierValue, pAverage)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Set the size of map <var>pMap</var> of <var>pTable</var> in <var>pNamespace</var> to <var>pBlocks</var> blocks of 2 KB through the vendor's own call,
+/// after saving the table's collected statistics as its fixed ones (Story 21.31). A precondition only.</p>
+ClassMethod FixMap(pNamespace As %String, pTable As %String, pMap As %String, pBlocks As %Integer) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        If '##class(%SQL.Manager.Catalog).HasFixedStats($Piece(pTable, ".", 1), $Piece(pTable, ".", 2)) Set tSC = $SYSTEM.SQL.Stats.Table.FixTableStats(pTable)
+        If $$$ISOK(tSC) Set tSC = ##class(%SQL.Manager.Catalog).SetMapBlockCount($Piece(pTable, ".", 1), $Piece(pTable, ".", 2), pMap, pBlocks, 0)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The statistics of field <var>pField</var> of <var>pTable</var> in <var>pNamespace</var> as the instance's own field query holds them, read directly:
+/// <code>fixed selectivity|fixed outlier selectivity|fixed outlier value|fixed average size</code>, each as the instance shows it, or <code>unread</code>.</p>
+ClassMethod FixedField(pNamespace As %String, pTable As %String, pField As %String) As %String
+{
+    Set tAnswer = "unread"
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT SELECTIVITY, OUTLIER_SELECTIVITY, OUTLIER_VALUE, AVERAGE_FIELD_SIZE FROM %SQL_Manager.FieldCurrentSelectivity(?, ?) WHERE FIELD_NAME = ?")
+        If $$$ISOK(tSC) {
+            Set tResult = tStatement.%Execute($Piece(pTable, ".", 1), $Piece(pTable, ".", 2), pField)
+            If tResult.%Next() Set tAnswer = tResult.%GetData(1) _ "|" _ tResult.%GetData(2) _ "|" _ tResult.%GetData(3) _ "|" _ tResult.%GetData(4)
+        }
+        Set tResult = ""
+        Set tStatement = ""
+    } Catch {
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tAnswer
+}
+
 /// <p>How many cached queries <var>pNamespace</var>'s statement index holds for a relation of the schema <var>pSchema</var>
 /// (<parameter>TABLESCHEMA</parameter> by default), in the upper case the index keeps (Story 21.25).</p>
 ClassMethod CachedQueryCount(pNamespace As %String, pSchema As %String = {..#TABLESCHEMA}) As %Integer

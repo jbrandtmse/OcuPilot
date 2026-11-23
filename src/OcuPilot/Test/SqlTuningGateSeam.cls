@@ -8,7 +8,14 @@ Class OcuPilot.Test.SqlTuningGateSeam Extends %RegisteredObject
 /// <p>Forget what was armed and recorded.</p>
 ClassMethod Reset()
 {
-    Kill ^||OcuPilotSqlTuningDeny, ^||OcuPilotSqlTuningAsked, ^||OcuPilotSqlTuningCalls, ^||OcuPilotSqlTuningRefuse, ^||OcuPilotSqlTuningTable
+    Kill ^||OcuPilotSqlTuningDeny, ^||OcuPilotSqlTuningAsked, ^||OcuPilotSqlTuningCalls, ^||OcuPilotSqlTuningRefuse, ^||OcuPilotSqlTuningTable, ^||OcuPilotSqlTuningBadMap
+}
+
+/// <p>Make <method>OcuPilot.Test.SqlTuningPortFixture.TableCall</method> hand a map-size write a map the table does not hold, until
+/// <method>Reset</method>: the instance then refuses it after the table's collected statistics were saved as its fixed ones.</p>
+ClassMethod BadMap()
+{
+    Set ^||OcuPilotSqlTuningBadMap = 1
 }
 
 /// <p>The table calls <method>OcuPilot.Test.SqlTuningPortFixture.TableCall</method> was asked since <method>Reset</method>, as <code>type|values</code>,

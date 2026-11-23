@@ -85,9 +85,9 @@ ClassMethod Statistics(pWhat As %String, pTable As %String)
 Method TestTheTabsDeclareTheirShape()
 {
     Set tTable = ..Declaration(..#TABLEDESCRIPTOR)
-    Do $$$AssertEquals(tTable.entityType _ "|" _ tTable.id.kind _ "|" _ ..Actions(tTable) _ "|" _ tTable.tab.position, "sql-table|single|rebuild-indices,tune,clear-statistics|1", "the table tab's entity type, id and page actions")
+    Do $$$AssertEquals(tTable.entityType _ "|" _ tTable.id.kind _ "|" _ ..Actions(tTable) _ "|" _ tTable.tab.position, "sql-table|single|rebuild-indices,tune,clear-statistics,set-extent-size|1", "the table tab's entity type, id and page actions")
     Set tIndices = ..Declaration(..#INDICESDESCRIPTOR)
-    Do $$$AssertEquals(tIndices.entityType _ "|" _ tIndices.id.kind _ "|" _ tIndices.id.parts.%ToJSON() _ "|" _ ..Actions(tIndices) _ "|" _ tIndices.tab.position, "sql-index|composite|[""Table"",""Map""]|rebuild|3", "the indices tab's entity type, composite id and row action")
+    Do $$$AssertEquals(tIndices.entityType _ "|" _ tIndices.id.kind _ "|" _ tIndices.id.parts.%ToJSON() _ "|" _ ..Actions(tIndices) _ "|" _ tIndices.tab.position, "sql-index|composite|[""Table"",""Map""]|rebuild,set-map-size|3", "the indices tab's entity type, composite id and row action")
     Do $$$AssertTrue(tIndices.read.fields.%ToJSON() [ """Table"",""Index"",""Map""", "the indices tab reads the table beside the index and its map")
 }
 
@@ -138,8 +138,9 @@ Method TestTheTableStatisticsAreRead()
     Do $$$AssertEquals(tVerdict _ "|" _ tAnswer.Table, "200 |OcuProbe225.T1", "the table is named as the instance spells it whatever case the caller used")
 }
 
-/// <p>The <code>INDEX</code> read answers one indices row, <code>{Namespace, Table, Class, Index, Map, Type}</code>, for the composite
-/// <code>[Table, Map]</code>: an index reads its type, and the data map reads <code>Data/Master</code>.</p>
+/// <p>The <code>INDEX</code> read answers one indices row, <code>{Namespace, Table, Class, Index, Map, Type, SizeMB}</code>, for the composite
+/// <code>[Table, Map]</code>: an index reads its type, and the data map reads <code>Data/Master</code>. <code>SizeMB</code> is the number the indices list
+/// reports for the map, in MB.</p>
 /// <p>Mutation (Rule 19): <code>SqlPort.TableFacts</code> takes the first row for any map -> the map assertions go red.</p>
 Method TestAnIndexIsRead()
 {
@@ -149,6 +150,7 @@ Method TestAnIndexIsRead()
     Do $$$AssertEquals(tVerdict, "200 ", "an index is read")
     If '$IsObject($Get(tAnswer)) Quit
     Do $$$AssertEquals(tAnswer.Namespace _ "|" _ tAnswer.Table _ "|" _ tAnswer.Class _ "|" _ tAnswer.Index _ "|" _ tAnswer.Map _ "|" _ tAnswer.Type, "USER|OcuProbe225.T1|OcuProbe225.T1|IdxC|IdxC|Index", "its table, class, name, map and type")
+    Do $$$AssertTrue((tAnswer.%GetTypeOf("SizeMB") = "number") && (tAnswer.SizeMB > 0), "its size in MB is a number: " _ tAnswer.SizeMB)
     Set tVerdict = ..Read("INDEX", tTable _ tSeparator _ "IDKEY", .tAnswer, .tFault)
     Do $$$AssertEquals(tVerdict _ "|" _ tAnswer.Map _ "|" _ (tAnswer.Type [ "Data"), "200 |IDKEY|1", "the data map is read, its type marking it")
     Set tVerdict = ..Read("INDEX", tTable _ tSeparator _ "%%DDLBEIndex", .tAnswer, .tFault)
