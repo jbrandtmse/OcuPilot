@@ -1054,3 +1054,8 @@
 2026-11-23T08:10:50Z	Story 21.25	ledger_routed	id=DW-2851 vendor_defect_candidate(DW-1527/1640_family) owner=burndown by=orchestrator
 2026-11-23T09:01:25Z	Story 21.25	ci_resolved	sha=a500f3bc5 run=45136354856 result=success
 2026-11-23T09:01:25Z	Story 21.25	fresh_check	env=recipe(ci-throwaway_rebuild) tests=31_classes+3_specs result=pass order=forward,reverse head=a500f3bc5
+2026-11-23T10:56:56Z	Story 21.25	sweep	shards=20/20_green head=a500f3bc5
+2026-11-23T10:56:56Z	Story 21.25	smoke	container=ocupilot-ci executed=50 passed=50 failed=0 skipped=0
+2026-11-23T10:56:56Z	Story 21.25	integrated_forward	feature=fa8ad88b8(24.16_B2) merge=M=5282c9e77 conflicts=8(resolved_in_temp_worktree_556eee2c2,replayed_with_hooks) counts=ReadTool_608,ToolWrite_180,ClassicPageGate_171 DISABLED+CLASSICROSTER=instance_order(106,218) strings.test_bound_5000 taskCreate_:672 rosters=20_green_one_per_call test:tools=2403 temp_worktree=removed
+2026-11-23T10:56:56Z	Story 21.25	code_head_pushed	sha=5282c9e77 run=45160592270 missing=none note=integrate-only_M
+2026-11-23T10:56:56Z	Story 21.25	story_complete	head=a500f3bc5(gates)+M=5282c9e77 run=45136354856(+45160592270) fresh=pass sweep=20/20 smoke=50/50 vetoes=U-146,U-148,U-149 spine=c026c9ade(AD-51),04fe358b6(AD-10) ledger_owned=0
