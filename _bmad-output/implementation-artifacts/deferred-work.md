@@ -14547,6 +14547,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-3.md (review d196f6de8) | severity: low | fix-risk: low | footprint: in-footprint
 - evidence: REASONMESSAGEEXPORT against ExportTail
 - 2026-11-23T14:29:07Z status=decision-pending owner=burndown by=epic-24-runner note=string ruling: reword the consequence or accept it as close enough
+- 2026-11-23T14:47:23Z status=routed owner=24-16-purge-suspended-messages-export-and-the-archive-manager by=orchestrator note=reworded to 'in message id order, each marked off by the chosen separator.'; ships in Batch 4 with EXPERIENCE.md:631 and its pinning tests; resolve when it lands
 
 ### DW-2857: InteropMessageExportElsewhere's no-probe-left test never exports, and TempListing compares a shared temporary directory, so AC8 is asserted without the act it guards
 - source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-3.md (review d196f6de8) | severity: low | fix-risk: low | footprint: in-footprint

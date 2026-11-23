@@ -801,3 +801,4 @@
 2026-11-23T14:45:15Z	Story 24.16	fresh_check_passed	scope=batch3 sha=92f0235be throwaway_up=14:35:34Z classes=40_runs_green(InteropSessionRoute_cold_first_6/6,export3_forward+reverse,rosters,21.25_Sql*) browser=7/7(export,resend,suspended) smoke=49/49(agentswitches_skipped:written_by_a_test_at_14:39:05Z) USER_production=stopped
 2026-11-23T14:45:40Z	Story 24.16	code_head_pushed	scope=batch3 sha=92f0235be run=45197647823
 2026-11-23T14:47:01Z	Story 24.16	stage_spawned	stage=plan spawn_at=2026-11-23T14:47:01Z model=opus agent_name=24-16-plan-batch4 cycle_iteration=4 scope=batch4_archive_manager+README
+2026-11-23T14:47:23Z	Story 24.16	ruling	source=orchestrator scope=batch3 pre-CI=pass(92f0235be) DW-2856=reworded("each_marked_off_by_the_chosen_separator")_ships_batch4 inbox=U-154(veto_addendum_U-150) carried_into=batch4_plan
