@@ -825,3 +825,5 @@
 2026-11-23T20:25:37Z	Ledger	routed	DW-2861 ruling (b) burndown medium; note corrected (target read once Manager.cls:12, days re-read per header :79-80)
 2026-11-23T21:20:37Z	Story 24.16	ci_green	scope=batch4 sha=2b6e285c7 run=45258542095 attempt=1
 2026-11-23T21:22:00Z	Story 24.16	story_done	tracker=done specs=4/4_done ledger=DW-2856,DW-2859_resolved-by_story,slice_empty harvest=no_new(Batch1_DW-2846_already_ledgered;Batches2-4_deferred_empty) spine=eb8a8dbff merge_by=orchestrator_at_tip
+2026-11-23T21:26:39Z	Story 24.16	merged_to_feature	feature=626172470(ff_13c506048+record+timings_45258542095)
+2026-11-23T21:26:39Z	Story 24.17	stage_spawned	stage=plan spawn_at=2026-11-23T21:26:39Z model=opus agent_name=24-17-plan cycle_iteration=1 story_base=626172470
