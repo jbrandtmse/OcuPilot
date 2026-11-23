@@ -822,3 +822,6 @@
 2026-11-23T20:21:32Z	Story 24.16	code_head_pushed	scope=batch4 sha=2b6e285c7 run=45258542095
 2026-11-23T20:23:50Z	Story 24.16	spine_drafted	ad=AD-62(19-22),AD-7,AD-15,AD-9,AD-39(tenth),AD-22 lines=14_added_0_removed memlog=appended lint=ok_false(placeholder '{id}' at line 215, pre-existing in HEAD since 2026-09-19 REST route template) status=uncommitted_pending_orchestrator_ruling
 2026-11-23T20:25:12Z	Story 24.16	spine_updated	ad=AD-62(19-22),AD-7,AD-15,AD-9,AD-39(tenth),AD-22 reason=story_end_veto_rulings by=runner commit=eb8a8dbff lint=pre-existing_{id}_only(orchestrator:commit_as_is) DW-2861=wontfix_ruling_premise_contradicted(DoArchive_reads_Namespace_once:Manager.cls:12;OnMessageHeader_re-reads_DaysToArchive_per_header:Manager.cls:79)_reported_kept_open
+2026-11-23T20:25:37Z	Ledger	routed	DW-2861 ruling (b) burndown medium; note corrected (target read once Manager.cls:12, days re-read per header :79-80)
+2026-11-23T21:20:37Z	Story 24.16	ci_green	scope=batch4 sha=2b6e285c7 run=45258542095 attempt=1
+2026-11-23T21:22:00Z	Story 24.16	story_done	tracker=done specs=4/4_done ledger=DW-2856,DW-2859_resolved-by_story,slice_empty harvest=no_new(Batch1_DW-2846_already_ledgered;Batches2-4_deferred_empty) spine=eb8a8dbff merge_by=orchestrator_at_tip

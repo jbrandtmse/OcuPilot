@@ -2,7 +2,7 @@
 title: 'Story 24.16: Purge, suspended messages, export and the archive manager (Batch 3: export messages)'
 type: 'feature'
 created: '2026-11-23'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'b86a75643a232ce3048e163493f6acb30265a901'
 review_loop_iteration: 0
 followup_review_recommended: false

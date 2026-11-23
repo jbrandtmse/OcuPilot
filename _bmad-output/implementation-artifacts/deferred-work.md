@@ -14548,6 +14548,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: REASONMESSAGEEXPORT against ExportTail
 - 2026-11-23T14:29:07Z status=decision-pending owner=burndown by=epic-24-runner note=string ruling: reword the consequence or accept it as close enough
 - 2026-11-23T14:47:23Z status=routed owner=24-16-purge-suspended-messages-export-and-the-archive-manager by=orchestrator note=reworded to 'in message id order, each marked off by the chosen separator.'; ships in Batch 4 with EXPERIENCE.md:631 and its pinning tests; resolve when it lands
+- 2026-11-23T21:21:57Z status=resolved-by:24-16-purge-suspended-messages-export-and-the-archive-manager by=lead note=2328ab5cc (Batch 4): the export sentence reads 'in message id order, each marked off by the chosen separator.' in EXPERIENCE.md:631, strings.ts and REASONMESSAGEEXPORT; review 5be5a73f3 confirmed byte-identical; CI 45258542095 green
 
 ### DW-2857: InteropMessageExportElsewhere's no-probe-left test never exports, and TempListing compares a shared temporary directory, so AC8 is asserted without the act it guards
 - source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-3.md (review d196f6de8) | severity: low | fix-risk: low | footprint: in-footprint
@@ -14580,6 +14581,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: job 137772299472 gates (node 22.22.3): component runner still passing at 14:58:53Z, 297 of 332 files started, step killed at 12 min; the node 24.15.0 and 26.0.0 legs finished all 332 files in 409-414 s
 - 2026-11-23T15:03:04Z status=routed owner=burndown by=epic-24-runner note=the step bound wants the same 1.5x-of-largest-observed rule DW-2842 gave the job, pinned in ci.test.mjs; ci.yml change is the orchestrator's call
 - 2026-11-23T15:12:01Z status=routed owner=24-16-purge-suspended-messages-export-and-the-archive-manager by=orchestrator note=raise the node-22 client suite step to 18 min in Batch 4's code head; ci.test.mjs pins LARGEST_OBSERVED_CLIENT_SUITE_SECONDS 705 (run 45062235807), bound >= ceil(1.5x705/60) and below the job's 30
+- 2026-11-23T21:21:57Z status=resolved-by:24-16-purge-suspended-messages-export-and-the-archive-manager by=lead note=2328ab5cc (Batch 4): client suite step 12->18 min, ci.test.mjs pins LARGEST_OBSERVED_CLIENT_SUITE_SECONDS 705 (run 45062235807) with the floor and below-the-job assertions; CI 45258542095 green
 
 ### DW-2860: CI's browser shard bound (63 min) is only 1.11x the largest green browser shard (3,409 s, run 45137088496), below the 1.5x rule every other bound follows, so a slow runner times a shard out with every spec green
 - source: ci run 45197647823 (24.16 Batch 3 code head 92f0235be) | severity: medium | fix-risk: low | footprint: cross-story
@@ -14590,3 +14592,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-4.md (review 5be5a73f3) | severity: medium | fix-risk: low | footprint: in-footprint
 - evidence: Ens.Archive.Manager.OnMessageHeader re-reads ^Ens.ArchiveManager("DaysToArchive") per header; InteropPort.PerformArchiveSetting takes no lock
 - 2026-11-23T20:16:16Z status=decision-pending owner=burndown by=epic-24-runner note=posture ruling: refuse an archive setting change while a run holds the lock (stricter than classic), or accept as the classic does
+- 2026-11-23T20:25:37Z status=routed owner=burndown by=orchestrator note=correction: the target is read once at start (Manager.cls:12); the days are re-read per header (:79-80), so a mid-run days change can move ids the start-time taken check never covered. Ruling (b): refuse an archive settings change while the vendor's archive lock is held, with the existing RUNNING-style sentence (no new string); test holds the lock, shows the set refused while the settings read still answers
