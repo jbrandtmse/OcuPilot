@@ -1067,3 +1067,8 @@
 2026-11-23T11:11:16Z	Story 21.31	stage_spawned	stage=implement spawn_at=2026-11-23T11:11:16Z model=sonnet agent_name=21-31-impl prior_lines_ended=verified(ac0370005)
 2026-11-23T12:25:41Z	Story 21.25	merged	feature=9e09385c8 by=orchestrator rerun=45160592270(BackgroundTasksLive_DW-1829_family)
 2026-11-23T12:29:03Z	Epic 21	slip	what=bkl_commit_0d4475689_swept_the_21.31_stage's_37_staged_files_under_a_[skip_ci]_bookkeeping_message cause=bkl_ran_git_commit_without_a_pathspec fix=reset_--soft_HEAD~1(not_pushed),re-committed_log_alone(--only);stage's_index_intact(37_staged);bkl_now_commits_with_--only_paths
+2026-11-23T13:37:23Z	Story 21.31	stage_complete	stage=implement agent=a408034b6 result=done commits=1d7d0561f(B1),04ac615bc(B2),0798022c1(review+finalize) task0=FixTableStats_needed,map_unit_2KB_blocks(label_MB_stands),outlier_value_evaluated_as_ObjectScript(port_admits_number_or_quoted_literal),selectivity_%_appended,extent_bound_ours,INDEX.SizeMB_compiler_estimate_when_no_fixed(spec_claim_measured_false) followup_review=true bashedits=none lines_ended=verified
+2026-11-23T13:37:23Z	Story 21.31	spine	sha=b07c182f7 AD-51_21.31_preparatory_call(add-only)
+2026-11-23T13:37:23Z	Story 21.31	integrated_forward	feature=9e09385c8 merge=M=9cb5ce5b9 conflicts=0 test:tools=2405
+2026-11-23T13:37:23Z	Story 21.31	code_head_pushed	sha=9cb5ce5b9 missing=none
+2026-11-23T13:37:48Z	Story 21.31	stage_spawned	stage=code_review spawn_at=2026-11-23T13:37:48Z model=opus agent_name=21-31-cr prior_lines_ended=verified(a408034b6)
