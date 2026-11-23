@@ -1052,3 +1052,5 @@
 2026-11-23T08:10:14Z	Story 21.25	code_head_pushed	sha=a500f3bc5 run=45136354856 missing=none contains=d5974757e
 2026-11-23T08:10:14Z	Story 21.25	gate_step	step=fresh_check+full_sweep+smoke head=a500f3bc5 started=2026-11-23T08:10:14Z dir=e21u/21-25/gate2
 2026-11-23T08:10:50Z	Story 21.25	ledger_routed	id=DW-2851 vendor_defect_candidate(DW-1527/1640_family) owner=burndown by=orchestrator
+2026-11-23T09:01:25Z	Story 21.25	ci_resolved	sha=a500f3bc5 run=45136354856 result=success
+2026-11-23T09:01:25Z	Story 21.25	fresh_check	env=recipe(ci-throwaway_rebuild) tests=31_classes+3_specs result=pass order=forward,reverse head=a500f3bc5
