@@ -259,7 +259,8 @@ Method TestATableWithADelimitedNameIsRebuiltOnBothCallers()
 /// copy-out script of each rebuild is run for the same names and fills the killed indices of that table.</p>
 /// <p>Mutation (Rule 19): <code>SqlPort.Literal</code> stops doubling <code>"</code> -> the copy-out assertions go red;
 /// <code>OcuPilot.Test.SqlTuningProbe.SqlName</code> stops doubling it -> the probe cannot be made and the assertions go red; the rebuild of one index
-/// passes an empty list -> the untouched-index assertion goes red.</p>
+/// passes an empty list -> the untouched-index assertion goes red; <code>OcuPilot.Test.SqlTuningProbe.RemoveTables</code> skips dropping the quoted
+/// schema -> the schema list assertion goes red.</p>
 Method TestATableWhoseNameHoldsAQuoteIsRebuiltOnBothCallers()
 {
     Set tSchema = $Parameter(..#PROBE, "QUOTEDSCHEMA")
@@ -304,6 +305,7 @@ Method TestATableWhoseNameHoldsAQuoteIsRebuiltOnBothCallers()
     Do $$$AssertEquals(..Entries(tTable), "5|5", "and fills both")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", ..#NAMESPACE), "the probe table is removed")
     Do $$$AssertEquals($ListLength($ClassMethod(..#PROBE, "TablesOf", ..#NAMESPACE, tSchema)) _ "|" _ $ClassMethod(..#PROBE, "CachedQueryCount", ..#NAMESPACE, tSchema), "0|0", "no table or cached query of the schema is left")
+    Do $$$AssertEquals($Piece($ClassMethod(..#PROBE, "SchemataRead", ..#NAMESPACE), "|", 2), 100, "and the instance's schema list reads to its end")
 }
 
 /// <p>AC2. The table's data map holds its rows and has no index to rebuild: the screen's rebuild of it and the agent's proposal are refused with

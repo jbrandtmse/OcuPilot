@@ -328,7 +328,8 @@ Method TestADelimitedSchemaAndItsTablesAreTunedOnBothCallers()
 /// tables made again, and does what the write does: the table tune collects the rows, the clear removes the fixed size, the schema tune clears the
 /// fixed sizes of both collected tables and keeps their rows.</p>
 /// <p>Mutation (Rule 19): <code>SqlPort.Literal</code> stops doubling <code>"</code> -> a copy-out script no longer parses as the name and its assertion
-/// goes red; <code>OcuPilot.Test.SqlTuningProbe.SqlName</code> stops doubling it -> the probe cannot be made and the assertions go red.</p>
+/// goes red; <code>OcuPilot.Test.SqlTuningProbe.SqlName</code> stops doubling it -> the probe cannot be made and the assertions go red;
+/// <code>OcuPilot.Test.SqlTuningProbe.RemoveTables</code> skips dropping the quoted schema -> the schema list assertion goes red.</p>
 Method TestTablesAndASchemaWhoseNamesHoldAQuoteAreTunedOnBothCallers()
 {
     Set tSchema = $Parameter(..#PROBE, "QUOTEDSCHEMA")
@@ -380,6 +381,7 @@ Method TestTablesAndASchemaWhoseNamesHoldAQuoteAreTunedOnBothCallers()
     Do $$$AssertEquals(..Stats(tFirst) _ "|" _ ..Stats(tSecond), "collected 4 0|collected 6 0", "and collects both tables' rows and clears their fixed sizes")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", ..#NAMESPACE), "the probe tables are removed")
     Do $$$AssertEquals($ListLength($ClassMethod(..#PROBE, "TablesOf", ..#NAMESPACE, tSchema)) _ "|" _ $ClassMethod(..#PROBE, "CachedQueryCount", ..#NAMESPACE, tSchema), "0|0", "no table or cached query of the schema is left")
+    Do $$$AssertEquals($Piece($ClassMethod(..#PROBE, "SchemataRead", ..#NAMESPACE), "|", 2), 100, "and the instance's schema list reads to its end")
 }
 
 /// <p>AC3. The table's Info tab and the schema's Tables tab declare the command aliases the story rules, and no other: "table statistics" is not one.</p>

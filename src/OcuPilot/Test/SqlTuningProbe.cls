@@ -283,8 +283,37 @@ ClassMethod TablesOf(pNamespace As %String, pSchema As %String = {..#TABLESCHEMA
     Quit tList
 }
 
+/// <p>Read the instance's schema list (<code>INFORMATION_SCHEMA.SCHEMATA</code>) in <var>pNamespace</var> to its end and answer <code>rows|sqlcode</code>:
+/// the schemas read and the SQLCODE the read ended on, <code>100</code> for a list read whole and <code>-400</code> where the instance failed.</p>
+ClassMethod SchemataRead(pNamespace As %String) As %String
+{
+    Set tAnswer = "unread"
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA")
+        If $$$ISOK(tSC) {
+            Set tResult = tStatement.%Execute()
+            Set tRows = 0
+            While tResult.%Next() {
+                Set tRows = tRows + 1
+            }
+            Set tAnswer = tRows _ "|" _ tResult.%SQLCODE
+        }
+        Set tResult = ""
+        Set tStatement = ""
+    } Catch {
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tAnswer
+}
+
 /// <p>Purge the cached queries of, then drop, every table of the schemas <parameter>TABLESCHEMA</parameter>, <parameter>DELIMITEDSCHEMA</parameter> and
-/// <parameter>QUOTEDSCHEMA</parameter> in <var>pNamespace</var>.</p>
+/// <parameter>QUOTEDSCHEMA</parameter> in <var>pNamespace</var>. Dropping the last table of a schema whose name holds a double quote leaves the schema's entry in the
+/// instance's schema index, and the instance's schema list (<code>INFORMATION_SCHEMA.SCHEMATA</code>) then fails; so the quoted schema is dropped
+/// too, through the routine the instance's own <code>DROP SCHEMA</code> calls, which takes the name as an argument. A schema that is already gone
+/// (SQLCODE -473) is not an error. <method>SchemataRead</method> reads the list.</p>
 ClassMethod RemoveTables(pNamespace As %String) As %Status
 {
     Set tSC = $$$OK
@@ -296,6 +325,14 @@ ClassMethod RemoveTables(pNamespace As %String) As %Status
             For tI = 1:1:$ListLength(tTables) {
                 Do $SYSTEM.SQL.PurgeQueries({"table": [($List(tTables, tI))]})
                 Do ..Run("DROP TABLE " _ $Select(tSchema = ..#TABLESCHEMA: $List(tTables, tI), 1: ..SqlName($List(tTables, tI))))
+            }
+            If tSchema = ..#QUOTEDSCHEMA {
+                Set tSQLCODE = 0
+                Set tMessage = ""
+                Do DropSchema^%apiDDL(tSchema, 0, 0, .tSQLCODE, .tMessage)
+                If (tSQLCODE '= 0) && (tSQLCODE '= -473) {
+                    Set tSC = $$$ERROR($$$GeneralError, "the quoted schema was not dropped: SQLCODE " _ tSQLCODE _ " " _ tMessage)
+                }
             }
             Set $NAMESPACE = tOrigNS
         }
