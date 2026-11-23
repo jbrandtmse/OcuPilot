@@ -14585,3 +14585,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 45197647823 (24.16 Batch 3 code head 92f0235be) | severity: medium | fix-risk: low | footprint: cross-story
 - evidence: browser shard 3/5 cancelled at 63 min with 48 of 51 specs green (estimated 36.4 min, took 58.0); shards 1, 2 and 5 took about 55 min against a 38.6-min estimate each; the untimed export spec weighed at the median 33.1 s and landed in shard 2
 - 2026-11-23T15:52:27Z status=routed owner=burndown by=orchestrator note=measure-first; preferred fix is a sixth browser shard (wall time stays flat), not a bound raise. Re-derive per-shard estimates from ci-timings.json, and set the bound by the 1.5x rule on the new largest observed, pinned in ci.test.mjs.
+
+### DW-2861: An archive settings change made while a run holds the vendor's lock is accepted, and the vendor re-reads the days for every header, so a run can move ids its taken-id check never covered (inference); the classic Save does not refuse it either, so a refusal would be a stricter posture
+- source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-4.md (review 5be5a73f3) | severity: medium | fix-risk: low | footprint: in-footprint
+- evidence: Ens.Archive.Manager.OnMessageHeader re-reads ^Ens.ArchiveManager("DaysToArchive") per header; InteropPort.PerformArchiveSetting takes no lock
+- 2026-11-23T20:16:16Z status=decision-pending owner=burndown by=epic-24-runner note=posture ruling: refuse an archive setting change while a run holds the lock (stricter than classic), or accept as the classic does
