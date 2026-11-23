@@ -167,10 +167,15 @@ ClassMethod AwaitRunning(pSeconds As %Integer = 30) As %Status
     Quit $$$ERROR($$$GeneralError, "the probe production did not read running within " _ pSeconds _ " seconds; USER read '" _ tCurrent _ "' in state " _ tState)
 }
 
+/// <p>The environment variable that arms the probe, set by <file>scripts/ci-throwaway.sh</file> alone: the probe compiles classes in <code>USER</code>, starts a production
+/// there and stores and deletes message headers, and runs on a throwaway container only.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
+
 /// <p>A failing status naming the foreign production when <code>USER</code>'s current production is
-/// neither empty nor one the probe owns.</p>
+/// neither empty nor one the probe owns, and a failing status, touching nothing, when <parameter>ARMINGVARIABLE</parameter> does not read 1.</p>
 ClassMethod CheckOwn() As %Status
 {
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.ProductionProbe starts a production in USER and stores and deletes message headers there, and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was changed.")
     Set tCurrent = ..Current()
     If (tCurrent '= "") && (tCurrent '= ..#PRODUCTION) && (tCurrent '= ..#OTHER) Quit $$$ERROR($$$GeneralError, "USER's current production is not the probe's own: " _ tCurrent)
     Quit $$$OK

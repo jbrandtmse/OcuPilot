@@ -61,6 +61,12 @@ Parameter CONSEQUENCECODE = "INTEROP.MESSAGE.EDITRESEND";
 /// <p>The argument holding the fields to change, and its read answer.</p>
 Parameter FIELDSARGUMENT = "Fields";
 
+/// <p>The verdict the message must read to be edited, and the code whose sentence refuses one that reads another (Story 24.16's edit and resubmit of a suspended message
+/// takes <code>resubmit</code> and <code>INTEROP.SUSPENDED.NONE</code>).</p>
+Parameter OKVERDICT = "resend";
+
+Parameter NONECODE = "INTEROP.RESEND.NONE";
+
 /// <p>The message, by its header id.</p>
 ClassMethod IdArgument() As %String
 {
@@ -183,13 +189,13 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
             Set pProblem = "this instance did not report the message"
             Quit
         }
-        If pFresh.%Get("Verdict") '= "resend" {
+        If pFresh.%Get("Verdict") '= ..#OKVERDICT {
             Set tMessage = {}
             Do tMessage.%Set("ID", pFresh.%Get("Message"), "string")
             Do tMessage.%Set("Source", pFresh.%Get("Source"), "string")
             Do tMessage.%Set("Target", pFresh.%Get("Target"), "string")
             Do tMessage.%Set("Verdict", pFresh.%Get("Verdict"), "string")
-            Set pProblem = ##class(OcuPilot.Port.InteropPort).Sentence("INTEROP.RESEND.NONE") _ $Char(10) _ ..MessageLine(tMessage)
+            Set pProblem = ##class(OcuPilot.Port.InteropPort).Sentence(..#NONECODE) _ $Char(10) _ ..MessageLine(tMessage)
             Quit
         }
         If pFresh.%Get("Fields") = "{}" Quit

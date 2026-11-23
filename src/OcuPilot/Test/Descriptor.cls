@@ -274,6 +274,7 @@ XData ReadShapes
 <screen name="InteropScheduleList" filter="Name,Description,ScheduleSpec" sort="Name,Description,ScheduleSpec" kinds="Name:name,Description:text,ScheduleSpec:text,Deployable:status"/>
 <screen name="InteropPurgeList" filter="Type" sort="Type,Count" kinds="Type:name,Count:number"/>
 <screen name="InteropPurgeSettingList" filter="Name,Value" sort="Name,Value,Stored" kinds="Name:name,Value:text,Stored:status"/>
+<screen name="InteropSuspendedMessageList" filter="Type,Source,Target,BodyClass,SessionId" sort="TimeCreated,Type,Source,Target,BodyClass,SessionId" kinds="ID:name,TimeCreated:text,SessionId:identifier,Error:status,Type:text,Source:text,Target:text,BodyClass:identifier"/>
 <screen name="InteropDefaultSettingList" filter="Production,Item,HostClass,Setting,Value" sort="Production,Item,HostClass,Setting" kinds="Production:text,Item:text,HostClass:identifier,Setting:name,Value:text,Deployable:status"/>
 <screen name="InteropDefaultSettingDiff" filter="Production,Item,HostClass,Setting,Change" sort="Production,Item,HostClass,Setting,Change" kinds="Production:text,Item:text,HostClass:identifier,Setting:name,Change:text,Value:text,OtherValue:text"/>
 <screen name="InteropMessageList" filter="Status,Type,Source,Target,BodyClass,SessionId" sort="TimeCreated,Status,Type,Source,Target,BodyClass,SessionId" kinds="ID:name,TimeCreated:text,Status:status,Type:text,Source:text,Target:text,BodyClass:identifier,SessionId:identifier,Error:status"/>

@@ -710,17 +710,68 @@ Parameter OUTCOMERESENT = "resent as";
 
 Parameter OUTCOMEFAILED = "not resent";
 
+/// <p>The suspended messages' refusals (Story 24.16), each 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug: none of the messages
+/// named can be acted on, and the messages changed after a person reviewed them.</p>
+Parameter SUSPENDEDNONE = "INTEROP.SUSPENDED.NONE";
+
+Parameter REASONSUSPENDEDNONE = "None of these messages can be acted on now. Each one's line says why.";
+
+Parameter SUSPENDEDCHANGED = "INTEROP.SUSPENDED.CHANGED";
+
+Parameter REASONSUSPENDEDCHANGED = "These messages changed after they were reviewed, so nothing was changed. Review them again.";
+
+/// <p>The consequence codes the four suspended message proposals and dialogs carry (Story 24.16). The client maps each to its published sentence.</p>
+Parameter SUSPENDEDRESUBMIT = "INTEROP.SUSPENDED.RESUBMIT";
+
+Parameter REASONSUSPENDEDRESUBMIT = "Resubmitting puts each message marked to be resubmitted back on its target's queue under its own message id, and the running production processes it. It cannot be undone.";
+
+Parameter SUSPENDEDEDIT = "INTEROP.SUSPENDED.EDIT";
+
+Parameter REASONSUSPENDEDEDIT = "Edit and resubmit saves the edited body as a new copy and puts the message back on its target's queue with it, under its own message id. The original body is kept. It cannot be undone.";
+
+Parameter SUSPENDEDDISCARD = "INTEROP.SUSPENDED.DISCARD";
+
+Parameter REASONSUSPENDEDDISCARD = "Discarding marks each message marked to be discarded as Discarded, so it is no longer suspended and is not processed. The message and its body are kept, and it can still be resent from Messages.";
+
+Parameter SUSPENDEDDELETE = "INTEROP.SUSPENDED.DELETE";
+
+Parameter REASONSUSPENDEDDELETE = "Deleting removes each message marked to be deleted, its body when no other message uses it, and its search table entries. It cannot be undone.";
+
+/// <p>The words of the verdicts a suspended message reads beyond <parameter>VERDICTS</parameter>' (Story 24.16): no longer suspended, and what each action will do.
+/// <parameter>OcuPilot.Port.InteropPort.SUSPENDEDVERDICTS</parameter> lists every verdict a suspended action reads.</p>
+Parameter VERDICTNOTSUSPENDED = "is no longer suspended";
+
+Parameter VERDICTRESUBMIT = "will be resubmitted";
+
+Parameter VERDICTDISCARD = "will be discarded";
+
+Parameter VERDICTDELETE = "will be deleted";
+
+/// <p>The words that follow a message id in the outcome of a suspended write (Story 24.16): <code>&lt;id&gt;: resubmitted</code> and
+/// <code>&lt;id&gt;: not resubmitted: &lt;text&gt;</code>, and so for a discard and a delete.</p>
+Parameter OUTCOMERESUBMITTED = "resubmitted";
+
+Parameter OUTCOMENOTRESUBMITTED = "not resubmitted";
+
+Parameter OUTCOMEDISCARDED = "discarded";
+
+Parameter OUTCOMENOTDISCARDED = "not discarded";
+
+Parameter OUTCOMEDELETED = "deleted";
+
+Parameter OUTCOMENOTDELETED = "not deleted";
+
 /// <p>The refusals the port answers with, as a <class>%List</class>: every code that is not a
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..ScheduleCodes() _ ..PurgeCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..StartupCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..ScheduleCodes() _ ..PurgeCodes() _ ..SuspendedCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..StartupCodes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP, ..#SUSPENDEDRESUBMIT, ..#SUSPENDEDEDIT, ..#SUSPENDEDDISCARD, ..#SUSPENDEDDELETE)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -850,6 +901,13 @@ ClassMethod PurgePreconditionCodes() As %List
     Quit $ListBuild(..#PURGERUNNING)
 }
 
+/// <p>The suspended message codes (Story 24.16), as a <class>%List</class>: the refusal of a selection none of which can be acted on and of a selection that changed
+/// after it was reviewed. The four consequence codes are <method>ConsequenceCodes</method>'s.</p>
+ClassMethod SuspendedCodes() As %List
+{
+    Quit $ListBuild(..#SUSPENDEDNONE, ..#SUSPENDEDCHANGED)
+}
+
 /// <p>The startup codes (Story 24.3), as a <class>%List</class>: the three violations, the refusal of a value the production
 /// already holds, the all-namespaces refusal and the read-only refusal. The two consequence codes are
 /// <method>ConsequenceCodes</method>'s.</p>
@@ -905,6 +963,10 @@ ClassMethod VerdictSentence(pVerdict As %String) As %String
     If pVerdict = "nobody" Quit ..#VERDICTNOBODY
     If pVerdict = "targetoff" Quit ..#VERDICTTARGETOFF
     If pVerdict = "noreplyqueue" Quit ..#VERDICTNOREPLYQUEUE
+    If pVerdict = "notsuspended" Quit ..#VERDICTNOTSUSPENDED
+    If pVerdict = "resubmit" Quit ..#VERDICTRESUBMIT
+    If pVerdict = "discard" Quit ..#VERDICTDISCARD
+    If pVerdict = "delete" Quit ..#VERDICTDELETE
     Quit ""
 }
 
@@ -1068,6 +1130,12 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#EDITVALUE Quit ..#REASONEDITVALUE
     If pCode = ..#MESSAGERESEND Quit ..#REASONMESSAGERESEND
     If pCode = ..#MESSAGEEDITRESEND Quit ..#REASONMESSAGEEDITRESEND
+    If pCode = ..#SUSPENDEDNONE Quit ..#REASONSUSPENDEDNONE
+    If pCode = ..#SUSPENDEDCHANGED Quit ..#REASONSUSPENDEDCHANGED
+    If pCode = ..#SUSPENDEDRESUBMIT Quit ..#REASONSUSPENDEDRESUBMIT
+    If pCode = ..#SUSPENDEDEDIT Quit ..#REASONSUSPENDEDEDIT
+    If pCode = ..#SUSPENDEDDISCARD Quit ..#REASONSUSPENDEDDISCARD
+    If pCode = ..#SUSPENDEDDELETE Quit ..#REASONSUSPENDEDDELETE
     Quit ""
 }
 

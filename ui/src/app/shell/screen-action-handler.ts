@@ -229,6 +229,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // resend its own page runs.
   'OcuPilot.Screen.Descriptor.InteropMessageList',
   'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab',
+  // Story 24.16: Suspended messages, whose Resubmit, Discard and Delete act on the checked rows after a dry run, and whose Edit and resubmit its own page runs.
+  'OcuPilot.Screen.Descriptor.InteropSuspendedMessageList',
 ];
 
 /**
@@ -511,6 +513,16 @@ export const INTEROP_MESSAGE_HEADER = 'OcuPilot.Screen.Descriptor.InteropMessage
 export const MESSAGE_RESEND = 'resend';
 export const MESSAGE_EDIT_RESEND = 'editresend';
 
+/**
+ * Suspended messages (Story 24.16): Resubmit, Discard and Delete act on the checked rows and Edit and resubmit on one, each after a dry run the person reviews.
+ * Edit and resubmit's form is run by its own page (`areas/interoperability/interop-suspended-message-list.page.ts`, over `message-edit-flow.ts`).
+ */
+export const INTEROP_SUSPENDED_LIST = 'OcuPilot.Screen.Descriptor.InteropSuspendedMessageList';
+export const SUSPENDED_RESUBMIT = 'resubmit';
+export const SUSPENDED_EDIT_RESUBMIT = 'editresubmit';
+export const SUSPENDED_DISCARD = 'discard';
+const SUSPENDED_DELETE = 'delete';
+
 /** Story 24.9: Compare namespaces, whose Promote is reviewed by a dry run and confirmed by typing the other namespace's name. */
 export const EXPLORER_NAMESPACE_DIFF = 'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff';
 export const NAMESPACE_PROMOTE = 'promote';
@@ -535,6 +547,8 @@ const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [PAGE_RESOURCE_LIST]: [PAGE_RESOURCE_CHANGE, PAGE_RESOURCE_CLEAR],
   // Story 24.16: Purge management data's Purge reads the three settings the purge will use before its dialog opens.
   'OcuPilot.Screen.Descriptor.InteropPurgeList': ['purge'],
+  // Story 24.16: Suspended messages' four actions list what each message would do before the dialog opens, and Edit and resubmit answers its form.
+  [INTEROP_SUSPENDED_LIST]: [SUSPENDED_RESUBMIT, SUSPENDED_EDIT_RESUBMIT, SUSPENDED_DISCARD, SUSPENDED_DELETE],
 };
 
 /**
@@ -546,6 +560,7 @@ const CHECKED_SET_DIALOGS: Readonly<Record<string, Readonly<Record<string, 'broa
   [PROCESS_LIST]: { [BROADCAST]: 'broadcast' },
   [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: 'dry-run' },
   [EXPLORER_NAMESPACE_DIFF]: { [NAMESPACE_PROMOTE]: 'dry-run' },
+  [INTEROP_SUSPENDED_LIST]: { [SUSPENDED_RESUBMIT]: 'dry-run', [SUSPENDED_DISCARD]: 'dry-run', [SUSPENDED_DELETE]: 'dry-run' },
 };
 
 /** The two role actions, and the one value each sends (AD-56 (ii)). */
@@ -683,6 +698,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // Purge management data's page registers Purge itself, whose dialog takes the days, and Purge data settings' page registers Set value itself (Story 24.16).
   'OcuPilot.Screen.Descriptor.InteropPurgeList': ['purge'],
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': ['set'],
+  // Suspended messages' page registers Edit and resubmit itself, whose form takes the fields and is reviewed before it is sent (Story 24.16).
+  [INTEROP_SUSPENDED_LIST]: [SUSPENDED_EDIT_RESUBMIT],
   // An item's Test tab's page registers Send test itself, whose dialog sends the request class and its fields (Story 20.6).
   'OcuPilot.Screen.Descriptor.InteropItemTestTab': ['test'],
   // Data transformations' page registers Test itself, whose dialog sends the pasted message (Story 20.27).
@@ -762,7 +779,7 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
  * `DESTRUCTIVE` declaration. This is EXPERIENCE.md's `confirm-dialog` rule -- a delete carries the
  * typed-name field and a `button-destructive` -- applied to the verb that deletes.
  */
-const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE, 'remove', 'abort', MESSAGE_RESEND, MESSAGE_EDIT_RESEND, 'build'];
+const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE, 'remove', 'abort', MESSAGE_RESEND, MESSAGE_EDIT_RESEND, 'build', SUSPENDED_RESUBMIT, SUSPENDED_EDIT_RESUBMIT];
 
 /**
  * The actions that are destructive on one screen only, keyed by descriptor: Install makes another locale the instance's current one, and the word
@@ -922,6 +939,13 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   // Story 20.31: a resend delivers a copy that cannot be recalled, and so does an edit and resend.
   [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence },
   [INTEROP_MESSAGE_HEADER]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence, [MESSAGE_EDIT_RESEND]: STRINGS.interopMessageEditResendConsequence },
+  // Story 24.16: a resubmit cannot be recalled, a discard keeps the message and its body, and a delete removes them.
+  [INTEROP_SUSPENDED_LIST]: {
+    [SUSPENDED_RESUBMIT]: STRINGS.interopSuspendedResubmitConsequence,
+    [SUSPENDED_EDIT_RESUBMIT]: STRINGS.interopSuspendedEditConsequence,
+    [SUSPENDED_DISCARD]: STRINGS.interopSuspendedDiscardConsequence,
+    [SUSPENDED_DELETE]: STRINGS.interopSuspendedDeleteConsequence,
+  },
   // Story 24.9: a promote writes each document over the other namespace's copy, and nothing is undone.
   [EXPLORER_NAMESPACE_DIFF]: { [NAMESPACE_PROMOTE]: STRINGS.explorerPromoteConsequence },
 };
@@ -1927,7 +1951,8 @@ export class ScreenActionHandler {
     const digest = run.review['Digest'];
     if (this.waiting() !== null || typeof digest !== 'string' || digest === '') return false;
     const lines = reviewLinesOf(run.rows);
-    const sendable = lines.filter((line) => line.endsWith(`: ${STRINGS.interopResendVerdictResend}`)).length;
+    const verdict = Object.hasOwn(REVIEW_VERDICTS, descriptor) && Object.hasOwn(REVIEW_VERDICTS[descriptor], actionId) ? REVIEW_VERDICTS[descriptor][actionId] : STRINGS.interopResendVerdictResend;
+    const sendable = lines.filter((line) => line.endsWith(`: ${verdict}`)).length;
     const typed = name ?? (id.includes(',') ? String(sendable) : id);
     this.open('typed-name', descriptor, actionId, id, this.consequence(descriptor, actionId), [], sink, typed);
     const opened = this.waiting();
@@ -2224,8 +2249,21 @@ export class ScreenActionHandler {
   }
 }
 
-/** The sentences a dry run's 400 `detail.problem` begins with, which are published (Story 20.31): none of the messages can be resent, and an edit that changes nothing. */
-const DRY_RUN_SENTENCES: readonly string[] = [STRINGS.interopRefusalResendNone, STRINGS.interopRefusalEditNoChange];
+/** The sentences a dry run's 400 `detail.problem` begins with, which are published (Stories 20.31 and 24.16): none of the messages can be resent or acted on, and an edit that changes nothing. */
+const DRY_RUN_SENTENCES: readonly string[] = [STRINGS.interopRefusalResendNone, STRINGS.interopRefusalEditNoChange, STRINGS.interopSuspendedRefusalNone];
+
+/**
+ * The verdict sentence a review line ends with for a message the action will act on, keyed by descriptor and then by action id, where it is not the resend's
+ * (Story 24.16): the count a person types over a set is how many messages read it.
+ */
+const REVIEW_VERDICTS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  [INTEROP_SUSPENDED_LIST]: {
+    [SUSPENDED_RESUBMIT]: STRINGS.interopSuspendedVerdictResubmit,
+    [SUSPENDED_EDIT_RESUBMIT]: STRINGS.interopSuspendedVerdictResubmit,
+    [SUSPENDED_DISCARD]: STRINGS.interopSuspendedVerdictDiscard,
+    [SUSPENDED_DELETE]: STRINGS.interopSuspendedVerdictDelete,
+  },
+};
 
 /** The sentence a refused dry run shows: the published first line of its problem, else a published state refusal or the envelope's reason. */
 function dryRunReason(result: { readonly reason: string | null; readonly detail: Record<string, unknown> | null }): string {

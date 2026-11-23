@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:671 */
+  /** EXPERIENCE.md:672 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -9597,6 +9597,60 @@ export const STRINGS = {
   interopPurgeSettingsPrompt2: 'Does a purge here keep sessions that are still in progress?',
   /** EXPERIENCE.md:628 */
   interopPurgeSettingsPrompt3: 'Turn on Include message bodies.',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedLabel: 'Suspended messages',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedResubmitAction: 'Resubmit',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedEditResubmitAction: 'Edit and resubmit',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedDiscardAction: 'Discard',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedVerdictNotSuspended: 'is no longer suspended',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedVerdictResubmit: 'will be resubmitted',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedVerdictDiscard: 'will be discarded',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedVerdictDelete: 'will be deleted',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedOutcomeResubmitted: 'resubmitted',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedOutcomeNotResubmitted: 'not resubmitted',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedOutcomeDiscarded: 'discarded',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedOutcomeNotDiscarded: 'not discarded',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedOutcomeDeleted: 'deleted',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedOutcomeNotDeleted: 'not deleted',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedResubmitConsequence:
+    'Resubmitting puts each message marked to be resubmitted back on its target\'s queue under its own message id, and the running production processes it. It cannot be undone.',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedEditConsequence:
+    'Edit and resubmit saves the edited body as a new copy and puts the message back on its target\'s queue with it, under its own message id. The original body is kept. It cannot be undone.',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedDiscardConsequence:
+    'Discarding marks each message marked to be discarded as Discarded, so it is no longer suspended and is not processed. The message and its body are kept, and it can still be resent from Messages.',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedDeleteConsequence:
+    'Deleting removes each message marked to be deleted, its body when no other message uses it, and its search table entries. It cannot be undone.',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedRefusalNone: 'None of these messages can be acted on now. Each one\'s line says why.',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedRefusalChanged: 'These messages changed after they were reviewed, so nothing was changed. Review them again.',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedEmpty: 'No suspended messages in this namespace.',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedEmptyAgent: 'resubmit or discard suspended messages',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedPrompt1: 'Which messages are suspended here, and why?',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedPrompt2: 'Which target has the most suspended messages?',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedPrompt3: 'Resubmit the suspended messages whose target is running.',
 } as const;
 
 /**

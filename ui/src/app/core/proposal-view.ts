@@ -574,6 +574,11 @@ export const CONSEQUENCE_INTEROPTRANSFORMRUNS = 'INTEROP.TRANSFORM.RUNS';
 /** Story 20.31: a message resend, and an edit and resend, each of which delivers a copy that cannot be recalled. */
 export const CONSEQUENCE_INTEROPMESSAGERESEND = 'INTEROP.MESSAGE.RESEND';
 export const CONSEQUENCE_INTEROPMESSAGEEDITRESEND = 'INTEROP.MESSAGE.EDITRESEND';
+/** Story 24.16: a suspended message's resubmit, edit and resubmit, discard and delete. */
+export const CONSEQUENCE_INTEROPSUSPENDEDRESUBMIT = 'INTEROP.SUSPENDED.RESUBMIT';
+export const CONSEQUENCE_INTEROPSUSPENDEDEDIT = 'INTEROP.SUSPENDED.EDIT';
+export const CONSEQUENCE_INTEROPSUSPENDEDDISCARD = 'INTEROP.SUSPENDED.DISCARD';
+export const CONSEQUENCE_INTEROPSUSPENDEDDELETE = 'INTEROP.SUSPENDED.DELETE';
 /** Story 20.22: a set of a setting that is a location on the server (AD-21's ninth case). */
 export const CONSEQUENCE_INTEROPSETTINGLOCATION = 'INTEROP.SETTING.LOCATION';
 /** The field a setting set's diff names the value under. */
@@ -824,6 +829,11 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 20.31: a message resend's and an edit and resend's sentences, each published once.
   if (code === CONSEQUENCE_INTEROPMESSAGERESEND) return STRINGS.interopMessageResendConsequence;
   if (code === CONSEQUENCE_INTEROPMESSAGEEDITRESEND) return STRINGS.interopMessageEditResendConsequence;
+  // Story 24.16: a suspended message's four sentences, the ones its own dialogs show.
+  if (code === CONSEQUENCE_INTEROPSUSPENDEDRESUBMIT) return STRINGS.interopSuspendedResubmitConsequence;
+  if (code === CONSEQUENCE_INTEROPSUSPENDEDEDIT) return STRINGS.interopSuspendedEditConsequence;
+  if (code === CONSEQUENCE_INTEROPSUSPENDEDDISCARD) return STRINGS.interopSuspendedDiscardConsequence;
+  if (code === CONSEQUENCE_INTEROPSUSPENDEDDELETE) return STRINGS.interopSuspendedDeleteConsequence;
   return '';
 }
 

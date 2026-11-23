@@ -125,7 +125,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules,PurgeSettings,Purge";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules,PurgeSettings,Purge,SuspendedMessages";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -319,8 +319,8 @@ Parameter TESTPAIRS = "%Ens_Portal:USE,%Ens_TestingService:USE";
 /// lookup table export and import (Story 20.5), whose files and reviewed counts the port reads from its query, and the host test's
 /// send (Story 20.6), whose request class and field values it reads from its query, and the data transformation test (Story 20.27),
 /// whose pasted message it reads from its query, and the edit-and-resend (Story 20.31), whose edited body it builds from the fields its
-/// query carries.</p>
-Parameter COMPOSEDTYPES = "LookupTables/EXPORT,LookupTables/IMPORT,ItemTest/SENDTEST,Transforms/TRANSFORMTEST,Messages/EDITRESEND";
+/// query carries, and the edit-and-resubmit of a suspended message (Story 24.16), which builds its edited body the same way.</p>
+Parameter COMPOSEDTYPES = "LookupTables/EXPORT,LookupTables/IMPORT,ItemTest/SENDTEST,Transforms/TRANSFORMTEST,Messages/EDITRESEND,SuspendedMessages/EDITRESUBMIT";
 
 /// <p>The pair each item tab adds to the Productions endpoint's pairs (the classic configuration page's
 /// <code>initSecurity</code>): the queue, the event log, the message headers and the jobs.</p>
@@ -1188,7 +1188,7 @@ ClassMethod IsStartupWrite(pType As %String) As %Boolean
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
 ClassMethod IsAnyWrite(pType As %String) As %Boolean
 {
-    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsPurgeWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
+    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsPurgeWrite(pType) || ..IsSuspendedWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
 }
 
 /// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads, Story 20.30's session trace and Story 24.4's three session reads. Each serves
@@ -1232,6 +1232,8 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
         Set tSpec = ..#PURGESETTINGPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTPURGE {
         Set tSpec = ..#PURGEPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES {
+        Set tSpec = ..#MESSAGEPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
         Set tSpec = ..#TESTPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTITEMCLASSES {
@@ -1277,6 +1279,12 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && ((pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)) Set tSpec = tSpec _ "," _ ..#DTLTESTPAIR
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ((pType = ..#TYPERESEND) || (pType = ..#TYPERESENDMESSAGES)) Set tSpec = tSpec _ "," _ ..#RESENDPAIR
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ((pType = ..#TYPEEDIT) || (pType = ..#TYPEEDITRESEND)) Set tSpec = tSpec _ "," _ ..#MESSAGECONTENTPAIR _ "," _ ..#RESENDPAIR _ "," _ ..#EDITRESENDPAIR
+    If pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES {
+        Set tKind = ..SuspendedKind(pType)
+        If tKind = "resubmit" Set tSpec = tSpec _ "," _ ..#RESENDPAIR
+        If tKind = "edit" Set tSpec = tSpec _ "," _ ..#MESSAGECONTENTPAIR _ "," _ ..#RESENDPAIR _ "," _ ..#EDITRESENDPAIR
+        If (tKind = "discard") || (tKind = "delete") Set tSpec = tSpec _ "," _ ..#DISCARDPAIR
+    }
     Quit ##class(OcuPilot.Screen.Gate).ParsePairSpec(tSpec)
 }
 
@@ -1304,6 +1312,7 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTSCHEDULES Quit (pType = ..#TYPESCHEDULE) || ..IsScheduleWrite(pType)
     If pEndpoint = ..#ENDPOINTPURGESETTINGS Quit (pType = ..#TYPESETTING) || (pType = ..#TYPEPURGESETTINGSET)
     If pEndpoint = ..#ENDPOINTPURGE Quit (pType = ..#TYPEPURGESTATE) || (pType = ..#TYPEPURGE)
+    If pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES Quit ..SuspendedKind(pType) '= ""
     If pEndpoint = ..#ENDPOINTITEMTEST Quit (pType = ..#TYPETESTTARGET) || (pType = ..#TYPESENDTEST)
     If pEndpoint = ..#ENDPOINTTRANSFORMS Quit (pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)
     If pEndpoint = ..#ENDPOINTMESSAGES Quit ..IsMessageType(pType)
@@ -1474,6 +1483,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If pEndpoint = ..#ENDPOINTPURGE {
             Set tSC = ..InvokePurge(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES {
+            Set tSC = ..InvokeSuspended(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
         }
 
@@ -5218,17 +5231,23 @@ ClassMethod MessageSet(pText As %String, Output pIds As %List) As %Boolean
 /// and the body is no longer there (<var>pBodyGone</var>); <code>targetoff</code> for a request (<var>pType</var>
 /// <code>Request</code>) whose target is not an enabled item of the running production (<var>pEnabledTarget</var> 0), which the
 /// vendor queues and answers OK for (measured); <code>noreplyqueue</code> for any other type, a response, whose reply queue no longer
-/// exists (<var>pReplyQueue</var> 0); else <code>resend</code>. <var>pType</var> is the display word. Pure.</p>
-ClassMethod MessageVerdict(pType As %String, pExists As %Boolean, pBodyGone As %Boolean, pEnabledTarget As %Boolean, pReplyQueue As %Boolean) As %String
+/// exists (<var>pReplyQueue</var> 0); else <code>resend</code>. <var>pType</var> is the display word.</p>
+/// <p>For a suspended message (Story 24.16) <var>pKind</var> is the action, <code>resubmit</code>, <code>edit</code>, <code>discard</code> or
+/// <code>delete</code> (<method>SuspendedKind</method>), and a header that is not <var>pSuspended</var> reads <code>notsuspended</code>
+/// straight after <code>gone</code>. A discard and a delete read no body or target and answer the action's own word; a resubmit and an edit
+/// are judged as a resend is and answer <code>resubmit</code>. Pure.</p>
+ClassMethod MessageVerdict(pType As %String, pExists As %Boolean, pBodyGone As %Boolean, pEnabledTarget As %Boolean, pReplyQueue As %Boolean, pKind As %String = "", pSuspended As %Boolean = 1) As %String
 {
     If 'pExists Quit "gone"
+    If (pKind '= "") && 'pSuspended Quit "notsuspended"
+    If (pKind = "discard") || (pKind = "delete") Quit pKind
     If pBodyGone Quit "nobody"
     If pType = "Request" {
         If 'pEnabledTarget Quit "targetoff"
     } ElseIf 'pReplyQueue {
         Quit "noreplyqueue"
     }
-    Quit "resend"
+    Quit $Select(pKind = "": "resend", 1: "resubmit")
 }
 
 /// <p>The digest that stands for the verdicts <var>pVerdicts</var> (<code>id=verdict</code> joined by a comma, in id order) of the
@@ -5258,6 +5277,17 @@ ClassMethod Sentence(pCode As %String) As %String
 ClassMethod OutcomeWord(pResent As %Boolean) As %String
 {
     Quit $Select(pResent: ##class(OcuPilot.Api.InteropError).#OUTCOMERESENT, 1: ##class(OcuPilot.Api.InteropError).#OUTCOMEFAILED)
+}
+
+/// <p>The words that follow a message id in the outcome line of a suspended write (Story 24.16): for the action <var>pKind</var>
+/// (<method>SuspendedKind</method>; an edit reads as a resubmit) <code>resubmitted</code>, <code>discarded</code> or <code>deleted</code> when <var>pDone</var> is 1, else
+/// <code>not resubmitted</code>, <code>not discarded</code> or <code>not deleted</code> (<class>OcuPilot.Api.InteropError</class>'s <code>OUTCOME</code>
+/// parameters).</p>
+ClassMethod SuspendedOutcomeWord(pKind As %String, pDone As %Boolean) As %String
+{
+    If pKind = "discard" Quit $Select(pDone: ##class(OcuPilot.Api.InteropError).#OUTCOMEDISCARDED, 1: ##class(OcuPilot.Api.InteropError).#OUTCOMENOTDISCARDED)
+    If pKind = "delete" Quit $Select(pDone: ##class(OcuPilot.Api.InteropError).#OUTCOMEDELETED, 1: ##class(OcuPilot.Api.InteropError).#OUTCOMENOTDELETED)
+    Quit $Select(pDone: ##class(OcuPilot.Api.InteropError).#OUTCOMERESUBMITTED, 1: ##class(OcuPilot.Api.InteropError).#OUTCOMENOTRESUBMITTED)
 }
 
 /// <p>The namespace's production while it is running, in <var>pProduction</var> (<code>""</code> when none is: stopped, suspended or
@@ -5290,18 +5320,24 @@ ClassMethod RunningProduction(pNamespace As %String, Output pProduction As %Stri
 /// <code>""</code> for a header that is gone; <var>pFacts</var><code>(n)</code> is <code>$ListBuild(ID, Type, Source, Target,
 /// BodyClass, BodyId, Verdict)</code>; <var>pVerdicts</var> is <code>id=verdict</code> joined by a comma; <var>pEligible</var> counts
 /// <code>resend</code>.</p>
-ClassMethod JudgeMessages(pNamespace As %String, pProduction As %String, pIds As %List, Output pRows As %DynamicArray, ByRef pFacts, Output pVerdicts As %String, Output pEligible As %Integer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <p>For a suspended message (Story 24.16) <var>pKind</var> is the action (<method>MessageVerdict</method>): a header whose status is not
+/// Suspended reads <code>notsuspended</code>, <var>pEligible</var> counts the action's own verdict, and a discard or a delete reads no
+/// production, so <var>pProduction</var> may be <code>""</code> for them.</p>
+ClassMethod JudgeMessages(pNamespace As %String, pProduction As %String, pIds As %List, Output pRows As %DynamicArray, ByRef pFacts, Output pVerdicts As %String, Output pEligible As %Integer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pKind As %String = "") As %Status [ Private ]
 {
     Kill pFacts
     Set pFacts = 0
     Set pRows = ""
     Set pVerdicts = ""
     Set pEligible = 0
-    Set tSC = ..GatherItems(pNamespace, pProduction, "", 0, .tExists, .tFound, .tCount, .tCaught)
-    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the production's items could not be read", .pHttpStatus, .pFault)
+    Set tOk = $Select(pKind = "": "resend", (pKind = "edit"): "resubmit", 1: pKind)
     Kill tEnabled
-    For tI = 1:1:tFound {
-        If $List(tFound(tI), 4) Set tEnabled($ZConvert($List(tFound(tI), 1), "U")) = 1
+    If (pKind '= "discard") && (pKind '= "delete") {
+        Set tSC = ..GatherItems(pNamespace, pProduction, "", 0, .tExists, .tFound, .tCount, .tCaught)
+        If $IsObject(tCaught) Quit ..Mapped(tCaught, "the production's items could not be read", .pHttpStatus, .pFault)
+        For tI = 1:1:tFound {
+            If $List(tFound(tI), 4) Set tEnabled($ZConvert($List(tFound(tI), 1), "U")) = 1
+        }
     }
     Set pRows = []
     For tI = 1:1:$ListLength(pIds) {
@@ -5310,8 +5346,8 @@ ClassMethod JudgeMessages(pNamespace As %String, pProduction As %String, pIds As
         If $IsObject(tCaught) Quit
         Set tBodyGone = tHeaderExists && (tBodyClass '= "") && (tBodyId '= "") && 'tBodyExists
         Set tTargetEnabled = $Select(tTarget = "": 0, 1: ''$Data(tEnabled($ZConvert(tTarget, "U"))))
-        Set tVerdict = ..MessageVerdict(tType, tHeaderExists, tBodyGone, tTargetEnabled, tQueueExists)
-        If tVerdict = "resend" Set pEligible = pEligible + 1
+        Set tVerdict = ..MessageVerdict(tType, tHeaderExists, tBodyGone, tTargetEnabled, tQueueExists, pKind, (tStatus = "Suspended"))
+        If tVerdict = tOk Set pEligible = pEligible + 1
         Set pVerdicts = pVerdicts _ $Select(pVerdicts = "": "", 1: ",") _ tId _ "=" _ tVerdict
         Set pFacts($Increment(pFacts)) = $ListBuild(tId, tType, tSource, tTarget, tBodyClass, tBodyId, tVerdict)
         Set tRow = {}
@@ -5335,17 +5371,23 @@ ClassMethod JudgeMessages(pNamespace As %String, pProduction As %String, pIds As
 /// <code>INTEROP.PRODUCTION.NOTRUNNING</code> as a whole. Composed for an action, a <var>pReviewed</var> the verdicts no longer give
 /// is 409 <code>INTEROP.RESEND.CHANGED</code>. Whether anything can be resent is the write's to refuse
 /// (<method>PerformResend</method>), so a dry run still answers the lines.</p>
-ClassMethod ReadResend(pNamespace As %String, pText As %String, pAction As %String, pReviewed As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <p>For a suspended message (Story 24.16) <var>pKind</var> is the action (<method>MessageVerdict</method>); only a resubmit reads the
+/// production's state, a discard and a delete answer <code>Production</code> <code>""</code>, and a moved review is 409
+/// <code>INTEROP.SUSPENDED.CHANGED</code>.</p>
+ClassMethod ReadResend(pNamespace As %String, pText As %String, pAction As %String, pReviewed As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pKind As %String = "") As %Status [ Private ]
 {
     Set pRow = ""
     If '..MessageSet(pText, .tIds) Quit ..RefuseCriterion("Messages", .pHttpStatus, .pFault)
-    Set tSC = ..RunningProduction(pNamespace, .tProduction, .tCaught)
-    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the production's state could not be read", .pHttpStatus, .pFault)
-    If tProduction = "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#NOTRUNNING, .pHttpStatus, .pFault)
-    Set tSC = ..JudgeMessages(pNamespace, tProduction, tIds, .tRows, .tFacts, .tVerdicts, .tEligible, .pHttpStatus, .pFault)
+    Set tProduction = ""
+    If (pKind '= "discard") && (pKind '= "delete") {
+        Set tSC = ..RunningProduction(pNamespace, .tProduction, .tCaught)
+        If $IsObject(tCaught) Quit ..Mapped(tCaught, "the production's state could not be read", .pHttpStatus, .pFault)
+        If tProduction = "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#NOTRUNNING, .pHttpStatus, .pFault)
+    }
+    Set tSC = ..JudgeMessages(pNamespace, tProduction, tIds, .tRows, .tFacts, .tVerdicts, .tEligible, .pHttpStatus, .pFault, pKind)
     If $$$ISERR(tSC) Quit tSC
     Set tDigest = ..ResendDigest(tProduction, tVerdicts)
-    If (pAction '= "") && (pReviewed '= "") && (pReviewed '= tDigest) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#RESENDCHANGED, .pHttpStatus, .pFault)
+    If (pAction '= "") && (pReviewed '= "") && (pReviewed '= tDigest) Quit ..Conflict($Select(pKind = "": ##class(OcuPilot.Api.InteropError).#RESENDCHANGED, 1: ##class(OcuPilot.Api.InteropError).#SUSPENDEDCHANGED), .pHttpStatus, .pFault)
     Set pRow = {}
     Do pRow.%Set("Namespace", pNamespace, "string")
     Do pRow.%Set("Production", tProduction, "string")
@@ -5386,43 +5428,69 @@ ClassMethod VendorResend(pNamespace As %String, pId As %String, Output pNewId As
 /// with nothing sent. A message the vendor refuses is recorded with its text (cut at <parameter>ERRORTEXTMAX</parameter>) and the
 /// rest still go; a vendor <code>&lt;PROTECT&gt;</code> stops the write as 403 <code>PORT.ACCESSDENIED</code>. The vendor audits each
 /// new header, so this records nothing.</p>
-ClassMethod PerformResend(pNamespace As %String, pText As %String, pReviewed As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <p>For a suspended message (Story 24.16) <var>pKind</var> is <code>resubmit</code>, <code>discard</code> or <code>delete</code>
+/// (<method>SuspendedKind</method>): the same read, judgment and loop, each message whose verdict is the action's own acted on by
+/// <method>VendorSuspended</method>, the answer <code>{Namespace, Done, Failed, Messages: [{ID}|{ID, Error}]}</code>, no message acted on
+/// 409 <code>INTEROP.SUSPENDED.NONE</code> and a moved review 409 <code>INTEROP.SUSPENDED.CHANGED</code>. The vendor audits a resubmit
+/// itself; a discard and a delete, which it does not audit, record OcuPilot's own row naming the namespace, the action and the ids done
+/// and failed (<method>AuditRuntime</method>), a vendor error text never reaching a log line.</p>
+ClassMethod PerformResend(pNamespace As %String, pText As %String, pReviewed As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pKind As %String = "") As %Status [ Private ]
 {
     Set pResult = ""
-    Set tSC = ..ReadResend(pNamespace, pText, ..#TYPERESENDMESSAGES, pReviewed, .tRow, .pHttpStatus, .pFault)
+    Set tSuspended = (pKind '= "")
+    Set tSC = ..ReadResend(pNamespace, pText, $Select('tSuspended: ..#TYPERESENDMESSAGES, 1: ..SuspendedWriteType(pKind)), pReviewed, .tRow, .pHttpStatus, .pFault, pKind)
     If $$$ISERR(tSC) Quit tSC
-    If 'tRow.%Get("Eligible") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#RESENDNONE, .pHttpStatus, .pFault)
+    If 'tRow.%Get("Eligible") Quit ..Conflict($Select('tSuspended: ##class(OcuPilot.Api.InteropError).#RESENDNONE, 1: ##class(OcuPilot.Api.InteropError).#SUSPENDEDNONE), .pHttpStatus, .pFault)
+    Set tOk = $Select('tSuspended: "resend", 1: pKind)
     Set tSent = []
     Set tResent = 0
     Set tFailed = 0
     Set tStopped = ""
+    Set tDone = ""
+    Set tNot = ""
     Set tIterator = tRow.%Get("Messages").%GetIterator()
     While tIterator.%GetNext(.tIndex, .tMessage) {
-        If tMessage.%Get("Verdict") '= "resend" Continue
+        If tMessage.%Get("Verdict") '= tOk Continue
         Set tId = tMessage.%Get("ID")
-        Set tVendorSC = ..VendorResend(pNamespace, tId, .tNewId, .tCaught)
+        Set tNewId = ""
+        If tSuspended {
+            Set tVendorSC = ..VendorSuspended(pNamespace, pKind, tId, .tCaught)
+        } Else {
+            Set tVendorSC = ..VendorResend(pNamespace, tId, .tNewId, .tCaught)
+        }
         If $IsObject(tCaught) Set tVendorSC = tCaught.AsStatus()
         Set tEntry = {}
         Do tEntry.%Set("ID", tId, "string")
         If $$$ISOK(tVendorSC) {
-            Do tEntry.%Set("NewId", tNewId _ "", "string")
+            If 'tSuspended Do tEntry.%Set("NewId", tNewId _ "", "string")
             Set tResent = tResent + 1
+            Set tDone = tDone _ $Select(tDone = "": "", 1: ",") _ tId
         } Else {
             Set tText = $System.Status.GetErrorText(tVendorSC)
             If tText [ "<PROTECT>" {
                 Set tStopped = tVendorSC
                 Quit
             }
-            Do ..LogFault("a message could not be resent", tVendorSC)
+            Do ..LogFault($Select('tSuspended: "a message could not be resent", 1: "a suspended message could not be acted on"), $Select('tSuspended: tVendorSC, 1: ..VendorCodesStatus(tVendorSC)))
             Do tEntry.%Set("Error", $Extract(tText, 1, ..#ERRORTEXTMAX), "string")
             Set tFailed = tFailed + 1
+            Set tNot = tNot _ $Select(tNot = "": "", 1: ",") _ tId
         }
         Do tSent.%Push(tEntry)
     }
-    If tStopped '= "" Quit ..Statused(tStopped, "the message resend failed", .pHttpStatus, .pFault)
+    Set tAudited = tDone _ $Select((tDone '= "") && (tNot '= ""): ",", 1: "") _ tNot
+    If ((pKind = "discard") || (pKind = "delete")) && (tAudited '= "") {
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        Do tEffects.%Set("action", pKind, "string")
+        Do tEffects.%Set("done", tDone, "string")
+        Do tEffects.%Set("failed", tNot, "string")
+        Do ..AuditRuntime($Select(pKind = "discard": ..#VERBDISCARD, 1: ..#VERBDELETE), ..#ENTITYMESSAGE, tAudited, tEffects)
+    }
+    If tStopped '= "" Quit ..Statused(tStopped, $Select('tSuspended: "the message resend failed", 1: "the suspended message write failed"), .pHttpStatus, .pFault)
     Set pResult = {}
     Do pResult.%Set("Namespace", pNamespace, "string")
-    Do pResult.%Set("Resent", tResent, "number")
+    Do pResult.%Set($Select('tSuspended: "Resent", 1: "Done"), tResent, "number")
     Do pResult.%Set("Failed", tFailed, "number")
     Do pResult.%Set("Messages", tSent)
     Set pHttpStatus = 200
@@ -5594,7 +5662,10 @@ ClassMethod ConvertEditPlan(pNamespace As %String, ByRef pPlan, Output pViolatio
 /// <p><var>pPlan</var> answers what an edit sends from, as <method>ReadTestTarget</method>'s: <code>pPlan("kind")</code>, for a
 /// document <code>pPlan("content")</code>, else <code>pPlan</code> fields and <code>pPlan(n)</code> <code>$ListBuild(path, leaf,
 /// owner, chain, typed, logical)</code> for each changed field.</p>
-ClassMethod ReadEdit(pNamespace As %String, pId As %String, pAction As %String, pFieldsText As %String, pReviewed As %String, Output pRow As %DynamicObject, ByRef pPlan, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <p>For a suspended message (Story 24.16) <var>pSuspended</var> is 1: the message is judged as <code>edit</code>
+/// (<method>MessageVerdict</method>), so one that is not Suspended reads <code>notsuspended</code> and is not opened, an eligible one reads
+/// <code>resubmit</code>, and a moved review is 409 <code>INTEROP.SUSPENDED.CHANGED</code>.</p>
+ClassMethod ReadEdit(pNamespace As %String, pId As %String, pAction As %String, pFieldsText As %String, pReviewed As %String, Output pRow As %DynamicObject, ByRef pPlan, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSuspended As %Boolean = 0) As %Status [ Private ]
 {
     Set pRow = ""
     Kill pPlan
@@ -5603,7 +5674,7 @@ ClassMethod ReadEdit(pNamespace As %String, pId As %String, pAction As %String, 
     Set tSC = ..RunningProduction(pNamespace, .tProduction, .tCaught)
     If $IsObject(tCaught) Quit ..Mapped(tCaught, "the production's state could not be read", .pHttpStatus, .pFault)
     If tProduction = "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#NOTRUNNING, .pHttpStatus, .pFault)
-    Set tSC = ..JudgeMessages(pNamespace, tProduction, $ListBuild(pId), .tRows, .tFacts, .tVerdicts, .tEligible, .pHttpStatus, .pFault)
+    Set tSC = ..JudgeMessages(pNamespace, tProduction, $ListBuild(pId), .tRows, .tFacts, .tVerdicts, .tEligible, .pHttpStatus, .pFault, $Select(pSuspended: "edit", 1: ""))
     If $$$ISERR(tSC) Quit tSC
     Set tFact = tFacts(1)
     Set tVerdict = $List(tFact, 7)
@@ -5613,7 +5684,7 @@ ClassMethod ReadEdit(pNamespace As %String, pId As %String, pAction As %String, 
     Set tBody("editable") = 0
     Set tBody("kind") = ""
     Set tBody("meta") = 0
-    If tVerdict = "resend" {
+    If tVerdict = $Select(pSuspended: "resubmit", 1: "resend") {
         Set tSC = ..EditBodyFacts(pNamespace, pId, tBodyClass, $List(tFact, 6), .tBody, .tCaught)
         If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message body could not be read", .pHttpStatus, .pFault)
         If 'tBody("editable") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#EDITNOTEDITABLE, .pHttpStatus, .pFault)
@@ -5636,7 +5707,7 @@ ClassMethod ReadEdit(pNamespace As %String, pId As %String, pAction As %String, 
     }
     Set tOriginal = $Select(tKind = "": "", 1: ..Sha256Hex(tBodyClass _ $Char(3) _ tOriginalText))
     Set tDigest = ..Sha256Hex(tVerdict _ "|" _ tOriginal)
-    If (pAction '= "") && (pReviewed '= "") && (pReviewed '= tDigest) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#RESENDCHANGED, .pHttpStatus, .pFault)
+    If (pAction '= "") && (pReviewed '= "") && (pReviewed '= tDigest) Quit ..Conflict($Select(pSuspended: ##class(OcuPilot.Api.InteropError).#SUSPENDEDCHANGED, 1: ##class(OcuPilot.Api.InteropError).#RESENDCHANGED), .pHttpStatus, .pFault)
 
     ; The supplied fields.
     Kill tViolations
@@ -5777,7 +5848,9 @@ ClassMethod ReadEdit(pNamespace As %String, pId As %String, pAction As %String, 
 /// </ul>
 /// <p>A resend the vendor refuses after the clone was saved deletes the clone when no header names it. Called while the message's
 /// namespace is switched.</p>
-ClassMethod EditCloneHere(pHeaderId As %String, ByRef pPlan, Output pNewId As %String, Output pCloneClass As %String, Output pCloneId As %String, Output pStatus As %Status) [ Private ]
+/// <p>With <var>pSuspended</var> (Story 24.16) the header is resubmitted under its own id (<method>VendorResubmitWithBody</method>) and
+/// <var>pNewId</var> is that id.</p>
+ClassMethod EditCloneHere(pHeaderId As %String, ByRef pPlan, Output pNewId As %String, Output pCloneClass As %String, Output pCloneId As %String, Output pStatus As %Status, pSuspended As %Boolean = 0) [ Private ]
 {
     Set pNewId = ""
     Set pCloneClass = ""
@@ -5834,7 +5907,11 @@ ClassMethod EditCloneHere(pHeaderId As %String, ByRef pPlan, Output pNewId As %S
         Set pStatus = tClone.%ValidateObject()
         If $$$ISERR(pStatus) Quit
     }
-    Set pStatus = ..VendorResendWithBody(pHeaderId, tClone, .pNewId)
+    If pSuspended {
+        Set pStatus = ..VendorResubmitWithBody(pHeaderId, tClone, .pNewId)
+    } Else {
+        Set pStatus = ..VendorResendWithBody(pHeaderId, tClone, .pNewId)
+    }
     Set pCloneClass = tClone.%ClassName(1)
     Set pCloneId = tClone.%Id()
     If $$$ISERR(pStatus) && (pCloneId '= "") {
@@ -5855,17 +5932,27 @@ ClassMethod VendorResendWithBody(pHeaderId As %String, pClone As %RegisteredObje
     Quit ##class(Ens.MessageHeader).ResendDuplicatedMessage(pHeaderId, .pNewId, "", pClone)
 }
 
+/// <p><code>Ens.MessageHeader.ResubmitMessage</code> of the suspended header <var>pHeaderId</var> with the body <var>pClone</var> and no new
+/// target (Story 24.16), as the classic Edit and Resend page does for a suspended message: the header keeps its id, which is
+/// <var>pNewId</var>, takes the clone as its body and goes back on its target's queue. Called while the message's namespace is switched.
+/// Overridable so a test can refuse the resubmit after the clone was saved; production never overrides it.</p>
+ClassMethod VendorResubmitWithBody(pHeaderId As %String, pClone As %RegisteredObject, Output pNewId As %String) As %Status [ Private ]
+{
+    Set pNewId = pHeaderId
+    Quit ##class(Ens.MessageHeader).ResubmitMessage(pHeaderId, "", pClone)
+}
+
 /// <p><method>EditCloneHere</method> in <var>pNamespace</var>, switched by explicit save and restore; a fault is
 /// <var>pCaught</var>, with the namespace restored. Only vendor classes and this class run while it is switched. Overridable so a
 /// test can fail the resend after the clone was saved; production never overrides it.</p>
-ClassMethod VendorEditResend(pNamespace As %String, pHeaderId As %String, ByRef pPlan, Output pNewId As %String, Output pCloneClass As %String, Output pCloneId As %String, Output pCaught) As %Status [ Private ]
+ClassMethod VendorEditResend(pNamespace As %String, pHeaderId As %String, ByRef pPlan, Output pNewId As %String, Output pCloneClass As %String, Output pCloneId As %String, Output pCaught, pSuspended As %Boolean = 0) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pCaught = ""
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
-        Do ..EditCloneHere(pHeaderId, .pPlan, .pNewId, .pCloneClass, .pCloneId, .tSC)
+        Do ..EditCloneHere(pHeaderId, .pPlan, .pNewId, .pCloneClass, .pCloneId, .tSC, pSuspended)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -5881,16 +5968,24 @@ ClassMethod VendorEditResend(pNamespace As %String, pHeaderId As %String, ByRef 
 /// <code>INTEROP.RESEND.CHANGED</code>. Then a clone of the body carrying the changes is saved and the header resent with it
 /// (<method>EditCloneHere</method>). The answer is <code>{Namespace, Message, NewId, BodyClass, BodyId}</code>: the new header's id
 /// and the clone it names. The vendor audits the new header, so this records nothing.</p>
-ClassMethod PerformEditResend(pNamespace As %String, pId As %String, pFieldsText As %String, pReviewed As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <p>For a suspended message (<var>pSuspended</var>, Story 24.16) the header must read <code>resubmit</code> (else 409
+/// <code>INTEROP.SUSPENDED.NONE</code>) and is resubmitted under its own id with the clone, <code>NewId</code> being that id; a vendor
+/// error reaches the log as its error codes alone (<method>VendorCodesStatus</method>).</p>
+ClassMethod PerformEditResend(pNamespace As %String, pId As %String, pFieldsText As %String, pReviewed As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSuspended As %Boolean = 0) As %Status [ Private ]
 {
     Set pResult = ""
-    Set tSC = ..ReadEdit(pNamespace, pId, ..#TYPEEDITRESEND, pFieldsText, pReviewed, .tRow, .tPlan, .pHttpStatus, .pFault)
+    Set tSC = ..ReadEdit(pNamespace, pId, $Select(pSuspended: ..#TYPEEDITRESUBMIT, 1: ..#TYPEEDITRESEND), pFieldsText, pReviewed, .tRow, .tPlan, .pHttpStatus, .pFault, pSuspended)
     If $$$ISERR(tSC) Quit tSC
-    If tRow.%Get("Verdict") '= "resend" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#RESENDNONE, .pHttpStatus, .pFault)
+    If tRow.%Get("Verdict") '= $Select(pSuspended: "resubmit", 1: "resend") Quit ..Conflict($Select(pSuspended: ##class(OcuPilot.Api.InteropError).#SUSPENDEDNONE, 1: ##class(OcuPilot.Api.InteropError).#RESENDNONE), .pHttpStatus, .pFault)
     If 'tRow.%Get("Changed").%Size() Quit ..Conflict(##class(OcuPilot.Api.InteropError).#EDITNOCHANGE, .pHttpStatus, .pFault)
-    Set tVendorSC = ..VendorEditResend(pNamespace, pId, .tPlan, .tNewId, .tCloneClass, .tCloneId, .tCaught)
-    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the edited message could not be resent", .pHttpStatus, .pFault)
-    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the edited message could not be resent", .pHttpStatus, .pFault)
+    Set tVendorSC = ..VendorEditResend(pNamespace, pId, .tPlan, .tNewId, .tCloneClass, .tCloneId, .tCaught, pSuspended)
+    If pSuspended {
+        If $IsObject(tCaught) Set tVendorSC = tCaught.AsStatus()
+        If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC), "the edited suspended message could not be resubmitted", .pHttpStatus, .pFault)
+    } Else {
+        If $IsObject(tCaught) Quit ..Mapped(tCaught, "the edited message could not be resent", .pHttpStatus, .pFault)
+        If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the edited message could not be resent", .pHttpStatus, .pFault)
+    }
     Set pResult = {}
     Do pResult.%Set("Namespace", pNamespace, "string")
     Do pResult.%Set("Message", pId, "string")
@@ -5953,8 +6048,9 @@ ClassMethod InvokeMessageAction(pNamespace As %String, pType As %String, ByRef p
 /// copied in), and the header resent with the clone. The body's class and fields are read in the namespace
 /// <parameter>NAMESPACEKEY</parameter> names; a class they cannot be read for gives the lines without a field. Every id, name and
 /// value is a string literal, so nothing the payload carries runs as code, and every line closes any block it opens. A
-/// credential-named field is left out.</p>
-ClassMethod MessageSnippet(pType As %String, pId As %String, ByRef pQuery, pContext As %DynamicObject) As %String [ Private ]
+/// credential-named field is left out. With <var>pResubmit</var> (Story 24.16) the edit's last line is <code>ResubmitMessage</code> of the
+/// suspended header with the clone and no new target, which keeps the header's id, run only while the header still reads Suspended.</p>
+ClassMethod MessageSnippet(pType As %String, pId As %String, ByRef pQuery, pContext As %DynamicObject, pResubmit As %Boolean = 0) As %String [ Private ]
 {
     Set tNL = $Char(10)
     Set tPayload = ""
@@ -6042,6 +6138,7 @@ ClassMethod MessageSnippet(pType As %String, pId As %String, ByRef pQuery, pCont
         }
         Set tText = tText _ tNL _ " Set tSC = tClone.%ValidateObject()"
     }
+    If pResubmit Quit tText _ tNL _ " If $System.Status.IsOK(tSC) && (tHeader.Status = " _ ..#STATUSSUSPENDEDVALUE _ ") Set tSC = ##class(Ens.MessageHeader).ResubmitMessage(" _ tId _ ", """", tClone)"
     Quit tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = ##class(Ens.MessageHeader).ResendDuplicatedMessage(" _ tId _ ", .tNew, """", tClone)"
 }
 
@@ -6449,6 +6546,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTSCHEDULES) && ..IsScheduleWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTPURGESETTINGS) && (pType = ..#TYPEPURGESETTINGSET) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTPURGE) && (pType = ..#TYPEPURGE) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES) && ..IsSuspendedWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTITEMTEST) && ..IsTestWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && (pType = ..#TYPETRANSFORMTEST) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ..IsMessageWrite(pType) Quit "objectscript"
@@ -6478,6 +6576,10 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tText = tText _ tPart
     } ElseIf pEndpoint = ..#ENDPOINTPURGE {
         Set tPart = ..PurgeSnippet($Get(pQuery(..#PURGEDAYSKEY)))
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES {
+        Set tPart = ..SuspendedSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery, pContext)
         If tPart = "" Quit []
         Set tText = tText _ tPart
     } ElseIf pEndpoint = ..#ENDPOINTITEMS {
@@ -9790,6 +9892,14 @@ ClassMethod InvokePurge(pNamespace As %String, pType As %String, ByRef pQuery, O
 /// (Story 24.16). A lock the vendor could not take and a privilege refusal are kept as they came. Pure.</p>
 ClassMethod PurgeVendorStatus(pStatus As %Status) As %Status
 {
+    Quit ..VendorCodesStatus(pStatus, "the purge")
+}
+
+/// <p>The vendor's status <var>pStatus</var> without any text it carries, as <method>PurgeVendorStatus</method> gives it for a purge: an error status that says only that the
+/// vendor reported <var>pWhat</var> with its error codes, which is what reaches the log (Story 24.16). A lock the vendor could not take and a privilege refusal are kept as they
+/// came, so <method>Statused</method> still maps them. Pure.</p>
+ClassMethod VendorCodesStatus(pStatus As %Status, pWhat As %String = "the call") As %Status
+{
     If ..HasCode(pStatus, ..#CODERUNTIMELOCK) || ..HasCode(pStatus, ..#CODEPRIVILEGE) Quit pStatus
     Set tCodes = ""
     Set tProtect = 0
@@ -9800,7 +9910,7 @@ ClassMethod PurgeVendorStatus(pStatus As %Status) As %Status
         Set tCodes = ""
     }
     If tProtect Quit pStatus
-    Quit $$$ERROR($$$GeneralError, "the vendor reported the purge with error code " _ tCodes)
+    Quit $$$ERROR($$$GeneralError, "the vendor reported " _ pWhat _ " with error code " _ tCodes)
 }
 
 /// <p>The vendor's purge of the current namespace, which the caller has already switched, run in a frame of its own that saves the process's roles and gives them back on
@@ -11783,6 +11893,318 @@ ClassMethod TransformSnippet(pName As %String, ByRef pQuery) As %String [ Privat
     Set tText = tText _ tNL _ " Set tStored = """" For tObject = $Get(tSource), $Get(tTarget) { If $IsObject(tObject) && tObject.%Extends(""%Library.Persistent"") && (tObject.%Id() '= """") { Set tStored = tStored _ $ListBuild($ListBuild(tObject.%ClassName(1), tObject.%Oid())) } }"
     Set tText = tText _ tNL _ " Kill tObject, tSource, tTarget"
     Set tText = tText _ tNL _ " For tI = 1:1:$ListLength(tStored) { Do $ClassMethod($List($List(tStored, tI), 1), ""%Delete"", $List($List(tStored, tI), 2)) }"
+    Quit tText
+}
+
+/// <p>The Suspended messages endpoint (Story 24.16): <code>LIST</code> (the namespace's headers whose status is Suspended), the four composed reads
+/// <code>RESUBMIT</code>, <code>EDITSUBMIT</code>, <code>DISCARD</code> and <code>DELETE</code>, and the four writes <code>RESUBMITMESSAGES</code>,
+/// <code>EDITRESUBMIT</code>, <code>DISCARDMESSAGES</code> and <code>DELETEMESSAGES</code>. It extends the resend family of the Messages endpoint
+/// (<method>ReadResend</method>, <method>PerformResend</method>, <method>ReadEdit</method>), which each carry the action as a kind
+/// (<method>SuspendedKind</method>).</p>
+Parameter ENDPOINTSUSPENDEDMESSAGES = "SuspendedMessages";
+
+/// <p>The pair a discard and a delete add to the Messages pairs: the resource of the classic Suspended Messages page's discard and delete.</p>
+Parameter DISCARDPAIR = "%Ens_MessageDiscard:USE";
+
+Parameter TYPERESUBMIT = "RESUBMIT";
+
+Parameter TYPEEDITSUBMIT = "EDITSUBMIT";
+
+Parameter TYPEDISCARD = "DISCARD";
+
+Parameter TYPEDELETE = "DELETE";
+
+Parameter TYPERESUBMITMESSAGES = "RESUBMITMESSAGES";
+
+Parameter TYPEEDITRESUBMIT = "EDITRESUBMIT";
+
+Parameter TYPEDISCARDMESSAGES = "DISCARDMESSAGES";
+
+Parameter TYPEDELETEMESSAGES = "DELETEMESSAGES";
+
+/// <p>The most rows a list of suspended messages answers when the call gives no cap, as the classic page's own query; and the status values the
+/// list reads and a discard writes.</p>
+Parameter SUSPENDEDMAX As INTEGER = 2000;
+
+Parameter STATUSSUSPENDEDVALUE As INTEGER = 5;
+
+Parameter STATUSDISCARDEDVALUE As INTEGER = 4;
+
+/// <p>The audit verb of a discard; a delete takes <parameter>VERBDELETE</parameter>.</p>
+Parameter VERBDISCARD = "discard";
+
+/// <p>The statement of the suspended list: <method>MessageRow</method>'s search columns, newest first, the cap and the status bound.</p>
+Parameter SUSPENDEDSQL = "SELECT TOP ? ID, TimeCreated, %EXTERNAL(Status), SourceConfigName, TargetConfigName, MessageBodyClassName, SessionId, %EXTERNAL(Type), IsError FROM Ens.MessageHeader WHERE Status = ? ORDER BY ID DESC";
+
+/// <p>The statements the delete of a suspended message reads and writes with, each bound: the header's body, the headers that name a body, and
+/// the header's removal.</p>
+Parameter DELETEBODYSQL = "SELECT MessageBodyId, MessageBodyClassName FROM Ens.MessageHeader WHERE ID = ?";
+
+Parameter DELETESHAREDSQL = "SELECT COUNT(*) FROM Ens.MessageHeader WHERE MessageBodyId = ? AND MessageBodyClassName = ?";
+
+Parameter DELETEHEADERSQL = "DELETE FROM Ens.MessageHeader WHERE ID = ?";
+
+/// <p>The verdict words of a suspended action, as <code>id=verdict</code> pairs a stored payload carries.</p>
+Parameter SUSPENDEDVERDICTS = "gone,notsuspended,nobody,targetoff,noreplyqueue,resubmit,discard,delete";
+
+/// <p>The action a Suspended messages type belongs to, <code>resubmit</code>, <code>edit</code>, <code>discard</code> or <code>delete</code>, for the read and the
+/// write of each; <code>""</code> for any other type. Pure.</p>
+ClassMethod SuspendedKind(pType As %String) As %String
+{
+    If (pType = ..#TYPERESUBMIT) || (pType = ..#TYPERESUBMITMESSAGES) Quit "resubmit"
+    If (pType = ..#TYPEEDITSUBMIT) || (pType = ..#TYPEEDITRESUBMIT) Quit "edit"
+    If (pType = ..#TYPEDISCARD) || (pType = ..#TYPEDISCARDMESSAGES) Quit "discard"
+    If (pType = ..#TYPEDELETE) || (pType = ..#TYPEDELETEMESSAGES) Quit "delete"
+    Quit ""
+}
+
+/// <p>The write of the action <var>pKind</var> (<method>SuspendedKind</method>), <code>""</code> for any other word. Pure.</p>
+ClassMethod SuspendedWriteType(pKind As %String) As %String
+{
+    Quit $Case(pKind, "resubmit": ..#TYPERESUBMITMESSAGES, "edit": ..#TYPEEDITRESUBMIT, "discard": ..#TYPEDISCARDMESSAGES, "delete": ..#TYPEDELETEMESSAGES, : "")
+}
+
+/// <p>Whether <var>pType</var> is one of the four writes of the Suspended messages endpoint (Story 24.16): an action-style write over a
+/// port-composed read of the messages, needing WRITE on the namespace's globals database and no routines database.</p>
+ClassMethod IsSuspendedWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPERESUBMITMESSAGES) || (pType = ..#TYPEEDITRESUBMIT) || (pType = ..#TYPEDISCARDMESSAGES) || (pType = ..#TYPEDELETEMESSAGES)
+}
+
+/// <p>The headers of <var>pNamespace</var> whose status is Suspended (Story 24.16), newest first, at most <var>pMax</var>
+/// (<parameter>SUSPENDEDMAX</parameter> when that is not above zero), as <code>{ID, TimeCreated, SessionId, Error, Type, Source, Target,
+/// BodyClass}</code>. The status and the cap are bound and no body is read.</p>
+ClassMethod ListSuspended(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tTop = $Select(pMax > 0: pMax, 1: ..#SUSPENDEDMAX)
+    Set tSC = ..SqlRows(pNamespace, ..#SUSPENDEDSQL, .tFound, .tCaught, tTop, ..#STATUSSUSPENDEDVALUE)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the suspended messages could not be listed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tRow = ..MessageRow(tFound(tI), "", "", 1)
+        Do tRow.%Remove("Status")
+        Do pRows.%Push(tRow)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the Suspended messages endpoint after <method>Invoke</method>'s gate (Story 24.16): <code>LIST</code> (<method>ListSuspended</method>) and the
+/// four actions' reads and writes. The messages travel under <parameter>IDKEY</parameter> as the set <method>MessageSet</method> reads, or for an edit the
+/// one message; the fields of an edit under <parameter>FIELDSKEY</parameter>; the digest a person reviewed under <parameter>DIGESTKEY</parameter>. A read
+/// composed for an action carries it under <parameter>ACTIONKEY</parameter>, which must be the write of its own action, else 501.</p>
+ClassMethod InvokeSuspended(pNamespace As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListSuspended(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tKind = ..SuspendedKind(pType)
+        Set tWrite = ..IsSuspendedWrite(pType)
+        Set tAction = $Select(tWrite: pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && (tAction '= ..SuspendedWriteType(tKind)) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tId = $Get(pQuery(..#IDKEY))
+        Set tReviewed = $Get(pQuery(..#DIGESTKEY))
+        If tKind = "edit" {
+            If '$Match(tId, ..#MESSAGEIDPATTERN) {
+                Set tSC = ..RefuseCriterion("message", .pHttpStatus, .pFault)
+                Quit
+            }
+            If tWrite {
+                Set tSC = ..PerformEditResend(pNamespace, tId, $Get(pQuery(..#FIELDSKEY)), tReviewed, .pResult, .pHttpStatus, .pFault, 1)
+            } Else {
+                Set tSC = ..ReadEdit(pNamespace, tId, tAction, $Get(pQuery(..#FIELDSKEY)), tReviewed, .pResult, .tPlan, .pHttpStatus, .pFault, 1)
+            }
+            Quit
+        }
+        If tWrite {
+            Set tSC = ..PerformResend(pNamespace, tId, tReviewed, .pResult, .pHttpStatus, .pFault, tKind)
+        } Else {
+            Set tSC = ..ReadResend(pNamespace, tId, tAction, tReviewed, .pResult, .pHttpStatus, .pFault, tKind)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the suspended messages call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Whether the body class <var>pClass</var> is one the classic Suspended Messages delete removes a body of: a compiled class that is persistent or a
+/// stream, whose <code>ENSPURGE</code> parameter is not 0. Called while the message's namespace is switched.</p>
+ClassMethod BodyPurgeableHere(pClass As %String) As %Boolean [ Private ]
+{
+    If '$Match(pClass, ..#CLASSNAMEPATTERN) || '##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit 0
+    If '($ClassMethod(pClass, "%IsA", "%Library.Persistent") || $ClassMethod(pClass, "%IsA", "%Stream.Object")) Quit 0
+    Quit ($Parameter(pClass, "ENSPURGE") '= 0)
+}
+
+/// <p>The vendor's status codes a delete of a body that is already gone answers, which the classic page treats as done: an object not found, a file that cannot be
+/// deleted and a value that is not an instance (<code>DeleteObjectNotFound</code>, <code>FileCanNotDelete</code>, <code>NotAnInstanceError</code>).</p>
+Parameter DELETETOLERATEDCODES = "5810,5019,5825";
+
+/// <p>Whether <var>pStatus</var> is one of <parameter>DELETETOLERATEDCODES</parameter>. Pure.</p>
+ClassMethod DeleteTolerated(pStatus As %Status) As %Boolean [ Private ]
+{
+    Set tTolerated = 0
+    For tI = 1:1:$Length(..#DELETETOLERATEDCODES, ",") {
+        If $System.Status.Equals(pStatus, +$Piece(..#DELETETOLERATEDCODES, ",", tI)) {
+            Set tTolerated = 1
+            Quit
+        }
+    }
+    Quit tTolerated
+}
+
+/// <p>Delete the message header <var>pId</var> as the classic Suspended Messages page's delete does (Story 24.16), in the namespace the caller has already
+/// switched to: its body, with its search table entries, when no other header names it and the class is one <method>BodyPurgeableHere</method> admits, then
+/// the header by a bound delete. The classic page's journaling suspension and bitmap clean-up are not part of it. A body that cannot be deleted leaves the
+/// header in place; a header that is gone or a delete SQL refuses is an error status. A search table removal that fails does not stop the delete: its status
+/// is <var>pSearchSC</var>, for the caller to log once the namespace is restored. Every value is bound.</p>
+ClassMethod DeleteHeaderHere(pId As %String, Output pSearchSC As %Status) As %Status [ Private ]
+{
+    Set pSearchSC = $$$OK
+    Set tStatement = ##class(%SQL.Statement).%New()
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, ..#DELETEBODYSQL, pId)
+    If tResult.%SQLCODE < 0 Quit $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
+    If 'tResult.%Next() Quit $$$ERROR($$$DeleteObjectNotFound, "Ens.MessageHeader", pId)
+    Set tBodyId = tResult.%GetData(1)
+    Set tClass = tResult.%GetData(2)
+    Set tResult = ""
+    If tBodyId '= "" {
+        Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, ..#DELETESHAREDSQL, tBodyId, tClass)
+        If tResult.%SQLCODE < 0 Quit $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
+        Set tHolders = $Select(tResult.%Next(): +tResult.%GetData(1), 1: 0)
+        Set tResult = ""
+        If tHolders = 1 {
+            If (tClass = "") && (tBodyId = +tBodyId) Set tClass = "Ens.MessageBody"
+            If (tClass '= "") && ..BodyPurgeableHere(tClass) {
+                Try {
+                    Set tBodySC = $ClassMethod(tClass, "%DeleteId", tBodyId)
+                } Catch ex {
+                    Set tBodySC = ex.AsStatus()
+                }
+                If $$$ISOK(tBodySC) || ..DeleteTolerated(tBodySC) {
+                    Set tSearchSC = ..VendorRemoveSearchEntries(tClass, tBodyId)
+                    If $$$ISERR(tSearchSC) && '..DeleteTolerated(tSearchSC) Set pSearchSC = tSearchSC
+                } Else {
+                    Quit tBodySC
+                }
+            }
+        }
+    }
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, ..#DELETEHEADERSQL, pId)
+    If tResult.%SQLCODE < 0 Quit $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
+    Quit $$$OK
+}
+
+/// <p><code>Ens.SearchTableBase.RemoveSearchTableEntries</code> of the deleted body <var>pId</var> of class <var>pClass</var>, as the classic page's delete calls it
+/// (Story 24.16). Called while the message's namespace is switched. Overridable so a test can fail it; production never overrides it.</p>
+ClassMethod VendorRemoveSearchEntries(pClass As %String, pId As %String) As %Status [ Private ]
+{
+    Quit ##class(Ens.SearchTableBase).RemoveSearchTableEntries(pClass, pId, 1)
+}
+
+/// <p>The vendor's act on the suspended header <var>pId</var> in <var>pNamespace</var>, switched by explicit save and restore (Story 24.16): <code>resubmit</code>
+/// is <code>Ens.MessageHeader.ResubmitMessage</code>, which keeps the id; <code>discard</code> opens the header, <code>SetStatus</code> to Discarded and saves it, as the
+/// classic page does; <code>delete</code> is <method>DeleteHeaderHere</method>. A thrown fault is <var>pCaught</var>. Only vendor classes and this class run while it
+/// is switched; a search table removal the delete could not make is logged, as its error codes alone, once the namespace is restored. Overridable so a test can
+/// fail one message; production never overrides it.</p>
+ClassMethod VendorSuspended(pNamespace As %String, pKind As %String, pId As %String, Output pCaught) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tSearchSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        If pKind = "resubmit" {
+            Set tSC = ##class(Ens.MessageHeader).ResubmitMessage(pId)
+        } ElseIf pKind = "discard" {
+            Set tHeader = ##class(Ens.MessageHeader).%OpenId(pId, , .tSC)
+            If $IsObject(tHeader) {
+                Do tHeader.SetStatus(..#STATUSDISCARDEDVALUE)
+                Set tSC = tHeader.%Save()
+            } ElseIf $$$ISOK(tSC) {
+                Set tSC = $$$ERROR($$$LoadObjectNotFound, "Ens.MessageHeader", pId)
+            }
+            Set tHeader = ""
+        } Else {
+            Set tSC = ..DeleteHeaderHere(pId, .tSearchSC)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    If $$$ISERR(tSearchSC) Do ..LogFault("the search table entries of a deleted message body could not be removed", ..VendorCodesStatus(tSearchSC, "the search table removal"))
+    Quit tSC
+}
+
+/// <p>The lines <method>Snippet</method> adds for the Suspended messages write <var>pType</var> (Story 24.16), from the stored payload of <var>pContext</var> and
+/// the query <var>pQuery</var>: for a resubmit, a discard or a delete, one block for each id of the set <var>pId</var> names (<method>MessageSet</method>) that the payload's
+/// <code>Verdicts</code> does not read as another verdict, each failure kept in <code>tSC</code>; for an edit-and-resubmit, <method>MessageSnippet</method>'s lines ending in
+/// <code>ResubmitMessage</code>. Each block acts only on a header whose status still reads Suspended when the script runs, and a delete's block does what
+/// <method>DeleteHeaderHere</method> does: a body it cannot delete keeps the header, and a refused header delete is kept in <code>tSC</code>. An id that is not of the
+/// shape <parameter>MESSAGEIDPATTERN</parameter> makes <code>""</code> (no draft is rendered). Every id, name and value is a string literal, so nothing the payload carries
+/// runs as code.</p>
+ClassMethod SuspendedSnippet(pType As %String, pId As %String, ByRef pQuery, pContext As %DynamicObject) As %String [ Private ]
+{
+    Set tKind = ..SuspendedKind(pType)
+    If tKind = "edit" {
+        If '$Match(pId, ..#MESSAGEIDPATTERN) Quit ""
+        Quit ..MessageSnippet(..#TYPEEDITRESEND, pId, .pQuery, pContext, 1)
+    }
+    If '..MessageSet(pId, .tAll) Quit ""
+    Set tPayload = ""
+    If $IsObject(pContext) && (pContext.%GetTypeOf("payload") = "object") Set tPayload = pContext.%Get("payload")
+    Kill tReviewed
+    If $IsObject(tPayload) && (tPayload.%GetTypeOf("Verdicts") = "string") {
+        Set tVerdicts = tPayload.%Get("Verdicts")
+        For tI = 1:1:$Length(tVerdicts, ",") {
+            Set tPair = $Piece(tVerdicts, ",", tI)
+            If $Match($Piece(tPair, "=", 1), ..#MESSAGEIDPATTERN) && $ListFind($ListFromString(..#SUSPENDEDVERDICTS), $Piece(tPair, "=", 2)) Set tReviewed($Piece(tPair, "=", 1)) = $Piece(tPair, "=", 2)
+        }
+    }
+    ; An id the review read as another verdict is left out; one it did not read is in the set the target names, and every block checks the status itself.
+    Set tIds = ""
+    For tI = 1:1:$ListLength(tAll) {
+        If $Data(tReviewed($List(tAll, tI))) && (tReviewed($List(tAll, tI)) '= tKind) Continue
+        Set tIds = tIds _ $ListBuild($List(tAll, tI))
+    }
+    Set tNL = $Char(10)
+    Set tSuspended = "$IsObject(tHeader) && (tHeader.Status = " _ ..#STATUSSUSPENDEDVALUE _ ")"
+    Set tText = tNL _ " Set tSC = 1"
+    For tI = 1:1:$ListLength(tIds) {
+        Set tId = ..Literal($List(tIds, tI))
+        Set tText = tText _ tNL _ " Set tHeader = ##class(Ens.MessageHeader).%OpenId(" _ tId _ ")"
+        If tKind = "resubmit" {
+            Set tText = tText _ tNL _ " Set tGo = " _ tSuspended _ ", tHeader = """""
+            Set tText = tText _ tNL _ " If tGo Set tSC = $System.Status.AppendStatus(tSC, ##class(Ens.MessageHeader).ResubmitMessage(" _ tId _ "))"
+        } ElseIf tKind = "discard" {
+            Set tText = tText _ tNL _ " If " _ tSuspended _ " { Do tHeader.SetStatus(" _ ..#STATUSDISCARDEDVALUE _ ") Set tSC = $System.Status.AppendStatus(tSC, tHeader.%Save()) }"
+            Set tText = tText _ tNL _ " Set tHeader = """""
+        } Else {
+            Set tText = tText _ tNL _ " If " _ tSuspended _ " { Set tGo = 1, tBodyClass = tHeader.MessageBodyClassName, tBodyId = tHeader.MessageBodyId } Else { Set tGo = 0, tBodyClass = """", tBodyId = """" }"
+            Set tText = tText _ tNL _ " Set tHeader = """""
+            Set tText = tText _ tNL _ " Set tHolders = 0 If tBodyId '= """" { Set tResult = ##class(%SQL.Statement).%ExecDirect(, ""SELECT COUNT(*) FROM Ens.MessageHeader WHERE MessageBodyId = ? AND MessageBodyClassName = ?"", tBodyId, tBodyClass) If tResult.%Next() Set tHolders = tResult.%GetData(1) }"
+            Set tText = tText _ tNL _ " If (tHolders = 1) && (tBodyClass = """") && (tBodyId = +tBodyId) Set tBodyClass = ""Ens.MessageBody"""
+            Set tText = tText _ tNL _ " Set tBodySC = 1 If (tHolders = 1) && (tBodyClass '= """") && ##class(%Dictionary.CompiledClass).%ExistsId(tBodyClass) && ($ClassMethod(tBodyClass, ""%IsA"", ""%Library.Persistent"") || $ClassMethod(tBodyClass, ""%IsA"", ""%Stream.Object"")) && ($Parameter(tBodyClass, ""ENSPURGE"") '= 0) { Set tBodySC = $ClassMethod(tBodyClass, ""%DeleteId"", tBodyId) If $System.Status.IsOK(tBodySC) || $System.Status.Equals(tBodySC, " _ ..#DELETETOLERATEDCODES _ ") { Set tBodySC = 1 Do ##class(Ens.SearchTableBase).RemoveSearchTableEntries(tBodyClass, tBodyId, 1) } }"
+            Set tText = tText _ tNL _ " Set tSC = $System.Status.AppendStatus(tSC, tBodySC)"
+            Set tText = tText _ tNL _ " If tGo && $System.Status.IsOK(tBodySC) { Set tResult = ##class(%SQL.Statement).%ExecDirect(, ""DELETE FROM Ens.MessageHeader WHERE ID = ?"", " _ tId _ ") If tResult.%SQLCODE < 0 Set tSC = $System.Status.AppendStatus(tSC, $System.Error.FromSQLCode(tResult.%SQLCODE, tResult.%Message).Status) }"
+        }
+    }
     Quit tText
 }
 

@@ -492,4 +492,115 @@ ClassMethod Now() As %String
     Quit ##class(OcuPilot.Test.AuditEvent).Now()
 }
 
+/// <p>Make the stored header <var>pId</var> a suspended one in <code>USER</code> (Story 24.16): the vendor's own <code>SetStatus</code> to Suspended, which also stamps
+/// <code>TimeProcessed</code> as a message the production suspended carries. The message stays on no queue, as a production's own suspend leaves it.</p>
+ClassMethod Suspend(pId As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tHeader = ##class(Ens.MessageHeader).%OpenId(pId)
+        If $IsObject(tHeader) {
+            Do tHeader.SetStatus(5)
+        } Else {
+            Set tSC = $$$ERROR($$$GeneralError, "no message header " _ pId)
+        }
+        Set tHeader = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Store the string request <var>pText</var> addressed to <var>pTarget</var> and make it suspended (<method>Suspend</method>); its header's id in <var>pId</var>.</p>
+ClassMethod Suspended(pText As %String, pTarget As %String = {..#OPNAME}, Output pId As %String) As %Status
+{
+    Set tSC = ..Request(pText, pTarget, .pId)
+    If $$$ISOK(tSC) Set tSC = ..Suspend(pId)
+    Quit tSC
+}
+
+/// <p>Store a second request header in <code>USER</code>, read <code>Completed</code>, that names the body the header <var>pId</var> names (Story 24.16): the body two headers share,
+/// the header's id in <var>pOtherId</var>. The second header's own body, the one <method>Request</method> made, is deleted once no header names it.</p>
+ClassMethod ShareBody(pId As %String, Output pOtherId As %String) As %Status
+{
+    Set tSC = ..Request("shares the body of " _ pId, ..#OPNAME, .pOtherId)
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tHeader = ##class(Ens.MessageHeader).%OpenId(pId)
+        Set tOther = ##class(Ens.MessageHeader).%OpenId(pOtherId)
+        If $IsObject(tHeader) && $IsObject(tOther) {
+            Set tOrphanClass = tOther.MessageBodyClassName
+            Set tOrphanId = tOther.MessageBodyId
+            Set tOther.MessageBodyClassName = tHeader.MessageBodyClassName
+            Set tOther.MessageBodyId = tHeader.MessageBodyId
+            Set tSC = tOther.%Save()
+            If $$$ISOK(tSC) Do $ClassMethod(tOrphanClass, "%DeleteId", tOrphanId)
+        } Else {
+            Set tSC = $$$ERROR($$$GeneralError, "the headers to share a body are not there")
+        }
+        Set tHeader = ""
+        Set tOther = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Index the HL7 body of the header <var>pId</var> in <code>EnsLib.HL7.SearchTable</code> in <code>USER</code> (Story 24.16), as a production that ran the message
+/// through a search table would have; the answer is how many search table rows the body then has, <code>-1</code> when it could not be read. A stored header does not
+/// index its body by itself.</p>
+ClassMethod IndexHl7(pId As %String) As %Integer
+{
+    Set tRows = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tHeader = ##class(Ens.MessageHeader).%OpenId(pId)
+        If $IsObject(tHeader) {
+            Set tBody = ##class(EnsLib.HL7.Message).%OpenId(tHeader.MessageBodyId)
+            If $IsObject(tBody) Set tSC = ##class(EnsLib.HL7.SearchTable).IndexDoc(tBody)
+            Set tBody = ""
+        }
+        Set tHeader = ""
+        Set $NAMESPACE = tOrigNS
+        Set tRows = ..SearchRows(pId)
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tRows
+}
+
+/// <p>How many <code>EnsLib.HL7.SearchTable</code> rows the HL7 body of the header <var>pId</var> has in <code>USER</code>, read through the body id the header names; the
+/// header may be gone, so <var>pBodyId</var> may be given instead (a number above 0 is taken as the body's id), <code>-1</code> when it could not be read.</p>
+ClassMethod SearchRows(pId As %String, pBodyId As %String = "") As %Integer
+{
+    Set tRows = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tBodyId = pBodyId
+        If tBodyId = "" {
+            Set tHeader = ##class(Ens.MessageHeader).%OpenId(pId)
+            If $IsObject(tHeader) Set tBodyId = tHeader.MessageBodyId
+            Set tHeader = ""
+        }
+        If tBodyId '= "" {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM EnsLib_HL7.SearchTable WHERE DocId = ?", tBodyId)
+            If tRS.%Next() Set tRows = +tRS.%GetData(1)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tRows
+}
+
 }

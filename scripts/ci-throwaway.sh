@@ -582,6 +582,12 @@ services:
       # holds the classic page's lock from a child job and signs in as probe principals each missing one pair, and the elsewhere class confirms
       # the agent's set and purge from another namespace.
       # classes: InteropPurgeControl, InteropPurgeElsewhere, InteropPurgeRefusals, InteropPurgeSettingControl
+      # The suspended message classes compile and run the probe production in USER and store suspended probe headers in it and in HSCUSTOM, where
+      # no production runs (Story 24.16): the list class reads them through the port, the screen and the agent's read tool, the resubmit class
+      # resubmits and edits and resubmits from both callers and renders each draft, the remove class discards and deletes from both callers and
+      # reads OcuPilot's own audit row, and the refusals class meets every verdict, refusal and missing pair. The elsewhere class confirms the
+      # agent's four writes from another namespace. The probe production's own class refuses to start one anywhere this variable is not set.
+      # classes: InteropSuspendedElsewhere, InteropSuspendedList, InteropSuspendedRefusals, InteropSuspendedRemove, InteropSuspendedResubmit, ProductionProbe
       # The host test classes compile and run the same probe production in USER, with a request class of their own and an
       # operation that echoes it (Story 20.6): the test class reads an item's Test tab and sends a request from both callers,
       # the refusals class meets every refusal and violation, a production started without testing and a disabled item, and

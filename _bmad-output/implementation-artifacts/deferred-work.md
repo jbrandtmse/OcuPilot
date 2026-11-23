@@ -7824,6 +7824,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-19-impact-lines-on-removals.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: failed once in the 16.19 implement sweep on ocupilot-ci, green re-run alone (run 15179); not touched by 16.19
 - 2026-09-27T01:32:52Z status=wontfix-accepted owner=16-19-impact-lines-on-removals by=harvest note=reopen_if=CI's instance job reports this test red
+- 2026-11-23T00:30:41Z by=epic-24-runner note=reopen_if met: CI run 45085970255 (24.16 Batch 1 integrate head e275b4956), instance shard 2/8, TestABadMaxRowsIsRefusedNotDefaulted red ('a date holding two or more errors to cap'; <INVALID OREF> at +24); no 24.16 change touches the error log
+- 2026-11-23T00:31:08Z status=routed owner=burndown by=orchestrator note=reopen_if met: CI instance shard 2/8 red, run 45085970255, ErrorLog.TestABadMaxRowsIsRefusedNotDefaulted INVALID OREF +24; fix the sweep-order dependence at its cause
 
 ### DW-1723: EndpointCoverage documents expect only as a why's precondition; the impact row now uses it to assert a refusal code
 - source: spec-16-19-impact-lines-on-removals.md (cr rework re-review) | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -14495,6 +14497,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on ocupilot-ci, 319 MB journal, 30 matching records: the vendor List returns 18 rows per 2000-byte bulk; maxRows 10-16 took 0.08-0.10 s, 17-20 took 3.4 s while the second bulk scanned to the file start; CI's file was 629 MB
 - 2026-11-22T12:36:39Z status=routed owner=burndown by=orchestrator note=degraded read, no data risk; any change to AD-26's or AD-36's read is ruled at the burndown, not in 21.39
 
+### DW-2849: Discard, which is not destructive, confirms through the typed-name dialog with the red destructive button; a non-destructive review dialog in the shared handler is a UX decision under EXPERIENCE's confirm-dialog rule
+- source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-2.md (review 672390e1c) | severity: low | fix-risk: low | footprint: cross-story
+- evidence: openReview always opens 'typed-name' (screen-action-handler.ts:1891) and CHECKED_SET_DIALOGS routes discard there
+- 2026-11-23T07:59:57Z status=decision-pending owner=burndown by=epic-24-runner note=UX ruling: which confirm dialog a reversible checked-set write uses
+
+### DW-2850: Edit and resubmit leaves the original body behind with no header naming it, so no purge ever reaches it (vendor behaviour, inference); changing the behaviour or the consequence sentence is a product and string decision
+- source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-2.md (review 672390e1c) | severity: low | fix-risk: med | footprint: in-footprint
+- evidence: ResubmitMessage with a new body points the header at the clone (irislib/Ens/MessageHeader.cls:409-417); the tests delete the old body by hand
+- 2026-11-23T07:59:57Z status=decision-pending owner=burndown by=epic-24-runner note=product ruling: delete the orphaned original body, or say in the consequence sentence that it stays
 ### DW-2842: CI's gates job timeout (timeout-minutes 20) is below 1.5x its typical 14.3-minute duration, while the shard jobs are held to 1.5x plus setup, so a uniformly slow runner times the gates job out
 - source: ci run 45048213834 (M ffa2a92e7) | severity: medium | fix-risk: low | footprint: cross-story
 - evidence: Run 45048213834 job 137287353314, gates (node 22.22.3), hit its 20-minute timeout in the document gates step on a runner about 1.4x slower than run 45041714141's node-22 leg (client suite 11.8 against 8.5 min, checkers 3.4 against 2.3, harness 3.5 against 2.3)
