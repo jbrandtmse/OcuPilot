@@ -592,6 +592,12 @@ services:
       # production: the main class exports from both callers and compares the bytes with the classic export's, the refusals class meets every verdict,
       # refusal, the size cap and missing pair, and the elsewhere class confirms the agent's export from another namespace and checks nothing is left.
       # classes: InteropMessageExport, InteropMessageExportElsewhere, InteropMessageExportRefusals
+      # The archive classes store probe messages in HSCUSTOM, archive them into USER and write both namespaces' archive settings (Story 24.16 Batch 4),
+      # and start no production: the settings class sets each setting from both callers, the control class runs the archive from both callers and
+      # reads what lands in USER, the refusals class meets every refusal, holds the vendor's lock from a child job and signs in as probe principals each
+      # missing one pair, and the elsewhere class confirms the agent's set and run from another namespace. The four extend one case class, which declares
+      # the variable they all refuse on.
+      # classes: InteropArchiveCase
       # The host test classes compile and run the same probe production in USER, with a request class of their own and an
       # operation that echoes it (Story 20.6): the test class reads an item's Test tab and sends a request from both callers,
       # the refusals class meets every refusal and violation, a production started without testing and a disabled item, and

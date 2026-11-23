@@ -23,6 +23,7 @@ import {
   DDL_MAPPING_ADD_ACTION,
   DDL_SYSTEM_MAPPING_LIST,
   DDL_USER_MAPPING_LIST,
+  INTEROP_ARCHIVE_SETTING_LIST,
   INTEROP_PURGE_SETTING_LIST,
   ISQL_SETTING_LIST,
   MEMORY_SETTING_LIST,
@@ -744,6 +745,32 @@ describe('the settings page over the analytics General tab (Story 24.13)', () =>
     const flag = mount([UPDATED_SETTING], ANALYTICS_SETTING_LIST, unstored);
     await open(flag.fixture, flag.store, flag.actions, ANALYTICS_SETTING_LIST, 'Worklist');
     expect(flag.host.querySelector('[data-interop-setting-consequence]')?.textContent).not.toContain(STRINGS.analyticsSettingSaveConsequence);
+  });
+});
+
+describe('the settings page over Archive settings (Story 24.16 Batch 4)', () => {
+  const archiveRows = [
+    row('Archive to namespace', { Value: 'USER', Kind: 'choice', Accepts: 'One of USER.', Stored: true }),
+    row('Archive manager class name', { Value: 'Ens.Archive.Manager', Kind: 'text', Accepts: 'Shown here and never changed here.', ReadOnly: true, Stored: true }),
+    row('Number of days before archiving', { Value: '30', Kind: 'integer', Accepts: 'A whole number from 0 to 36500.', Stored: false }),
+  ];
+
+  // Mutation (Rule 19): drop `INTEROP_ARCHIVE_SETTING_LIST` from the page's served lists -> the first assertion goes red.
+  it('serves the list, offers no Set value on the archive class, and sends the days of the one it opens as text', async () => {
+    const { fixture, host, store, actions, calls } = mount(
+      [{ kind: 'ok', status: 200, body: { action: 'updated', target: { type: 'interop-archive-setting', scope: 'namespace', id: 'Number of days before archiving' }, readBack: { verdict: 'matches' } } }],
+      INTEROP_ARCHIVE_SETTING_LIST,
+      archiveRows
+    );
+    expect(actions.has(INTEROP_ARCHIVE_SETTING_LIST, CONFIG_SET_ACTION)).toBe(true);
+    store.setSelection(['Archive manager class name']);
+    expect(actions.reason(INTEROP_ARCHIVE_SETTING_LIST, CONFIG_SET_ACTION)).toBe(STRINGS.configRefusalReadOnly);
+    expect(actions.run(INTEROP_ARCHIVE_SETTING_LIST, CONFIG_SET_ACTION)).toBe(false);
+    await open(fixture, store, actions, INTEROP_ARCHIVE_SETTING_LIST, 'Number of days before archiving');
+    type(fixture, host, '90');
+    confirm(host);
+    await settle(fixture);
+    expect(JSON.parse(calls[0]?.body ?? '{}')).toEqual({ action: 'set', id: 'Number of days before archiving', values: { Value: '90' } });
   });
 });
 

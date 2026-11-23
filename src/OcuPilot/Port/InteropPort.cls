@@ -125,7 +125,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules,PurgeSettings,Purge,SuspendedMessages";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules,PurgeSettings,Purge,SuspendedMessages,ArchiveSettings,Archive,ArchiveErrors";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -1222,7 +1222,7 @@ ClassMethod IsStartupWrite(pType As %String) As %Boolean
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
 ClassMethod IsAnyWrite(pType As %String) As %Boolean
 {
-    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsPurgeWrite(pType) || ..IsSuspendedWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
+    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsPurgeWrite(pType) || ..IsArchiveWrite(pType) || (pType = ..#TYPEARCHIVESETTINGSET) || ..IsSuspendedWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
 }
 
 /// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads, Story 20.30's session trace and Story 24.4's three session reads. Each serves
@@ -1268,6 +1268,8 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
         Set tSpec = ..#PURGEPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES {
         Set tSpec = ..#MESSAGEPAIRS
+    } ElseIf (pEndpoint = ..#ENDPOINTARCHIVESETTINGS) || (pEndpoint = ..#ENDPOINTARCHIVE) || (pEndpoint = ..#ENDPOINTARCHIVEERRORS) {
+        Set tSpec = ..#ARCHIVEPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
         Set tSpec = ..#TESTPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTITEMCLASSES {
@@ -1308,6 +1310,7 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     If ..IsDefaultSettingWrite(pType) Set tSpec = tSpec _ "," _ ..#DEFAULTSETTINGWRITEPAIR
     If ..IsCredentialWrite(pType) Set tSpec = tSpec _ "," _ ..#CREDENTIALWRITEPAIR
     If ..IsScheduleWrite(pType) Set tSpec = tSpec _ "," _ ..#SCHEDULEWRITEPAIR
+    If ((pEndpoint = ..#ENDPOINTARCHIVESETTINGS) && (pType = ..#TYPEARCHIVESETTINGSET)) || ((pEndpoint = ..#ENDPOINTARCHIVE) && ..IsArchiveWrite(pType)) Set tSpec = tSpec _ "," _ ..#ARCHIVEWRITEPAIR
     If pType = ..#TYPEAUTOSTART Set tSpec = tSpec _ "," _ ..#AUTOSTARTPAIR
     If pType = ..#TYPESHUTDOWNGROUP Set tSpec = tSpec _ "," _ ..#GROUPPAIR
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && ((pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)) Set tSpec = tSpec _ "," _ ..#DTLTESTPAIR
@@ -1348,6 +1351,9 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTPURGESETTINGS Quit (pType = ..#TYPESETTING) || (pType = ..#TYPEPURGESETTINGSET)
     If pEndpoint = ..#ENDPOINTPURGE Quit (pType = ..#TYPEPURGESTATE) || (pType = ..#TYPEPURGE)
     If pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES Quit ..SuspendedKind(pType) '= ""
+    If pEndpoint = ..#ENDPOINTARCHIVESETTINGS Quit (pType = ..#TYPESETTING) || (pType = ..#TYPEARCHIVESETTINGSET)
+    If pEndpoint = ..#ENDPOINTARCHIVE Quit (pType = ..#TYPEARCHIVESTATE) || (pType = ..#TYPEARCHIVE)
+    If pEndpoint = ..#ENDPOINTARCHIVEERRORS Quit 0
     If pEndpoint = ..#ENDPOINTITEMTEST Quit (pType = ..#TYPETESTTARGET) || (pType = ..#TYPESENDTEST)
     If pEndpoint = ..#ENDPOINTTRANSFORMS Quit (pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)
     If pEndpoint = ..#ENDPOINTMESSAGES Quit ..IsMessageType(pType)
@@ -1522,6 +1528,14 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES {
             Set tSC = ..InvokeSuspended(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTARCHIVESETTINGS {
+            Set tSC = ..InvokeArchiveSettings(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pEndpoint = ..#ENDPOINTARCHIVE) || (pEndpoint = ..#ENDPOINTARCHIVEERRORS) {
+            Set tSC = ..InvokeArchive(tNamespace, pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
         }
 
@@ -6985,6 +6999,8 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTSCHEDULES) && ..IsScheduleWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTPURGESETTINGS) && (pType = ..#TYPEPURGESETTINGSET) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTPURGE) && (pType = ..#TYPEPURGE) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTARCHIVESETTINGS) && (pType = ..#TYPEARCHIVESETTINGSET) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTARCHIVE) && (pType = ..#TYPEARCHIVE) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES) && ..IsSuspendedWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTITEMTEST) && ..IsTestWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && (pType = ..#TYPETRANSFORMTEST) Quit "objectscript"
@@ -7017,6 +7033,12 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tPart = ..PurgeSnippet($Get(pQuery(..#PURGEDAYSKEY)))
         If tPart = "" Quit []
         Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTARCHIVESETTINGS {
+        Set tPart = ..ArchiveSettingSnippet($Get(pQuery(..#IDKEY)), pBody, $Get(pQuery(..#NAMESPACEKEY)))
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTARCHIVE {
+        Set tText = tText _ ..ArchiveSnippet()
     } ElseIf pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES {
         Set tPart = ..SuspendedSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery, pContext)
         If tPart = "" Quit []
@@ -10482,6 +10504,678 @@ ClassMethod PurgeSnippet(pDays As %String) As %String [ Private ]
     Set tDaysText = $Select(+pDays > (+$Horolog - 2): "+$Horolog - 2", 1: +pDays)
     Set tText = tText _ tNL _ " If tHeld Set tSC = ##class(Ens.Purge).PurgeAll(.tDeleted, " _ tDaysText _ ", tKeep, tBodies, , .tOptions)"
     Set tText = tText _ tNL _ " If tHeld Lock -^IRIS.Temp.EnsPurgeAll($Namespace, ""lock"")"
+    Quit tText
+}
+
+/// <p>The Archive settings endpoint (Story 24.16 Batch 4): <code>LIST</code>, one setting (<code>SETTING</code>) and the write <code>SETTINGSET</code>, over the vendor's own
+/// <code>Ens.Archive.Manager.GetArchiveParameters</code> and <code>SetArchiveParameters</code>. The archive class is shown and never set.</p>
+Parameter ENDPOINTARCHIVESETTINGS = "ArchiveSettings";
+
+/// <p>The Archive endpoint (Story 24.16 Batch 4): <code>LIST</code> (the last run's history, the classic page's eight rows), <code>ARCHIVESTATE</code> (what a run would use and
+/// whether one is running) and the write <code>ARCHIVE</code>, the vendor's <code>Ens.Archive.Manager.DoArchive</code> run in the request while the port holds the vendor's lock.</p>
+Parameter ENDPOINTARCHIVE = "Archive";
+
+/// <p>The Archive errors endpoint (Story 24.16 Batch 4): <code>LIST</code>, the vendor's <code>Ens.Archive.Manager:Errors</code> query.</p>
+Parameter ENDPOINTARCHIVEERRORS = "ArchiveErrors";
+
+/// <p>The pairs the three archive endpoints require: <code>%Ens_Portal:USE</code> and the classic Archive Manager page's own <code>%Ens_ArchiveManager:READ</code>. A write adds
+/// <parameter>ARCHIVEWRITEPAIR</parameter>, the classic page's edit resource; a run also needs WRITE on the target's globals database, judged at the write.</p>
+Parameter ARCHIVEPAIRS = "%Ens_Portal:USE,%Ens_ArchiveManager:READ";
+
+Parameter ARCHIVEWRITEPAIR = "%Ens_ArchiveManager:WRITE";
+
+Parameter TYPEARCHIVESETTINGSET = "SETTINGSET";
+
+Parameter TYPEARCHIVESTATE = "ARCHIVESTATE";
+
+Parameter TYPEARCHIVE = "ARCHIVE";
+
+/// <p>The most days before archiving a set accepts, and the vendor's class a run is allowed to use.</p>
+Parameter ARCHIVEMAXDAYS As INTEGER = 36500;
+
+Parameter ARCHIVECLASSNAME = "Ens.Archive.Manager";
+
+/// <p>The most message headers a namespace may hold for one archive run here to take: the vendor's run opens every header and body of the namespace. A run of twice this many took
+/// at most 20.1 seconds on the throwaway (measured), and half of that, times 1.5, stays inside 30 seconds on a runner that is slower (inference). A namespace above it is refused whole.</p>
+Parameter ARCHIVEMAXMESSAGES As INTEGER = 5000;
+
+/// <p>The most error rows the Archive errors list answers when the call gives no cap.</p>
+Parameter ARCHIVEERRORSMAX As INTEGER = 2000;
+
+/// <p>The most characters a stored archive class name is shown with.</p>
+Parameter ARCHIVETEXTMAX As INTEGER = 256;
+
+Parameter ENTITYARCHIVE = "interop-archive";
+
+Parameter ENTITYARCHIVESETTING = "interop-archive-setting";
+
+Parameter VERBARCHIVE = "archive";
+
+/// <p>Whether <var>pType</var> is the archive run, which needs WRITE on the namespace's globals database and, judged at the write, on the target's.</p>
+ClassMethod IsArchiveWrite(pType As %String) As %Boolean
+{
+    Quit pType = ..#TYPEARCHIVE
+}
+
+/// <p>The namespaces the classic Archive Manager page offers as Archive to namespace: the instance's interoperability namespaces
+/// (<code>^%SYS("Ensemble","InstalledNamespace")</code>) other than <var>pNamespace</var>, as a <class>%List</class>. Read at the call.</p>
+ClassMethod ArchiveTargets(pNamespace As %String) As %List
+{
+    Set tList = ""
+    Set tName = ""
+    For {
+        Set tName = $Order(^%SYS("Ensemble", "InstalledNamespace", tName))
+        If tName = "" Quit
+        If tName '= $ZConvert(pNamespace, "U") Set tList = tList _ $ListBuild(tName)
+    }
+    Quit tList
+}
+
+/// <p>The three archive settings, in the classic page's order, as a <class>%List</class> of <class>%List</class>s: <code>name, node, default, kind</code>. The name is the classic
+/// caption; the node is the subscript under <code>^Ens.ArchiveManager</code>, and the default is what the vendor reads for a node that is not stored. Pure.</p>
+ClassMethod ArchiveSettingRoster() As %List
+{
+    Quit $ListBuild($ListBuild("Archive to namespace", "Namespace", "", "choice"), $ListBuild("Archive manager class name", "Classname", ..#ARCHIVECLASSNAME, "text"), $ListBuild("Number of days before archiving", "DaysToArchive", 30, "integer"))
+}
+
+/// <p>The roster entry of the setting <var>pName</var>, or <code>""</code> for a name the classic page has no setting for. Pure.</p>
+ClassMethod ArchiveSettingEntry(pName As %String) As %List
+{
+    Set tRoster = ..ArchiveSettingRoster()
+    Set tFound = ""
+    For tI = 1:1:$ListLength(tRoster) {
+        If $List($List(tRoster, tI), 1) = pName Set tFound = $List(tRoster, tI)
+    }
+    Quit tFound
+}
+
+/// <p>Whether <var>pName</var> is the archive class setting, which is shown and never set. Pure.</p>
+ClassMethod ArchiveSettingReadOnly(pName As %String) As %Boolean
+{
+    Set tEntry = ..ArchiveSettingEntry(pName)
+    Quit (tEntry '= "") && ($List(tEntry, 2) = "Classname")
+}
+
+/// <p>The limits of the setting <var>pName</var> in <code>ConfigPort.Limits</code>' shape: Archive to namespace is a choice of <method>ArchiveTargets</method> of <var>pNamespace</var>,
+/// the days a whole number from 0 to <parameter>ARCHIVEMAXDAYS</parameter>, the class text; <code>""</code> for a name the classic page has no setting for. The rules class asks it.</p>
+ClassMethod ArchiveSettingLimits(pName As %String, pNamespace As %String) As %List
+{
+    Set tEntry = ..ArchiveSettingEntry(pName)
+    If tEntry = "" Quit ""
+    Set tKind = $List(tEntry, 4)
+    If tKind = "choice" Quit $ListBuild("choice", "", "", ..ArchiveTargets(pNamespace), "", "")
+    If tKind = "integer" Quit $ListBuild("integer", 0, ..#ARCHIVEMAXDAYS, "", "", "")
+    Quit $ListBuild("text", "", "", "", ..#ARCHIVETEXTMAX, "")
+}
+
+/// <p>The settings as they stand in the current namespace, which the caller has already switched, in <var>pFound</var>: one <code>$ListBuild(name, value, stored)</code> per roster
+/// entry, read through the vendor's own <code>GetArchiveParameters</code>, which answers the defaults for a node that is not stored. Nothing is written.</p>
+ClassMethod ArchiveSettingsHere(Output pFound) [ Private ]
+{
+    Kill pFound
+    Set tRoster = ..ArchiveSettingRoster()
+    Set pFound = $ListLength(tRoster)
+    Do ##class(Ens.Archive.Manager).GetArchiveParameters(.tTarget, .tClass, .tDays)
+    For tI = 1:1:pFound {
+        Set tEntry = $List(tRoster, tI)
+        Set tNode = $List(tEntry, 2)
+        Set tValue = $Case(tNode, "Namespace": tTarget, "Classname": tClass, : tDays)
+        Set pFound(tI) = $ListBuild($List(tEntry, 1), tValue _ "", ''($Data(^Ens.ArchiveManager(tNode)) # 2))
+    }
+}
+
+/// <p>The row an archive setting list and read answer, from the setting <var>pName</var>, its <var>pValue</var> and whether it is <var>pStored</var>:
+/// <code>{Name, Value, Stored, Kind, Accepts, ReadOnly, Namespace}</code>. The class row is read-only; Archive to namespace accepts the listed namespaces, or says there are none.</p>
+ClassMethod ArchiveSettingRow(pName As %String, pValue As %String, pStored As %Boolean, pNamespace As %String) As %DynamicObject [ Private ]
+{
+    Set tLimits = ..ArchiveSettingLimits(pName, pNamespace)
+    Set tReadOnly = ..ArchiveSettingReadOnly(pName)
+    If tReadOnly {
+        Set tAccepts = ##class(OcuPilot.Api.ConfigError).#ACCEPTSREADONLY
+    } ElseIf ($ListGet(tLimits, 1) = "choice") && ($ListLength($ListGet(tLimits, 4)) = 0) {
+        Set tAccepts = ##class(OcuPilot.Api.InteropError).#ACCEPTSNOARCHIVETARGET
+    } Else {
+        Set tAccepts = ##class(OcuPilot.Port.ConfigPort).AcceptsOf(tLimits)
+    }
+    Set tRow = {}
+    Do tRow.%Set("Name", pName, "string")
+    Do tRow.%Set("Value", pValue, "string")
+    Do tRow.%Set("Stored", ''pStored, "boolean")
+    Do tRow.%Set("Kind", $ListGet(tLimits, 1), "string")
+    Do tRow.%Set("Accepts", tAccepts, "string")
+    Do tRow.%Set("ReadOnly", ''tReadOnly, "boolean")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The settings of <var>pNamespace</var> as <method>ArchiveSettingsHere</method> reads them; a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod ArchiveSettingsIn(pNamespace As %String, Output pFound, Output pCaught) [ Private ]
+{
+    Kill pFound
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..ArchiveSettingsHere(.pFound)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>One archive setting, fresh (Story 24.16 Batch 4): <method>ArchiveSettingRow</method>. A name the classic page has no setting for is 404
+/// <code>CONFIG.SETTING.NOTFOUND</code>.</p>
+ClassMethod ReadArchiveSetting(pNamespace As %String, pName As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If ..ArchiveSettingEntry(pName) = "" Quit ..PurgeConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND, .pHttpStatus, .pFault)
+    Do ..ArchiveSettingsIn(pNamespace, .tFound, .tCaught)
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive setting read failed", .pHttpStatus, .pFault)
+    For tI = 1:1:tFound {
+        If $List(tFound(tI), 1) '= pName Continue
+        Set pRow = ..ArchiveSettingRow(pName, $List(tFound(tI), 2), $List(tFound(tI), 3), pNamespace)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the ArchiveSettings endpoint after <method>Invoke</method>'s gate (Story 24.16 Batch 4): <code>LIST</code>, the <code>SETTING</code> read of the setting named
+/// under <parameter>IDKEY</parameter> and the write <code>SETTINGSET</code>.</p>
+ClassMethod InvokeArchiveSettings(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Do ..ArchiveSettingsIn(pNamespace, .tFound, .tCaught)
+            If $IsObject(tCaught) {
+                Set tSC = ..ArchiveMapped(tCaught, "the archive settings list failed", .pHttpStatus, .pFault)
+                Quit
+            }
+            Set pResult = []
+            For tI = 1:1:tFound {
+                Do pResult.%Push(..ArchiveSettingRow($List(tFound(tI), 1), $List(tFound(tI), 2), $List(tFound(tI), 3), pNamespace))
+            }
+            Set pHttpStatus = 200
+            Quit
+        }
+        Set tName = $Get(pQuery(..#IDKEY))
+        If tName = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(pType = ..#TYPEARCHIVESETTINGSET: pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && (tAction '= ..#TYPEARCHIVESETTINGSET) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPEARCHIVESETTINGSET {
+            Set tSC = ..PerformArchiveSetting(pNamespace, tName, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadArchiveSetting(pNamespace, tName, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..ArchiveMapped(ex, "the archive setting call failed inside the port", .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Store the value <code>Value</code> of <var>pBody</var> for the archive setting <var>pName</var> in <var>pNamespace</var> and answer the setting's row, read again (Story 24.16
+/// Batch 4). A name the classic page has no setting for is 404 <code>CONFIG.SETTING.NOTFOUND</code>, the class is 409 <code>CONFIG.SETTING.READONLY</code> and a value the setting's
+/// kind does not accept, a target outside the namespaces the classic page lists included, is 400 <code>CONFIG.SETTING.VALUE</code>, each before anything is written. The vendor's
+/// <code>SetArchiveParameters</code> is called, as the classic Save calls it, with the two other values read at this moment; the namespace is restored, then OcuPilot's own audit row
+/// is recorded (<method>AuditRuntime</method>), because the vendor records none: it names the namespace, the setting and the value.</p>
+ClassMethod PerformArchiveSetting(pNamespace As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tEntry = ..ArchiveSettingEntry(pName)
+    If tEntry = "" Quit ..PurgeConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND, .pHttpStatus, .pFault)
+    If ..ArchiveSettingReadOnly(pName) Quit ..PurgeConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGREADONLY, .pHttpStatus, .pFault)
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") || (pBody.%GetTypeOf("Value") '= "string") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.ConfigPort).#REASONBODY, .pHttpStatus, .pFault)
+    Set tValue = pBody.%Get("Value")
+    If '##class(OcuPilot.Area.Interop.ArchiveSettingRules).ValueHolds(..ArchiveSettingLimits(pName, pNamespace), tValue) Quit ..PurgeConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGVALUE, .pHttpStatus, .pFault)
+    Set tCaught = ""
+    Set tSetSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ##class(Ens.Archive.Manager).GetArchiveParameters(.tTarget, .tClass, .tDays)
+        Set tNode = $List(tEntry, 2)
+        If tNode = "Namespace" Set tTarget = tValue
+        If tNode = "DaysToArchive" Set tDays = tValue
+        Set tSetSC = ##class(Ens.Archive.Manager).SetArchiveParameters(tTarget, tClass, tDays)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive setting write failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tSetSC) Quit ..Statused(..VendorCodesStatus(tSetSC, "the archive setting write"), "the archive setting write failed", .pHttpStatus, .pFault)
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("setting", pName, "string")
+    Do tEffects.%Set("value", tValue, "string")
+    Do ..AuditRuntime(..#VERBSET, ..#ENTITYARCHIVESETTING, pName, tEffects)
+    Set tReadSC = ..ReadArchiveSetting(pNamespace, pName, .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) || '$IsObject(tRow) {
+        Set tRow = {}
+        Do tRow.%Set("Name", pName, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The archive's facts in <var>pNamespace</var> (Story 24.16 Batch 4), in <var>pFacts</var>, read through the vendor's own getters with the namespace switched and nothing else:
+/// <code>target</code>, <code>class</code> and <code>days</code> (<code>GetArchiveParameters</code>), <code>running</code> (<code>GetRunningStatus</code>), and the last run's
+/// <code>start</code>, <code>stop</code>, <code>counts</code> (<code>GetRunningCount</code>, five comma-separated numbers) and <code>status</code>. A fault is <var>pCaught</var>, with
+/// the namespace restored. Nothing is written.</p>
+ClassMethod ArchiveFacts(pNamespace As %String, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ##class(Ens.Archive.Manager).GetArchiveParameters(.tTarget, .tClass, .tDays)
+        Set pFacts("target") = tTarget
+        Set pFacts("class") = tClass
+        Set pFacts("days") = tDays
+        Set pFacts("status") = ##class(Ens.Archive.Manager).GetRunningStatus()
+        Set pFacts("running") = (pFacts("status") = "running")
+        Set pFacts("start") = ##class(Ens.Archive.Manager).GetRunningStartTime()
+        Set pFacts("stop") = ##class(Ens.Archive.Manager).GetRunningStopTime()
+        Set pFacts("counts") = ##class(Ens.Archive.Manager).GetRunningCount()
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The cut-off the vendor's run uses for <var>pDays</var> days, <code>Ens.Purge.GetDoNotDeleteDate</code>, with days past the instance's calendar read as the calendar's own count so the
+/// read never raises (the vendor's run logs an error for each message in that case).</p>
+ClassMethod ArchiveCutoff(pDays As %Integer) As %String [ Private ]
+{
+    Quit ##class(Ens.Purge).GetDoNotDeleteDate($Select(+pDays > (+$Horolog - 2): +$Horolog - 2, 1: +pDays))
+}
+
+/// <p>The number of message headers <var>pNamespace</var> holds, and how many of them a run with <var>pDays</var> days would move, in <var>pTotal</var> and <var>pMoving</var>: the
+/// vendor's own rule, a header whose <code>TimeCreated</code> is before <code>Ens.Purge.GetDoNotDeleteDate(days)</code> (an empty one included), whatever its status. A fault is
+/// <var>pCaught</var>.</p>
+ClassMethod ArchiveCounts(pNamespace As %String, pDays As %Integer, Output pTotal As %Integer, Output pMoving As %Integer, Output pCaught) [ Private ]
+{
+    Set pTotal = 0
+    Set pMoving = 0
+    Set tSC = ..SqlRows(pNamespace, "SELECT COUNT(*) FROM Ens.MessageHeader", .tFound, .pCaught)
+    If $IsObject(pCaught) Quit
+    Set pTotal = +$List($Get(tFound(1)), 1)
+    Set tSC = ..SqlRows(pNamespace, "SELECT COUNT(*) FROM Ens.MessageHeader WHERE TimeCreated IS NULL OR TimeCreated < ?", .tFound, .pCaught, ..ArchiveCutoff(pDays))
+    If $IsObject(pCaught) Quit
+    Set pMoving = +$List($Get(tFound(1)), 1)
+}
+
+/// <p>The first refusal an archive run of <var>pNamespace</var> would meet that the namespace itself decides, as the code of <class>OcuPilot.Api.InteropError</class>, in the order the
+/// write judges them, or <code>""</code>: a run already <var>pRunning</var>, a stored class that is not <parameter>ARCHIVECLASSNAME</parameter>, a target that is not one of
+/// <method>ArchiveTargets</method>, and more than <parameter>ARCHIVEMAXMESSAGES</parameter> headers. Pure.</p>
+ClassMethod ArchiveRefusal(pNamespace As %String, pRunning As %Boolean, pClass As %String, pTarget As %String, pTotal As %Integer) As %String
+{
+    If pRunning Quit ##class(OcuPilot.Api.InteropError).#ARCHIVERUNNING
+    If pClass '= ..#ARCHIVECLASSNAME Quit ##class(OcuPilot.Api.InteropError).#ARCHIVECLASS
+    If (pTarget = "") || '$ListFind(..ArchiveTargets(pNamespace), pTarget) Quit ##class(OcuPilot.Api.InteropError).#ARCHIVENOTARGET
+    If pTotal > ..#ARCHIVEMAXMESSAGES Quit ##class(OcuPilot.Api.InteropError).#ARCHIVETOOMANY
+    Quit ""
+}
+
+/// <p>The archive state row (Story 24.16 Batch 4): <code>{Target, Classname, DaysToArchive, Running, Total, ToArchive, Namespace}</code>, which a run would use and what it would
+/// move. With <var>pAction</var> <parameter>TYPEARCHIVE</parameter> a run the namespace would refuse (<method>ArchiveRefusal</method>) is 409 with that code.</p>
+ClassMethod ReadArchive(pNamespace As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Do ..ArchiveFacts(pNamespace, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive state read failed", .pHttpStatus, .pFault)
+    Do ..ArchiveCounts(pNamespace, tFacts("days"), .tTotal, .tMoving, .tCaught)
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive state read failed", .pHttpStatus, .pFault)
+    If pAction = ..#TYPEARCHIVE {
+        Set tCode = ..ArchiveRefusal(pNamespace, tFacts("running"), tFacts("class"), tFacts("target"), tTotal)
+        If tCode '= "" Quit ..Conflict(tCode, .pHttpStatus, .pFault)
+    }
+    Set pRow = {}
+    Do pRow.%Set("Target", tFacts("target"), "string")
+    Do pRow.%Set("Classname", tFacts("class"), "string")
+    Do pRow.%Set("DaysToArchive", +tFacts("days"), "number")
+    Do pRow.%Set("Running", ''tFacts("running"), "boolean")
+    Do pRow.%Set("Total", tTotal, "number")
+    Do pRow.%Set("ToArchive", tMoving, "number")
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The last run's history of <var>pNamespace</var>, the classic page's eight rows in its order, <code>{Name, Value, Namespace}</code> (Story 24.16 Batch 4): the start and stop
+/// time as the vendor keeps them (empty before any run), the four counts and the number of errors, and <code>idle</code> or <code>running</code>. The rows are always there, so
+/// Run archive stays reachable before the first run.</p>
+ClassMethod ListArchiveHistory(pNamespace As %String, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Do ..ArchiveFacts(pNamespace, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive history read failed", .pHttpStatus, .pFault)
+    Set tCounts = tFacts("counts")
+    Set tLines = $ListBuild($ListBuild("Archive start time", tFacts("start")), $ListBuild("Archive stop time", tFacts("stop")), $ListBuild("Total messages processed", $Piece(tCounts, ",", 1)), $ListBuild("Total messages archived", $Piece(tCounts, ",", 2)), $ListBuild("Total message headers deleted", $Piece(tCounts, ",", 3)), $ListBuild("Total message bodies deleted", $Piece(tCounts, ",", 4)), $ListBuild("Total number of errors", $Piece(tCounts, ",", 5)), $ListBuild("Archive status", tFacts("status")))
+    Set pRows = []
+    For tI = 1:1:$ListLength(tLines) {
+        Set tRow = {}
+        Do tRow.%Set("Name", $List($List(tLines, tI), 1), "string")
+        Do tRow.%Set("Value", $List($List(tLines, tI), 2) _ "", "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+        Do pRows.%Push(tRow)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The last run's error log of <var>pNamespace</var> (Story 24.16 Batch 4): the vendor's <code>Ens.Archive.Manager:Errors</code> query, <code>{ErrorNumber, Time, Description,
+/// MessageId}</code>, at most <var>pMax</var> rows (<parameter>ARCHIVEERRORSMAX</parameter> when that is not above zero). The description is the vendor's text, shown and never run.</p>
+ClassMethod ListArchiveErrors(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tTop = $Select(pMax > 0: pMax, 1: ..#ARCHIVEERRORSMAX)
+    Set tCaught = ""
+    Set tStatusSC = $$$OK
+    Kill tFound
+    Set tFound = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tResultSet = ##class(%ResultSet).%New("Ens.Archive.Manager:Errors")
+        Set tStatusSC = tResultSet.Execute()
+        If $$$ISOK(tStatusSC) {
+            While tResultSet.Next() {
+                If tFound >= tTop Quit
+                Set tFound = tFound + 1
+                Set tFound(tFound) = $ListBuild(tResultSet.GetData(1), tResultSet.GetData(2), tResultSet.GetData(3), tResultSet.GetData(4))
+            }
+            Do tResultSet.Close()
+        }
+        Set tResultSet = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive errors read failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tStatusSC) Quit ..Statused(tStatusSC, "the archive errors read failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tRow = {}
+        Do tRow.%Set("ErrorNumber", +$List(tFound(tI), 1), "number")
+        Do tRow.%Set("Time", $List(tFound(tI), 2) _ "", "string")
+        Do tRow.%Set("Description", $List(tFound(tI), 3) _ "", "string")
+        Do tRow.%Set("MessageId", $List(tFound(tI), 4) _ "", "string")
+        Do pRows.%Push(tRow)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the Archive and ArchiveErrors endpoints after <method>Invoke</method>'s gate (Story 24.16 Batch 4): the history <code>LIST</code>, the <code>ARCHIVESTATE</code> read, the
+/// write <code>ARCHIVE</code>, and the error log's <code>LIST</code>.</p>
+ClassMethod InvokeArchive(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pEndpoint = ..#ENDPOINTARCHIVEERRORS {
+                Set tSC = ..ListArchiveErrors(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            } Else {
+                Set tSC = ..ListArchiveHistory(pNamespace, .pResult, .pHttpStatus, .pFault)
+            }
+            Quit
+        }
+        Set tAction = $Select(..IsArchiveWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && (tAction '= ..#TYPEARCHIVE) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPEARCHIVE {
+            Set tSC = ..PerformArchive(pNamespace, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadArchive(pNamespace, tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..ArchiveMapped(ex, "the archive call failed inside the port", .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>A vendor exception <var>pException</var> in this port's own words, as <method>Mapped</method> answers it, except that the status it logs carries the vendor's error codes alone
+/// and never the vendor's text (<method>VendorCodesStatus</method>): a lock it could not take is 503, <code>&lt;PROTECT&gt;</code> is 403, anything else 500 <code>INTERNAL</code>.</p>
+ClassMethod ArchiveMapped(pException As %Exception.AbstractException, pMessage As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Statused(..VendorCodesStatus(pException.AsStatus(), "the archive"), pMessage, .pHttpStatus, .pFault)
+}
+
+/// <p>Take the vendor's archive lock, <code>^Ens.ArchiveManager("lock")</code>, in <var>pNamespace</var> at once, and answer <code>1</code> when it is held. A fault is
+/// <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod ArchiveTake(pNamespace As %String, Output pCaught) As %Boolean [ Private ]
+{
+    Set pCaught = ""
+    Set tHeld = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Lock +^Ens.ArchiveManager("lock"):0
+        Set tHeld = $Test
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tHeld
+}
+
+/// <p>Let go of every hold this process has on the vendor's archive lock of <var>pNamespace</var>: the port's own, and any the vendor's run took and did not give back when it was
+/// cut short. Bounded, and it never throws, so the lock is free on every exit.</p>
+ClassMethod ArchiveRelease(pNamespace As %String)
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tName = $Name(^Ens.ArchiveManager("lock"))
+        For tI = 1:1:100 {
+            If $Get(^$LOCK(tName, "OWNER")) '= $Job Quit
+            Lock -^Ens.ArchiveManager("lock")
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+}
+
+/// <p>The ids of the headers <var>pTarget</var> already holds that a run of <var>pNamespace</var> with <var>pDays</var> days would move, comma-separated and empty for none,
+/// at most the first ten. A fault is <var>pCaught</var>.</p>
+ClassMethod ArchiveTaken(pNamespace As %String, pTarget As %String, pDays As %Integer, Output pCaught) As %String [ Private ]
+{
+    Set tSC = ..SqlRows(pNamespace, "SELECT ID FROM Ens.MessageHeader WHERE TimeCreated IS NULL OR TimeCreated < ?", .tFound, .pCaught, ..ArchiveCutoff(pDays))
+    If $IsObject(pCaught) Quit ""
+    Set tTaken = ""
+    Set tCount = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pTarget
+        Do ..ArchiveTargetHere()
+        For tI = 1:1:tFound {
+            Set tId = $List(tFound(tI), 1)
+            If $Data(^Ens.MessageHeaderD(tId)) {
+                Set tCount = tCount + 1
+                If tCount < 11 Set tTaken = tTaken _ $Select(tTaken = "": "", 1: ",") _ tId
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tTaken
+}
+
+/// <p>A point inside the target-switched read of <method>ArchiveTaken</method>, which does nothing. A fixture overrides it to raise a fault there, so a test reads that the fault is
+/// logged after the namespace is restored; production never overrides it.</p>
+ClassMethod ArchiveTargetHere() [ Private ]
+{
+}
+
+/// <p>The vendor's run in the current namespace, which the caller has already switched: <code>Ens.Archive.Manager.DoArchive</code>, called while the port holds the vendor's lock
+/// (the vendor's own <code>lock +</code> is re-entrant in this process) and with no transaction. Overridable so a fixture can answer a status or a fault; production never overrides it.</p>
+ClassMethod VendorArchive() As %Status
+{
+    Quit ##class(Ens.Archive.Manager).DoArchive()
+}
+
+/// <p>The vendor's status <var>pStatus</var> without any text it carries, as <method>PurgeVendorStatus</method> gives it for a purge. Pure.</p>
+ClassMethod ArchiveVendorStatus(pStatus As %Status) As %Status
+{
+    Quit ..VendorCodesStatus(pStatus, "the archive")
+}
+
+/// <p>Run the archive of <var>pNamespace</var> (Story 24.16 Batch 4): the vendor's own run, in this request, and answer the archive state row, read again. The sequence, each refusal
+/// before any vendor call and each leaving the lock free:</p>
+/// <ol>
+/// <li>The vendor's lock is taken at once in the namespace; a lock that is held is 409 <code>INTEROP.ARCHIVE.RUNNING</code>.</li>
+/// <li>The three settings are read: a stored class other than <parameter>ARCHIVECLASSNAME</parameter> is 409 <code>CLASS</code>, a target that is not a namespace the classic page lists
+/// is 409 <code>NOTARGET</code>, more than <parameter>ARCHIVEMAXMESSAGES</parameter> headers is 409 <code>TOOMANY</code>.</li>
+/// <li>WRITE on the target's globals database is required, 403 naming the pair (it admits the port's read of the target's ids too, as the vendor needs nothing more); a target that
+/// already holds a header id the run would move is 409 <code>TAKEN</code>.</li>
+/// <li><method>VendorArchive</method> runs, the namespace is restored, the five counts are read and OcuPilot's own audit row is recorded (<method>AuditRuntime</method>) whatever the vendor
+/// answered. A run whose status is an error, or that logged an error, is 500 <code>INTERNAL</code>, as a partial purge is.</li>
+/// </ol>
+/// <p>The lock is let go on every exit. A run that outlasts the Web Gateway's response timeout runs to its end in this process, and its audit row is written then.</p>
+ClassMethod PerformArchive(pNamespace As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tHeld = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ..ArchiveRun(pNamespace, .pResult, .pHttpStatus, .pFault, .tHeld)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pResult = ""
+        Set tSC = ..ArchiveMapped(ex, "the archive call failed inside the port", .pHttpStatus, .pFault)
+    }
+    If tHeld Do ..ArchiveRelease(pNamespace)
+    Quit tSC
+}
+
+/// <p><method>PerformArchive</method>'s steps; <var>pHeld</var> is set once the lock is taken, so the caller lets go of it whatever this method does.</p>
+ClassMethod ArchiveRun(pNamespace As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pHeld As %Boolean) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set pHeld = ..ArchiveTake(pNamespace, .tCaught)
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive lock could not be taken", .pHttpStatus, .pFault)
+    If 'pHeld Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ARCHIVERUNNING, .pHttpStatus, .pFault)
+    Do ..ArchiveFacts(pNamespace, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive state read failed", .pHttpStatus, .pFault)
+    Do ..ArchiveCounts(pNamespace, tFacts("days"), .tTotal, .tMoving, .tCaught)
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive state read failed", .pHttpStatus, .pFault)
+    Set tCode = ..ArchiveRefusal(pNamespace, 0, tFacts("class"), tFacts("target"), tTotal)
+    If tCode '= "" Quit ..Conflict(tCode, .pHttpStatus, .pFault)
+    Set tTarget = tFacts("target")
+    Set tDatabase = ""
+    If '##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase(tTarget, .tDatabase, .tReadOnly) || (tDatabase = "") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
+    Set tFailedPair = ""
+    If '$ClassMethod(..GateClass(), "EvaluateRequired", $ListBuild($ListBuild(tDatabase, ..#WRITEPERMISSION)), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    Set tTaken = ..ArchiveTaken(pNamespace, tTarget, tFacts("days"), .tCaught)
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive target read failed", .pHttpStatus, .pFault)
+    If tTaken '= "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ARCHIVETAKEN, .pHttpStatus, .pFault)
+    Set tVendorSC = $$$OK
+    Set tRaised = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tVendorSC = ..VendorArchive()
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tRaised = ex
+    }
+    Do ..ArchiveFacts(pNamespace, .tAfter, .tAfterCaught)
+    Set tCounts = $Select($IsObject(tAfterCaught): "0,0,0,0,0", 1: tAfter("counts"))
+    Set tErrors = +$Piece(tCounts, ",", 5)
+    Set tCompleted = $$$ISOK(tVendorSC) && '$IsObject(tRaised) && (tErrors = 0) && '$IsObject(tAfterCaught)
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("target", tTarget, "string")
+    Do tEffects.%Set("daysToArchive", +tFacts("days"), "number")
+    Do tEffects.%Set("processed", +$Piece(tCounts, ",", 1), "number")
+    Do tEffects.%Set("archived", +$Piece(tCounts, ",", 2), "number")
+    Do tEffects.%Set("headersDeleted", +$Piece(tCounts, ",", 3), "number")
+    Do tEffects.%Set("bodiesDeleted", +$Piece(tCounts, ",", 4), "number")
+    Do tEffects.%Set("errors", tErrors, "number")
+    Do tEffects.%Set("completed", tCompleted, "boolean")
+    Do ..AuditRuntime(..#VERBARCHIVE, ..#ENTITYARCHIVE, pNamespace, tEffects)
+    If $IsObject(tRaised) Quit ..Statused(..ArchiveVendorStatus(tRaised.AsStatus()), "the archive failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(..ArchiveVendorStatus(tVendorSC), "the archive failed", .pHttpStatus, .pFault)
+    If 'tCompleted Quit ..Statused($$$ERROR($$$GeneralError, "the vendor reported the archive with " _ tErrors _ " errors"), "the archive failed", .pHttpStatus, .pFault)
+    Set tReadSC = ..ReadArchive(pNamespace, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) || '$IsObject(tRow) {
+        Set tRow = {}
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the archive setting <var>pName</var> set to <var>pBody</var>'s value in <var>pNamespace</var> (Story 24.16 Batch 4): the vendor's two
+/// reads and <code>SetArchiveParameters</code> with the one value replaced, as a string literal for a namespace and a whole number for the days. <code>""</code> for a name or a value the
+/// port would refuse, which renders no draft.</p>
+ClassMethod ArchiveSettingSnippet(pName As %String, pBody As %DynamicAbstractObject, pNamespace As %String) As %String [ Private ]
+{
+    Set tEntry = ..ArchiveSettingEntry(pName)
+    If (tEntry = "") || ..ArchiveSettingReadOnly(pName) || '$IsObject(pBody) || (pBody.%GetTypeOf("Value") '= "string") Quit ""
+    Set tValue = pBody.%Get("Value")
+    If '##class(OcuPilot.Area.Interop.ArchiveSettingRules).ValueHolds(..ArchiveSettingLimits(pName, pNamespace), tValue) Quit ""
+    Set tNL = $Char(10)
+    Set tText = tNL _ " Do ##class(Ens.Archive.Manager).GetArchiveParameters(.tTarget, .tClass, .tDays)"
+    If $List(tEntry, 2) = "Namespace" {
+        Set tText = tText _ tNL _ " Set tTarget = " _ ..Literal(tValue)
+    } Else {
+        Set tText = tText _ tNL _ " Set tDays = " _ +tValue
+    }
+    Quit tText _ tNL _ " Set tSC = ##class(Ens.Archive.Manager).SetArchiveParameters(tTarget, tClass, tDays)"
+}
+
+/// <p>The lines <method>Snippet</method> adds for the archive run (Story 24.16 Batch 4): the settings read, each refusal as one guard that stops the run, the vendor's lock taken at once,
+/// <code>Ens.Archive.Manager.DoArchive</code> called while it is held, and the lock let go. Nothing here runs; a person runs it.</p>
+ClassMethod ArchiveSnippet() As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tText = tNL _ " Do ##class(Ens.Archive.Manager).GetArchiveParameters(.tTarget, .tClass, .tDays)"
+    Set tText = tText _ tNL _ " Set tOk = 1"
+    Set tText = tText _ tNL _ " If tClass '= " _ ..Literal(..#ARCHIVECLASSNAME) _ " Set tOk = 0, tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.InteropError).ReasonFor(##class(OcuPilot.Api.InteropError).#ARCHIVECLASS)) _ ")"
+    Set tText = tText _ tNL _ " If tOk, (tTarget = """") || (tTarget = $Namespace) || '$Data(^%SYS(""Ensemble"", ""InstalledNamespace"", tTarget)) Set tOk = 0, tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.InteropError).ReasonFor(##class(OcuPilot.Api.InteropError).#ARCHIVENOTARGET)) _ ")"
+    Set tText = tText _ tNL _ " If tOk { &sql(SELECT COUNT(*) INTO :tTotal FROM Ens.MessageHeader) If tTotal > " _ ..#ARCHIVEMAXMESSAGES _ " Set tOk = 0, tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.InteropError).ReasonFor(##class(OcuPilot.Api.InteropError).#ARCHIVETOOMANY)) _ ") }"
+    Set tText = tText _ tNL _ " If tOk { Set tRS = ##class(%SQL.Statement).%ExecDirect(, ""SELECT ID FROM Ens.MessageHeader WHERE TimeCreated IS NULL OR TimeCreated < ?"", ##class(Ens.Purge).GetDoNotDeleteDate(tDays)) While tRS.%Next() { If $Data(^|tTarget|Ens.MessageHeaderD(tRS.%GetData(1))) Set tOk = 0, tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.InteropError).ReasonFor(##class(OcuPilot.Api.InteropError).#ARCHIVETAKEN)) _ ") Quit } }"
+    Set tText = tText _ tNL _ " If tOk { Lock +^Ens.ArchiveManager(""lock""):0 Set tHeld = $Test If 'tHeld Set tOk = 0, tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.InteropError).ReasonFor(##class(OcuPilot.Api.InteropError).#ARCHIVERUNNING)) _ ") }"
+    Set tText = tText _ tNL _ " If tOk Set tSC = ##class(Ens.Archive.Manager).DoArchive()"
+    Set tText = tText _ tNL _ " If $Get(tHeld) Lock -^Ens.ArchiveManager(""lock"")"
     Quit tText
 }
 

@@ -122,7 +122,7 @@ jobs:
       # the job's, so the hang fails here with that log kept and the next step still runs.
       - name: client suite
         working-directory: ui
-        timeout-minutes: 12
+        timeout-minutes: 18
         run: sh ../scripts/ci-resource-sample.sh -- npm test
       - name: client suite resources
         if: ${{ failure() || cancelled() }}
@@ -253,7 +253,7 @@ jobs:
     runs-on: ubuntu-24.04
     # At least 1.5 times the sum of the largest leg's estimate from ui/tools/ci-timings.json and 3
     # minutes of setup, a margin ui/tools/ci.test.mjs holds.
-    timeout-minutes: 63
+    timeout-minutes: 71
     strategy:
       fail-fast: false
       matrix:

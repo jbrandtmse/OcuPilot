@@ -161,7 +161,7 @@ and [issue #2](https://github.com/intersystems-community/sysadmin-api-specificat
   themselves. Only an OcuPilot administrator can change the kill switch, the holds, the provider
   connection settings and the governance policy, and each user's conversations, proposals and
   agent records stay readable only by that user or an administrator, even from code run directly
-  in IRIS. Eighty-five agent actions ship switched off - promoting classes and routines to another
+  in IRIS. Ninety-nine agent actions ship switched off - promoting classes and routines to another
   namespace, deleting an analytics folder item, deleting, importing or finding and replacing in a
   global, changing the system-wide security settings, deleting a mobile phone provider, importing
   resources, installing, deleting or importing a locale and loading a locale table, deleting an
@@ -174,9 +174,13 @@ and [issue #2](https://github.com/intersystems-community/sysadmin-api-specificat
   adding or removing its keys and administrators, activating or deactivating database and data element
   encryption keys, changing the encryption startup settings, enabling interoperability on a namespace,
   importing tasks, deleting or importing classes and routines, dropping a document database, running
-  SQL that changes data or the schema, purging the audit database, the eight disk operations,
+  SQL that changes data or the schema, clearing an SQL statement's run statistics, cleaning out the
+  SQL statements no class or routine still holds, rebuilding one or all of a table's indices,
+  removing a table's fixed statistics, collecting the statistics of every table in a schema,
+  setting a table's extent size, a field's selectivity or an index's map size,
+  purging the audit database, the eight disk operations,
   removing a production item, changing a production item's class, removing a business partner,
-  removing a default setting, a credential or a schedule spec, building an analytics cube, aborting an Interoperability job, queue or queued message, resending
+  removing a default setting, a credential or a schedule spec, purging interoperability management data, resubmitting, editing and resubmitting or deleting a suspended message, archiving interoperability messages into another namespace, building an analytics cube, aborting an Interoperability job, queue or queued message, resending
   messages, editing and resending a message, removing a lookup entry, deleting or importing a lookup table, deleting a managed file transfer connection or
   revoking its token, replacing an RSA wallet secret, deleting a superserver, and deleting a %-class
   access entry, a Doc DB application, a REST service or a privileged routine application - and an
@@ -222,7 +226,7 @@ also propose an edit you confirm; test a data transformation on text you paste; 
 read a message's header and contents and trace its whole session as a sequence diagram; resend up
 to 100 messages, or edit a message and resend a copy, after a dry run and your typed confirmation,
 both switched off at first; view HL7 v2.x, X12 and ASTM schemas and a production's configuration
-diagram; create and edit lookup tables and their entries, with .LUT import and export; keep system default settings and compare them between two namespaces; keep credentials, whose passwords are never shown; add, edit and remove schedule specs; and add, edit
+diagram; create and edit lookup tables and their entries, with .LUT import and export; keep system default settings and compare them between two namespaces; keep credentials, whose passwords are never shown; add, edit and remove schedule specs; keep the purge settings and purge old management data; resubmit, edit and resubmit, discard or delete suspended messages, up to 100 at a time; export up to 100 messages to a file in your browser's downloads; keep the archive settings and archive old messages into another interoperability namespace; and add, edit
 and remove business partners, where a partner an item still names cannot be removed.
 In a namespace under source control, a save that source control has not released is refused until
 you check the document out. Accounts that use the classic Interoperability pages can sign in to

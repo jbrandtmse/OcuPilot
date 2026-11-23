@@ -73,17 +73,18 @@ Parameter OPERATORSCREENS = "InteropBusinessPartnerList,InteropCredentialList,In
 /// <p>See <parameter>OPERATORSCREENS</parameter>.</p>
 Parameter OPERATORTOOLS = "interop.businesspartners.read,interop.credentials.read,interop.defaultsettings.read,interop.defaultsettingsdiff.read,interop.itemjobs.read,interop.itemlog.read,interop.itemmessages.read,interop.itemqueue.read,interop.items.read,interop.itemsettings.read,interop.itemstatus.read,interop.jobs.read,interop.lookupentries.read,interop.lookuptables.read,interop.messageheader.read,interop.messages.read,interop.messagetrace.read,interop.productions.read,interop.queuemessages.read,interop.queues.read,interop.schedules.read,interop.session.headers,interop.session.summary,interop.session.timeline,interop.sessions.bybodyclass,interop.sessions.byclass,interop.sessions.byid,interop.sessions.bysource,interop.sessions.bystatus,interop.sessions.bysupersession,interop.sessions.bytarget,interop.sessions.bytime,interop.sessions.related,interop.suspendedmessages.read,logs.eventlog.read";
 
-/// <p>What the Administrator role adds beside the Operator's: Purge management data and Purge data settings (Story 24.16), through the
+/// <p>What the Administrator role adds beside the Operator's: the Archive manager, Archive settings and Archive errors screens (Story 24.16 Batch 4), through the
+/// <code>%Ens_ArchiveManager:READ</code> the role holds and the Operator and Monitor roles do not (measured), Purge management data and Purge data settings (Story 24.16), through the
 /// <code>%Ens_Purge:USE</code> and <code>%Ens_PurgeSettings:WRITE</code> the role holds and the Operator and Monitor roles do not, the three code lists and the rule, BPL and DTL editor
 /// screens (Story 20.7), each through its own <code>%Ens_Code:READ</code>, and an item's Test tab (Story 20.6) through the <code>%Ens_TestingService:USE</code> the
 /// role holds (measured at that story's plan: <code>%EnsRole_Administrator</code> holds <code>%Ens_TestingService:U</code>, the
 /// Operator and Monitor roles do not), and the Schema viewer (Story 20.8) through the <code>%Ens_EDISchema:READ</code> the
 /// Administrator role holds and the Operator and Monitor roles do not, and a message's Contents tab (Story 20.9) through the
 /// <code>%Ens_MessageContent:USE</code> the Administrator role holds and the Operator role does not.</p>
-Parameter ADMINISTRATORSCREENS = "InteropItemClassTab,InteropItemTestTab,InteropMessageContentsTab,InteropProcessEditor,InteropProcessList,InteropPurgeList,InteropPurgeSettingList,InteropRuleEditor,InteropRuleList,InteropSchemaViewer,InteropTransformEditor,InteropTransformList";
+Parameter ADMINISTRATORSCREENS = "InteropArchiveErrorList,InteropArchiveList,InteropArchiveSettingList,InteropItemClassTab,InteropItemTestTab,InteropMessageContentsTab,InteropProcessEditor,InteropProcessList,InteropPurgeList,InteropPurgeSettingList,InteropRuleEditor,InteropRuleList,InteropSchemaViewer,InteropTransformEditor,InteropTransformList";
 
 /// <p>See <parameter>ADMINISTRATORSCREENS</parameter>.</p>
-Parameter ADMINISTRATORTOOLS = "interop.itemclasses.read,interop.itemtest.read,interop.message.body,interop.message.detail,interop.messagecontents.read,interop.processes.read,interop.purge.read,interop.purgesettings.read,interop.rules.read,interop.transforms.read";
+Parameter ADMINISTRATORTOOLS = "interop.archive.read,interop.archiveerrors.read,interop.archivesettings.read,interop.itemclasses.read,interop.itemtest.read,interop.message.body,interop.message.detail,interop.messagecontents.read,interop.processes.read,interop.purge.read,interop.purgesettings.read,interop.rules.read,interop.transforms.read";
 
 /// <p>The write tools whose declared pairs the Administrator principal holds in full, each one parity with a classic page that opens for that role:
 /// exactly <code>interop.messages.export</code>, whose classic Export dialog checks <code>%Ens_MessageExport:USE</code> beside the Message Viewer's

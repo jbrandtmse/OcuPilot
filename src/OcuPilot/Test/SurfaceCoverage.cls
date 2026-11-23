@@ -274,6 +274,9 @@ XData Coverage
 <screen name="InteropScheduleList" class="OcuPilot.Test.InteropScheduleControl" method="TestTheDeclarationRegisters"/>
 <screen name="InteropPurgeList" class="OcuPilot.Test.InteropPurgeControl" method="TestTheDeclarationRegisters"/>
 <screen name="InteropPurgeSettingList" class="OcuPilot.Test.InteropPurgeSettingControl" method="TestTheDeclarationRegisters"/>
+<screen name="InteropArchiveList" class="OcuPilot.Test.InteropArchiveControl" method="TestTheRunIsDeclaredAsTheRowActionOfTheArchiveManager"/>
+<screen name="InteropArchiveSettingList" class="OcuPilot.Test.InteropArchiveSettingControl" method="TestTheDeclarationsRegister"/>
+<screen name="InteropArchiveErrorList" class="OcuPilot.Test.InteropArchiveControl" method="TestTheErrorsScreenIsDeclaredReadOnly"/>
 <screen name="InteropSuspendedMessageList" class="OcuPilot.Test.InteropSuspendedList" method="TestTheDeclarationRegisters"/>
 <screen name="InteropRuleEditor" class="OcuPilot.Test.InteropEditorDescriptor" method="TestTheThreeEditorScreensRegister" corpus="one declaration test pins all three Story 20.7 editor screens in one loop"/>
 <screen name="InteropProcessEditor" class="OcuPilot.Test.InteropEditorDescriptor" method="TestTheThreeEditorScreensRegister" corpus="one declaration test pins all three Story 20.7 editor screens in one loop"/>
@@ -622,6 +625,8 @@ XData Coverage
 <tool name="interop.schedules.remove" class="OcuPilot.Test.InteropScheduleControl" method="TestTheAgentsUpdateAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update and the remove in turn"/>
 <tool name="interop.purgesettings.set" class="OcuPilot.Test.InteropPurgeSettingControl" method="TestASettingSetFromEitherCallerReadsBackAsSent"/>
 <tool name="interop.purge.run" class="OcuPilot.Test.InteropPurgeControl" method="TestAPurgeFromEitherCallerDeletesTheOldRecordsAndKeepsTheCurrentOne"/>
+<tool name="interop.archivesettings.set" class="OcuPilot.Test.InteropArchiveSettingControl" method="TestASettingSetFromEitherCallerReadsBackAsSent"/>
+<tool name="interop.archive.run" class="OcuPilot.Test.InteropArchiveControl" method="TestARunFromEitherCallerMovesTheOldMessagesIntoTheTarget"/>
 <tool name="interop.suspendedmessages.resubmit" class="OcuPilot.Test.InteropSuspendedResubmit" method="TestTheAgentsResubmitConfirmsOverHttp"/>
 <tool name="interop.suspendedmessages.editresubmit" class="OcuPilot.Test.InteropSuspendedResubmit" method="TestTheAgentsEditAndResubmitSavesACopyAndKeepsTheId"/>
 <tool name="interop.suspendedmessages.discard" class="OcuPilot.Test.InteropSuspendedRemove" method="TestTheAgentsDiscardConfirmsOverHttpAtItsShippedKey"/>

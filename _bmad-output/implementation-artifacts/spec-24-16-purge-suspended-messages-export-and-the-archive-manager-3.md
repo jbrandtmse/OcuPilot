@@ -2,7 +2,7 @@
 title: 'Story 24.16: Purge, suspended messages, export and the archive manager (Batch 3: export messages)'
 type: 'feature'
 created: '2026-11-23'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'b86a75643a232ce3048e163493f6acb30265a901'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -108,6 +108,8 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `b0e597306`).
 - **AC8 (fresh, either order).** Given any new or changed test, run first on a fresh instance in either order, when it ends, then no probe header, body, export file or directory remains in either namespace.
 
 ## Spec Change Log
+
+- 2026-11-23, Batch 4 (DW-2856): the export consequence now reads "Exporting saves the body of each message marked to be exported to one file in this browser's downloads, in message id order, each marked off by the chosen separator. Each body exported is recorded in the audit log as viewed. Anyone who can open the file can read the messages." in EXPERIENCE.md, `strings.ts` and `InteropError.REASONMESSAGEEXPORT`.
 
 ## Review Triage Log
 
