@@ -1048,3 +1048,6 @@
 2026-11-23T07:41:03Z	Story 21.25	rework_cap_exceeded	granted_by=orchestrator reason=vendor_residue_from_rework_3's_probe iteration=4
 2026-11-23T07:41:03Z	Story 21.25	rework_opened	iteration=4 cause=SCHEMATA_-400_after_quote_probe+MappingDescriptor_roster throwaway=rebuilt_07:40Z
 2026-11-23T07:41:03Z	Story 21.25	stage_spawned	stage=implement(rework4) spawn_at=2026-11-23T07:41:03Z model=sonnet agent_name=21-25-rework4 prior_lines_ended=verified(ae8c83965)
+2026-11-23T08:10:14Z	Story 21.25	stage_complete	stage=implement(rework4) agent=a5743f258 result=done commit=a500f3bc5 measurement=sequence_i_(vendor_DROP_TABLE_alone)_breaks_SCHEMATA;tools_innocent residue=^rINDEXSQL(schema)_entry;removed_via_DropSchema^%apiDDL(internal) product=schemas_list_answers_500_INTERNAL(pinned) mappingdescriptor=committed bashedits=1_false_positive(sed_-n_read) lines_ended=verified
+2026-11-23T08:10:14Z	Story 21.25	code_head_pushed	sha=a500f3bc5 run=45136354856 missing=none contains=d5974757e
+2026-11-23T08:10:14Z	Story 21.25	gate_step	step=fresh_check+full_sweep+smoke head=a500f3bc5 started=2026-11-23T08:10:14Z dir=e21u/21-25/gate2
