@@ -827,3 +827,7 @@
 2026-11-23T21:22:00Z	Story 24.16	story_done	tracker=done specs=4/4_done ledger=DW-2856,DW-2859_resolved-by_story,slice_empty harvest=no_new(Batch1_DW-2846_already_ledgered;Batches2-4_deferred_empty) spine=eb8a8dbff merge_by=orchestrator_at_tip
 2026-11-23T21:26:39Z	Story 24.16	merged_to_feature	feature=626172470(ff_13c506048+record+timings_45258542095)
 2026-11-23T21:26:39Z	Story 24.17	stage_spawned	stage=plan spawn_at=2026-11-23T21:26:39Z model=opus agent_name=24-17-plan cycle_iteration=1 story_base=626172470
+2026-11-23T21:38:50Z	Story 24.17	story_created	scope=batch1_managed_alerts(of_5) path=_bmad-output/implementation-artifacts/spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow.md commit=02e954355 build_status=ready-for-dev epic_context=recompiled
+2026-11-23T21:41:45Z	Story 24.17	ruling	question=batch1_veto_set choice=keep(V1-V6)+batch5_note(GetEnsMetrics_%All_needs_AD-9_containment) category=veto inbox=U-157 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-23T21:43:21Z	Story 24.17	spec_validated	scope=batch1
+2026-11-23T21:43:21Z	Story 24.17	stage_spawned	stage=implement spawn_at=2026-11-23T21:43:21Z model=sonnet agent_name=24-17-implement-batch1 cycle_iteration=1 story_base=02e954355

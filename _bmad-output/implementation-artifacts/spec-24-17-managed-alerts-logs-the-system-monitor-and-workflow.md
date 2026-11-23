@@ -127,6 +127,16 @@ Each is the lead's to take to the veto gate; the recommended option is first.
 
 No new dependency; no privilege, role or access grant; nothing is written into another namespace.
 
+**Lead rulings at the spec gate (2026-11-23; filed as an INBOX veto item, binding unless the orchestrator reverses them).** Every veto item is kept as recommended:
+
+- **V1:** kept. If Task 0 (d) measures `ALERTUPDATE` untrue, HALT with `## Clarification Needed`. Never reword it in-stage.
+- **V2:** kept. All owners' alerts go to a holder of `%Ens_Alerts:READ`, equal to the classic Managed Alert Viewer the screen replaces, and never looser than it.
+- **V3:** kept. If Task 0 (b) shows the vendor needs more than the listed pairs, the pairs gain it.
+- **V4:** kept, the narrower values.
+- **V5:** kept. The update ships `true`.
+- **V6:** kept for story end; the lead writes the lines.
+- **Batch 5 note:** `%SYS.Ensemble.GetEnsMetrics` adds `%All` temporarily. Batch 5's plan must contain it as AD-9's `PurgeFrame` exception allows, or HALT.
+
 ## Design Notes
 
 **Batch split** (each its own spec, `-2` onward, and commit series; by size: managed alerts two pages and one write, the logs two lists and two purges, workflow four pages and eight writes, the monitor one read):
