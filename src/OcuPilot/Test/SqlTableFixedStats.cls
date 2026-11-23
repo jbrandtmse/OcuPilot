@@ -167,7 +167,7 @@ Method TestTheToolsDeclareTheirWritePath()
 /// <p>AC4's read and AD-36: <code>FIELDSTATS</code> answers one field's statistics, each value the one in use (the collected one while the table has no
 /// fixed statistics, the fixed one once it has), and <code>INDEX</code> answers the map's size in MB; a field the table does not hold, or spelled in another
 /// case, is 400 <code>PORT.VALIDATION</code>.</p>
-/// <p>Mutation (Rule 19): <code>SqlPort.TableAnswer</code> answers the collected value for a table with fixed statistics -> the fixed assertions go red.</p>
+/// <p>Mutation (Rule 19): <code>SqlPort.TableAnswer</code> answers a field's collected values for a table with fixed statistics -> the fixed assertions go red.</p>
 Method TestTheFieldStatisticsAndTheMapSizeAreReadAsInUse()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 1, 5, .tTable), "the probe table is created")
@@ -321,8 +321,6 @@ Method TestAnOutlierValueIsNeverRun()
 /// <p>AD-6, AD-34. A proposal whose table's statistics were collected after it was minted, and one whose table's statistics were fixed after it was minted,
 /// are refused <code>PROPOSAL.TARGETCHANGED</code> at their confirm, and nothing is set. The digest covers the merged payload, so a declared value is
 /// the one reviewed and a change to the old value alone is not seen.</p>
-/// <p>Mutation (Rule 19): the extent size tool's <code>FINGERPRINTSUBJECT</code> drops <code>StatsKind</code> and <code>CollectedAt</code> -> the first
-/// confirm is not refused and goes red.</p>
 Method TestAChangedTargetIsRefusedTargetChanged()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 1, 5, .tTable), "the probe table is created")
@@ -421,7 +419,7 @@ Method TestEachSettersScriptDoesWhatTheWriteDoes()
 
 /// <p>AC1. A table whose schema and name need delimiting, <parameter>OcuPilot.Test.SqlTuningProbe.DELIMITEDSCHEMA</parameter> and <code>Probe Table</code>,
 /// has each setter round-trip through both callers, the instance being handed the names as it holds them.</p>
-/// <p>Mutation (Rule 19): <code>SqlPort.SettingCall</code> quotes the schema it hands the setters -> every assertion goes red.</p>
+/// <p>Mutation (Rule 19): <code>SqlPort.SettingCall</code> quotes the schema it hands the setters -> the instance refuses it and the assertions go red.</p>
 Method TestATableWithADelimitedNameIsSetOnBothCallers()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 0, 4, .tTable, "Probe Table"), "a table named with a space is made in the schema named with one")

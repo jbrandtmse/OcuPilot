@@ -2,15 +2,22 @@
 title: 'Story 21.31: Fixed table statistics'
 type: 'feature'
 created: '2026-11-23'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '253a19794db11e9dfe2f3ff7210d8bc0b0eaa023'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-25-index-rebuild-and-tune-table.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      TestAnOutlierValueIsNeverRun's marker is read only in USER and has no positive control showing it detects an expression the vendor ran.
+    evidence: |-
+      The recorded mutation reddens all four code legs, which the verdict and mint parts alone explain. Task 0 (c) measured the execution once, in HSCUSTOM. A positive control would set a code expression through the vendor on a probe and assert the marker becomes set.
+    location: >-
+      src/OcuPilot/Test/SqlTableFixedStats.cls
+    severity: low
 ---
 
 <intent-contract>
@@ -160,6 +167,19 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-11-23 -- Review pass
+
+- verdicts: 8 findings -- high 0, medium 3, low 2, false 0, maybe-false 0, reject 2, defer 1
+- findings:
+  - `[medium]` `[patch]` The card's old and new value (AC1) is asserted by no test -- a minted proposal's diff is never read; patched by a diff assertion per tool.
+  - `[medium]` `[patch]` The lower bound 0 is never validated or set (extent size, map size, average size), and a map size of 0 may read back as a mismatch -- patched by tests for 0.
+  - `[medium]` `[patch]` AC4's stored `class` reference clause has no pinning test -- patched by a client test with a `mutation:` line.
+  - `[low]` `[patch]` Several mutation claims in the test headers were never observed, and the AC3 plan line says "red on both callers" where only `Test.Prohibited` goes red -- each observed and recorded, the AC3 line corrected.
+  - `[low]` `[defer]` `TestAnOutlierValueIsNeverRun` has no positive control that its marker detects execution outside USER -- Task 0 (c) measured the execution once.
+  - `[reject]` The Set selectivity browser step asserts the shared table has no fixed selectivity first -- the table is the spec's own probe, the check is a precondition that fails loudly, and `after` restores it.
+  - `[reject]` Intent audit: the tests exercise the server entry points, not the rendered tab, for AC1 to AC3 -- descriptive; the browser spec drives two of the three setters end to end and the jsdom specs cover the dialog.
+  - `[reject]` Intent audit: Set map size has no browser step -- the spec names two browser steps only.
+
 ## Design Notes
 
 **Governing ADs (spine line ranges):**
@@ -255,6 +275,7 @@ Drop the first sentence if Task 0 (d) shows `FixTableStats` is not needed. Recom
 - **`TableCall` gains a fifth, output argument** (`pFixed`); the test fixture follows.
 - **`SqlTableSetAction` carries the composite-target methods** (`IdArgument`, `IdProblem`, `NameOf`, `TargetName`, `InputSchema`) for the map and field setters through `SECONDARGUMENT`, so neither tool copies `ExplorerSqlIndexRebuild`'s.
 - **The read-back** compares `ExtentSize` and `SizeMB` (`matches`). A selectivity has none: the instance reads it back rounded (`30%` reads `30.0003%`).
+- **A map size of 0** is accepted (a whole number, 0 or more) and is set as 0 blocks, which resets the map to its measured size; its read-back, comparing the declared 0 with the re-read size, reads `differs` naming `SizeMB`, which is what the map then holds, and no special case is made (pinned by `SqlTableFixedStatsCard`).
 - **Not in this batch:** the screen mirror and `Titles.cls` (`node tools/screen-mirror.mjs`), the client and EXPERIENCE.md are Batch 2's; `screen-mirror.mjs --check` reads stale until then.
 
 ## Verification
@@ -288,7 +309,7 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
 
 - AC1: `TableCall` passes the old value for `SETEXTENT`; the omitted-outlier read is skipped -> `SqlTableFixedStats` red on read-back.
 - AC2: the selectivity shape check accepts anything -> red on the shape legs.
-- AC3: `Prohibits` does not send `sql-field` to `TableEntry` -> red on both callers.
+- AC3: `Prohibits` does not send `sql-field` to `TableEntry` -> `Test.Prohibited`'s field leg red; `SqlTableFixedStats` goes red only when the tool's own-name refusal (`SqlTableAction.RefusedBeforeState`) is mutated too.
 - AC4: `CatalogRows` stops naming `Table` on field rows -> the tab test red.
 - AC5: `ExplorerSqlFieldStatistics` loses its `set-selectivity` row action -> the browser spec red, after rebuild and redeploy.
 - Observed (Batch 1, each applied on `ocupilot-ci`, reverted, the file's `git hash-object` identical, source reloaded):
@@ -303,7 +324,24 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
   - mutation: AC2, `PUBLISHED_PROBLEMS` loses the three shape sentences -> "shows a shape refusal as its published sentence" red; one word of `sqlTableWholeNumberShape` changed -> `self-protection.test.mjs`'s refusal roster red; the map size leg dropped from `consequenceSentence` -> `proposal-view.test.mjs`'s setters' test red.
   - mutation: AC5, the descriptor registrations for `sql-field` and `set-extent-size` are in the same browser mutation as above; forward and in reverse order with `system-explorer-sql.browser-spec.mjs` the spec passed (6 of 6 each) and the `after` hook found no probe table, statistic or cached query.
 
+- Observed (review rework, each applied on `ocupilot-ci`, reverted, `git status --short` and `git diff --stat` showing only the intended files, source reloaded):
+  - mutation: AC1, `SqlPort.TableAnswer` reads a field's collected values although the table has fixed statistics -> `SqlTableFixedStats.TestTheFieldStatisticsAndTheMapSizeAreReadAsInUse` (run 1037) and `SqlTableFixedStatsCard.TestEachCardShowsTheValueInUseAsOldAndTheDeclaredOneAsNew` (run 1038) red on the old value.
+  - mutation: AC1, `SqlTableSetAction.MergeUpdate` sets an undeclared outlier selectivity as declared -> the card test red on the selectivity's row (run 1039).
+  - mutation: AC1, `SqlPort.SettingCall` passes the MB as the block count -> `TestAMapSizeIsSetOnBothCallers` red on the agent's and the screen's set (run 1040).
+  - mutation: AC1, `SqlPort.SettingCall` quotes the schema -> the instance refuses it and `TestATableWithADelimitedNameIsSetOnBothCallers` goes red with six other tests (run 1041); the quoting is refused for any schema, so the leg is not specific to a delimited one.
+  - mutation: AC2, the extent size pattern refuses 0 -> `SqlTableFixedStatsCard.TestTheLowerBoundZeroIsAValidValue` red (run 1036).
+  - mutation: AD-6, `FINGERPRINTSUBJECT` of `SqlTableAction` without `StatsKind` and `CollectedAt` -> every setter test is red (run 1042; the confirms answer nothing, the cause being the narrowed payload losing `StatsKind` (inference)), so the subject leg cannot be isolated; `Confirm` not refusing a mismatched fingerprint (`If 0` for `If 'tMatches`) -> `TestAChangedTargetIsRefusedTargetChanged` red alone, on both legs (run 1043).
+  - mutation: AC3 gate, `SqlPort.TablesInvoke` gates every type as a read -> `TestTheGatesRefuseBeforeAnyReadOrWrite` red on the three setters' WRITE legs and the no-call assertion (run 1044).
+  - mutation: AC4, the Field statistics screen back on `class` in `screens.generated.ts` -> `citation-chips.test.mjs`'s "a stored class citation of a table still resolves to the class screen" red alone.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+- **Change:** the three setters (extent size, selectivity, map size) are confirmed writes through `SqlPort`'s `Tables` endpoint, reached by the screen and by the agent. The Field statistics tab moves to a new `sql-field` type with a `[Table, Field]` id and a `FIELDSTATS` read, `INDEX` answers `SizeMB`, and the client adds a text field to the confirmation dialog.
+- **Task 0:** `FixTableStats` is needed. Without it a set leaves every other field's fixed value blank. It runs only for a collected table, inside the confirmed write. Corrections to measure-first clauses, as recorded in Design Notes: the map value is in 2 KB blocks and the port sends `SizeMB * 512` (the label "Map size (MB)" stands); an outlier value is run by the vendor as an expression, so the port accepts only a number or a double-quoted string literal; `INDEX`'s `SizeMB` is the Indices list's own number (the compiler's estimate) when the table has no fixed statistics. The vendor accepts any extent size, so the port holds the bound (`MAXEXTENTSIZE`, boundary tested).
+- **Commits:** Batch 1 `1d7d0561f` (server), Batch 2 `04ac615bc` (client), finalize on top.
+- **Review:** 8 findings, 3 medium patched (card diff, lower bound 0, the stored `class` citation), 1 low patched (unobserved mutation claims), 1 low deferred (positive control for the never-run marker), 3 rejected with reasons in the Review Triage Log. Follow-up review recommended: true, for one risk, a map size of 0, which the vendor answers by resetting to the measured size, so the tool's read-back verdict reads `differs` after a successful set.
+- **Verification:** every class and spec the batches touched green on `ocupilot-ci`; `check-objectscript` 0 problems; `lint-docs` clean; `npm run build`, `test:components` (3917) and `test:tools` (2405) green; the tuning browser spec 6/6 forward and in reverse after `system-explorer-sql.browser-spec.mjs`. The full ObjectScript sweep, smoke and the AD-51 `FixTableStats` sentence are the runner's.
+- **Residual:** `ExplorerSqlTableSetExtentSize` and its siblings reach an own-table refusal through `Test.Prohibited` alone for the `sql-field` arm. No sentence exists for a failed set after the statistics were saved; it is `detail.statisticsFixed` on the 409. Batch 1's first commit attempt was swept into the runner's bookkeeping commit and re-done after it was reset.
