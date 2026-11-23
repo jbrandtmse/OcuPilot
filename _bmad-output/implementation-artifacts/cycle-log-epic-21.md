@@ -1029,3 +1029,4 @@
 2026-11-23T04:46:07Z	Story 21.25	stage_complete	stage=implement(resume) agent=a6786e6be result=done commit=1372d596a(B4) prior_results=re-run_void bashedits=none lines_ended=verified
 2026-11-23T04:46:07Z	Story 21.25	rework_opened	iteration=1 cause=orchestrator_ruling(alias_out,rebuild_+1_sentence,collect_purge_record,keep_class_remeasure_or_drop;vetoes_U-146,U-148)
 2026-11-23T04:46:07Z	Story 21.25	stage_spawned	stage=implement(rework1) spawn_at=2026-11-23T04:46:07Z model=sonnet agent_name=21-25-rework1 prior_lines_ended=verified(a6786e6be)
+2026-11-23T04:46:43Z	Epic 21	slip	what=bookkeeping_push_of_HEAD_dfb34f5a5_carried_unrun_21.25_code(888433da8,cd7ddadd4,1372d596a)_under_a_[skip_ci]_tip,before_integrating_d5974757e rule=32(code_head_alone)+integrate_first effect=no_CI_run_on_that_code;no_merge_impact(next_code_head_push_runs_CI_over_it) fix=push_bookkeeping_only_when_HEAD's_code_is_already_on_origin
