@@ -1,7 +1,7 @@
 /// <p>Pins Story 21.31's fixed-statistics writes on both permitted callers (AC1 to AC3; AD-6, AD-7, AD-10, AD-21, AD-51, AD-53, AD-56, AD-58): a table's extent
 /// size, a field's selectivity and a map's size, each set by the screen's action and by the agent's confirmed proposal and read back; collected statistics
-/// saved as fixed first and an outlier value, outlier selectivity or average size not sent kept; every value outside its shape, and an outlier value the
-/// instance would run as code, refused before any call; a failed set saying so; a changed target closed; and a table of OcuPilot's own refused.</p>
+/// saved as fixed first and an outlier value, outlier selectivity or average size not sent kept; every value outside its shape refused before any call;
+/// a changed target closed; and a table of OcuPilot's own refused. <class>OcuPilot.Test.SqlTableOutlierValues</class> pins the outlier value and a failed set.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP as <class>OcuPilot.Test.Http</class>'s account, which holds
 /// <code>%Development:USE</code> and WRITE on <code>USER</code>'s and the install namespace's routines databases, and a <code>USER</code> namespace, where
 /// each test makes its own <class>OcuPilot.Test.SqlTuningProbe</class> tables and removes them after, each fixed statistic through Clear fixed statistics.
@@ -178,7 +178,7 @@ Method TestTheFieldStatisticsAndTheMapSizeAreReadAsInUse()
     Do $$$AssertEquals(tAnswer.Table _ "|" _ tAnswer.Field _ "|" _ tAnswer.StatsKind _ "|" _ tAnswer.HasFixed _ "|" _ tAnswer.Selectivity _ "|" _ tAnswer.%GetTypeOf("AverageFieldSize"), tTable _ "|B|collected|0|20.0000%|number", "an unfixed table answers the collected values")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "FixField", ..#NAMESPACE, tTable, "B", "40%", "10%", """q""", 9), "field B is fixed at 40% with an outlier of ""q"" at 10% and an average size of 9")
     Set tVerdict = $ClassMethod(..#READS, "Read", "FIELDSTATS", ..Id(tTable, "B"), .tAnswer, .tFault)
-    Do $$$AssertEquals(tAnswer.StatsKind _ "|" _ tAnswer.HasFixed _ "|" _ tAnswer.Selectivity _ "|" _ tAnswer.OutlierSelectivity _ "|" _ tAnswer.OutlierValue _ "|" _ tAnswer.AverageFieldSize, "fixed|1|40.0000%|10%|""q""|9", "a fixed table answers the fixed ones")
+    Do $$$AssertEquals(tAnswer.StatsKind _ "|" _ tAnswer.HasFixed _ "|" _ tAnswer.Selectivity _ "|" _ tAnswer.OutlierSelectivity _ "|" _ tAnswer.OutlierValue _ "|" _ tAnswer.AverageFieldSize, "fixed|1|40.0000%|10%|q|9", "a fixed table answers the fixed ones, an outlier value as its plain text")
     Set tVerdict = $ClassMethod(..#READS, "Read", "FIELDSTATS", ..Id(tTable, "A"), .tAnswer, .tFault)
     Do $$$AssertEquals(tAnswer.OutlierValue _ "|" _ tAnswer.OutlierSelectivity, "|", "a field with no outlier answers none, not the instance's <Null> text")
     For tId = ..Id(tTable, "b"), ..Id(tTable, "NoSuchField"), tTable {
@@ -266,7 +266,7 @@ Method TestAMapSizeIsSetOnBothCallers()
 }
 
 /// <p>AC2. A value outside its shape (an extent size over the bound, fractional, text or empty; a selectivity of 0, over 99.999%, negative or text; a map size
-/// or average size that is not a whole number; an outlier value too long or with a control character) is refused with the published sentence before any
+/// that is not a whole number of 1 or more; an average size that is not a whole number; an outlier value too long or with a control character) is refused with the published sentence before any
 /// call, by the port, the screen's action and the agent's mint, and leaves the collected statistics unfixed.</p>
 /// <p>Mutation (Rule 19): <code>SqlPort.PercentValid</code> accepts anything -> the selectivity legs go red.</p>
 Method TestAValueOutsideItsShapeIsRefusedBeforeAnyCall()
@@ -274,8 +274,8 @@ Method TestAValueOutsideItsShapeIsRefusedBeforeAnyCall()
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 1, 5, .tTable), "the probe table is created")
     Do ..Collect(tTable)
     Set tError = "OcuPilot.Api.AtelierError"
-    Set tLong = """" _ $Translate($Justify("", 127), " ", "a") _ """"
-    For tCase = $ListBuild("SETEXTENT", tTable, "ExtentSize", "-1", "TABLEEXTENTSIZE"), $ListBuild("SETEXTENT", tTable, "ExtentSize", "2.5", "TABLEEXTENTSIZE"), $ListBuild("SETEXTENT", tTable, "ExtentSize", "abc", "TABLEEXTENTSIZE"), $ListBuild("SETEXTENT", tTable, "ExtentSize", "", "TABLEEXTENTSIZE"), $ListBuild("SETEXTENT", tTable, "ExtentSize", "1000000000001", "TABLEEXTENTSIZE"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "Selectivity", "0%", "TABLESELECTIVITY"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "Selectivity", "0", "TABLESELECTIVITY"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "Selectivity", "100%", "TABLESELECTIVITY"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "Selectivity", "-5%", "TABLESELECTIVITY"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "Selectivity", "abc", "TABLESELECTIVITY"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "Selectivity", "", "TABLESELECTIVITY"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "OutlierSelectivity", "abc", "TABLESELECTIVITY"), $ListBuild("SETMAPSIZE", ..Id(tTable, "IdxB"), "SizeMB", "-1", "TABLEWHOLENUMBER"), $ListBuild("SETMAPSIZE", ..Id(tTable, "IdxB"), "SizeMB", "2.5", "TABLEWHOLENUMBER"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "AverageFieldSize", "-1", "TABLEWHOLENUMBER"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "OutlierValue", tLong _ "x", "TABLEOUTLIERVALUE"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "OutlierValue", """a" _ $Char(7) _ """", "PORTVALIDATION") {
+    Set tLong = $Translate($Justify("", 128), " ", "a")
+    For tCase = $ListBuild("SETEXTENT", tTable, "ExtentSize", "-1", "TABLEEXTENTSIZE"), $ListBuild("SETEXTENT", tTable, "ExtentSize", "2.5", "TABLEEXTENTSIZE"), $ListBuild("SETEXTENT", tTable, "ExtentSize", "abc", "TABLEEXTENTSIZE"), $ListBuild("SETEXTENT", tTable, "ExtentSize", "", "TABLEEXTENTSIZE"), $ListBuild("SETEXTENT", tTable, "ExtentSize", "1000000000001", "TABLEEXTENTSIZE"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "Selectivity", "0%", "TABLESELECTIVITY"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "Selectivity", "0", "TABLESELECTIVITY"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "Selectivity", "100%", "TABLESELECTIVITY"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "Selectivity", "-5%", "TABLESELECTIVITY"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "Selectivity", "abc", "TABLESELECTIVITY"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "Selectivity", "", "TABLESELECTIVITY"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "OutlierSelectivity", "abc", "TABLESELECTIVITY"), $ListBuild("SETMAPSIZE", ..Id(tTable, "IdxB"), "SizeMB", "-1", "TABLEMAPSIZE"), $ListBuild("SETMAPSIZE", ..Id(tTable, "IdxB"), "SizeMB", "2.5", "TABLEMAPSIZE"), $ListBuild("SETMAPSIZE", ..Id(tTable, "IdxB"), "SizeMB", "0", "TABLEMAPSIZE"), $ListBuild("SETMAPSIZE", ..Id(tTable, "IdxB"), "SizeMB", "", "TABLEMAPSIZE"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "AverageFieldSize", "-1", "TABLEWHOLENUMBER"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "OutlierValue", tLong _ "x", "TABLEOUTLIERVALUE"), $ListBuild("SETSELECTIVITY", ..Id(tTable, "B"), "OutlierValue", "a" _ $Char(7), "PORTVALIDATION") {
         Kill tValues
         Set tValues = {}
         If $List(tCase, 1) = "SETSELECTIVITY" Do tValues.%Set("Selectivity", "25%")
@@ -289,7 +289,7 @@ Method TestAValueOutsideItsShapeIsRefusedBeforeAnyCall()
         Set tStatus = ..Act(..#TABLESCREEN, "set-extent-size", tTable, {"ExtentSize": ($List(tCase, 1))}, , .tAnswer)
         Do $$$AssertEquals($ClassMethod(..#HELPERS, "Verdict", tStatus, tAnswer) _ "|" _ $ClassMethod(..#HELPERS, "Problem", tAnswer), "400 TOOL.ARGUMENTS|" _ $List(tCase, 2), "the screen's extent size '" _ $List(tCase, 1) _ "' is refused with the published sentence")
     }
-    For tCase = $ListBuild(..#FIELDSCREEN, "set-selectivity", ..Id(tTable, "B"), "Selectivity", "0%", ##class(OcuPilot.Api.AtelierError).#REASONTABLESELECTIVITY), $ListBuild(..#FIELDSCREEN, "set-selectivity", ..Id(tTable, "B"), "Selectivity", "101%", ##class(OcuPilot.Api.AtelierError).#REASONTABLESELECTIVITY), $ListBuild(..#INDEXSCREEN, "set-map-size", ..Id(tTable, "IdxB"), "SizeMB", "-1", ##class(OcuPilot.Api.AtelierError).#REASONTABLEWHOLENUMBER), $ListBuild(..#INDEXSCREEN, "set-map-size", ..Id(tTable, "IdxB"), "SizeMB", "2.5", ##class(OcuPilot.Api.AtelierError).#REASONTABLEWHOLENUMBER) {
+    For tCase = $ListBuild(..#FIELDSCREEN, "set-selectivity", ..Id(tTable, "B"), "Selectivity", "0%", ##class(OcuPilot.Api.AtelierError).#REASONTABLESELECTIVITY), $ListBuild(..#FIELDSCREEN, "set-selectivity", ..Id(tTable, "B"), "Selectivity", "101%", ##class(OcuPilot.Api.AtelierError).#REASONTABLESELECTIVITY), $ListBuild(..#INDEXSCREEN, "set-map-size", ..Id(tTable, "IdxB"), "SizeMB", "-1", ##class(OcuPilot.Api.AtelierError).#REASONTABLEMAPSIZE), $ListBuild(..#INDEXSCREEN, "set-map-size", ..Id(tTable, "IdxB"), "SizeMB", "2.5", ##class(OcuPilot.Api.AtelierError).#REASONTABLEMAPSIZE), $ListBuild(..#INDEXSCREEN, "set-map-size", ..Id(tTable, "IdxB"), "SizeMB", "0", "Enter a whole number, 1 or more.") {
         Set tStatus = ..Act($List(tCase, 1), $List(tCase, 2), $List(tCase, 3), ##class(%DynamicAbstractObject).%FromJSON("{""" _ $List(tCase, 4) _ """:""" _ $List(tCase, 5) _ """}"), , .tAnswer)
         Do $$$AssertEquals($ClassMethod(..#HELPERS, "Verdict", tStatus, tAnswer) _ "|" _ $ClassMethod(..#HELPERS, "Problem", tAnswer), "400 TOOL.ARGUMENTS|" _ $List(tCase, 6), "the screen's " _ $List(tCase, 4) _ " '" _ $List(tCase, 5) _ "' is refused with the published sentence")
     }
@@ -297,30 +297,17 @@ Method TestAValueOutsideItsShapeIsRefusedBeforeAnyCall()
     Do $$$AssertEquals(tConfirm, "mint 400 " _ ##class(OcuPilot.Api.AtelierError).#REASONTABLESELECTIVITY, "the agent's selectivity of 0% is refused at the mint with the published sentence")
     Set tConfirm = ..Agent(..#EXTENTTOOL, tTable, {"ExtentSize": -1}, , ..#FIXTURE)
     Do $$$AssertTrue(tConfirm [ "mint 400", "and its negative extent size: " _ tConfirm)
+    Set tConfirm = ..Agent(..#MAPTOOL, "IdxB", {"Table": (tTable), "SizeMB": 0}, , ..#FIXTURE)
+    Do $$$AssertEquals(tConfirm, "mint 400 Enter a whole number, 1 or more.", "its map size of 0 is refused at the mint with the ruled sentence")
+    Do $$$AssertEquals(##class(OcuPilot.Port.SqlPort).ValueProblem("SizeMB", 1) _ "|" _ ##class(OcuPilot.Port.SqlPort).ValueProblem("SizeMB", 0), "|Enter a whole number, 1 or more.", "a map size of 1 is accepted and 0 refused")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls") _ "|" _ ..Stats(tTable), "0|collected 5 0", "the screen's and the agent's refusals made no call and fixed nothing")
-}
-
-/// <p>AC2. The instance runs an outlier value as an ObjectScript expression, so only a number or double-quoted text reaches it: a value that would run
-/// code is refused by the port and by the agent's mint and runs nothing, while text holding quotes and parentheses inside double quotes is stored as data.</p>
-/// <p>Mutation (Rule 19): <code>SqlPort.OutlierLiteral</code> answers 1 -> the code legs go red and the marker is set.</p>
-Method TestAnOutlierValueIsNeverRun()
-{
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 1, 5, .tTable), "the probe table is created")
-    Do ..Collect(tTable)
-    For tCode = "1 Set ^OcuPilotSqlProbeRan=1", "$Increment(^OcuPilotSqlProbeRan)", """x"") Set ^OcuPilotSqlProbeRan=1 //", "'q'" {
-        Set tVerdict = ..Invoke("SETSELECTIVITY", ..Id(tTable, "B"), {"Selectivity": "25%", "OutlierSelectivity": "5%", "OutlierValue": (tCode)}, .tFault)
-        Set tConfirm = ..Agent(..#FIELDTOOL, "B", {"Table": (tTable), "Selectivity": "25%", "OutlierSelectivity": "5%", "OutlierValue": (tCode)}, , ..#FIXTURE)
-        Do $$$AssertEquals(tVerdict _ "|" _ ($Extract(tConfirm, 1, 8) = "mint 400") _ "|" _ $Get(^|"USER"|OcuPilotSqlProbeRan, "unset"), "400 PORT.VALIDATION|1|unset", "'" _ tCode _ "' is refused by the port and the mint and runs nothing")
-    }
-    Set tText = """a""""b(c)); Set ^OcuPilotSqlProbeRan=1 ;"""
-    Set tConfirm = ..Agent(..#FIELDTOOL, "B", {"Table": (tTable), "Selectivity": "25%", "OutlierSelectivity": "5%", "OutlierValue": (tText)})
-    Do $$$AssertEquals(tConfirm _ "|" _ $Piece(..Fixed(tTable, "B"), "|", 3) _ "|" _ $Get(^|"USER"|OcuPilotSqlProbeRan, "unset"), "200 |" _ tText _ "|unset", "text in double quotes holding a quote, parentheses and code is stored as data: " _ tConfirm)
-    Do ..Restore(tTable)
 }
 
 /// <p>AD-6, AD-34. A proposal whose table's statistics were collected after it was minted, and one whose table's statistics were fixed after it was minted,
 /// are refused <code>PROPOSAL.TARGETCHANGED</code> at their confirm, and nothing is set. The digest covers the merged payload, so a declared value is
 /// the one reviewed and a change to the old value alone is not seen.</p>
+/// <p>Mutation (Rule 19): <code>CollectedAt</code> leaves <code>ExplorerSqlIndexSetMapSize</code>'s <code>FINGERPRINTSUBJECT</code> -> the map size's
+/// collected-again leg goes red.</p>
 Method TestAChangedTargetIsRefusedTargetChanged()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 1, 5, .tTable), "the probe table is created")
@@ -329,9 +316,21 @@ Method TestAChangedTargetIsRefusedTargetChanged()
     Set tSC = $ClassMethod(..#HELPERS, "Mint", ..#EXTENTTOOL, tTable, {"Table": (tTable), "ExtentSize": 5000}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertStatusOK(tSC, "the extent size's proposal is minted: " _ $Get(tProblem))
     If '$IsObject($Get(tProposal)) Quit
+    Set tSC = $ClassMethod(..#HELPERS, "Mint", ..#MAPTOOL, "IdxB", {"Table": (tTable), "Map": "IdxB", "SizeMB": 3}, .tMapProposal, .tHttp, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the map size's proposal is minted: " _ $Get(tProblem))
+    If '$IsObject($Get(tMapProposal)) Quit
     Do ..Collect(tTable)
     Set tConfirm = $ClassMethod("OcuPilot.Test.LicenseProbe", "Confirm", tProposal, .tResult)
     Do $$$AssertEquals(tConfirm _ "|" _ ..Stats(tTable), "409 PROPOSAL.TARGETCHANGED|collected 5 0", "the confirm after the statistics were collected is refused, and the statistics are not fixed: " _ tConfirm)
+    Set tConfirm = $ClassMethod("OcuPilot.Test.LicenseProbe", "Confirm", tMapProposal, .tResult)
+    Do $$$AssertEquals(tConfirm _ "|" _ ..Stats(tTable), "409 PROPOSAL.TARGETCHANGED|collected 5 0", "so is the map size's, minted before the collection: " _ tConfirm)
+    Set tSC = $ClassMethod(..#HELPERS, "Mint", ..#MAPTOOL, "IdxB", {"Table": (tTable), "Map": "IdxB", "SizeMB": 3}, .tMapProposal, .tHttp, .tProblem)
+    Do $$$AssertStatusOK(tSC, "a map size's proposal is minted on the collected table: " _ $Get(tProblem))
+    If '$IsObject($Get(tMapProposal)) Quit
+    Hang 2
+    Do ..Collect(tTable)
+    Set tConfirm = $ClassMethod("OcuPilot.Test.LicenseProbe", "Confirm", tMapProposal, .tResult)
+    Do $$$AssertEquals(tConfirm _ "|" _ ..Stats(tTable), "409 PROPOSAL.TARGETCHANGED|collected 5 0", "a collection after the mint alone, the table collected before it, refuses the map size's too: " _ tConfirm)
     Set tSC = $ClassMethod(..#HELPERS, "Mint", ..#FIELDTOOL, "B", {"Table": (tTable), "Field": "B", "Selectivity": "25%"}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertStatusOK(tSC, "the selectivity's proposal is minted on the collected table: " _ $Get(tProblem))
     If '$IsObject($Get(tProposal)) Quit
@@ -365,23 +364,10 @@ Method TestTheGatesRefuseBeforeAnyReadOrWrite()
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls") _ "|" _ ..Stats(tTable), "0|none 100000 0", "no call was made and nothing is fixed")
 }
 
-/// <p>A set the instance refuses after the collected statistics were saved as fixed answers 409 <code>SQL.TABLE.VENDOR</code> with the message and
-/// <code>statisticsFixed</code> in <code>detail</code>, and the table then reads fixed.</p>
-/// <p>Mutation (Rule 19): <code>SqlPort.TableWritten</code> leaves <code>statisticsFixed</code> out -> the detail assertion goes red.</p>
-Method TestASetThatFailsAfterTheStatisticsWereSavedSaysSo()
-{
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 1, 5, .tTable), "the probe table is created")
-    Do ..Collect(tTable)
-    Do $ClassMethod(..#SEAM, "BadMap")
-    Set tVerdict = ..Invoke("SETMAPSIZE", ..Id(tTable, "IdxB"), {"SizeMB": "3"}, .tFault)
-    Do $$$AssertEquals(tVerdict _ "|" _ $Select($IsObject($Get(tFault)): tFault.detail.statisticsFixed _ "|" _ (tFault.detail.message '= ""), 1: ""), "409 SQL.TABLE.VENDOR|1|1", "the refusal says the statistics were saved, with the instance's message")
-    Do $$$AssertEquals(..Stats(tTable), "fixed 5 1", "and the table's collected statistics are its fixed ones now")
-    Do ..Restore(tTable)
-}
-
 /// <p>Each setter's script (AD-59) saves the collected statistics where the table has them and no fixed ones, makes the setter's one vendor call with the
 /// values sent, and does what the write does when it is run: the extent size, the map's size in MB and the field's selectivity with its kept outlier values.</p>
-/// <p>Mutation (Rule 19): <code>SqlPort.SettingSnippet</code> leaves the <code>FixTableStats</code> line out -> the extent size assertion goes red.</p>
+/// <p>Mutation (Rule 19): <code>SqlPort.SettingSnippet</code> leaves the <code>FixTableStats</code> line out -> the extent size assertion goes red; makes the
+/// setter's call without the <code>IsOK</code> guard -> the extent size assertion goes red.</p>
 Method TestEachSettersScriptDoesWhatTheWriteDoes()
 {
     Set tPort = ..#FIXTURE
@@ -393,7 +379,7 @@ Method TestEachSettersScriptDoesWhatTheWriteDoes()
     Set tQuery("id") = tTable
     Set tQuery("ExtentSize") = "5000"
     Set tScript = $ClassMethod(tPort, "Snippet", "Tables", "SETEXTENT", .tQuery).%Get(0).%Get("text")
-    Do $$$AssertTrue((tScript [ "FixTableStats(""" _ tTable _ """)") && (tScript [ "SetTableExtentSize(""OcuProbe225"", ""T1"", ""5000"", 0)"), "the extent size's script: " _ tScript)
+    Do $$$AssertTrue((tScript [ "FixTableStats(""" _ tTable _ """)") && (tScript [ "SetTableExtentSize(""OcuProbe225"", ""T1"", ""5000"", 0)") && (tScript [ "If $System.Status.IsOK(tSC) Set tSC = ##class(%SQL.Manager.Catalog).SetTableExtentSize("), "the extent size's script, which makes its call only when the save did not fail: " _ tScript)
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RunScript", ..#NAMESPACE, tScript), "it runs")
     Do $$$AssertEquals(..Stats(tTable) _ "|" _ ($Piece(..Fixed(tTable, "B"), "|", 1) '= ""), "fixed 5000 1|1", "and sets the size after saving the measured statistics")
     Do ..Restore(tTable)
@@ -410,10 +396,17 @@ Method TestEachSettersScriptDoesWhatTheWriteDoes()
     Kill tQuery("SizeMB")
     Set tQuery("Selectivity") = "25"
     Set tScript = $ClassMethod(tPort, "Snippet", "Tables", "SETSELECTIVITY", .tQuery).%Get(0).%Get("text")
-    Do $$$AssertTrue((tScript [ "SetFieldSelectivity(""OcuProbe225"", ""T1"", ""B"", ""25%"", 0, tOutlierSelectivity, tOutlierValue, tAverage)") && (tScript [ "FieldCurrentSelectivity"), "the selectivity's script reads the kept values and sends 25 as a percentage: " _ tScript)
+    Do $$$AssertTrue((tScript [ "SetFieldSelectivity(""OcuProbe225"", ""T1"", ""B"", ""25%"", 0, tOutlierSelectivity, tOutlierValue, tAverage)") && (tScript [ "FieldCurrentSelectivity") && (tScript [ "Set tPrepared = ") && (tScript '[ "Set tSC = tStatement.%Prepare"), "the selectivity's script keeps the save's status apart from the prepare's, reads the kept values and sends 25 as a percentage: " _ tScript)
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RunScript", ..#NAMESPACE, tScript), "it runs")
     Set tFixed = ..Fixed(tTable, "B")
     Do $$$AssertEquals($Piece(tFixed, "|", 2, 4) _ "|" _ ..Near($Piece(tFixed, "|", 1), 25), "10%|""q""|9|1", "and sets the selectivity, keeping the outlier values: " _ tFixed)
+    Set tQuery("OutlierSelectivity") = "5%"
+    Set tQuery("OutlierValue") = "a""b"
+    Set tScript = $ClassMethod(tPort, "Snippet", "Tables", "SETSELECTIVITY", .tQuery).%Get(0).%Get("text")
+    Set tQ = $Char(34)
+    Do $$$AssertTrue(tScript [ (tQ _ tQ _ tQ _ "a" _ tQ _ tQ _ tQ _ tQ _ "b" _ tQ _ tQ _ tQ), "the script shows the outlier value as the quoted expression the port sends: " _ tScript)
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RunScript", ..#NAMESPACE, tScript), "it runs")
+    Do $$$AssertEquals($Piece(..Fixed(tTable, "B"), "|", 3), tQ _ "a" _ tQ _ tQ _ "b" _ tQ, "and stores the outlier value as data: " _ ..Fixed(tTable, "B"))
     Do ..Restore(tTable)
 }
 
@@ -431,8 +424,13 @@ Method TestATableWithADelimitedNameIsSetOnBothCallers()
     Set tConfirm = ..Agent(..#MAPTOOL, "IdxB", {"Table": (tTable), "SizeMB": 4})
     Set tVerdict = $ClassMethod(..#READS, "Read", "INDEX", ..Id(tTable, "IdxB"), .tAnswer, .tFault)
     Do $$$AssertEquals(tConfirm _ "|" _ tAnswer.SizeMB, "200 |4", "the agent's map size: " _ tConfirm)
+    Set tStatus = ..Act(..#INDEXSCREEN, "set-map-size", ..Id(tTable, "IdxC"), {"SizeMB": "2"}, , .tAnswer)
+    Set tVerdict = $ClassMethod(..#READS, "Read", "INDEX", ..Id(tTable, "IdxC"), .tAnswer, .tFault)
+    Do $$$AssertEquals(tStatus _ "|" _ tAnswer.SizeMB, "200|2", "the screen's map size")
     Set tStatus = ..Act(..#FIELDSCREEN, "set-selectivity", ..Id(tTable, "B"), {"Selectivity": "25%"}, , .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ ..Near($Piece(..Fixed(tTable, "B"), "|", 1), 25), "200|1", "the screen's selectivity")
+    Set tConfirm = ..Agent(..#FIELDTOOL, "A", {"Table": (tTable), "Selectivity": "30%"})
+    Do $$$AssertEquals(tConfirm _ "|" _ ..Near($Piece(..Fixed(tTable, "A"), "|", 1), 30), "200 |1", "the agent's selectivity, through the field mint: " _ tConfirm)
     Do $$$AssertEquals(..Restore(tTable) _ "|" _ ..Stats(tTable), "200 |collected 4 0", "Clear fixed statistics restores the table")
 }
 

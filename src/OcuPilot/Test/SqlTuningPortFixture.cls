@@ -33,7 +33,18 @@ ClassMethod TableCall(pType As %String, pTarget As %String, pValues As %String, 
         Do tValues.%Set("Map", "NoSuchMap", "string")
         Set pValues = tValues.%ToJSON()
     }
-    Quit ##super(pType, pTarget, pValues, pNamespace, .pFixed)
+    If $Get(^||OcuPilotSqlTuningThrow) '= "" Set ^||OcuPilotSqlTuningInCall = 1
+    Set tStatus = ##super(pType, pTarget, pValues, pNamespace, .pFixed)
+    Kill ^||OcuPilotSqlTuningInCall
+    Quit tStatus
+}
+
+/// <p>The field's read, which raises while a table call runs where <method>OcuPilot.Test.SqlTuningGateSeam.Throw</method> armed it: the one read a
+/// selectivity's setter makes inside its guarded block, after the collected statistics were saved.</p>
+ClassMethod FieldRead(pSchema As %String, pTable As %String, pField As %String, Output pRow As %DynamicObject) As %Status [ Private ]
+{
+    If $Get(^||OcuPilotSqlTuningInCall) Throw ##class(%Exception.General).%New("SetterRaised", 5001, , "the setter raised")
+    Quit ##super(pSchema, pTable, pField, .pRow)
 }
 
 }

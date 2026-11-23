@@ -5602,6 +5602,10 @@ export const STRINGS = {
   sqlTableExtentSizeShape: 'Enter a whole number from 0 to 1,000,000,000,000.',
   sqlTableSelectivityShape: 'Enter 1, or a percentage over 0% and up to 99.999%.',
   sqlTableWholeNumberShape: 'Enter a whole number, 0 or more.',
+  sqlTableMapSizeShape: 'Enter a whole number, 1 or more.',
+  /** The Field statistics tab's command alias, which its descriptor carries. */
+  explorerSqlFieldStatisticsAlias: 'table statistics',
+  sqlTableRefusalSetAfterFix: 'The table\'s collected statistics were saved as its fixed statistics, but the new value was not set.',
   // Story 18.6: License key and License servers -- their titles, License key's twelve field labels
   // beyond License usage's "License units", the authorization-key line, the activate dialog's
   // labels, validity, restart and reduction sentences and consequence, Print and its printed-by

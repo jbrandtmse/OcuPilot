@@ -776,6 +776,8 @@ const ATELIER_REFUSALS = [
   ['REASONTABLEEXTENTSIZE', 'sqlTableExtentSizeShape'],
   ['REASONTABLESELECTIVITY', 'sqlTableSelectivityShape'],
   ['REASONTABLEWHOLENUMBER', 'sqlTableWholeNumberShape'],
+  ['REASONTABLEMAPSIZE', 'sqlTableMapSizeShape'],
+  ['REASONTABLESETUNAPPLIED', 'sqlTableRefusalSetAfterFix'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {

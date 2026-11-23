@@ -22,15 +22,10 @@ ClassMethod ValueType(pName As %String) As %String
     Quit $Select($ListFind($ListBuild("ExtentSize", "SizeMB", "AverageFieldSize"), pName): "integer", 1: "string")
 }
 
-/// <p>The port's published sentence for <var>pValue</var> as <var>pName</var>, or <code>""</code>. An outlier value the instance would run as code,
-/// because it is not a number or double-quoted text, is refused here with a sentence for the agent that names the shape.</p>
+/// <p>The port's published sentence for <var>pValue</var> as <var>pName</var>, or <code>""</code>.</p>
 ClassMethod ValueProblem(pName As %String, pValue As %String) As %String
 {
-    Set tPort = "OcuPilot.Port.SqlPort"
-    If (pName = $Parameter(tPort, "OUTLIERVALUEKEY")) && ($Length(pValue) <= $Parameter(tPort, "MAXOUTLIERVALUE")) && '$ClassMethod(tPort, "OutlierLiteral", pValue) {
-        Quit "'" _ pName _ "' is a number, or text in double quotes"
-    }
-    Quit $ClassMethod(tPort, "ValueProblem", pName, pValue)
+    Quit $ClassMethod("OcuPilot.Port.SqlPort", "ValueProblem", pName, pValue)
 }
 
 /// <p>The merge of the arguments over the fresh read, with each optional value the caller did not send made <code>null</code>: the fresh read answers

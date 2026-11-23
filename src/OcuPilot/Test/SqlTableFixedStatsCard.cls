@@ -1,6 +1,6 @@
 /// <p>Pins what Story 21.31's three setters show on the card and at the lower bound (AC1, AC2): a minted proposal's diff holds the declared value with the
 /// value in use as old and the declared one as new, a selectivity's undeclared optional values are unchanged rather than changes, the bound 0 is a valid
-/// extent size, map size and average size, and a map size of 0 is set and read back.</p>
+/// extent size and average size, and a map size is 1 or more.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP as <class>OcuPilot.Test.Http</class>'s account, which holds
 /// <code>%Development:USE</code> and WRITE on <code>USER</code>'s and the install namespace's routines databases, and a <code>USER</code> namespace, where
 /// each test makes its own <class>OcuPilot.Test.SqlTuningProbe</class> table and removes it after, each fixed statistic through Clear fixed statistics.
@@ -115,14 +115,17 @@ Method TestEachCardShowsTheValueInUseAsOldAndTheDeclaredOneAsNew()
     Do $$$AssertEquals($ClassMethod(..#FIXED, "Restore", tTable), "200 ", "Clear fixed statistics restores the table")
 }
 
-/// <p>AC2. The lower bound 0 is a valid extent size, map size and average size, and a number below it is not.</p>
+/// <p>AC2. The lower bound 0 is a valid extent size and average size, and a number below it is not. A map size is 1 or more: 1 is accepted, 0 is refused with
+/// the ruled sentence.</p>
+/// <p>Mutation (Rule 19): <code>SqlPort.POSITIVEPATTERN</code> accepts 0 -> the map size's 0 assertion goes red.</p>
 Method TestTheLowerBoundZeroIsAValidValue()
 {
     Set tPort = ..#PORT
-    For tName = "ExtentSize", "SizeMB", "AverageFieldSize" {
+    For tName = "ExtentSize", "AverageFieldSize" {
         Do $$$AssertEquals($ClassMethod(tPort, "ValueProblem", tName, "0"), "", tName _ ": 0 is accepted")
         Do $$$AssertTrue($ClassMethod(tPort, "ValueProblem", tName, "-1") '= "", tName _ ": -1 is refused")
     }
+    Do $$$AssertEquals($ClassMethod(tPort, "ValueProblem", "SizeMB", "1") _ "|" _ $ClassMethod(tPort, "ValueProblem", "SizeMB", "0") _ "|" _ $ClassMethod(tPort, "ValueProblem", "SizeMB", "-1"), "|Enter a whole number, 1 or more.|Enter a whole number, 1 or more.", "SizeMB: 1 is accepted, 0 and -1 are refused with the ruled sentence")
 }
 
 /// <p>AC2. A selectivity's upper bound 99.999, with or without its percent sign, and its smallest step, six decimals, are accepted, and one step over
@@ -138,18 +141,24 @@ Method TestASelectivityAtItsBoundsIsAValidValue()
     }
 }
 
-/// <p>AC1. A map size of 0, which the instance reads as "use the measured size", is set through the agent's confirmed proposal on a probe map and the
-/// map reads its measured size again, so the read-back, comparing the declared 0, reads <code>differs</code> and names <code>SizeMB</code>.</p>
-Method TestAMapSizeOfZeroIsSetAndReadBack()
+/// <p>AC1, AC2. A map size of 1, the smallest, is set through the agent's confirmed proposal and the map reads 1 MB with its read-back matching, while a map
+/// size of 0, which the instance would replace with the measured size, is refused by the port, the agent's mint and the screen with the ruled sentence and
+/// leaves the map at 1 MB.</p>
+/// <p>Mutation (Rule 19): <code>SqlPort.POSITIVEPATTERN</code> accepts 0 -> the refusals go red and the map reads its measured size.</p>
+Method TestAMapSizeOfOneIsSetAndZeroIsRefused()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Table", ..#NAMESPACE, 1, 5, .tTable), "the probe table is created")
     Do $ClassMethod("OcuPilot.Test.SqlTableRead", "Statistics", "collect", tTable)
-    Set tConfirm = $ClassMethod(..#FIXED, "Agent", ..#MAPTOOL, "IdxB", {"Table": (tTable), "SizeMB": 3}, .tResult)
-    Do $$$AssertEquals(tConfirm, "200 ", "a map is first set to 3 MB: " _ tConfirm)
-    Set tConfirm = $ClassMethod(..#FIXED, "Agent", ..#MAPTOOL, "IdxB", {"Table": (tTable), "SizeMB": 0}, .tResult)
+    Set tConfirm = $ClassMethod(..#FIXED, "Agent", ..#MAPTOOL, "IdxB", {"Table": (tTable), "SizeMB": 1}, .tResult)
     Set tVerdict = $ClassMethod("OcuPilot.Test.SqlTableRead", "Read", "INDEX", ..Id(tTable, "IdxB"), .tAnswer, .tFault)
-    Do $$$AssertEquals(tConfirm _ "|" _ ##class(OcuPilot.Test.EcpDataServerWrite).Verdict($Get(tResult)) _ "|" _ (tAnswer.SizeMB '= 3), "200 |differs|1", "the set of 0 answers, the map no longer reads 3 MB, and the read-back reads differs, naming SizeMB: " _ tConfirm)
-    Do $$$AssertEquals($Get(tResult).readBack.fields.%ToJSON(), "[""SizeMB""]", "the one field it names")
+    Do $$$AssertEquals(tConfirm _ "|" _ ##class(OcuPilot.Test.EcpDataServerWrite).Verdict($Get(tResult)) _ "|" _ tAnswer.SizeMB, "200 |matches|1", "a map size of 1 is set and its read-back matches: " _ tConfirm)
+    Set tSentence = "Enter a whole number, 1 or more."
+    Set tConfirm = $ClassMethod(..#FIXED, "Agent", ..#MAPTOOL, "IdxB", {"Table": (tTable), "SizeMB": 0}, .tResult)
+    Do $$$AssertEquals(tConfirm, "mint 400 " _ tSentence, "the agent's 0 is refused at the mint with the ruled sentence")
+    Set tStatus = $ClassMethod(..#FIXED, "Act", "explorer.sqlindices", "set-map-size", ..Id(tTable, "IdxB"), {"SizeMB": "0"}, , .tAnswer)
+    Do $$$AssertEquals($ClassMethod(..#HELPERS, "Verdict", tStatus, tAnswer) _ "|" _ $ClassMethod(..#HELPERS, "Problem", tAnswer), "400 TOOL.ARGUMENTS|" _ tSentence, "the screen's 0 is refused with it")
+    Set tVerdict = $ClassMethod("OcuPilot.Test.SqlTableRead", "Read", "INDEX", ..Id(tTable, "IdxB"), .tAnswer, .tFault)
+    Do $$$AssertEquals(tAnswer.SizeMB, 1, "and the map still reads 1 MB")
     Do $$$AssertEquals($ClassMethod(..#FIXED, "Restore", tTable), "200 ", "Clear fixed statistics restores the table")
 }
 

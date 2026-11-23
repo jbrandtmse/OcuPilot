@@ -11,12 +11,12 @@ Parameter TOOLNAME = "explorer.sqlindices.setmapsize";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.ExplorerSqlIndices";
 
-Parameter DESCRIPTION = "Propose setting the size of one map or index of one SQL table, in MB, as a fixed statistic, which the optimizer uses in place of the measured one until the table's fixed statistics are cleared. If the table's statistics were collected, they are first saved as its fixed statistics. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the table as Schema.Table, as explorer.sqltables.read reports it in its Table column, and the map by the SQL map name explorer.sqlindices.read reports in its Map column, and give SizeMB as a whole number of MB, 0 or more. A map of a table of OcuPilot's own is refused.";
+Parameter DESCRIPTION = "Propose setting the size of one map or index of one SQL table, in MB, as a fixed statistic, which the optimizer uses in place of the measured one until the table's fixed statistics are cleared. If the table's statistics were collected, they are first saved as its fixed statistics. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the table as Schema.Table, as explorer.sqltables.read reports it in its Table column, and the map by the SQL map name explorer.sqlindices.read reports in its Map column, and give SizeMB as a whole number of MB, 1 or more. A map of a table of OcuPilot's own is refused.";
 
 /// <p>The fresh read: the one indices row of the target, with its size.</p>
 Parameter READTYPE = "INDEX";
 
-Parameter READANSWERS = "Namespace,Table,Class,Index,Map,Type,SizeMB";
+Parameter READANSWERS = "Namespace,Table,Class,Index,Map,Type,SizeMB,StatsKind,CollectedAt,HasFixed";
 
 Parameter WRITETYPE = "SETMAPSIZE";
 
@@ -26,9 +26,9 @@ Parameter SCREENVALUES = "set-map-size=SizeMB";
 
 Parameter VALUENAMES = "SizeMB";
 
-Parameter VALUEDESCRIPTIONS = "SizeMB=The map's new size, as a whole number of MB, 0 or more.";
+Parameter VALUEDESCRIPTIONS = "SizeMB=The map's new size, as a whole number of MB, 1 or more.";
 
-Parameter FINGERPRINTSUBJECT = "Namespace,Table,Map,Type,SizeMB";
+Parameter FINGERPRINTSUBJECT = "Namespace,Table,Map,Type,SizeMB,StatsKind,CollectedAt,HasFixed";
 
 Parameter PRECONDITIONFIELD = "Type";
 

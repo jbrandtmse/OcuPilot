@@ -98,8 +98,9 @@ describe('the fixed-statistics setters (Story 21.31)', () => {
     expect(pending?.verb).toBe(STRINGS.sqlIndexSetMapSizeAction);
     expect(pending?.consequence).toBe(STRINGS.sqlTableSetConsequence);
     expect(pending?.fieldLabel).toBe(STRINGS.sqlIndexMapSizeLabel);
-    expect(pending?.fieldHint).toBe(STRINGS.sqlTableWholeNumberShape);
+    expect(pending?.fieldHint).toBe(STRINGS.sqlTableMapSizeShape);
     expect(pending?.fieldKind).toBe('number');
+    expect(pending?.fieldDigits).toBe(15);
     expect(pending?.flagLabel).toBe('');
     expect(calls).toHaveLength(0);
     handler.confirmPending(false, '3');
@@ -153,10 +154,52 @@ describe('the fixed-statistics setters (Story 21.31)', () => {
     fixture.nativeElement.remove();
   });
 
+  // Mutation (Rule 19): set the map size field's `digits` to 9, or drop the `[fieldDigits]` binding from `screen-action-dialogs.ts` -> a 13-digit size cannot be
+  // sent and this goes red.
+  it('takes a map size of up to fifteen digits and refuses a sixteenth', async () => {
+    const { handler, store, calls } = mount(EXPLORER_SQL_INDICES, applied('sql-index', MAP_ID));
+    const fixture = TestBed.createComponent(ScreenActionDialogs);
+    fixture.componentRef.setInput('descriptor', EXPLORER_SQL_INDICES);
+    document.body.appendChild(fixture.nativeElement);
+    fixture.detectChanges();
+    handler.startFor(EXPLORER_SQL_INDICES, SQL_INDEX_SET_MAP_SIZE, MAP_ID, null, store);
+    for (let pass = 0; pass < 4; pass += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 2));
+      fixture.detectChanges();
+    }
+    const host = fixture.nativeElement as HTMLElement;
+    const field = host.querySelector('[data-slot="field"] .ocu-field-input') as HTMLInputElement;
+    const proceed = host.querySelector('.ocu-button-primary') as HTMLButtonElement;
+    field.value = '1000000000000000';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(proceed.getAttribute('aria-disabled')).toBe('true');
+    field.value = '100000000000000';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(proceed.getAttribute('aria-disabled')).toBeNull();
+    proceed.click();
+    await settle();
+    expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action: SQL_INDEX_SET_MAP_SIZE, id: MAP_ID, values: { SizeMB: '100000000000000' } }]);
+    fixture.nativeElement.remove();
+  });
+
+  // Mutation (Rule 19): `refusalReason` answers a fixed sentence in place of the envelope's reason -> this goes red. The sentence is the server's reason for a
+  // 409 that saved the table's collected statistics, which the list shows as the envelope carries it.
+  it('shows a set that failed after the statistics were saved as the sentence the server gives', async () => {
+    const refused = { kind: 'error', status: 409, code: 'SQL.TABLE.VENDOR', reason: STRINGS.sqlTableRefusalSetAfterFix, detail: { statisticsFixed: true } } as unknown as JsonResult<unknown>;
+    const { handler, store, events } = mount(EXPLORER_SQL_INDICES, refused);
+    handler.startFor(EXPLORER_SQL_INDICES, SQL_INDEX_SET_MAP_SIZE, MAP_ID, null, store);
+    handler.confirmPending(false, '3');
+    await settle();
+    expect(store.refusal()).toBe(STRINGS.sqlTableRefusalSetAfterFix);
+    expect(events).toEqual([]);
+  });
+
   // Mutation (Rule 19): drop the three shape sentences from `PUBLISHED_PROBLEMS` -> each shows the envelope's generic reason and this goes red.
   it('shows a shape refusal as its published sentence rather than the generic reason of the envelope', async () => {
     for (const [descriptor, action, id, problem] of [
-      [EXPLORER_SQL_INDICES, SQL_INDEX_SET_MAP_SIZE, MAP_ID, STRINGS.sqlTableWholeNumberShape],
+      [EXPLORER_SQL_INDICES, SQL_INDEX_SET_MAP_SIZE, MAP_ID, STRINGS.sqlTableMapSizeShape],
       [EXPLORER_SQL_FIELD_STATISTICS, SQL_FIELD_SET_SELECTIVITY, FIELD_ID, STRINGS.sqlTableSelectivityShape],
       [EXPLORER_SQL_TABLE, SQL_TABLE_SET_EXTENT_SIZE, 'OcuProbe225.T1', STRINGS.sqlTableExtentSizeShape],
     ] as const) {

@@ -1194,6 +1194,8 @@ interface WarningValue {
   readonly value: string;
   readonly labelKey: keyof typeof STRINGS;
   readonly hintKey?: keyof typeof STRINGS;
+  /** The most digits a whole-number field takes, where it takes more than nine. */
+  readonly digits?: number;
 }
 
 const WARNING_VALUES: Readonly<Record<string, Readonly<Record<string, WarningValue>>>> = {
@@ -1214,10 +1216,10 @@ const WARNING_VALUES: Readonly<Record<string, Readonly<Record<string, WarningVal
   // Story 21.31: each fixed-statistics setter asks for the one value it sets, hinted by its shape sentence. The selectivity is text the instance
   // judges; the agent may also send the outlier values, which no screen collects.
   [EXPLORER_SQL_TABLE]: {
-    [SQL_TABLE_SET_EXTENT_SIZE]: { kind: 'field', value: 'ExtentSize', labelKey: 'explorerSqlColumnExtentSize', hintKey: 'sqlTableExtentSizeShape' },
+    [SQL_TABLE_SET_EXTENT_SIZE]: { kind: 'field', value: 'ExtentSize', labelKey: 'explorerSqlColumnExtentSize', hintKey: 'sqlTableExtentSizeShape', digits: 13 },
   },
   [EXPLORER_SQL_INDICES]: {
-    [SQL_INDEX_SET_MAP_SIZE]: { kind: 'field', value: 'SizeMB', labelKey: 'sqlIndexMapSizeLabel', hintKey: 'sqlTableWholeNumberShape' },
+    [SQL_INDEX_SET_MAP_SIZE]: { kind: 'field', value: 'SizeMB', labelKey: 'sqlIndexMapSizeLabel', hintKey: 'sqlTableMapSizeShape', digits: 15 },
   },
   [EXPLORER_SQL_FIELD_STATISTICS]: {
     [SQL_FIELD_SET_SELECTIVITY]: { kind: 'text', value: 'Selectivity', labelKey: 'explorerSqlColumnSelectivity', hintKey: 'sqlTableSelectivityShape' },
@@ -1265,6 +1267,7 @@ const PUBLISHED_PROBLEMS: readonly string[] = [
   STRINGS.sqlTableExtentSizeShape,
   STRINGS.sqlTableSelectivityShape,
   STRINGS.sqlTableWholeNumberShape,
+  STRINGS.sqlTableMapSizeShape,
 ];
 
 /** The entity type of a production, which the re-read event names (AD-14). */
@@ -1372,6 +1375,8 @@ export interface PendingConfirm {
   readonly fieldHint?: string;
   /** The field's kind: `'text'` for a value the instance judges (Story 21.31), else a whole number. */
   readonly fieldKind?: 'number' | 'text';
+  /** The most digits a whole-number field takes (Story 21.31); absent for the usual nine. */
+  readonly fieldDigits?: number;
   /** The broadcast dialog's count of checked rows (Story 16.6); absent for every other kind. */
   readonly count?: number;
   /** The broadcast dialog's message is being sent. */
@@ -1812,6 +1817,7 @@ export class ScreenActionHandler {
       fieldLabel: asked !== null && asked.kind !== 'flag' ? stringFor(asked.labelKey) : '',
       fieldHint: asked !== null && asked.kind !== 'flag' && asked.hintKey !== undefined ? stringFor(asked.hintKey) : '',
       fieldKind: asked?.kind === 'text' ? 'text' : 'number',
+      ...(asked?.digits === undefined ? {} : { fieldDigits: asked.digits }),
       options,
       privileged,
       impact: '',

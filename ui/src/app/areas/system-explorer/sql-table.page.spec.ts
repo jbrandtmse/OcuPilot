@@ -164,6 +164,7 @@ describe('the Table info tab', () => {
     expect(handler.pending()?.fieldLabel).toBe(STRINGS.explorerSqlColumnExtentSize);
     expect(handler.pending()?.fieldHint).toBe(STRINGS.sqlTableExtentSizeShape);
     expect(handler.pending()?.fieldKind).toBe('number');
+    expect(handler.pending()?.fieldDigits).toBe(13);
     expect(calls).toHaveLength(0);
     handler.confirmPending(false, '5000');
     await settle(fixture);

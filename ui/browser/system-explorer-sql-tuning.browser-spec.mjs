@@ -258,6 +258,8 @@ async function fieldCell(page, field, heading) {
 
 test('AC1: Set extent size asks for a whole number, warns, and the instance then holds the fixed extent size', async () => {
   const table = tables.measured;
+  const wanted = statistics(table);
+  assert.notEqual(wanted.split(' ')[0], 'fixed', `the table holds no fixed statistics to begin with: ${wanted}`);
   const { context, page } = await signedInAt(browser, config, route('document', table), VIEWPORTS.wide);
   try {
     await answered(page);
@@ -276,8 +278,7 @@ test('AC1: Set extent size asks for a whole number, warns, and the instance then
     await bar(page, STRINGS.sqlTableClearStatisticsAction);
     await warningStates(page, STRINGS.sqlTableClearStatisticsConsequence);
     await proceed(page);
-    const restored = await waitForInstance(() => statistics(table).split(' ')[0], 'collected');
-    assert.notEqual(restored, 'fixed', `the fixed extent size is cleared through the product's own action: ${statistics(table)}`);
+    assert.equal(await waitForInstance(() => statistics(table), wanted), wanted, 'the table is back to the statistics it held before the set, through the product\'s own Clear fixed statistics');
   } finally {
     await context.close();
   }
@@ -316,6 +317,18 @@ test('AC1: Set selectivity on the Field statistics tab takes text, and the field
     assert.notEqual(await fieldCell(page, 'C', heading), held, 'and a sibling field\'s row does not');
   } finally {
     await context.close();
+  }
+  const cleared = await signedInAt(browser, config, route('document', table), VIEWPORTS.wide);
+  try {
+    await answered(cleared.page);
+    await selectTheTable(cleared.page);
+    await bar(cleared.page, STRINGS.sqlTableClearStatisticsAction);
+    await warningStates(cleared.page, STRINGS.sqlTableClearStatisticsConsequence);
+    await proceed(cleared.page);
+    const left = await waitForInstance(() => probe('TFSC', `##class(${PROBE}).FixedField("${NS}","${table}","B")`).value.split('|')[0], '');
+    assert.equal(left, '', 'the fixed selectivity is cleared through the product\'s own Clear fixed statistics');
+  } finally {
+    await cleared.context.close();
   }
 });
 

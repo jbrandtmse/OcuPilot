@@ -147,8 +147,11 @@ Parameter SIZEMBKEY = "SizeMB";
 /// <p>The largest extent size a setter accepts. The instance accepts any value, including one above this, a fraction and text.</p>
 Parameter MAXEXTENTSIZE As INTEGER = 1000000000000;
 
-/// <p>A whole number 0 or more, of at most 15 digits: a map's size in MB and a field's average size.</p>
+/// <p>A whole number 0 or more, of at most 15 digits: a field's average size.</p>
 Parameter WHOLEPATTERN = "^(0|[1-9][0-9]{0,14})$";
+
+/// <p>A whole number 1 or more, of at most 15 digits: a map's size in MB. The instance replaces a size of 0 with the measured one.</p>
+Parameter POSITIVEPATTERN = "^[1-9][0-9]{0,14}$";
 
 /// <p>A percentage's number, before its optional <code>%</code>: one or two digits and at most six decimals. A selectivity is also
 /// bounded to over 0 and at most <parameter>MAXSELECTIVITY</parameter>.</p>
@@ -159,13 +162,11 @@ Parameter MAXSELECTIVITY = 99.999;
 /// <p>A map's size is set in blocks of 2 KB, so one MB is this many.</p>
 Parameter BLOCKSPERMB As INTEGER = 512;
 
-/// <p>The longest outlier value, as the text sent. The instance evaluates an outlier value as an ObjectScript expression, so the port accepts only
-/// a number literal (<parameter>OUTLIERNUMBERPATTERN</parameter>) or a double-quoted string literal whose embedded quotes are doubled
-/// (<parameter>OUTLIERSTRINGPATTERN</parameter>), with no control character.</p>
+/// <p>The longest outlier value, as the plain text a caller sends. The instance evaluates the value it is given as an ObjectScript expression, so the
+/// port builds that expression itself (<method>OutlierExpression</method>) and the caller's text is only ever data.</p>
 Parameter MAXOUTLIERVALUE As INTEGER = 128;
 
-Parameter OUTLIERNUMBERPATTERN = "^-?[0-9]+(\.[0-9]+)?(E[+-]?[0-9]+)?$";
-
+/// <p>The vendor's form of a text outlier value as the instance stores and shows it: double-quoted, an embedded quote doubled.</p>
 Parameter OUTLIERSTRINGPATTERN = "^""([^""]|"""")*""$";
 
 /// <p>The fixed and the collected statistics of every field of a table, one row each, bound with the schema and the table and read in the
@@ -1325,6 +1326,7 @@ ClassMethod OptionalProblem(pSet As %DynamicObject, pFacts As %DynamicObject, Ou
         Set tText = pSet.%Get(tName)
         If tText = "" Continue
         Set tHeld = tRow.%Get(tKind _ tName)
+        If tName = ..#OUTLIERVALUEKEY Set tHeld = ..OutlierPlain(tHeld)
         Set tSame = (tText = tHeld)
         If 'tSame && (tName '= ..#OUTLIERVALUEKEY) && $IsValidNum($Translate(tText, "%")) && $IsValidNum($Translate(tHeld, "%")) Set tSame = (+$Translate(tText, "%") = +$Translate(tHeld, "%"))
         If tSame {
@@ -1343,9 +1345,9 @@ ClassMethod OptionalProblem(pSet As %DynamicObject, pFacts As %DynamicObject, Ou
 /// <parameter>AVERAGESIZEKEY</parameter> or <parameter>SIZEMBKEY</parameter>), as the published sentence, with its code as <var>pCode</var>, or
 /// <code>""</code> for a value the instance may be sent. An extent size is a whole number from 0 to <parameter>MAXEXTENTSIZE</parameter>. A
 /// selectivity or outlier selectivity is <code>1</code> or a percentage over 0 and up to <parameter>MAXSELECTIVITY</parameter>, with or without its
-/// <code>%</code>. A map's size and an average size are whole numbers of <parameter>WHOLEPATTERN</parameter>. An outlier value is at most
-/// <parameter>MAXOUTLIERVALUE</parameter> characters and, because the instance runs it as an expression, only a number or a double-quoted string
-/// (<method>OutlierLiteral</method>). Pure.</p>
+/// <code>%</code>. An average size is a whole number of <parameter>WHOLEPATTERN</parameter> and a map's size one of <parameter>POSITIVEPATTERN</parameter>.
+/// An outlier value is plain data of at most <parameter>MAXOUTLIERVALUE</parameter> characters holding no control character; it is never run
+/// (<method>OutlierExpression</method>). Pure.</p>
 ClassMethod ValueProblem(pName As %String, pValue As %String, Output pCode As %String) As %String
 {
     Set tError = "OcuPilot.Api.AtelierError"
@@ -1354,12 +1356,14 @@ ClassMethod ValueProblem(pName As %String, pValue As %String, Output pCode As %S
         If '$Match(pValue, "^(0|[1-9][0-9]{0,12})$") || (pValue > ..#MAXEXTENTSIZE) Set pCode = $Parameter(tError, "TABLEEXTENTSIZE")
     } ElseIf (pName = ..#SELECTIVITYKEY) || (pName = ..#OUTLIERSELECTIVITYKEY) {
         If '..PercentValid(pValue) Set pCode = $Parameter(tError, "TABLESELECTIVITY")
-    } ElseIf (pName = ..#SIZEMBKEY) || (pName = ..#AVERAGESIZEKEY) {
+    } ElseIf pName = ..#SIZEMBKEY {
+        If '$Match(pValue, ..#POSITIVEPATTERN) Set pCode = $Parameter(tError, "TABLEMAPSIZE")
+    } ElseIf pName = ..#AVERAGESIZEKEY {
         If '$Match(pValue, ..#WHOLEPATTERN) Set pCode = $Parameter(tError, "TABLEWHOLENUMBER")
     } ElseIf pName = ..#OUTLIERVALUEKEY {
         If $Length(pValue) > ..#MAXOUTLIERVALUE {
             Set pCode = $Parameter(tError, "TABLEOUTLIERVALUE")
-        } ElseIf '..OutlierLiteral(pValue) {
+        } ElseIf (pValue = "") || ($ZStrip(pValue, "*C") '= pValue) || (pValue [ $Char(127)) {
             Set pCode = ##class(OcuPilot.Api.Error).#PORTVALIDATION
             Quit ##class(OcuPilot.Api.Error).#REASONPORTFIELDSHAPE
         }
@@ -1390,14 +1394,20 @@ ClassMethod PercentText(pValue As %String, pUnique As %Boolean) As %String
     Quit pValue _ "%"
 }
 
-/// <p>Whether <var>pValue</var> is an outlier value the instance can only read as data: a number literal
-/// (<parameter>OUTLIERNUMBERPATTERN</parameter>) or a double-quoted string literal whose embedded quotes are doubled
-/// (<parameter>OUTLIERSTRINGPATTERN</parameter>), holding no control character. The instance evaluates an outlier value as an ObjectScript expression and
-/// runs it, so nothing else reaches it. Pure.</p>
-ClassMethod OutlierLiteral(pValue As %String) As %Boolean
+/// <p>The expression the instance is handed for the plain outlier value <var>pValue</var>, which it evaluates and runs: a canonical number as it is, and
+/// anything else as a double-quoted string literal with each embedded quote doubled, so the caller's text is data and never code. Pure.</p>
+ClassMethod OutlierExpression(pValue As %String) As %String
 {
-    If (pValue = "") || ($ZStrip(pValue, "*C") '= pValue) Quit 0
-    Quit $Match(pValue, ..#OUTLIERNUMBERPATTERN) || $Match(pValue, ..#OUTLIERSTRINGPATTERN)
+    If ($Number(pValue) '= "") && (+pValue = pValue) Quit pValue
+    Quit """" _ $Replace(pValue, """", """""") _ """"
+}
+
+/// <p>The plain text of the outlier value <var>pStored</var> as the instance holds it: a double-quoted string literal reads as its inner text with the
+/// doubled quotes undone, and anything else, a number or an expression set through the classic page, as it is. Pure.</p>
+ClassMethod OutlierPlain(pStored As %String) As %String
+{
+    If '$Match(pStored, ..#OUTLIERSTRINGPATTERN) Quit pStored
+    Quit $Replace($Extract(pStored, 2, *-1), """""", """")
 }
 
 /// <p>The schema's read (<parameter>TYPESCHEMA</parameter>, <code>{Namespace, Schema, Tables}</code>) and its tune (<parameter>TYPETUNESCHEMA</parameter>,
@@ -1578,9 +1588,10 @@ ClassMethod FieldRead(pSchema As %String, pTable As %String, pField As %String, 
 /// <p>The read answer of <var>pType</var> (<parameter>TYPETABLESTATS</parameter>, <parameter>TYPEINDEX</parameter> or
 /// <parameter>TYPEFIELDSTATS</parameter>) for the facts <var>pFacts</var>
 /// <method>TableTarget</method> answered: <code>{Namespace, Table, Class, ExtentSize, StatsKind, CollectedAt, HasFixed}</code> for the
-/// table, <code>{Namespace, Table, Class, Index, Map, Type, SizeMB}</code> for the index, and
+/// table, <code>{Namespace, Table, Class, Index, Map, Type, SizeMB, StatsKind, CollectedAt, HasFixed}</code> for the index, and
 /// <code>{Namespace, Table, Class, Field, Selectivity, OutlierSelectivity, OutlierValue, AverageFieldSize, StatsKind, HasFixed}</code> for the field,
-/// each value the one in use: the fixed one when the table has fixed statistics, the collected one otherwise.</p>
+/// each value the one in use: the fixed one when the table has fixed statistics, the collected one otherwise. A field's <code>OutlierValue</code> is
+/// the plain text of the stored value (<method>OutlierPlain</method>).</p>
 ClassMethod TableAnswer(pType As %String, pNamespace As %String, pFacts As %DynamicObject) As %DynamicObject [ Private ]
 {
     Set tAnswer = {}
@@ -1592,6 +1603,9 @@ ClassMethod TableAnswer(pType As %String, pNamespace As %String, pFacts As %Dyna
         Do tAnswer.%Set("Map", pFacts.%Get("Map"), "string")
         Do tAnswer.%Set("Type", pFacts.%Get("Type"), "string")
         Do tAnswer.%Set("SizeMB", pFacts.%Get("SizeMB"), "number")
+        Do tAnswer.%Set("StatsKind", pFacts.%Get("StatsKind"), "string")
+        Do tAnswer.%Set("CollectedAt", pFacts.%Get("CollectedAt"), "string")
+        Do tAnswer.%Set("HasFixed", pFacts.%Get("HasFixed"), "boolean")
         Quit tAnswer
     }
     If pType = ..#TYPEFIELDSTATS {
@@ -1600,7 +1614,7 @@ ClassMethod TableAnswer(pType As %String, pNamespace As %String, pFacts As %Dyna
         Do tAnswer.%Set("Field", tRow.%Get("Name"), "string")
         Do tAnswer.%Set("Selectivity", tRow.%Get(tKind _ "Selectivity"), "string")
         Do tAnswer.%Set("OutlierSelectivity", tRow.%Get(tKind _ "OutlierSelectivity"), "string")
-        Do tAnswer.%Set("OutlierValue", tRow.%Get(tKind _ "OutlierValue"), "string")
+        Do tAnswer.%Set("OutlierValue", ..OutlierPlain(tRow.%Get(tKind _ "OutlierValue")), "string")
         Set tAverage = tRow.%Get(tKind _ "AverageFieldSize")
         If tAverage = "" {
             Do tAnswer.%Set("AverageFieldSize", "", "string")
@@ -1655,7 +1669,8 @@ ClassMethod TableWrite(pNamespace As %String, pType As %String, pId As %String, 
 
 /// <p>Table write <var>pType</var> made as <method>TableCall</method> makes it with <var>pTarget</var> and <var>pValues</var>, answering
 /// <code>{Namespace, Target}</code> with <var>pId</var> as the target as the caller named it. An unexpected raise is the internal fault, and an error
-/// status the instance answers is 409 <code>SQL.TABLE.VENDOR</code>.</p>
+/// status the instance answers is 409 <code>SQL.TABLE.VENDOR</code>, with the reason <parameter>OcuPilot.Api.AtelierError.REASONTABLESETUNAPPLIED</parameter>
+/// and <code>detail.statisticsFixed</code> where the table's collected statistics were saved as its fixed ones first.</p>
 ClassMethod TableWritten(pNamespace As %String, pType As %String, pTarget As %String, pValues As %String, pId As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pAnswer = ""
@@ -1665,7 +1680,8 @@ ClassMethod TableWritten(pNamespace As %String, pType As %String, pTarget As %St
         Set tDetail = {}
         Do tDetail.%Set("message", $System.Status.GetErrorText(tStatus), "string")
         If tFixed Do tDetail.%Set("statisticsFixed", 1, "boolean")
-        Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#TABLEVENDOR, ##class(OcuPilot.Api.AtelierError).#REASONTABLEVENDOR, .pHttpStatus, .pFault, tDetail)
+        Set tReason = $Select(tFixed: ##class(OcuPilot.Api.AtelierError).#REASONTABLESETUNAPPLIED, 1: ##class(OcuPilot.Api.AtelierError).#REASONTABLEVENDOR)
+        Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#TABLEVENDOR, tReason, .pHttpStatus, .pFault, tDetail)
     }
     Set pAnswer = {}
     Do pAnswer.%Set("Namespace", pNamespace, "string")
@@ -1727,8 +1743,9 @@ ClassMethod TableCall(pType As %String, pTarget As %String, pValues As %String, 
 /// <code>ExtentSize</code>; <code>SetMapBlockCount</code> over <code>Map</code> and <code>SizeMB</code> in blocks
 /// (<parameter>BLOCKSPERMB</parameter> to the MB); <code>SetFieldSelectivity</code> over <code>Field</code>, <code>Selectivity</code> and the outlier
 /// selectivity, outlier value and average size, each one not declared being the field's fixed value as it reads after the save and just before the
-/// call (<method>FieldRead</method>), since the instance clears one it is not given. A fixed value that is not of the shape sent (a number, or a
-/// percentage, or a number or double-quoted string literal) is not passed back.</p>
+/// call (<method>FieldRead</method>), since the instance clears one it is not given. A fixed outlier value is passed back exactly as the instance holds
+/// it; one that was sent is plain data and is handed over as <method>OutlierExpression</method> builds it. A fixed outlier selectivity or average size that
+/// is not a number (with a percent sign, for the selectivity) is not passed back.</p>
 ClassMethod SettingCall(pType As %String, pTarget As %String, pValues As %String, Output pFixed As %Boolean) As %Status [ Private ]
 {
     Set pFixed = 0
@@ -1756,14 +1773,11 @@ ClassMethod SettingCall(pType As %String, pTarget As %String, pValues As %String
                 If '$Match(tOutlierSelectivity, "^[0-9]*\.?[0-9]+%?$") Set tOutlierSelectivity = ""
             }
             Set tOutlierValue = tValues.%Get(..#OUTLIERVALUEKEY)
-            If tOutlierValue = "" {
-                Set tOutlierValue = tRow.%Get("FixedOutlierValue")
-                If '..OutlierLiteral(tOutlierValue) Set tOutlierValue = ""
-            }
+            Set tOutlierValue = $Select(tOutlierValue = "": tRow.%Get("FixedOutlierValue"), 1: ..OutlierExpression(tOutlierValue))
             Set tAverage = tValues.%Get(..#AVERAGESIZEKEY)
             If tAverage = "" {
                 Set tAverage = tRow.%Get("FixedAverageFieldSize")
-                If '$Match(tAverage, "^[0-9]+(\.[0-9]+)?$") Set tAverage = ""
+                If '$Match(tAverage, "^[0-9]*\.?[0-9]+$") Set tAverage = ""
             }
             Set tStatus = ##class(%SQL.Manager.Catalog).SetFieldSelectivity(tSchema, tTable, tField, tValues.%Get(..#SELECTIVITYKEY), 0, tOutlierSelectivity, tOutlierValue, tAverage)
         }
@@ -1848,15 +1862,16 @@ ClassMethod TableSnippet(pType As %String, ByRef pQuery) As %DynamicArray [ Priv
 
 /// <p>Setter <var>pType</var> as a script (AD-59) over table <var>pTable</var> (<code>Schema.Table</code>) and <var>pSecond</var>, the map or field its composite
 /// id names, after the namespace line <var>pHead</var>: the save of the table's collected statistics as its fixed ones where it has collected statistics
-/// and no fixed ones, then the setter's one vendor call with the declared values (<method>SetValues</method>), the class kept as it is, and for a
-/// selectivity, the field's fixed outlier selectivity, outlier value and average size read first for each one not declared. Each name and value is
-/// shown as a string literal.</p>
+/// and no fixed ones, then the setter's one vendor call, made only when the save did not fail, with the declared values (<method>SetValues</method>), the
+/// class kept as it is, and for a selectivity, the field's fixed outlier selectivity, outlier value and average size read first for each one not
+/// declared. Each name and value is shown as a string literal; an outlier value is shown as the expression <method>OutlierExpression</method> builds.</p>
 ClassMethod SettingSnippet(pType As %String, ByRef pQuery, pHead As %String, pTable As %String, pSecond As %String) As %DynamicArray [ Private ]
 {
     Set tSchema = ..Literal($Piece(pTable, ".", 1))
     Set tName = ..Literal($Piece(pTable, ".", 2, *))
     Set tText = pHead
     Set tText = tText _ $Char(10) _ " Do ##class(%SQL.Manager.Catalog).DisplayExtentDBStats(" _ tSchema _ ", " _ tName _ ", .tStatClass, .tStat, .tStatId)"
+    Set tText = tText _ $Char(10) _ " Set tSC = 1"
     Set tText = tText _ $Char(10) _ " If '##class(%SQL.Manager.Catalog).HasFixedStats(" _ tSchema _ ", " _ tName _ ") && $IsObject($Get(tStat)) Set tSC = $SYSTEM.SQL.Stats.Table.FixTableStats(" _ ..Literal(pTable) _ ")"
     If pType = ..#TYPESETEXTENT {
         Set tCall = "SetTableExtentSize(" _ tSchema _ ", " _ tName _ ", " _ ..Literal($Get(pQuery(..#EXTENTSIZEKEY))) _ ", 0)"
@@ -1864,7 +1879,7 @@ ClassMethod SettingSnippet(pType As %String, ByRef pQuery, pHead As %String, pTa
         Set tCall = "SetMapBlockCount(" _ tSchema _ ", " _ tName _ ", " _ ..Literal(pSecond) _ ", " _ ..Literal($Get(pQuery(..#SIZEMBKEY))) _ " * " _ ..#BLOCKSPERMB _ ", 0)"
     } Else {
         Set tText = tText _ $Char(10) _ " Set tStatement = ##class(%SQL.Statement).%New()"
-        Set tText = tText _ $Char(10) _ " Set tSC = tStatement.%Prepare(" _ ..Literal("SELECT OUTLIER_SELECTIVITY, OUTLIER_VALUE, AVERAGE_FIELD_SIZE FROM %SQL_Manager.FieldCurrentSelectivity(?, ?) WHERE FIELD_NAME = ?") _ ")"
+        Set tText = tText _ $Char(10) _ " Set tPrepared = tStatement.%Prepare(" _ ..Literal("SELECT OUTLIER_SELECTIVITY, OUTLIER_VALUE, AVERAGE_FIELD_SIZE FROM %SQL_Manager.FieldCurrentSelectivity(?, ?) WHERE FIELD_NAME = ?") _ ")"
         Set tText = tText _ $Char(10) _ " Set tResult = tStatement.%Execute(" _ tSchema _ ", " _ tName _ ", " _ ..Literal(pSecond) _ ")"
         Set tText = tText _ $Char(10) _ " Set tOutlierSelectivity = """", tOutlierValue = """", tAverage = """""
         Set tText = tText _ $Char(10) _ " If tResult.%Next() Set tOutlierSelectivity = tResult.%GetData(1), tOutlierValue = tResult.%GetData(2), tAverage = tResult.%GetData(3)"
@@ -1874,10 +1889,10 @@ ClassMethod SettingSnippet(pType As %String, ByRef pQuery, pHead As %String, pTa
         Set tAverage = $Get(pQuery(..#AVERAGESIZEKEY))
         Set tCall = "SetFieldSelectivity(" _ tSchema _ ", " _ tName _ ", " _ ..Literal(pSecond) _ ", " _ ..Literal(..PercentText($Get(pQuery(..#SELECTIVITYKEY)), 1)) _ ", 0, "
         Set tCall = tCall _ $Select(tOutlierSelectivity = "": "tOutlierSelectivity", 1: ..Literal(..PercentText(tOutlierSelectivity, 0))) _ ", "
-        Set tCall = tCall _ $Select(tOutlierValue = "": "tOutlierValue", 1: ..Literal(tOutlierValue)) _ ", "
+        Set tCall = tCall _ $Select(tOutlierValue = "": "tOutlierValue", 1: ..Literal(..OutlierExpression(tOutlierValue))) _ ", "
         Set tCall = tCall _ $Select(tAverage = "": "tAverage", 1: ..Literal(tAverage)) _ ")"
     }
-    Set tText = tText _ $Char(10) _ " Set tSC = ##class(%SQL.Manager.Catalog)." _ tCall
+    Set tText = tText _ $Char(10) _ " If $System.Status.IsOK(tSC) Set tSC = ##class(%SQL.Manager.Catalog)." _ tCall
     Set tText = tText _ $Char(10) _ " If $System.Status.IsError(tSC) Do $System.Status.DisplayError(tSC)"
     Quit ..SnippetSteps(tText)
 }
