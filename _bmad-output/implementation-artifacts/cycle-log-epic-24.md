@@ -740,3 +740,16 @@
 2026-11-22T16:06:19Z	Story 24.15	spine_amended	commit=94a8ddc2d AD-62_item18+AD-35+AD-10+AD-15+AD-22 add-only(+9/-0) push=after_batch3_merge
 2026-11-22T16:40:52Z	Story 24.15	ci_green	scope=batch3 sha=740a904a4 run=45041714141
 2026-11-22T16:40:52Z	Story 24.15	story_done	batches=1,1b,2,3 tracker=done spine=94a8ddc2d
+2026-11-22T16:41:09Z	Story 24.16	stage_spawned	stage=plan spawn_at=2026-11-22T16:41:09Z model=opus agent_name=24-16-plan cycle_iteration=1
+2026-11-22T16:44:50Z	Story 24.15	ledger_fix_forward	resolved=DW-2838(fab07a395),DW-2840(76c6b6f06) slice_24-15=empty feature=a4cf78378
+2026-11-22T16:56:54Z	Story 24.16	story_created	spawn_at=2026-11-22T16:42:00Z model=opus path=_bmad-output/implementation-artifacts/spec-24-16-purge-suspended-messages-export-and-the-archive-manager.md build_status=ready-for-dev scope=batch1_purge+settings batches=4
+2026-11-22T16:56:54Z	Story 24.16	ruling	question=batches,gate,limits,strings choice=keep category=veto inbox=U-142 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-22T16:56:54Z	Story 24.16	spec_validated	scope=batch1 owned_ledger=none
+2026-11-22T16:56:54Z	Story 24.16	stage_spawned	stage=implement spawn_at=2026-11-22T16:56:54Z model=sonnet agent_name=24-16-implement-batch1 cycle_iteration=1 story_base=98abd23ca
+2026-11-22T16:58:06Z	Story 24.16	coordinator_conditions_relayed	scope=batch1 to=implement conditions=contain_vendor_%All($ROLES_restore_all_paths+test+mutation),PURGEBITMAP_clause_if_measured,ConfigChange+counts_written_after_vendor_return(named_limit_names_Logs>Audit),days0_meaning_in_PURGERUN
+2026-11-22T18:46:41Z	Story 24.16	note	feature=c655a65bd(21.39) integrate_target=c655a65bd no_shared_rosters
+2026-11-22T21:39:40Z	Story 24.16	stage_completed	stage=implement scope=batch1 commit=4120ae6d8 task0=no_vendor_audit,completed-sessions_rule_true,bodies_rule_true,days0=all_to_end_of_today_except_todays_alerts,partial_purge_without_SQL_rights,bitmap_roles_unchanged review=16(6_med_patched,10_rejected) sweep=17/17 test_tools=2395 components=3881 a11y=13/13 for_ruling=check-objectscript_rule6_allowlist(New_$ROLES_PurgeFrame),new_agent_phrase_change_a_purge_setting,days_clamped_above_~67000 protocol=sed_-i_once,git_add_-N_once(undone)
+2026-11-22T21:40:29Z	Story 24.16	ruling	source=orchestrator allowlist=accepted(scoped_InteropPort.PurgeFrame_only+harness) containment_proof=both_principals phrase=accepted(EXPERIENCE_fixed-strings) clamp=named_limit(boundary_test) unprobed=named_limits partial_purge=must_surface_error deviations=accepted relayed_to=review
+2026-11-22T22:27:10Z	Story 24.16	stage_completed	stage=qa+code-review scope=batch1 commit=596600cc6 findings=27(med6_patched;low12_patched,6_rejected,3_deferred) AD-9=contained clamp=safe(boundary_test:67897_ok,67898_raises;port_caps_+$H-2) partial_purge=500+audit_completed_false allowlist=scoped(182_harness_tests) containment_mutation=only_case_c_reds(_SYSTEM_success_leg) deferred_ledger=DW-2846
+2026-11-22T22:27:57Z	Story 24.16	ruling	source=orchestrator leg_d=accepted DW-2846=burndown partial_purge=accepted clamp_test=runtime_$Horolog(relayed) integrate=current_feature_head_at_push
+2026-11-22T22:36:12Z	Story 24.16	stage_completed	stage=patch scope=batch1 commit=f58e15d70 leg_d=_SYSTEM_rolesafter_error_path mutation=runs9_green,10_red(c,d),11_green clamp_test_runtime=yes

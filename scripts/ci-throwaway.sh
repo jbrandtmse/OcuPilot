@@ -577,6 +577,11 @@ services:
       # add, edit and remove from both callers and reads OcuPilot's own audit rows, the refusals class meets every refusal and signs in as probe
       # principals each missing one pair a write requires, and the elsewhere class confirms the agent's three writes from another namespace.
       # classes: InteropScheduleControl, InteropScheduleElsewhere, InteropScheduleRefusals
+      # The purge classes write purge settings in USER and HSCUSTOM and delete back-dated probe records from them (Story 24.16): the control
+      # classes drive the purge and each setting from both callers and read OcuPilot's own audit rows, the refusals class meets every refusal,
+      # holds the classic page's lock from a child job and signs in as probe principals each missing one pair, and the elsewhere class confirms
+      # the agent's set and purge from another namespace.
+      # classes: InteropPurgeControl, InteropPurgeElsewhere, InteropPurgeRefusals, InteropPurgeSettingControl
       # The host test classes compile and run the same probe production in USER, with a request class of their own and an
       # operation that echoes it (Story 20.6): the test class reads an item's Test tab and sends a request from both callers,
       # the refusals class meets every refusal and violation, a production started without testing and a disabled item, and

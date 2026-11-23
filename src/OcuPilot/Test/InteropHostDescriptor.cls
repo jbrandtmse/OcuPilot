@@ -20,7 +20,7 @@ Parameter SCREENS = "InteropMonitorList|interoperability/monitor|5|list|producti
 /// <p>The endpoint roster the port declares (AD-62): the four Story 20.2 endpoints, Items and Settings, the nine
 /// runtime reads, then Story 20.5's LookupTables, LookupEntries and BusinessPartners, Story 20.6's ItemTest, Story 20.9's three message reads, Story 20.30's session trace, Story 20.41's ItemClasses, Story 24.4's three session reads and Story 24.15's DefaultSettings, DefaultSettingsDiff, Credentials and Schedules. Pinned as a literal,
 /// because a roster that derives both sides proves nothing.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules,PurgeSettings,Purge";
 
 /// <p>The pairs each runtime endpoint requires, <code>&lt;endpoint&gt;=&lt;pairs&gt;</code>, separated by <code>;</code>: its classic
 /// page's resource beside the Interoperability menu's, and each item tab's beside Productions' (AD-8, AD-29).</p>

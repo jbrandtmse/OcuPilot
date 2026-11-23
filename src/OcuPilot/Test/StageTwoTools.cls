@@ -238,6 +238,8 @@ XData Elsewhere
 <screen name="InteropDefaultSettingDiff"/>
 <screen name="InteropCredentialList"/>
 <screen name="InteropScheduleList"/>
+<screen name="InteropPurgeList"/>
+<screen name="InteropPurgeSettingList"/>
 <screen name="InteropItemClassTab"/>
 <screen name="InteropItemJobTab"/>
 <screen name="InteropItemList"/>

@@ -125,7 +125,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules,PurgeSettings,Purge";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -1188,7 +1188,7 @@ ClassMethod IsStartupWrite(pType As %String) As %Boolean
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
 ClassMethod IsAnyWrite(pType As %String) As %Boolean
 {
-    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
+    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsPurgeWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
 }
 
 /// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads, Story 20.30's session trace and Story 24.4's three session reads. Each serves
@@ -1228,6 +1228,10 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
         Set tSpec = ..#CREDENTIALPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTSCHEDULES {
         Set tSpec = ..#SCHEDULEPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTPURGESETTINGS {
+        Set tSpec = ..#PURGESETTINGPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTPURGE {
+        Set tSpec = ..#PURGEPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
         Set tSpec = ..#TESTPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTITEMCLASSES {
@@ -1298,6 +1302,8 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTDEFAULTSETTINGSDIFF Quit 0
     If pEndpoint = ..#ENDPOINTCREDENTIALS Quit (pType = ..#TYPECREDENTIAL) || ..IsCredentialWrite(pType)
     If pEndpoint = ..#ENDPOINTSCHEDULES Quit (pType = ..#TYPESCHEDULE) || ..IsScheduleWrite(pType)
+    If pEndpoint = ..#ENDPOINTPURGESETTINGS Quit (pType = ..#TYPESETTING) || (pType = ..#TYPEPURGESETTINGSET)
+    If pEndpoint = ..#ENDPOINTPURGE Quit (pType = ..#TYPEPURGESTATE) || (pType = ..#TYPEPURGE)
     If pEndpoint = ..#ENDPOINTITEMTEST Quit (pType = ..#TYPETESTTARGET) || (pType = ..#TYPESENDTEST)
     If pEndpoint = ..#ENDPOINTTRANSFORMS Quit (pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)
     If pEndpoint = ..#ENDPOINTMESSAGES Quit ..IsMessageType(pType)
@@ -1460,6 +1466,14 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If pEndpoint = ..#ENDPOINTSCHEDULES {
             Set tSC = ..InvokeSchedule(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTPURGESETTINGS {
+            Set tSC = ..InvokePurgeSettings(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTPURGE {
+            Set tSC = ..InvokePurge(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
         }
 
@@ -6433,6 +6447,8 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTDEFAULTSETTINGS) && ..IsDefaultSettingWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTCREDENTIALS) && ..IsCredentialWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTSCHEDULES) && ..IsScheduleWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTPURGESETTINGS) && (pType = ..#TYPEPURGESETTINGSET) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTPURGE) && (pType = ..#TYPEPURGE) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTITEMTEST) && ..IsTestWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && (pType = ..#TYPETRANSFORMTEST) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ..IsMessageWrite(pType) Quit "objectscript"
@@ -6456,7 +6472,15 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
-    If pEndpoint = ..#ENDPOINTITEMS {
+    If pEndpoint = ..#ENDPOINTPURGESETTINGS {
+        Set tPart = ..PurgeSettingSnippet($Get(pQuery(..#IDKEY)), pBody)
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTPURGE {
+        Set tPart = ..PurgeSnippet($Get(pQuery(..#PURGEDAYSKEY)))
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTITEMS {
         Set tText = tText _ ..ItemSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery, pContext)
     } ElseIf pEndpoint = ..#ENDPOINTSETTINGS {
         Set tText = tText _ ..SettingSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
@@ -9404,6 +9428,508 @@ ClassMethod ScheduleSnippet(pType As %String, pName As %String, pBody As %Dynami
         }
     }
     Quit tText _ tNL _ " " _ tGate _ "Set tSC = tSchedule.%Save()" _ tNL _ " Set tSchedule = """""
+}
+
+/// <p>The Purge data settings endpoint (Story 24.16): <code>LIST</code>, one setting (<code>SETTING</code>) and the write <code>SETTINGSET</code>, over
+/// the classic pages' own store, <code>^Ens.Configuration("PurgeSettings")</code>. No vendor method writes it, so the port sets the node.</p>
+Parameter ENDPOINTPURGESETTINGS = "PurgeSettings";
+
+/// <p>The Purge management data endpoint (Story 24.16): <code>LIST</code> (the six record counts of <code>Ens.Purge.GetAllCounts</code>),
+/// <code>PURGESTATE</code> (the settings a purge will use and whether one is running) and the write <code>PURGE</code> (<code>Ens.Purge.PurgeAll</code>).</p>
+Parameter ENDPOINTPURGE = "Purge";
+
+/// <p>The pairs the PurgeSettings endpoint requires: the classic Interoperability menu's <code>%Ens_Portal:USE</code> and the resource of
+/// <code>EnsPortal.PurgeSettings</code>, which the classic page asks at WRITE to show itself at all.</p>
+Parameter PURGESETTINGPAIRS = "%Ens_Portal:USE,%Ens_PurgeSettings:WRITE";
+
+/// <p>The pairs the Purge endpoint requires: <code>%Ens_Portal:USE</code> and the resource of <code>EnsPortal.PurgeAll</code>. No vendor purge asks it
+/// (measured), so these, and WRITE on the namespace's globals database for a purge, are the whole gate.</p>
+Parameter PURGEPAIRS = "%Ens_Portal:USE,%Ens_Purge:USE";
+
+/// <p>The write of one purge data setting (<code>SETTINGSET</code>, the read is <parameter>TYPESETTING</parameter>) and the purge's read of its state and its write.</p>
+Parameter TYPEPURGESETTINGSET = "SETTINGSET";
+
+Parameter TYPEPURGESTATE = "PURGESTATE";
+
+Parameter TYPEPURGE = "PURGE";
+
+/// <p>The query key carrying the days a purge keeps, a whole number from 0 to <parameter>PURGEMAXDAYS</parameter>, judged at the write.</p>
+Parameter PURGEDAYSKEY = "days";
+
+Parameter PURGEMAXDAYS As INTEGER = 99999;
+
+/// <p>The longest description a purge setting holds, and the entity types and verb the audit rows of a purge write name.</p>
+Parameter PURGETEXTMAX As INTEGER = 2000;
+
+Parameter ENTITYPURGE = "interop-purge";
+
+Parameter ENTITYPURGESETTING = "interop-purge-setting";
+
+Parameter VERBPURGE = "purge";
+
+/// <p>Whether <var>pType</var> is one of the writes the two purge endpoints carry (Story 24.16): the set of one purge setting and the purge itself,
+/// each needing WRITE on the namespace's globals database and no routines database.</p>
+ClassMethod IsPurgeWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEPURGESETTINGSET) || (pType = ..#TYPEPURGE)
+}
+
+/// <p>The four purge data settings, in the classic pages' order, as a <class>%List</class> of <class>%List</class>s:
+/// <code>name, node, default, kind</code>. The names are the classic captions; the node is the subscript under
+/// <code>^Ens.Configuration("PurgeSettings")</code>, and the default is what the classic page reads for a node that is not stored. Pure.</p>
+ClassMethod PurgeSettingRoster() As %List
+{
+    Quit $ListBuild($ListBuild("Include message bodies", "BodiesToo", 0, "boolean"), $ListBuild("Purge only completed sessions", "KeepIntegrity", 1, "boolean"), $ListBuild("Run bitmap cleanup for namespace", "NamespaceBitmapMaint", 0, "boolean"), $ListBuild("Description", "Desc", "", "text"))
+}
+
+/// <p>The roster entry of the setting <var>pName</var>, or <code>""</code> for a name the classic pages have no setting for. Pure.</p>
+ClassMethod PurgeSettingEntry(pName As %String) As %List
+{
+    Set tRoster = ..PurgeSettingRoster()
+    Set tFound = ""
+    For tI = 1:1:$ListLength(tRoster) {
+        If $List($List(tRoster, tI), 1) = pName Set tFound = $List(tRoster, tI)
+    }
+    Quit tFound
+}
+
+/// <p>The limits of the setting <var>pName</var> in <code>ConfigPort.Limits</code>' shape: a boolean is 0 or 1 and the description is text of at most
+/// <parameter>PURGETEXTMAX</parameter> characters; <code>""</code> for a name the classic pages have no setting for. Pure. The rules class asks it.</p>
+ClassMethod PurgeSettingLimits(pName As %String) As %List
+{
+    Set tEntry = ..PurgeSettingEntry(pName)
+    If tEntry = "" Quit ""
+    If $List(tEntry, 4) = "boolean" Quit $ListBuild("boolean", "", "", "", "", "")
+    Quit $ListBuild("text", "", "", "", ..#PURGETEXTMAX, "")
+}
+
+/// <p>The settings as they stand in the current namespace, which the caller has already switched, in <var>pFound</var>: one
+/// <code>$ListBuild(name, value, stored)</code> per roster entry. A node that is not stored reads the classic default; a boolean reads 0 or 1 as the classic
+/// page's <code>+$G()</code> does. Nothing is written.</p>
+ClassMethod PurgeSettingsHere(Output pFound) [ Private ]
+{
+    Kill pFound
+    Set tRoster = ..PurgeSettingRoster()
+    Set pFound = $ListLength(tRoster)
+    For tI = 1:1:pFound {
+        Set tEntry = $List(tRoster, tI)
+        Set tNode = $List(tEntry, 2)
+        Set tStored = ($Data(^Ens.Configuration("PurgeSettings", tNode)) # 2)
+        Set tValue = $Get(^Ens.Configuration("PurgeSettings", tNode), $List(tEntry, 3))
+        If $List(tEntry, 4) = "boolean" Set tValue = $Select(+tValue: 1, 1: 0)
+        Set pFound(tI) = $ListBuild($List(tEntry, 1), tValue _ "", tStored)
+    }
+}
+
+/// <p>The row a purge setting list and read answer, from the setting <var>pName</var>, its <var>pValue</var> and whether it is <var>pStored</var>:
+/// <code>{Name, Value, Stored, Kind, Accepts, Namespace}</code>. A description is text and is never run.</p>
+ClassMethod PurgeSettingRow(pName As %String, pValue As %String, pStored As %Boolean, pNamespace As %String) As %DynamicObject [ Private ]
+{
+    Set tLimits = ..PurgeSettingLimits(pName)
+    Set tRow = {}
+    Do tRow.%Set("Name", pName, "string")
+    Do tRow.%Set("Value", pValue, "string")
+    Do tRow.%Set("Stored", ''pStored, "boolean")
+    Do tRow.%Set("Kind", $ListGet(tLimits, 1), "string")
+    Do tRow.%Set("Accepts", ##class(OcuPilot.Port.ConfigPort).AcceptsOf(tLimits), "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The settings of <var>pNamespace</var> as <method>PurgeSettingsHere</method> reads them; a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod PurgeSettingsIn(pNamespace As %String, Output pFound, Output pCaught) [ Private ]
+{
+    Kill pFound
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..PurgeSettingsHere(.pFound)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The refusal <var>pCode</var> of <class>OcuPilot.Api.ConfigError</class>, on that class's status and slug, with its sentence.</p>
+ClassMethod PurgeConfigRefused(pCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(##class(OcuPilot.Api.ConfigError).HttpStatusFor(pCode), ##class(OcuPilot.Api.ConfigError).SlugFor(pCode), pCode, ##class(OcuPilot.Api.ConfigError).ReasonFor(pCode), .pHttpStatus, .pFault)
+}
+
+/// <p>One purge setting, fresh (Story 24.16): <method>PurgeSettingRow</method>. A name the classic pages have no setting for is 404
+/// <code>CONFIG.SETTING.NOTFOUND</code>, with or without <var>pAction</var>, which only names the write the read is composed for.</p>
+ClassMethod ReadPurgeSetting(pNamespace As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If ..PurgeSettingEntry(pName) = "" Quit ..PurgeConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND, .pHttpStatus, .pFault)
+    Do ..PurgeSettingsIn(pNamespace, .tFound, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the purge setting read failed", .pHttpStatus, .pFault)
+    For tI = 1:1:tFound {
+        If $List(tFound(tI), 1) '= pName Continue
+        Set pRow = ..PurgeSettingRow(pName, $List(tFound(tI), 2), $List(tFound(tI), 3), pNamespace)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the PurgeSettings endpoint after <method>Invoke</method>'s gate (Story 24.16): <code>LIST</code>, the <code>SETTING</code> read of the setting named
+/// under <parameter>IDKEY</parameter> and the write <code>SETTINGSET</code>.</p>
+ClassMethod InvokePurgeSettings(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Do ..PurgeSettingsIn(pNamespace, .tFound, .tCaught)
+            If $IsObject(tCaught) {
+                Set tSC = ..Mapped(tCaught, "the purge settings list failed", .pHttpStatus, .pFault)
+                Quit
+            }
+            Set pResult = []
+            For tI = 1:1:tFound {
+                Do pResult.%Push(..PurgeSettingRow($List(tFound(tI), 1), $List(tFound(tI), 2), $List(tFound(tI), 3), pNamespace))
+            }
+            Set pHttpStatus = 200
+            Quit
+        }
+        Set tName = $Get(pQuery(..#IDKEY))
+        If tName = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsPurgeWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && (tAction '= ..#TYPEPURGESETTINGSET) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPEPURGESETTINGSET {
+            Set tSC = ..PerformPurgeSetting(pNamespace, tName, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadPurgeSetting(pNamespace, tName, tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the purge setting call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Store the value <code>Value</code> of <var>pBody</var> for the purge setting <var>pName</var> in <var>pNamespace</var> and answer the setting's row, read
+/// again (Story 24.16). A name the classic pages have no setting for is 404 <code>CONFIG.SETTING.NOTFOUND</code> and a value the setting's kind does not accept
+/// is 400 <code>CONFIG.SETTING.VALUE</code>, each before anything is written. The node is set as the classic page's Save sets it, a boolean as 0 or 1. The
+/// namespace is restored, then OcuPilot's own audit row is recorded (<method>AuditRuntime</method>), because the classic page records none: it names the namespace and
+/// the setting, never the value.</p>
+ClassMethod PerformPurgeSetting(pNamespace As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tEntry = ..PurgeSettingEntry(pName)
+    If tEntry = "" Quit ..PurgeConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND, .pHttpStatus, .pFault)
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") || (pBody.%GetTypeOf("Value") '= "string") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.ConfigPort).#REASONBODY, .pHttpStatus, .pFault)
+    Set tValue = pBody.%Get("Value")
+    If '##class(OcuPilot.Area.Interop.PurgeSettingRules).ValueHolds(..PurgeSettingLimits(pName), tValue) Quit ..PurgeConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGVALUE, .pHttpStatus, .pFault)
+    Set tCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set ^Ens.Configuration("PurgeSettings", $List(tEntry, 2)) = $Select($List(tEntry, 4) = "boolean": +tValue, 1: tValue)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the purge setting write failed", .pHttpStatus, .pFault)
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("setting", pName, "string")
+    Do ..AuditRuntime(..#VERBSET, ..#ENTITYPURGESETTING, pName, tEffects)
+    Set tReadSC = ..ReadPurgeSetting(pNamespace, pName, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) || '$IsObject(tRow) {
+        Set tRow = {}
+        Do tRow.%Set("Name", pName, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>Whether <var>pDays</var> is a whole number from 0 to <parameter>PURGEMAXDAYS</parameter>, written without a sign, a point or a leading zero. Pure.</p>
+ClassMethod PurgeDaysOK(pDays As %String) As %Boolean
+{
+    Quit $Match(pDays, "^(0|[1-9][0-9]{0,4})$") && (+pDays '> ..#PURGEMAXDAYS)
+}
+
+/// <p>The published sentence of <code>INTEROP.PURGE.DAYS</code>, which the purge tool's argument rule answers with.</p>
+ClassMethod PurgeDaysReason() As %String
+{
+    Quit ##class(OcuPilot.Api.InteropError).ReasonFor(##class(OcuPilot.Api.InteropError).#PURGEDAYS)
+}
+
+/// <p>Whether the classic page's purge lock is held in the current namespace, which the caller has already switched: the lock is taken at once and let go when it
+/// was free. The lock is the vendor page's own (<code>^IRIS.Temp.EnsPurgeAll($Namespace,"lock")</code>); no node of that global is written.</p>
+ClassMethod PurgeRunningHere() As %Boolean [ Private ]
+{
+    Lock +^IRIS.Temp.EnsPurgeAll($Namespace, "lock"):0
+    If '$Test Quit 1
+    Lock -^IRIS.Temp.EnsPurgeAll($Namespace, "lock")
+    Quit 0
+}
+
+/// <p>The purge's state in <var>pNamespace</var> (Story 24.16): the three settings and the description a purge will use, and whether one is running, in
+/// <var>pFacts</var> (<code>settings</code> as <method>PurgeSettingsHere</method> builds it, <code>running</code>); a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod PurgeFacts(pNamespace As %String, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..PurgeSettingsHere(.tFound)
+        For tI = 1:1:tFound {
+            Set pFacts("settings", $List(tFound(tI), 1)) = $List(tFound(tI), 2)
+        }
+        Set pFacts("running") = ..PurgeRunningHere()
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The purge's state row (Story 24.16): <code>{BodiesToo, KeepIntegrity, NamespaceBitmapMaint, Description, DaysToKeep, Running, Namespace}</code>. The days belong to
+/// the call that asks for the purge, so <code>DaysToKeep</code> reads empty here. With <var>pAction</var> <parameter>TYPEPURGE</parameter> a purge that is already running is
+/// 409 <code>INTEROP.PURGE.RUNNING</code>.</p>
+ClassMethod ReadPurge(pNamespace As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Do ..PurgeFacts(pNamespace, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the purge state read failed", .pHttpStatus, .pFault)
+    If (pAction = ..#TYPEPURGE) && tFacts("running") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#PURGERUNNING, .pHttpStatus, .pFault)
+    Set pRow = {}
+    Do pRow.%Set("BodiesToo", ''tFacts("settings", "Include message bodies"), "boolean")
+    Do pRow.%Set("KeepIntegrity", ''tFacts("settings", "Purge only completed sessions"), "boolean")
+    Do pRow.%Set("NamespaceBitmapMaint", ''tFacts("settings", "Run bitmap cleanup for namespace"), "boolean")
+    Do pRow.%Set("Description", tFacts("settings", "Description"), "string")
+    Do pRow.%Set("DaysToKeep", "", "string")
+    Do pRow.%Set("Running", ''tFacts("running"), "boolean")
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The six record counts of <var>pNamespace</var>, one row each in the classic page's order, <code>{Type, Count, Namespace}</code>, <code>Type</code> the vendor's own
+/// name (Story 24.16): <code>Ens.Purge.GetAllCounts</code>, which reads and writes nothing.</p>
+ClassMethod ListPurgeCounts(pNamespace As %String, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ##class(Ens.Purge).GetAllCounts(.tCount)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the purge counts read failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tType = "Event Log", "Messages", "Business Processes", "Business Rule Log", "I/O Log", "Managed Alerts" {
+        Set tRow = {}
+        Do tRow.%Set("Type", tType, "string")
+        Do tRow.%Set("Count", +$Get(tCount(tType)), "number")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+        Do pRows.%Push(tRow)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the Purge endpoint after <method>Invoke</method>'s gate (Story 24.16): <code>LIST</code> (<method>ListPurgeCounts</method>), the <code>PURGESTATE</code> read
+/// (<method>ReadPurge</method>) and the write <code>PURGE</code> (<method>PerformPurge</method>). The purge's days travel in <parameter>PURGEDAYSKEY</parameter>.</p>
+ClassMethod InvokePurge(pNamespace As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListPurgeCounts(pNamespace, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsPurgeWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && (tAction '= ..#TYPEPURGE) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPEPURGE {
+            Set tSC = ..PerformPurge(pNamespace, $Get(pQuery(..#PURGEDAYSKEY)), .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadPurge(pNamespace, tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the purge call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The vendor's status <var>pStatus</var> without any text it carries: an error status naming only the vendor's error codes, which is what reaches the log
+/// (Story 24.16). A lock the vendor could not take and a privilege refusal are kept as they came. Pure.</p>
+ClassMethod PurgeVendorStatus(pStatus As %Status) As %Status
+{
+    If ..HasCode(pStatus, ..#CODERUNTIMELOCK) || ..HasCode(pStatus, ..#CODEPRIVILEGE) Quit pStatus
+    Set tCodes = ""
+    Set tProtect = 0
+    Try {
+        Set tCodes = $System.Status.GetErrorCodes(pStatus)
+        Set tProtect = ($System.Status.GetErrorText(pStatus) [ "<PROTECT>")
+    } Catch {
+        Set tCodes = ""
+    }
+    If tProtect Quit pStatus
+    Quit $$$ERROR($$$GeneralError, "the vendor reported the purge with error code " _ tCodes)
+}
+
+/// <p>The vendor's purge of the current namespace, which the caller has already switched, run in a frame of its own that saves the process's roles and gives them back on
+/// every exit, a thrown error included (<method>VendorPurge</method>). The vendor's bitmap cleanup adds <code>%All</code> in a frame of its own and drops it when it
+/// returns; this frame keeps any vendor path that does not from reaching the request's later code or the pooled process's next request.</p>
+ClassMethod PurgeFrame(pDays As %Integer, pKeepIntegrity As %Boolean, pBodiesToo As %Boolean, pBitmap As %Boolean, Output pDeleted) As %Status
+{
+    New $ROLES
+    Quit ..VendorPurge(pDays, pKeepIntegrity, pBodiesToo, pBitmap, .pDeleted)
+}
+
+/// <p><code>Ens.Purge.PurgeAll</code> with the classic page's own arguments, the bitmap cleanup asked for only when <var>pBitmap</var> is set (the one extended option the port
+/// passes). <var>pDeleted</var> is the vendor's count for each kind it purged. Overridable so a fixture can answer a fault; production never overrides it.</p>
+ClassMethod VendorPurge(pDays As %Integer, pKeepIntegrity As %Boolean, pBodiesToo As %Boolean, pBitmap As %Boolean, Output pDeleted) As %Status
+{
+    If pBitmap Set tOptions("NamespaceBitmapMaint") = 1
+    Quit ##class(Ens.Purge).PurgeAll(.pDeleted, pDays, pKeepIntegrity, pBodiesToo, , .tOptions)
+}
+
+/// <p>Purge <var>pNamespace</var> as the classic Start Purge does, in this request (Story 24.16), and answer the purge's state row, read again. The sequence:</p>
+/// <ol>
+/// <li>The days are judged (<method>PurgeDaysOK</method>), 422 <code>INTEROP.PURGE.DAYS</code>, before any vendor call.</li>
+/// <li>In the namespace the classic page's lock is taken at once and held for the whole of the vendor call; a purge already running is 409
+/// <code>INTEROP.PURGE.RUNNING</code> and deletes nothing. The three settings are read at this moment, so a purge uses what is stored when it runs. An unset
+/// Purge only completed sessions is used as 1, as both classic pages display it; the classic Start Purge passes 0 for it.</li>
+/// <li>The vendor's <code>PurgeAll</code> runs (<method>PurgeFrame</method>) with no transaction; the lock is let go, the namespace restored, and OcuPilot's own audit row recorded
+/// (<method>AuditRuntime</method>) whatever the vendor answered, because the vendor records none: it names the namespace, the days, the three settings and the count the
+/// vendor deleted of each kind, never the description.</li>
+/// </ol>
+/// <p>A purge that outlasts the Web Gateway's response timeout runs to its end in this process, and its audit row is written then.</p>
+ClassMethod PerformPurge(pNamespace As %String, pDays As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If '..PurgeDaysOK(pDays) {
+        Set tViolations = 1
+        Set tViolations(1) = $ListBuild("DaysToKeep", ##class(OcuPilot.Api.InteropError).#PURGEDAYS)
+        Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
+    Set tCaught = ""
+    Set tHeld = 0
+    Set tVendorSC = $$$OK
+    Set tRan = 0
+    Kill tDeleted, tSettings
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Lock +^IRIS.Temp.EnsPurgeAll($Namespace, "lock"):0
+        Set tHeld = $Test
+        If tHeld {
+            Do ..PurgeSettingsHere(.tFound)
+            For tI = 1:1:tFound {
+                Set tSettings($List(tFound(tI), 1)) = $List(tFound(tI), 2)
+            }
+            Set tRan = 1
+            ; The vendor reads a cut-off before the instance's first day as an error, so days past the instance's calendar keep every record, as they say.
+            Set tKeepDays = $Select(+pDays > (+$Horolog - 2): +$Horolog - 2, 1: +pDays)
+            Set tVendorSC = ..PurgeFrame(tKeepDays, tSettings("Purge only completed sessions"), tSettings("Include message bodies"), tSettings("Run bitmap cleanup for namespace"), .tDeleted)
+            Lock -^IRIS.Temp.EnsPurgeAll($Namespace, "lock")
+            Set tHeld = 0
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Try {
+            Set $NAMESPACE = pNamespace
+            If tHeld Lock -^IRIS.Temp.EnsPurgeAll($Namespace, "lock")
+        } Catch {
+        }
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Statused(..PurgeVendorStatus(tCaught.AsStatus()), "the purge failed", .pHttpStatus, .pFault)
+    If 'tRan Quit ..Conflict(##class(OcuPilot.Api.InteropError).#PURGERUNNING, .pHttpStatus, .pFault)
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("daysToKeep", +pDays, "number")
+    Do tEffects.%Set("bodiesToo", ''tSettings("Include message bodies"), "boolean")
+    Do tEffects.%Set("keepIntegrity", ''tSettings("Purge only completed sessions"), "boolean")
+    Do tEffects.%Set("bitmapMaint", ''tSettings("Run bitmap cleanup for namespace"), "boolean")
+    Set tDeletedRow = {}
+    Do tDeletedRow.%Set("eventLog", +$Get(tDeleted("Event Logs")), "number")
+    Do tDeletedRow.%Set("messages", +$Get(tDeleted("Ensemble Messages")), "number")
+    Do tDeletedRow.%Set("messageBodies", +$Get(tDeleted("Message Bodies")), "number")
+    Do tDeletedRow.%Set("businessProcesses", +$Get(tDeleted("Business Processes")), "number")
+    Do tDeletedRow.%Set("businessRuleLog", +$Get(tDeleted("Business Rule Logs")), "number")
+    Do tDeletedRow.%Set("ioLog", +$Get(tDeleted("I/O Logs")), "number")
+    Do tDeletedRow.%Set("hostMonitor", +$Get(tDeleted("Host Monitor Data")), "number")
+    Do tDeletedRow.%Set("managedAlerts", +$Get(tDeleted("Managed Alerts")), "number")
+    Do tEffects.%Set("deleted", tDeletedRow)
+    Do tEffects.%Set("completed", $$$ISOK(tVendorSC), "boolean")
+    Do ..AuditRuntime(..#VERBPURGE, ..#ENTITYPURGE, pNamespace, tEffects)
+    If $$$ISERR(tVendorSC) Quit ..Statused(..PurgeVendorStatus(tVendorSC), "the purge failed", .pHttpStatus, .pFault)
+    Set tReadSC = ..ReadPurge(pNamespace, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) || '$IsObject(tRow) {
+        Set tRow = {}
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the purge write of the purge setting <var>pName</var> with <var>pBody</var> (Story 24.16): the one global set the port
+/// makes, the value as a string literal, a boolean as 0 or 1. <code>""</code> for a name or a value the port would refuse, which renders no draft.</p>
+ClassMethod PurgeSettingSnippet(pName As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    Set tEntry = ..PurgeSettingEntry(pName)
+    If (tEntry = "") || '$IsObject(pBody) || (pBody.%GetTypeOf("Value") '= "string") Quit ""
+    Set tValue = pBody.%Get("Value")
+    If '##class(OcuPilot.Area.Interop.PurgeSettingRules).ValueHolds(..PurgeSettingLimits(pName), tValue) Quit ""
+    Quit $Char(10) _ " Set ^Ens.Configuration(""PurgeSettings"", " _ ..Literal($List(tEntry, 2)) _ ") = " _ $Select($List(tEntry, 4) = "boolean": +tValue, 1: ..Literal(tValue))
+}
+
+/// <p>The lines <method>Snippet</method> adds for the purge of the days <var>pDays</var> (Story 24.16): the classic page's lock taken at once, the three settings read, and
+/// <code>Ens.Purge.PurgeAll</code> called while the lock is held. <code>""</code> for days the port would refuse, which renders no draft.</p>
+ClassMethod PurgeSnippet(pDays As %String) As %String [ Private ]
+{
+    If '..PurgeDaysOK(pDays) Quit ""
+    Set tNL = $Char(10)
+    Set tText = tNL _ " Lock +^IRIS.Temp.EnsPurgeAll($Namespace, ""lock""):0"
+    Set tText = tText _ tNL _ " Set tHeld = $Test"
+    Set tText = tText _ tNL _ " If 'tHeld Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONPURGERUNNING) _ ")"
+    Set tText = tText _ tNL _ " If tHeld Set tBodies = +$Get(^Ens.Configuration(""PurgeSettings"", ""BodiesToo"")), tKeep = +$Get(^Ens.Configuration(""PurgeSettings"", ""KeepIntegrity""), 1), tBitmap = +$Get(^Ens.Configuration(""PurgeSettings"", ""NamespaceBitmapMaint""))"
+    Set tText = tText _ tNL _ " If tHeld, tBitmap Set tOptions(""NamespaceBitmapMaint"") = 1"
+    ; The days the port itself would pass (PerformPurge): past the instance's calendar, the calendar's own count.
+    Set tDaysText = $Select(+pDays > (+$Horolog - 2): "+$Horolog - 2", 1: +pDays)
+    Set tText = tText _ tNL _ " If tHeld Set tSC = ##class(Ens.Purge).PurgeAll(.tDeleted, " _ tDaysText _ ", tKeep, tBodies, , .tOptions)"
+    Set tText = tText _ tNL _ " If tHeld Lock -^IRIS.Temp.EnsPurgeAll($Namespace, ""lock"")"
+    Quit tText
 }
 
 /// <p>The code prefix of a startup refusal: <code>INTEROP.STARTUP.</code> and the token <method>StartupRefusal</method> answers.</p>

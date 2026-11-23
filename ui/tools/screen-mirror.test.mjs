@@ -2850,6 +2850,9 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.InteropProcessList',
       'OcuPilot.Screen.Descriptor.InteropProductionDiagram',
       'OcuPilot.Screen.Descriptor.InteropProductionList',
+      // Story 24.16: Purge management data owns %Ens_Purge:USE and Purge data settings %Ens_PurgeSettings:WRITE.
+      'OcuPilot.Screen.Descriptor.InteropPurgeList',
+      'OcuPilot.Screen.Descriptor.InteropPurgeSettingList',
       'OcuPilot.Screen.Descriptor.InteropQueueList',
       'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
       'OcuPilot.Screen.Descriptor.InteropRuleEditor',

@@ -289,6 +289,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.InteropCredentialList': () => import('../areas/interoperability/interop-credential-list.page').then((m) => m.InteropCredentialListPage),
   // Story 24.15: Schedule specs, the list with its New schedule spec and Edit dialog.
   'OcuPilot.Screen.Descriptor.InteropScheduleList': () => import('../areas/interoperability/interop-schedule-list.page').then((m) => m.InteropScheduleListPage),
+  // Story 24.16: Purge management data, the list with its Purge dialog, and Purge data settings, on the settings page that adds Set value over the shared list.
+  'OcuPilot.Screen.Descriptor.InteropPurgeList': () => import('../areas/interoperability/interop-purge-list.page').then((m) => m.InteropPurgeListPage),
+  'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': CONFIG_SETTINGS_PAGE,
   // Story 20.27: Data transformations, the list with its Test dialog.
   'OcuPilot.Screen.Descriptor.InteropTransformList': () => import('../areas/interoperability/interop-transform-list.page').then((m) => m.InteropTransformListPage),
   // Story 20.7: the rule, BPL and DTL editor screens, the vendor's editor in a frame at <list>/document/<class>.cls.

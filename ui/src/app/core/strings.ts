@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:670 */
+  /** EXPERIENCE.md:671 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -9557,6 +9557,46 @@ export const STRINGS = {
   interopSchedulesPrompt2: 'Which schedule specs are deployable?',
   /** EXPERIENCE.md:626 */
   interopSchedulesPrompt3: 'Add a schedule spec that runs on weekdays from 8 to 5.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeLabel: 'Purge management data',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingsLabel: 'Purge data settings',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingBodies: 'Include message bodies',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingIntegrity: 'Purge only completed sessions',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingBitmap: 'Run bitmap cleanup for namespace',
+  /** EXPERIENCE.md:628 */
+  interopPurgeRunConsequence:
+    'Deletes this namespace\'s event log entries, messages, completed business process records, business rule log entries, I/O log entries, host monitor data and managed alerts older than the days to keep, and their message bodies when Include message bodies is on. When Purge only completed sessions is on, a session with a message still in progress is kept whole, and so is an open managed alert. With 0 days, everything up to the end of today is deleted, except managed alerts from today. It cannot be undone.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeBitmapConsequence:
+    'Deletes this namespace\'s event log entries, messages, completed business process records, business rule log entries, I/O log entries, host monitor data and managed alerts older than the days to keep, and their message bodies when Include message bodies is on. When Purge only completed sessions is on, a session with a message still in progress is kept whole, and so is an open managed alert. With 0 days, everything up to the end of today is deleted, except managed alerts from today. It cannot be undone. Bitmap cleanup then runs over every class in this namespace with full system rights, and can take a long time. Those rights end when it finishes.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeRefusalDays: 'Older than (days) is a whole number from 0 to 99999.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeRefusalRunning: 'A purge is already running in this namespace. Try again when it has finished.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeEmpty: 'This namespace has no records to count.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeEmptyAgent: 'purge old records',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingsEmpty: 'This namespace has no purge settings.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingsEmptyAgent: 'change a purge setting',
+  /** EXPERIENCE.md:628 */
+  interopPurgePrompt1: 'What does a purge delete in this namespace?',
+  /** EXPERIENCE.md:628 */
+  interopPurgePrompt2: 'Which kind of record is most numerous here?',
+  /** EXPERIENCE.md:628 */
+  interopPurgePrompt3: 'Purge records older than 30 days.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingsPrompt1: 'Explain what each purge setting does.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingsPrompt2: 'Does a purge here keep sessions that are still in progress?',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingsPrompt3: 'Turn on Include message bodies.',
 } as const;
 
 /**

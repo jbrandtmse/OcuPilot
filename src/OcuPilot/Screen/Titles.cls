@@ -148,6 +148,8 @@ XData Titles
 "interopProcessesLabel": "Business processes",
 "interopProductionDiagramTitle": "Configuration diagram",
 "interopProductionsLabel": "Productions",
+"interopPurgeLabel": "Purge management data",
+"interopPurgeSettingsLabel": "Purge data settings",
 "interopQueueMessagesLabel": "Queue messages",
 "interopQueuesLabel": "Queues",
 "interopRuleEditorTitle": "Rule editor",
