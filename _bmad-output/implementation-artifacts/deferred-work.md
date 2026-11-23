@@ -14531,3 +14531,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-6-the-sql-tuning-track.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: PURGECLASS is fixed to ConfigPort, so ConfigGateSeam.PurgeFails cannot reach SqlPort; the 409 test calls SqlTuningPortFixture.Invoke directly.
 - 2026-11-22T20:28:34Z status=wontfix-accepted owner=21-6-the-sql-tuning-track by=cr note=reopen_if=a purge or statement write the instance refuses answers 200 or another code than 500/409 on either caller
+
+### DW-2854: A message export ignores Read's status on a stream body, so a file-backed body whose file is gone exports empty and is still audited as viewed
+- source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-3.md (review d196f6de8) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: ExportRenderHere: Set pWire = pObject.Read(tLimit) passes no status argument
+- 2026-11-23T14:29:07Z status=routed owner=burndown by=epic-24-runner note=check the read status and answer the member as failed
+
+### DW-2855: Export and suspended-message writes are not driven over HTTP for every outcome: too large has no agent-confirm leg, fault, partial and all-failed run only through the port, and AC7's resubmit and discard never go over HTTP
+- source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-3.md (review d196f6de8) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: the XPort and SPort legs in InteropMessageExport* and InteropSuspended*; the test seam cannot reach the server request process
+- 2026-11-23T14:29:07Z status=routed owner=burndown by=epic-24-runner note=add HTTP legs once a seam reaches the request process
+
+### DW-2856: The export consequence sentence says the separator goes between messages, but it also follows the last one and MLLP is a frame; the string is ruled (U-150 V4), so a rewording is a string decision
+- source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-3.md (review d196f6de8) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: REASONMESSAGEEXPORT against ExportTail
+- 2026-11-23T14:29:07Z status=decision-pending owner=burndown by=epic-24-runner note=string ruling: reword the consequence or accept it as close enough
+
+### DW-2857: InteropMessageExportElsewhere's no-probe-left test never exports, and TempListing compares a shared temporary directory, so AC8 is asserted without the act it guards
+- source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-3.md (review d196f6de8) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: TestNoProbeIsLeftInEitherNamespaceAfterAnExport
+- 2026-11-23T14:29:07Z status=routed owner=burndown by=epic-24-runner note=make the test export once before it checks both namespaces
+
+### DW-2858: InteropSessionRoute answered SQLCODE -99 on Ens.SuperSessionIndex once on a long-lived throwaway under a restricted principal (inference: a cold cached-query compile), also with the story-base InteropPort; a cold first run on a fresh rebuild passed
+- source: spec-24-16-purge-suspended-messages-export-and-the-archive-manager-3.md (implement ca5626323, review d196f6de8) | severity: low | fix-risk: med | footprint: cross-story
+- evidence: implement shard 5 red -99 on ocupilot-b-ci; review run 1 on the 14:11:15Z rebuild green 6/6 as the route's first restricted use
+- 2026-11-23T14:29:07Z status=routed owner=burndown by=epic-24-runner note=orchestrator: raise to medium if -99 recurs; a restricted principal's cold first query could be a user-facing 500 (inference); no warm-up goes into the test
