@@ -644,6 +644,36 @@ Parameter TYPEEDITRESEND = "EDITRESEND";
 /// sentence that states it is <file>ui/src/app/core/strings.ts</file>'s, and the descriptor's <code>multiSelect.max</code> equals it.</p>
 Parameter RESENDMAX = 100;
 
+/// <p>The message export (Story 24.16 Batch 3), on the Messages endpoint: <code>EXPORT</code> is the composed fresh read (the review, one verdict for each id, and
+/// the two lists), <code>EXPORTMESSAGES</code> the write and <code>EXPORTCHOICES</code> the lists alone. The export writes no database, so its pairs carry READ on the
+/// globals database and the classic export dialog's resource and the Contents pane's, which the export is never a way round.</p>
+/// <p><code>EXPORT</code> answers what <code>RESEND</code> does, with <code>Production</code> <code>""</code>, and <code>{Separator, Charset, Separators: [], Charsets: []}</code>.
+/// <code>EXPORTMESSAGES</code> answers <code>{Namespace, Exported, Failed, Messages: [{ID}|{ID, Error}], File}</code>, <code>File</code> the bytes of the export base64-encoded
+/// and empty when nothing was exported. <code>EXPORTCHOICES</code> answers <code>{Separators: [], Charsets: [], DefaultSeparator, DefaultCharset}</code>.</p>
+Parameter EXPORTPAIR = "%Ens_MessageExport:USE";
+
+Parameter TYPEEXPORTMESSAGES = "EXPORTMESSAGES";
+
+Parameter TYPEEXPORTCHOICES = "EXPORTCHOICES";
+
+/// <p>The query keys carrying the separator and the character set an export is made with.</p>
+Parameter SEPARATORKEY = "separator";
+
+Parameter CHARSETKEY = "charset";
+
+/// <p>The classic export dialog's message separators, in its order, and the default of each choice. The character sets are the instance's own
+/// (<method>ExportCharsets</method>).</p>
+Parameter EXPORTSEPARATORS = "CRLF,CR,LF,MLLP,Tab,None";
+
+Parameter DEFAULTSEPARATOR = "CRLF";
+
+Parameter DEFAULTCHARSET = "UTF8";
+
+/// <p>The most bytes an export's file holds; the most messages it names is <parameter>RESENDMAX</parameter>. The bytes travel base64-encoded in one JSON string of at most
+/// <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter> characters, so the file holds at most three quarters of that, 2,250,000 bytes (a test holds the
+/// two equal); an export over it is refused whole, never cut.</p>
+Parameter EXPORTMAXBYTES = 2250000;
+
 /// <p>The text an edited HL7 message's <code>Source</code> ends with, followed by the original body's id, as the classic Edit and
 /// Resend page writes it, and the lower-case prefix of the body class names OcuPilot never edits.</p>
 Parameter EDITEDCOPY = "; Edited copy of ";
@@ -1147,7 +1177,7 @@ ClassMethod IsMessageWrite(pType As %String) As %Boolean
 /// <p>Whether <var>pType</var> is one of the Messages endpoint's four resend types, the two reads and the two writes.</p>
 ClassMethod IsMessageType(pType As %String) As %Boolean
 {
-    Quit (pType = ..#TYPERESEND) || (pType = ..#TYPEEDIT) || ..IsMessageWrite(pType)
+    Quit (pType = ..#TYPERESEND) || (pType = ..#TYPEEDIT) || ..IsMessageWrite(pType) || ..IsMessageExportType(pType)
 }
 
 /// <p>Whether <var>pType</var> is one of the business partner writes this port carries (Story 20.26): an action-style or merge
@@ -1279,6 +1309,7 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && ((pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)) Set tSpec = tSpec _ "," _ ..#DTLTESTPAIR
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ((pType = ..#TYPERESEND) || (pType = ..#TYPERESENDMESSAGES)) Set tSpec = tSpec _ "," _ ..#RESENDPAIR
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ((pType = ..#TYPEEDIT) || (pType = ..#TYPEEDITRESEND)) Set tSpec = tSpec _ "," _ ..#MESSAGECONTENTPAIR _ "," _ ..#RESENDPAIR _ "," _ ..#EDITRESENDPAIR
+    If (pEndpoint = ..#ENDPOINTMESSAGES) && ..IsMessageExportType(pType) Set tSpec = tSpec _ "," _ ..#EXPORTPAIR _ "," _ ..#MESSAGECONTENTPAIR
     If pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES {
         Set tKind = ..SuspendedKind(pType)
         If tKind = "resubmit" Set tSpec = tSpec _ "," _ ..#RESENDPAIR
@@ -4577,6 +4608,8 @@ ClassMethod MessageCriterionReason(pName As %String) As %String
     If pName = "className" Quit pName _ " must be a class name."
     If pName = "match" Quit pName _ " must be any, source, target or body."
     If pName = "Messages" Quit pName _ " must name 1 to " _ ..#RESENDMAX _ " message header IDs, separated by commas: digits, not beginning with zero."
+    If pName = "separator" Quit pName _ " must be one of " _ $Replace(..#EXPORTSEPARATORS, ",", ", ") _ "."
+    If pName = "charset" Quit pName _ " must be one of the character sets this instance lists."
     Quit pName _ " is not valid."
 }
 
@@ -5235,10 +5268,16 @@ ClassMethod MessageSet(pText As %String, Output pIds As %List) As %Boolean
 /// <p>For a suspended message (Story 24.16) <var>pKind</var> is the action, <code>resubmit</code>, <code>edit</code>, <code>discard</code> or
 /// <code>delete</code> (<method>SuspendedKind</method>), and a header that is not <var>pSuspended</var> reads <code>notsuspended</code>
 /// straight after <code>gone</code>. A discard and a delete read no body or target and answer the action's own word; a resubmit and an edit
-/// are judged as a resend is and answer <code>resubmit</code>. Pure.</p>
-ClassMethod MessageVerdict(pType As %String, pExists As %Boolean, pBodyGone As %Boolean, pEnabledTarget As %Boolean, pReplyQueue As %Boolean, pKind As %String = "", pSuspended As %Boolean = 1) As %String
+/// are judged as a resend is and answer <code>resubmit</code>.</p>
+/// <p>For an export (Story 24.16 Batch 3) <var>pKind</var> is <code>export</code>: after <code>gone</code>, <code>nobody</code> for a header whose body is not there
+/// (<var>pBodyGone</var>), <code>notext</code> for a body that cannot be shown as text (<var>pNoText</var>), else <code>export</code>. Pure.</p>
+ClassMethod MessageVerdict(pType As %String, pExists As %Boolean, pBodyGone As %Boolean, pEnabledTarget As %Boolean, pReplyQueue As %Boolean, pKind As %String = "", pSuspended As %Boolean = 1, pNoText As %Boolean = 0) As %String
 {
     If 'pExists Quit "gone"
+    If pKind = "export" {
+        If pBodyGone Quit "nobody"
+        Quit $Select(pNoText: "notext", 1: "export")
+    }
     If (pKind '= "") && 'pSuspended Quit "notsuspended"
     If (pKind = "discard") || (pKind = "delete") Quit pKind
     If pBodyGone Quit "nobody"
@@ -5287,6 +5326,7 @@ ClassMethod SuspendedOutcomeWord(pKind As %String, pDone As %Boolean) As %String
 {
     If pKind = "discard" Quit $Select(pDone: ##class(OcuPilot.Api.InteropError).#OUTCOMEDISCARDED, 1: ##class(OcuPilot.Api.InteropError).#OUTCOMENOTDISCARDED)
     If pKind = "delete" Quit $Select(pDone: ##class(OcuPilot.Api.InteropError).#OUTCOMEDELETED, 1: ##class(OcuPilot.Api.InteropError).#OUTCOMENOTDELETED)
+    If pKind = "export" Quit $Select(pDone: ##class(OcuPilot.Api.InteropError).#OUTCOMEEXPORTED, 1: ##class(OcuPilot.Api.InteropError).#OUTCOMENOTEXPORTED)
     Quit $Select(pDone: ##class(OcuPilot.Api.InteropError).#OUTCOMERESUBMITTED, 1: ##class(OcuPilot.Api.InteropError).#OUTCOMENOTRESUBMITTED)
 }
 
@@ -5332,7 +5372,7 @@ ClassMethod JudgeMessages(pNamespace As %String, pProduction As %String, pIds As
     Set pEligible = 0
     Set tOk = $Select(pKind = "": "resend", (pKind = "edit"): "resubmit", 1: pKind)
     Kill tEnabled
-    If (pKind '= "discard") && (pKind '= "delete") {
+    If (pKind '= "discard") && (pKind '= "delete") && (pKind '= "export") {
         Set tSC = ..GatherItems(pNamespace, pProduction, "", 0, .tExists, .tFound, .tCount, .tCaught)
         If $IsObject(tCaught) Quit ..Mapped(tCaught, "the production's items could not be read", .pHttpStatus, .pFault)
         For tI = 1:1:tFound {
@@ -5345,8 +5385,13 @@ ClassMethod JudgeMessages(pNamespace As %String, pProduction As %String, pIds As
         Set tSC = ..HeaderFacts(pNamespace, tId, .tHeaderExists, .tQueue, .tStatus, .tCaught, .tType, .tSource, .tTarget, .tBodyClass, .tBodyId, .tBodyExists, .tQueueExists)
         If $IsObject(tCaught) Quit
         Set tBodyGone = tHeaderExists && (tBodyClass '= "") && (tBodyId '= "") && 'tBodyExists
+        Set tNoText = 0
+        If (pKind = "export") && tHeaderExists {
+            Set tBodyGone = ((tBodyClass = "") || (tBodyId = "") || 'tBodyExists)
+            If 'tBodyGone Set tNoText = '..TextBodyHere(pNamespace, tBodyClass, tBodyId)
+        }
         Set tTargetEnabled = $Select(tTarget = "": 0, 1: ''$Data(tEnabled($ZConvert(tTarget, "U"))))
-        Set tVerdict = ..MessageVerdict(tType, tHeaderExists, tBodyGone, tTargetEnabled, tQueueExists, pKind, (tStatus = "Suspended"))
+        Set tVerdict = ..MessageVerdict(tType, tHeaderExists, tBodyGone, tTargetEnabled, tQueueExists, pKind, (tStatus = "Suspended"), tNoText)
         If tVerdict = tOk Set pEligible = pEligible + 1
         Set pVerdicts = pVerdicts _ $Select(pVerdicts = "": "", 1: ",") _ tId _ "=" _ tVerdict
         Set pFacts($Increment(pFacts)) = $ListBuild(tId, tType, tSource, tTarget, tBodyClass, tBodyId, tVerdict)
@@ -5374,12 +5419,14 @@ ClassMethod JudgeMessages(pNamespace As %String, pProduction As %String, pIds As
 /// <p>For a suspended message (Story 24.16) <var>pKind</var> is the action (<method>MessageVerdict</method>); only a resubmit reads the
 /// production's state, a discard and a delete answer <code>Production</code> <code>""</code>, and a moved review is 409
 /// <code>INTEROP.SUSPENDED.CHANGED</code>.</p>
+/// <p>For an export (Story 24.16 Batch 3) <var>pKind</var> is <code>export</code>: only the verdicts are read, no production's state, and a moved review is 409
+/// <code>INTEROP.EXPORT.CHANGED</code>.</p>
 ClassMethod ReadResend(pNamespace As %String, pText As %String, pAction As %String, pReviewed As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pKind As %String = "") As %Status [ Private ]
 {
     Set pRow = ""
     If '..MessageSet(pText, .tIds) Quit ..RefuseCriterion("Messages", .pHttpStatus, .pFault)
     Set tProduction = ""
-    If (pKind '= "discard") && (pKind '= "delete") {
+    If (pKind '= "discard") && (pKind '= "delete") && (pKind '= "export") {
         Set tSC = ..RunningProduction(pNamespace, .tProduction, .tCaught)
         If $IsObject(tCaught) Quit ..Mapped(tCaught, "the production's state could not be read", .pHttpStatus, .pFault)
         If tProduction = "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#NOTRUNNING, .pHttpStatus, .pFault)
@@ -5387,7 +5434,7 @@ ClassMethod ReadResend(pNamespace As %String, pText As %String, pAction As %Stri
     Set tSC = ..JudgeMessages(pNamespace, tProduction, tIds, .tRows, .tFacts, .tVerdicts, .tEligible, .pHttpStatus, .pFault, pKind)
     If $$$ISERR(tSC) Quit tSC
     Set tDigest = ..ResendDigest(tProduction, tVerdicts)
-    If (pAction '= "") && (pReviewed '= "") && (pReviewed '= tDigest) Quit ..Conflict($Select(pKind = "": ##class(OcuPilot.Api.InteropError).#RESENDCHANGED, 1: ##class(OcuPilot.Api.InteropError).#SUSPENDEDCHANGED), .pHttpStatus, .pFault)
+    If (pAction '= "") && (pReviewed '= "") && (pReviewed '= tDigest) Quit ..Conflict($Select(pKind = "": ##class(OcuPilot.Api.InteropError).#RESENDCHANGED, pKind = "export": ##class(OcuPilot.Api.InteropError).#EXPORTCHANGED, 1: ##class(OcuPilot.Api.InteropError).#SUSPENDEDCHANGED), .pHttpStatus, .pFault)
     Set pRow = {}
     Do pRow.%Set("Namespace", pNamespace, "string")
     Do pRow.%Set("Production", tProduction, "string")
@@ -5495,6 +5542,377 @@ ClassMethod PerformResend(pNamespace As %String, pText As %String, pReviewed As 
     Do pResult.%Set("Messages", tSent)
     Set pHttpStatus = 200
     Quit $$$OK
+}
+
+/// <p>Whether the body <var>pClass</var> <var>pBodyId</var> in <var>pNamespace</var> can be written as text by an export: a character stream, an EDI document or an
+/// <parameter>XMLADAPTOR</parameter> object, the kinds <method>ContentsText</method> draws. Nothing is audited. A body that does not open, or a fault, reads <code>0</code>. Switches
+/// the namespace by explicit save and restore; only this class runs while it is switched.</p>
+ClassMethod TextBodyHere(pNamespace As %String, pClass As %String, pBodyId As %String) As %Boolean [ Private ]
+{
+    Set tText = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tObject = ..OpenBodyHere(pClass, pBodyId)
+        If $IsObject(tObject) {
+            If tObject.%Extends("%Stream.Object") {
+                Set tText = ''tObject.IsCharacter()
+            } Else {
+                Set tText = ''(tObject.%Extends(..#DOCUMENTBASE) || tObject.%Extends(..#XMLADAPTOR))
+            }
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tText = 0
+    }
+    Quit tText
+}
+
+/// <p>The character sets this instance lists for a file, as a <class>%List</class>: the classic export dialog's own list (<code>GetIONames^%SYS.NLS</code>), read at the call.
+/// <parameter>DEFAULTCHARSET</parameter> is the one preselected.</p>
+ClassMethod ExportCharsets() As %List
+{
+    Set tNames = $$GetIONames^%SYS.NLS(.tDefaults, 1)
+    Set tList = ""
+    For tI = 1:1:$Length(tNames, ",") {
+        If $Piece(tNames, ",", tI) '= "" Set tList = tList _ $ListBuild($Piece(tNames, ",", tI))
+    }
+    Quit tList
+}
+
+/// <p>The characters that separate two messages in a file for the separator <var>pName</var> (<parameter>EXPORTSEPARATORS</parameter>), as the classic export writes them;
+/// <code>""</code> for <code>None</code> and for a name that is not one. Pure.</p>
+ClassMethod ExportSeparatorChars(pName As %String) As %String
+{
+    Quit $Case(pName, "CRLF": $Char(13, 10), "CR": $Char(13), "LF": $Char(10), "MLLP": $Char(28), "Tab": $Char(9), : "")
+}
+
+/// <p>The bytes a file for the character set <var>pCharset</var> begins with, which the classic export's file stream writes before its first character: the byte order mark of
+/// <code>UnicodeLittle</code> and <code>UnicodeBig</code>, none for any other. Pure.</p>
+ClassMethod ExportByteOrderMark(pCharset As %String) As %String
+{
+    Quit $Case(pCharset, "UnicodeLittle": $Char(255, 254), "UnicodeBig": $Char(254, 255), : "")
+}
+
+/// <p><var>pText</var> as the classic export's device carries it: each character above 255, which a byte cannot hold, is <code>?</code>. Pure.</p>
+ClassMethod ExportNarrow(pText As %String) As %String
+{
+    If $Length($ZConvert(pText, "O", "UTF8")) = $Length(pText) Quit pText
+    Set tOut = ""
+    Set tFrom = 1
+    Set tLength = $Length(pText)
+    For tI = 1:1:tLength {
+        If $Ascii($Extract(pText, tI)) > 255 {
+            Set tOut = tOut _ $Extract(pText, tFrom, tI - 1) _ "?"
+            Set tFrom = tI + 1
+        }
+    }
+    Quit tOut _ $Extract(pText, tFrom, tLength)
+}
+
+/// <p>The text of the body <var>pObject</var> of header <var>pHeaderId</var> as the classic export writes it to its device (Story 24.16 Batch 3), in <var>pWire</var>, one
+/// character a byte: an EDI document as <code>OutputToDevice</code> writes it (an EDI XML document with <code>wt</code>) with each character above 255 a <code>?</code>, an
+/// <parameter>XMLADAPTOR</parameter> object as an indented <code>%XML.Writer</code> writes it, its UTF-8 bytes each a character, and a character stream as its text. At most
+/// <parameter>EXPORTMAXBYTES</parameter> + 1 characters are read, and <var>pTooLarge</var> is 1 when there was more. A body of another kind is an error status. Called while the
+/// message's namespace is switched. Overridable so a test can fail one message's render; production never overrides it.</p>
+ClassMethod ExportRenderHere(pHeaderId As %String, pObject As %RegisteredObject, Output pWire As %String, Output pTooLarge As %Boolean) As %Status [ Private ]
+{
+    Set pWire = ""
+    Set pTooLarge = 0
+    Set tLimit = ..#EXPORTMAXBYTES + 1
+    If pObject.%Extends("%Stream.Object") {
+        If 'pObject.IsCharacter() Quit $$$ERROR($$$GeneralError, "The body is not text.")
+        Do pObject.Rewind()
+        Set pWire = pObject.Read(tLimit)
+        Set pTooLarge = 'pObject.AtEnd
+        Quit $$$OK
+    }
+    If pObject.%Extends(..#DOCUMENTBASE) {
+        Set tStream = ##class(%Stream.TmpCharacter).%New()
+        If pObject.%Extends(..#XMLDOCUMENT) {
+            Set tSC = pObject.OutputToLibraryStream(tStream, "wt")
+        } Else {
+            Set tSC = pObject.OutputToLibraryStream(tStream)
+        }
+        If $$$ISERR(tSC) Quit tSC
+        Do tStream.Rewind()
+        Set tText = tStream.Read(tLimit)
+        Set pTooLarge = 'tStream.AtEnd
+        Set pWire = ..ExportNarrow(tText)
+        Quit $$$OK
+    }
+    If pObject.%Extends(..#XMLADAPTOR) {
+        Set tStream = ##class(%Stream.TmpBinary).%New()
+        Set tWriter = ##class(%XML.Writer).%New()
+        Set tWriter.Indent = 1
+        Set tSC = tWriter.OutputToStream(tStream)
+        If $$$ISOK(tSC) Set tSC = tWriter.RootObject(pObject)
+        If $$$ISERR(tSC) Quit tSC
+        Do tStream.Rewind()
+        Set pWire = tStream.Read(tLimit)
+        Set pTooLarge = 'tStream.AtEnd
+        Quit $$$OK
+    }
+    Quit $$$ERROR($$$GeneralError, "The body is not text.")
+}
+
+/// <p>Render the body of message header <var>pHeaderId</var> in <var>pNamespace</var> into <var>pBytes</var> as one member of an export: <var>pPrefix</var> (the separator, or
+/// the MLLP start) and the body's text (<method>ExportRenderHere</method>), a <code>CRLF</code> inside them one <code>LF</code> as the classic export's file stream writes it, then
+/// converted to the character set <var>pCharset</var>. <var>pClass</var> and <var>pBodyId</var> name the body for the view audit, which this does not write. <var>pRenderSC</var>
+/// is the render's status, <var>pTooLarge</var> 1 when the body, or the bytes so far, pass <parameter>EXPORTMAXBYTES</parameter>, and a thrown fault is <var>pCaught</var>, with the
+/// namespace restored. Only this class and vendor classes run while the namespace is switched.</p>
+ClassMethod ExportMemberHere(pNamespace As %String, pHeaderId As %String, pPrefix As %String, pCharset As %String, pBytes As %Stream.Object, Output pClass As %String, Output pBodyId As %String, Output pRenderSC As %Status, Output pTooLarge As %Boolean, Output pCaught) As %Status [ Private ]
+{
+    Set pClass = ""
+    Set pBodyId = ""
+    Set pRenderSC = $$$OK
+    Set pTooLarge = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tHeader = ##class(Ens.MessageHeader).%OpenId(pHeaderId)
+        If $IsObject(tHeader) {
+            Set pClass = tHeader.MessageBodyClassName
+            Set pBodyId = tHeader.MessageBodyId
+        }
+        Set tHeader = ""
+        Set tObject = ..OpenBodyHere(pClass, pBodyId)
+        If '$IsObject(tObject) {
+            Set pRenderSC = $$$ERROR($$$GeneralError, "The message body is no longer there.")
+        } Else {
+            Set pRenderSC = ..ExportRenderHere(pHeaderId, tObject, .tWire, .pTooLarge)
+            If $$$ISOK(pRenderSC) && 'pTooLarge {
+                Do pBytes.Write($ZConvert($Replace(pPrefix _ tWire, $Char(13, 10), $Char(10)), "O", pCharset))
+                If pBytes.Size > ..#EXPORTMAXBYTES Set pTooLarge = 1
+            }
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>Record the view of each body of <var>pViews</var> (<code>pViews(n)</code> is <code>$ListBuild(header id, body class, body id)</code>, <var>pViews</var> the count), as the classic
+/// Contents pane records it (<method>AuditViewHere</method>), in <var>pNamespace</var>. A fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod AuditViewsHere(pNamespace As %String, ByRef pViews, Output pCaught) As %Status [ Private ]
+{
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        For tI = 1:1:+$Get(pViews) Do ..AuditViewHere($List(pViews(tI), 1), $List(pViews(tI), 2), $List(pViews(tI), 3))
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>Whether <var>pType</var> is one of the Messages endpoint's three export types (Story 24.16 Batch 3): the composed review, the write and the choices read.</p>
+ClassMethod IsMessageExportType(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEEXPORT) || (pType = ..#TYPEEXPORTMESSAGES) || (pType = ..#TYPEEXPORTCHOICES)
+}
+
+/// <p>The two lists an export is made with, <code>{Separators: [], Charsets: [], DefaultSeparator, DefaultCharset}</code> (<parameter>EXPORTSEPARATORS</parameter> and
+/// <method>ExportCharsets</method>).</p>
+ClassMethod ExportChoices() As %DynamicObject
+{
+    Set tChoices = {}
+    Set tSeparators = []
+    For tI = 1:1:$Length(..#EXPORTSEPARATORS, ",") Do tSeparators.%Push($Piece(..#EXPORTSEPARATORS, ",", tI), "string")
+    Set tCharsets = []
+    Set tList = ..ExportCharsets()
+    For tI = 1:1:$ListLength(tList) Do tCharsets.%Push($List(tList, tI), "string")
+    Do tChoices.%Set("Separators", tSeparators)
+    Do tChoices.%Set("Charsets", tCharsets)
+    Do tChoices.%Set("DefaultSeparator", ..#DEFAULTSEPARATOR, "string")
+    Do tChoices.%Set("DefaultCharset", ..#DEFAULTCHARSET, "string")
+    Quit tChoices
+}
+
+/// <p>The review of an export (Story 24.16 Batch 3): <method>ReadResend</method>'s answer for the messages <var>pText</var> names, judged for an export, and
+/// <code>{Separator, Charset, Separators, Charsets}</code> beside it. An empty <var>pSeparator</var> or <var>pCharset</var> reads <parameter>DEFAULTSEPARATOR</parameter> or
+/// <parameter>DEFAULTCHARSET</parameter>. A set that is not 1 to <parameter>RESENDMAX</parameter> ids, a separator outside <parameter>EXPORTSEPARATORS</parameter> and a
+/// character set the instance does not list are each 400 <code>PORT.VALIDATION</code> naming it, before anything is read.</p>
+ClassMethod ReadExport(pNamespace As %String, pText As %String, pAction As %String, pReviewed As %String, pSeparator As %String, pCharset As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Set tSeparator = $Select(pSeparator = "": ..#DEFAULTSEPARATOR, 1: pSeparator)
+    Set tCharset = $Select(pCharset = "": ..#DEFAULTCHARSET, 1: pCharset)
+    If '..MessageSet(pText, .tIds) Quit ..RefuseCriterion("Messages", .pHttpStatus, .pFault)
+    If '$ListFind($ListFromString(..#EXPORTSEPARATORS), tSeparator) Quit ..RefuseCriterion("separator", .pHttpStatus, .pFault)
+    If '$ListFind(..ExportCharsets(), tCharset) Quit ..RefuseCriterion("charset", .pHttpStatus, .pFault)
+    Set tSC = ..ReadResend(pNamespace, pText, pAction, pReviewed, .pRow, .pHttpStatus, .pFault, "export")
+    If $$$ISERR(tSC) || '$IsObject(pRow) Quit tSC
+    Set tChoices = ..ExportChoices()
+    Do pRow.%Set("Separator", tSeparator, "string")
+    Do pRow.%Set("Charset", tCharset, "string")
+    Do pRow.%Set("Separators", tChoices.%Get("Separators"))
+    Do pRow.%Set("Charsets", tChoices.%Get("Charsets"))
+    Quit $$$OK
+}
+
+/// <p>Export the messages <var>pText</var> names whose verdict is <code>export</code> (Story 24.16 Batch 3): the review is made again first (<method>ReadExport</method>, composed for
+/// this write), so a <var>pReviewed</var> the verdicts no longer give is 409 <code>INTEROP.EXPORT.CHANGED</code> and no message reading <code>export</code> is 409
+/// <code>INTEROP.EXPORT.NONE</code>, each with nothing rendered. The bodies are rendered in ascending id order as the classic export writes them
+/// (<method>ExportMemberHere</method>), the separator before each but the first and after the last, and an MLLP file framed as the classic frames it, into a stream the file is
+/// built in; nothing is written to the instance's disk. A body whose render fails is recorded with the vendor's text (cut at <parameter>ERRORTEXTMAX</parameter>) and the rest are still
+/// exported; a render that throws is 500, after the namespace is restored. A file over <parameter>EXPORTMAXBYTES</parameter> is 409 <code>INTEROP.EXPORT.TOOLARGE</code>, decided
+/// before any view is audited and before any byte leaves. Only then is the view of each body exported recorded (<method>AuditViewsHere</method>), and the answer is
+/// <code>{Namespace, Exported, Failed, Messages: [{ID}|{ID, Error}], File}</code>, <code>File</code> the bytes base64-encoded in one call, <code>""</code> when none was exported.
+/// OcuPilot records no row of its own: an export changes nothing.</p>
+ClassMethod PerformExport(pNamespace As %String, pText As %String, pReviewed As %String, pSeparator As %String, pCharset As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..ReadExport(pNamespace, pText, ..#TYPEEXPORTMESSAGES, pReviewed, pSeparator, pCharset, .tRow, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If 'tRow.%Get("Eligible") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#EXPORTNONE, .pHttpStatus, .pFault)
+    Set tSeparatorName = tRow.%Get("Separator")
+    Set tCharset = tRow.%Get("Charset")
+    Set tSeparator = ..ExportSeparatorChars(tSeparatorName)
+    Set tBytes = ##class(%Stream.TmpBinary).%New()
+    Do tBytes.Write(..ExportByteOrderMark(tCharset))
+    Set tSent = []
+    Set tExported = 0
+    Set tFailed = 0
+    Set tViews = 0
+    Set tIterator = tRow.%Get("Messages").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tMessage) {
+        If tMessage.%Get("Verdict") '= "export" Continue
+        Set tId = tMessage.%Get("ID")
+        Set tPrefix = $Select(tExported = 0: $Select(tSeparatorName = "MLLP": $Char(11), 1: ""), 1: tSeparator)
+        Set tSC = ..ExportMemberHere(pNamespace, tId, tPrefix, tCharset, tBytes, .tClass, .tBodyId, .tRenderSC, .tTooLarge, .tCaught)
+        If $IsObject(tCaught) Quit
+        If tTooLarge Quit
+        Set tEntry = {}
+        Do tEntry.%Set("ID", tId, "string")
+        If $$$ISOK(tRenderSC) {
+            Set tExported = tExported + 1
+            Set tViews = tViews + 1
+            Set tViews(tViews) = $ListBuild(tId, tClass, tBodyId)
+        } Else {
+            Do ..LogFault("a message could not be exported", ..VendorCodesStatus(tRenderSC))
+            Do tEntry.%Set("Error", $Extract($System.Status.GetErrorText(tRenderSC), 1, ..#ERRORTEXTMAX), "string")
+            Set tFailed = tFailed + 1
+        }
+        Do tSent.%Push(tEntry)
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message export failed", .pHttpStatus, .pFault)
+    If tTooLarge Quit ..Conflict(##class(OcuPilot.Api.InteropError).#EXPORTTOOLARGE, .pHttpStatus, .pFault)
+    Set tFile = ""
+    If tExported {
+        Do tBytes.Write(..ExportTail(tSeparatorName, tCharset))
+        If tBytes.Size > ..#EXPORTMAXBYTES Quit ..Conflict(##class(OcuPilot.Api.InteropError).#EXPORTTOOLARGE, .pHttpStatus, .pFault)
+        Set tSC = ..AuditViewsHere(pNamespace, .tViews, .tCaught)
+        If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message export could not be recorded", .pHttpStatus, .pFault)
+        Do tBytes.Rewind()
+        Set tFile = $System.Encryption.Base64Encode(tBytes.Read(tBytes.Size), 1)
+    }
+    Set pResult = {}
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    Do pResult.%Set("Exported", tExported, "number")
+    Do pResult.%Set("Failed", tFailed, "number")
+    Do pResult.%Set("Messages", tSent)
+    Do pResult.%Set("File", tFile, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The bytes an export file ends with, as the classic export writes them after its last message: the separator, and for MLLP a carriage return after it, with a
+/// <code>CRLF</code> one <code>LF</code>, converted to the character set <var>pCharset</var>. Pure.</p>
+ClassMethod ExportTail(pSeparatorName As %String, pCharset As %String) As %String
+{
+    Quit $ZConvert($Replace(..ExportSeparatorChars(pSeparatorName) _ $Select(pSeparatorName = "MLLP": $Char(13), 1: ""), $Char(13, 10), $Char(10)), "O", pCharset)
+}
+
+/// <p>Serve the export types of the Messages endpoint after <method>Invoke</method>'s gate (Story 24.16 Batch 3): the review (<code>EXPORT</code>), the write
+/// (<code>EXPORTMESSAGES</code>) and the two lists (<code>EXPORTCHOICES</code>). The messages travel under <parameter>IDKEY</parameter> as the set <method>MessageSet</method>
+/// reads, the separator and the character set under <parameter>SEPARATORKEY</parameter> and <parameter>CHARSETKEY</parameter>, the digest a person reviewed under
+/// <parameter>DIGESTKEY</parameter>. A read composed for an action carries it under <parameter>ACTIONKEY</parameter>, which must be the export's write, else 501.</p>
+ClassMethod InvokeMessageExport(pNamespace As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPEEXPORTCHOICES {
+            Set pResult = ..ExportChoices()
+            Set pHttpStatus = 200
+            Quit
+        }
+        Set tAction = $Select(pType = ..#TYPEEXPORTMESSAGES: pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && (tAction '= ..#TYPEEXPORTMESSAGES) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPEEXPORTMESSAGES {
+            Set tSC = ..PerformExport(pNamespace, $Get(pQuery(..#IDKEY)), $Get(pQuery(..#DIGESTKEY)), $Get(pQuery(..#SEPARATORKEY)), $Get(pQuery(..#CHARSETKEY)), .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadExport(pNamespace, $Get(pQuery(..#IDKEY)), tAction, $Get(pQuery(..#DIGESTKEY)), $Get(pQuery(..#SEPARATORKEY)), $Get(pQuery(..#CHARSETKEY)), .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the message export call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The lines <method>Snippet</method> adds for the export write (Story 24.16 Batch 3), from the stored payload of <var>pContext</var> and the query <var>pQuery</var>: for each id of
+/// the set <var>pId</var> names that the payload's <code>Verdicts</code> reads <code>export</code> (every id when it holds none), the body opened and written to the terminal
+/// as <code>OutputToDevice</code> writes it, the separator before it when it is not the first, and the view recorded (<code>AuditViewMessage</code>); then the separator after the last,
+/// and for MLLP the carriage return. <code>""</code>, so no draft is rendered, for a set that is not 1 to <parameter>RESENDMAX</parameter> message ids, a separator outside
+/// <parameter>EXPORTSEPARATORS</parameter> or a character set the instance does not list. Every id is a string literal and each separator its character codes, so nothing the
+/// query or the payload carries runs as code.</p>
+ClassMethod ExportSnippet(pId As %String, ByRef pQuery, pContext As %DynamicObject) As %String [ Private ]
+{
+    If '..MessageSet(pId, .tAll) Quit ""
+    Set tPayload = ""
+    If $IsObject(pContext) && (pContext.%GetTypeOf("payload") = "object") Set tPayload = pContext.%Get("payload")
+    Set tSeparator = $Get(pQuery(..#SEPARATORKEY))
+    If (tSeparator = "") && $IsObject(tPayload) && (tPayload.%GetTypeOf("Separator") = "string") Set tSeparator = tPayload.%Get("Separator")
+    If tSeparator = "" Set tSeparator = ..#DEFAULTSEPARATOR
+    Set tCharset = $Get(pQuery(..#CHARSETKEY))
+    If (tCharset = "") && $IsObject(tPayload) && (tPayload.%GetTypeOf("Charset") = "string") Set tCharset = tPayload.%Get("Charset")
+    If tCharset = "" Set tCharset = ..#DEFAULTCHARSET
+    If '$ListFind($ListFromString(..#EXPORTSEPARATORS), tSeparator) || '$ListFind(..ExportCharsets(), tCharset) Quit ""
+    Kill tReviewed
+    If $IsObject(tPayload) && (tPayload.%GetTypeOf("Verdicts") = "string") {
+        Set tVerdicts = tPayload.%Get("Verdicts")
+        For tI = 1:1:$Length(tVerdicts, ",") {
+            Set tPair = $Piece(tVerdicts, ",", tI)
+            If $Match($Piece(tPair, "=", 1), ..#MESSAGEIDPATTERN) Set tReviewed($Piece(tPair, "=", 1)) = $Piece(tPair, "=", 2)
+        }
+    }
+    Set tIds = ""
+    For tI = 1:1:$ListLength(tAll) {
+        If $Data(tReviewed($List(tAll, tI))) && (tReviewed($List(tAll, tI)) '= "export") Continue
+        Set tIds = tIds _ $ListBuild($List(tAll, tI))
+    }
+    Set tNL = $Char(10)
+    Set tCodes = ""
+    For tI = 1:1:$Length(..ExportSeparatorChars(tSeparator)) Set tCodes = tCodes _ $Select(tCodes = "": "", 1: ", ") _ $Ascii($Extract(..ExportSeparatorChars(tSeparator), tI))
+    Set tSep = $Select(tCodes = "": """""", 1: "$Char(" _ tCodes _ ")")
+    Set tText = tNL _ " Set tSC = 1"
+    ; The script writes to the terminal that runs it, with the command's abbreviation: AD-12 allows no other spelling of the command in this tree.
+    If tSeparator = "MLLP" Set tText = tText _ tNL _ " W $Char(11)"
+    For tI = 1:1:$ListLength(tIds) {
+        Set tId = ..Literal($List(tIds, tI))
+        If tI > 1 Set tText = tText _ tNL _ " W " _ tSep
+        Set tText = tText _ tNL _ " Set tHeader = ##class(Ens.MessageHeader).%OpenId(" _ tId _ ")"
+        Set tText = tText _ tNL _ " Set tBody = $ClassMethod(tHeader.MessageBodyClassName, ""%OpenId"", tHeader.MessageBodyId)"
+        Set tText = tText _ tNL _ " If tBody.%Extends(""EnsLib.EDI.XML.Document"") { Do tBody.OutputToDevice(""wt"") } ElseIf tBody.%Extends(""EnsLib.EDI.Document"") { Do tBody.OutputToDevice() } ElseIf tBody.%Extends(""%Stream.Object"") { Do tBody.OutputToDevice() } ElseIf tBody.%Extends(""%XML.Adaptor"") { Set tWriter = ##class(%XML.Writer).%New(), tWriter.Indent = 1 Set tSC = $System.Status.AppendStatus(tSC, tWriter.OutputToDevice()) Set tSC = $System.Status.AppendStatus(tSC, tWriter.RootObject(tBody)) }"
+        Set tText = tText _ tNL _ " Do ##class(Ens.Util.Auditing).AuditViewMessage(""OcuPilot"", " _ tId _ ", tHeader.MessageBodyClassName, tHeader.MessageBodyId)"
+    }
+    Set tText = tText _ tNL _ " W " _ tSep
+    If tSeparator = "MLLP" Set tText = tText _ ", $Char(13)"
+    Quit tText
 }
 
 /// <p>The body of the message header <var>pHeaderId</var> as an edit reads it (Story 20.31), in <var>pFacts</var>, opened and
@@ -6007,6 +6425,10 @@ ClassMethod InvokeMessageAction(pNamespace As %String, pType As %String, ByRef p
     Set tSC = $$$OK
     Set pResult = ""
     Try {
+        If ..IsMessageExportType(pType) {
+            Set tSC = ..InvokeMessageExport(pNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
         Set tEdit = (pType = ..#TYPEEDIT) || (pType = ..#TYPEEDITRESEND)
         Set tWrite = ..IsMessageWrite(pType)
         Set tAction = $Select(tWrite: pType, 1: $Get(pQuery(..#ACTIONKEY)))
@@ -6549,7 +6971,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES) && ..IsSuspendedWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTITEMTEST) && ..IsTestWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && (pType = ..#TYPETRANSFORMTEST) Quit "objectscript"
-    If (pEndpoint = ..#ENDPOINTMESSAGES) && ..IsMessageWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTMESSAGES) && (..IsMessageWrite(pType) || (pType = ..#TYPEEXPORTMESSAGES)) Quit "objectscript"
     If pEndpoint '= ..#ENDPOINTPRODUCTIONS Quit ""
     If ..IsWrite(pType) || ..IsStartupWrite(pType) Quit "objectscript"
     Quit ""
@@ -6598,6 +7020,10 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tText = tText _ ..TestSnippet($Get(pQuery(..#IDKEY)), .pQuery)
     } ElseIf pEndpoint = ..#ENDPOINTTRANSFORMS {
         Set tText = tText _ ..TransformSnippet($Get(pQuery(..#IDKEY)), .pQuery)
+    } ElseIf (pEndpoint = ..#ENDPOINTMESSAGES) && (pType = ..#TYPEEXPORTMESSAGES) {
+        Set tPart = ..ExportSnippet($Get(pQuery(..#IDKEY)), .pQuery, pContext)
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
     } ElseIf pEndpoint = ..#ENDPOINTMESSAGES {
         Set tText = tText _ ..MessageSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery, pContext)
     } ElseIf ..IsRuntimeWrite(pType) {

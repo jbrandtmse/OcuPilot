@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:671 */
+  /** EXPERIENCE.md:672 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -9617,6 +9617,34 @@ export const STRINGS = {
   interopSuspendedPrompt2: 'Which target has the most suspended messages?',
   /** EXPERIENCE.md:629 */
   interopSuspendedPrompt3: 'Resubmit the suspended messages whose target is running.',
+  // Story 24.16 Batch 3: Messages' Export dialog, its verdicts and outcome words, its consequence, its two refusals and its status lines.
+  /** EXPERIENCE.md:630 */
+  interopMessageExportTitle: 'Export <n> messages',
+  /** EXPERIENCE.md:630 */
+  interopMessageExportTitleOne: 'Export 1 message',
+  /** EXPERIENCE.md:630 */
+  interopMessageExportSeparator: 'Message separator',
+  /** EXPERIENCE.md:630 */
+  interopMessageExportCharset: 'Character set',
+  /** EXPERIENCE.md:630 */
+  interopExportVerdictExport: 'will be exported',
+  /** EXPERIENCE.md:630 */
+  interopExportVerdictNotext: 'its body cannot be exported as text',
+  /** EXPERIENCE.md:630 */
+  interopExportOutcomeExported: 'exported',
+  /** EXPERIENCE.md:630 */
+  interopExportOutcomeNotExported: 'not exported',
+  /** EXPERIENCE.md:630 */
+  interopMessageExportConsequence:
+    'Exporting saves the body of each message marked to be exported to one file in this browser\'s downloads, in message id order, with the chosen separator between them. Each body exported is recorded in the audit log as viewed. Anyone who can open the file can read the messages.',
+  /** EXPERIENCE.md:630 */
+  interopExportRefusalNone: 'None of these messages can be exported. Each one\'s line says why.',
+  /** EXPERIENCE.md:630 */
+  interopExportRefusalChanged: 'These messages changed after they were reviewed, so nothing was exported. Review them again.',
+  /** EXPERIENCE.md:630 */
+  interopMessageExportSaved: 'Saved <n> messages as <file>.',
+  /** EXPERIENCE.md:630 */
+  interopMessageExportSavedOne: 'Saved 1 message as <file>.',
 } as const;
 
 /**

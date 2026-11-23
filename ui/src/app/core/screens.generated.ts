@@ -21728,11 +21728,18 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "resend",
         "selfProtection": ""
+      },
+      {
+        "id": "export",
+        "selfProtection": ""
       }
     ],
     "multiSelect": {
       "action": "resend",
-      "max": 100
+      "max": 100,
+      "extraActions": [
+        "export"
+      ]
     },
     "context": {
       "fields": [

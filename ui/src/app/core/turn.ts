@@ -39,6 +39,7 @@ import type { ApiService, JsonResult } from './api';
 import { CHANGE_ACTIONS, type ChangeAction, type ChangeBus } from './change-bus.ts';
 import { parseCitations, type Citation } from './citations.ts';
 import { impactOf, type Impact } from './impact.ts';
+import { exportCardLines, exportFileName, exportFileOf } from './message-export.ts';
 import { PRODUCTION_STATE_MOVED } from './proposal-view.ts';
 import { readBackOf, type ReadBack } from './read-back.ts';
 import { sourceControlQuestionsOf, type SourceControlQuestion } from './source-control-question.ts';
@@ -1029,6 +1030,11 @@ export interface TurnStoreOptions {
    * hidden.
    */
   readonly hidden?: () => boolean;
+  /**
+   * Saves the file a confirmed message export answered (Story 24.16 Batch 3, AD-39's fifth exception): its bytes and the name the browser
+   * saves them as. `main.ts` passes the document's own save, so `core/` touches no browser global; absent, a confirmed export saves nothing.
+   */
+  readonly saveFile?: (bytes: Uint8Array<ArrayBuffer>, name: string) => void;
 }
 
 /** Whether a row's current `privilege` already reads `fresh`. */
@@ -1050,6 +1056,8 @@ export class TurnStore {
   private readonly bus: ChangeBus | null;
   private readonly rereadMs: number;
   private readonly hidden: () => boolean;
+
+  private readonly saveFile: ((bytes: Uint8Array<ArrayBuffer>, name: string) => void) | null;
 
   /** The proposals this store has published `proposal-open` for and not yet closed, by id. */
   private readonly openProposals = new Map<string, TurnProposal>();
@@ -1127,6 +1135,7 @@ export class TurnStore {
     this.bus = options.bus ?? null;
     this.rereadMs = options.rereadMs ?? 15000;
     this.hidden = options.hidden ?? (() => false);
+    this.saveFile = options.saveFile ?? null;
 
     const kind = options.navigationType();
     const continuesThisTab = kind === 'reload' || kind === 'back_forward';
@@ -1502,6 +1511,10 @@ export class TurnStore {
       this.decidingProposals.delete(id);
     }
     if (result.kind === 'ok') {
+      // Story 24.16 Batch 3: a confirmed export's file is saved by this browser and never reaches the card; the card gets the status line and the failures.
+      const answered = result.body?.['output'];
+      const exportFile = decision === 'confirm' ? exportFileOf(answered) : null;
+      const exportName = exportFileName(this.targetOf(id)?.scope ?? '');
       const outcome: ProposalOutcome = {
         changeAction: confirmedAction(result.body),
         changedId: textAt(result.body, 'createdId'),
@@ -1516,10 +1529,11 @@ export class TurnStore {
         auditMarked: boolAt(result.body, 'auditMarked'),
         continues: boolAt(result.body, 'continues'),
         readBack: readBackOf(result.body?.['readBack']),
-        output: outputLinesOf(result.body?.['output']),
+        output: (exportFile === null ? null : exportCardLines(answered, exportName)) ?? outputLinesOf(answered),
         outputErrors: outputErrorsOf(result.body?.['output']),
         questions: sourceControlQuestionsOf(result.body?.['output']),
       };
+      if (exportFile !== null && outcome.state === PROPOSAL_CONFIRMED_STATE) this.saveFile?.(exportFile, exportName);
       const target = this.targetOf(id);
       this.recordProposalState(id, outcome);
       this.recordProposalRefusal(id, null);

@@ -2,7 +2,8 @@
 title: 'Story 24.16: Purge, suspended messages, export and the archive manager (Batch 3: export messages)'
 type: 'feature'
 created: '2026-11-23'
-status: 'ready-for-dev'
+status: 'in-review'
+baseline_revision: 'b86a75643a232ce3048e163493f6acb30265a901'
 review_loop_iteration: 0
 followup_review_recommended: false
 owned_ledger: ''
@@ -159,6 +160,28 @@ No new dependency; no privilege, role or access grant.
 10. The export writes no database, so its pairs carry READ, never WRITE, as the explorer export's (Story 19.13).
 11. Siblings (Rule 31): `InteropMessageResend` and the resend port family (tool, verdicts, loop), `InteropSuspendedMint` (mint), `ExportTable` (browser export, cap), `LocalePort.TransferFile` (the directory), `ContentsText` (render), `saveText` (save), `explorer-export-dialog.ts` (dialog), `interop-suspended-message-list.page.ts` (page), `InteropSuspendedSeam` (all-failed tests).
 
+**Measured (Task 0, `ocupilot-b-ci`, `HSCUSTOM` probes; every probe header, body, user and role removed after).**
+
+- (a) `EnsPortal.Dialog.ExportMessages.CreateTempFile` runs outside a session over a `%ResultSet` of ids, as `irisowner`, writing a temporary file the probe read and removed. Its bytes for an HL7 v2 message, an `Ens.StringRequest`, an EDI XML document and a 227 KB HL7 message, singly and together, for each of the six separators and `UTF8` and `CP1252`, and for all 22 character sets the instance lists (`URI`, `UnicodeLittle`, `UnicodeBig`, `UTF8`, `RAW`, the `CP` and `Latin` sets and `EBCDIC`) with `CRLF` and `MLLP`, **equal the bytes built in memory**. What the classic writes, which the in-memory build reproduces: the separator after every message, the last included; MLLP as `VT` before the first, `FS` between and `FS CR` after the last; a `CRLF` in one written chunk read as `LF` by its file stream (so a `CRLF` separator reads `LF` on this Linux instance); each character above 255 in an EDI body `?` (the device carries bytes); an XML-adaptor body as indented UTF-8 bytes each taken for a character (declaration and `LF` line ends included) before the character set converts it; `UnicodeLittle` and `UnicodeBig` files begin with their byte order mark. `ContentsText`'s render is not that text (`CRLF` segment ends, no XML declaration), so the export has its own render and `ContentsText` is unchanged. No listed character set failed to reach the classic bytes: V2's halt did not fire.
+- (b) The classic writes one `ViewContents` row per EDI or XML body exported, described "Message Browser Export to user's browser", none for a stream or binary body (which it counts as exported); `AuditViewHere` writes one row per body opened, described `OcuPilot`.
+- (c) Dropped by V2.
+- (d) A principal holding `%Ens_Portal:U`, `%Ens_MessageHeader:U`, `%Ens_MessageExport:U`, `%Ens_MessageContent:U`, READ on `%DB_HSCUSTOM` and `%Development:U` opens and renders every body kind and writes each view row; `$USERNAME` and `$ROLES` read the same after every call. Nothing more is needed, no write on the database either. Reading the audit rows takes a privilege the principal lacked, so the rows were counted as an administrator.
+- (e) 100 HL7 probes of about 9.9 KB (not 20 KB): 986,746 bytes, 0.13 s in memory against 0.27 s for the classic call, equal; 1,315,664 base64 characters. A file of exactly the cap, 2,250,000 bytes, is 3,000,000 characters and travels through the port and over HTTP to the browser's route. Stored body sizes do not predict the rendered size (an XML object's rendering has nothing to do with its stored size), so the cap is judged on the rendered stream, before any view is audited.
+- (f) The all-failed answers for resubmit, discard and delete are the resend family's contract on the unchanged code: 200, `Done` 0, `Failed` 2, both ids in `Messages`. Whether the vendor audits a refused resubmit was not measured: the seam answers before the vendor call.
+
+**Named limits (the orchestrator's U-150 ruling).** Messages per export: `RESENDMAX` (100). Bytes per file: `EXPORTMAXBYTES` 2,250,000, which is `OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS` (3,000,000) over four times three, a test holding the two equal; (e) shows that value safe end to end, so it is not lowered. The file is built in a `%Stream.TmpBinary`, one body's text at most `EXPORTMAXBYTES` + 1 characters at a time, and encoded in one `Base64Encode` call without line breaks. An export over the limit is refused before any view is audited and before any byte leaves, with the sentence "The file is larger than OcuPilot imports or exports."
+
+**Decided in-stage (implement).**
+
+1. The bytes reproduce the classic's exactly, its narrowing and `CRLF` reading included, since V2 and AC1 bind equality; the rule lives in one place (`ExportRenderHere`, `ExportMemberHere`, `ExportTail`), so a later change of that rule is one edit. A character stream is written as its text, as the plan decided.
+2. A render that returns an error status fails that message (200, the rest exported); a render that throws is 500 for the whole export, logged after the namespace is restored, with no view recorded. Views are audited once every body is rendered and the cap is met.
+3. The tool extends `InteropSuspendedAction` (the nearest sibling), which gains `NONECODE`; `MessageVerdict` gains `pNoText` and `SuspendedOutcomeWord` an `export` arm. `EXPORTCHOICES` is served by the port; the dialog reads the lists from the review's answer, so it asks nothing else.
+4. The pairs are in the port's order, `%Ens_Portal:USE`, `%Ens_MessageHeader:USE`, `%Ens_MessageExport:USE`, `%Ens_MessageContent:USE`, then READ (never WRITE) on the globals database. The tool's `SettableFields` is `Separator,Charset,Reviewed`, the order its screen action declares. `ClassicPageGate`'s principals gain `%Ens_MessageExport:U`.
+5. The script form writes with the command's abbreviation `W`, because `scripts/check-objectscript.py` allows the spelling `Write` in no class but the response writers (AD-12).
+6. The new classes start no probe production (`InteropMessageExportCase`). `HoldBody` moves from `InteropSuspendedRemove` to `InteropSuspendedCase`, and `OutcomeLine` and `OutcomeText` join it, for the follow-up 1 tests.
+7. Follow-up 1: the seam cannot cross into the HTTP process, so resubmit, discard and delete reach the person's screen leg through the port and the tool's `WriteOutput` (the lines both callers draw), and a delete whose two bodies are locked fails for real from both callers over HTTP.
+8. The Messages page wraps `AuditPage`, the search page its archetype already uses, with Export registered over it; `saveText` takes bytes, and `TurnStore` takes a `saveFile` option so `core/` touches no browser global.
+
 **Governing ADs (Rule 6):** AD-3, AD-6, AD-7, AD-8, AD-10, AD-11, AD-12, AD-13, AD-14, AD-15, AD-16, AD-21, AD-22, AD-29, AD-34, AD-36, AD-39, AD-40, AD-44, AD-51, AD-52, AD-53, AD-56, AD-58, AD-59, AD-60, AD-62 (items 1-5, 15, 17). Not engaged: AD-9 (no `$ROLES` frame unless Task 0 (d) finds an escalation, which HALTs), AD-23, AD-35 (no secret), AD-54, AD-63, AD-65, AD-66.
 
 **Integration and linkage (Rules 1, 2).** Integration: AC5 (the kernel's confirm consumes the stored proposal in its own namespace) and AC2 (the client's confirm path consumes `output.file`). Consumes: `InteropPort`'s resend family and `ContentsText`, `InteropMessageAction`, `InteropSuspendedMint`, `LocalePort`'s transfer directory, the kernel's proposal, confirm, governance and audit. Consumed-by: Story 24.20's undo names the export as having nothing to undo.
@@ -181,9 +204,27 @@ No new dependency; no privilege, role or access grant.
 
 **Mutations** (each AC's pinning test shown red on `ocupilot-b-ci`, `src` reloaded with subclasses and reverted byte-identical; client ones on a rebuilt, redeployed bundle or in the component runner), recorded by the implement stage as `mutation: <change> -> <test red>`. Planned: AC1 the `MLLP` separator written as `LF` -> `InteropMessageExport` red (the oracle leg); AC2 `turn.ts` hands the card the base64 line -> the `turn.ts` component spec red; AC3 `RemoveTransfer` skipped on the fault path -> `InteropMessageExportRefusals` red; AC4 a failed render counted as exported -> `InteropMessageExport` red (the partial leg); AC5 `FINGERPRINTSUBJECT` without `Namespace` -> `InteropMessageExportElsewhere` red; AC6 the page saves the outcome lines instead of the file -> the browser spec red; AC7 `PerformResend` answers 409 when nothing was done -> `InteropSuspendedRefusals` red (the all-failed legs); AC8 the fixture's HSCUSTOM `DropProbes` skipped -> `InteropMessageExportElsewhere`'s after-all check red.
 
+**Recorded (implement).** Server mutations on `ocupilot-b-ci`, `InteropPort` and the seams reloaded with the change and again after the revert (`cmp` identical each time):
+
+- mutation: the `MLLP` separator written as `LF` -> `InteropMessageExport` red (the oracle leg, AC1).
+- mutation: the tool drops the character set from the payload it sends -> `InteropMessageExport` red, two tests (AC1, AC2).
+- mutation: the size compare in `ExportMemberHere` is `>=` the cap -> `InteropMessageExportRefusals` red (the at-the-cap leg); the cap raised to 9,000,000 -> the one-over leg red; the compare `>` cap plus one in `ExportMemberHere` and in `PerformExport` together -> the one-over leg red (in `ExportMemberHere` alone it stays green, since `PerformExport` also compares) (AC3).
+- mutation: a failed render counted as exported -> `InteropMessageExport` red, two tests (AC4).
+- mutation: `FINGERPRINTSUBJECT` without `Namespace` -> `InteropMessageExportElsewhere` red, two tests, and `ConfirmNamespaceRoster` red (AC5).
+- mutation: `PerformResend` answers 409 when nothing was done -> `InteropSuspendedRefusals` red, two tests (AC7).
+- mutation: the fixture's `DropProbes` skips the second namespace -> `InteropMessageExportElsewhere` red, three tests including the class level (AC8).
+- mutation: the export branch of `Pairs` without `%Ens_MessageContent:USE` -> `InteropMessageExportRefusals` red (V3).
+- mutation: the `DraftRegistry` row for the tool's two settable fields removed -> `DraftRegistry` red.
+- mutation: `turn.ts` hands the card the output lines instead of the export card's status and failure lines -> `tools/turn.test.mjs` red (AC2).
+- mutation: the page saves the failure lines in place of the file bytes -> the browser spec red on the rebuilt, redeployed bundle, and the page component spec red (AC6).
+
+The planned AC3 mutation (`RemoveTransfer` skipped) does not apply: V2 builds the file in memory, so there is no transfer directory to remove.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: in-review
 Blocking condition: none
 
-**Plan.** Batch 3 of four: Export on the Messages screen's checked rows through `InteropPort`, reached by the screen and the agent, every proposal keeping its namespace and every confirm judging there; the follow-up 1 all-failed check as a test-first task; DW-2849 under Veto items 6, not planned. Read-only checks on `ocupilot-b-ci` (port 52777): the instance's character-set list, its temporary directory `/durable/iris/mgr/Temp` (mode 0775; a container shell's umask 0022), `^%SYS("TempDir")` unset for USER and HSCUSTOM, and `%Ens_MessageExport` present. Nothing was written to the instance.
+**Implemented (implement stage).** Export on the Messages screen's checked rows and as the agent's `interop.messages.export` write, through `InteropPort` (`ExportChoices`, `ReadExport`, `PerformExport`, the in-memory byte build in `ExportRenderHere`, `ExportMemberHere` and `ExportTail`), the tool `InteropMessageExport`, the row and checked-set action on `InteropMessageList`, the baseline key, and the client page `interop-message-list.page.ts` with its dialog, `message-export.ts`, the byte save in `csv.ts` and the confirm path's file save in `turn.ts`. Every proposal carries its namespace and its confirm judges there; the file is built in memory (V2), needs `%Ens_MessageContent:USE` as well (V3), and is capped at `EXPORTMAXBYTES` (2,250,000) with the named refusal. Follow-up 1's all-failed test for Batch 2's writes was added first and was green on the unchanged code, so no Batch 2 code changed.
+
+**Verified.** All 17 `ci-runner` shards green on `ocupilot-b-ci` (shards 6 and 10 re-run in full after the two roster updates below; shard 5's `InteropSessionRoute` failed once on this long-lived instance, identically with the story's base `InteropPort`, and passes with the cached query warmed, so it is instance state and not this change (inference); it passed on fresh instances in earlier runs). Smoke 50 of 50; `check-objectscript` 0 problems; `lint-docs` clean; `npm run build`, `test:tools` (2,408), the component runner (330 files, 3,914 tests) and `ci.test.mjs` green; the browser specs for export, resend, messages and suspended messages green on a freshly built and deployed bundle; no probe header, body, user, role or production left. Rosters updated: `InteropFloor` (the Administrator holds the one write tool whose pairs need READ only), `InteropMessageDescriptor` (two row actions), `ConfirmNamespaceRoster`, `DraftRegistry`, `ClassicPageGate`, `SurfaceCoverage`, `ToolEmit`, `ReadTool`, `ToolWrite`, `ToolRoundTrip`, `Prohibited`, `InteropDescriptor`, `InteropResendDescriptor`, `MappingDescriptor`, and the arming roster in `scripts/ci-throwaway.sh`.

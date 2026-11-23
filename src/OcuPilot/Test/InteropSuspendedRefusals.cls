@@ -137,6 +137,75 @@ Method TestAReviewThatMovedIsRefusedAndNothingChanges()
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
 }
 
+/// <p>AC7: two suspended messages the vendor fails, for each of resubmit, discard and delete, answer 200 with <code>Done</code> 0 and <code>Failed</code> 2, both ids in <code>Messages</code> with the
+/// vendor's status and in an outcome line the tool draws for the screen and the card, both still suspended; a discard and a delete leave OcuPilot's <code>ConfigChange</code> row listing both under
+/// <code>failed</code> and none under <code>done</code>.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.PerformResend</method> answers 409 when nothing was done -- every leg goes red.</p>
+Method TestEveryMessageFailingAnswersEachFailedIdForResubmitDiscardAndDelete()
+{
+    For tKind = "resubmit", "discard", "delete" {
+        Set tA = ..Susp("alpha " _ tKind)
+        Set tB = ..Susp("beta " _ tKind)
+        Set tSet = tA _ "," _ tB
+        Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+        Do ..HoldFor(tKind)
+        Do $ClassMethod(..#SEAM, "Arm")
+        Do $ClassMethod(..#SEAM, "FailActOf", tKind, tSet)
+        Set tCode = ..SPort(..WriteOf(tKind), tSet, .tResult, , , , .tFault, ..#NAMESPACE, ..#SEAM)
+        Do $ClassMethod(..#SEAM, "Disarm")
+        Do $$$AssertEquals(tCode, "200 ", tKind _ ": the write answers 200: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+        If '$IsObject($Get(tResult)) Continue
+        Do $$$AssertEquals(tResult.Done _ "|" _ tResult.Failed _ "|" _ tResult.Messages.%Size(), "0|2|2", tKind _ ": none done, two failed, an entry for each")
+        Do $$$AssertEquals(tResult.Messages.%Get(0).ID _ "," _ tResult.Messages.%Get(1).ID, tSet, tKind _ ": both ids are named, in id order")
+        Do $$$AssertTrue((tResult.Messages.%Get(0).Error [ $Parameter(..#SEAM, "MARKER")) && (tResult.Messages.%Get(1).Error [ $Parameter(..#SEAM, "MARKER")), tKind _ ": each carries the vendor's status")
+        Set tTool = $Parameter(..%ClassName(1), $ZConvert(tKind, "U") _ "TOOL")
+        Set tOutput = $ClassMethod(tTool, "WriteOutput", tResult)
+        Do $$$AssertEquals($Select($IsObject(tOutput): tOutput.lines.%Get(0) _ $Char(10) _ tOutput.lines.%Get(1), 1: ""), ..OutcomeLine(tKind, tA, 0) _ ": " _ tResult.Messages.%Get(0).Error _ $Char(10) _ ..OutcomeLine(tKind, tB, 0) _ ": " _ tResult.Messages.%Get(1).Error, tKind _ ": the outcome names each failed id with the vendor's text")
+        Do $$$AssertEquals(..Status(tA) _ "|" _ ..Status(tB), "5|5", tKind _ ": both are still suspended")
+        If (tKind = "discard") || (tKind = "delete") {
+            Do $$$AssertEquals(..OwnRows(tSince, tKind, .tOwn), 1, tKind _ ": one change row")
+            Do $$$AssertTrue((tOwn [ """done"":""""") && (tOwn [ ("""failed"":""" _ tSet _ """")), tKind _ ": it lists both ids under failed and none under done: " _ tOwn)
+        }
+    }
+}
+
+/// <p>AC7: a delete whose two bodies cannot be deleted answers the same from each caller over HTTP -- the person's, reviewed and sent, and the agent's, confirmed -- 200 with both ids not deleted
+/// and carrying the vendor's text, both headers still suspended with their bodies.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.PerformResend</method> answers 409 when nothing was done -- both legs go red.</p>
+Method TestADeleteOfTwoBodiesThatCannotBeDeletedAnswersEachFailedIdToBothCallers()
+{
+    Set tA = ..Susp("locked alpha")
+    Set tB = ..Susp("locked beta")
+    Set tBodyA = ..BodyOf(tA)
+    Set tBodyB = ..BodyOf(tB)
+    Set tSet = tA _ "," _ tB
+    Do $$$AssertTrue(..HoldBody(tBodyA, 1) && ..HoldBody(tBodyB, 1), "this process holds the lock on both bodies")
+    Try {
+        Set tCode = ..Dry("delete", tSet, .tDry)
+        Do $$$AssertEquals(tCode, "200 ", "the dry run answers")
+        Set tCode = ..Send("delete", tSet, ..Digest(tDry), .tSent)
+        Do $$$AssertEquals(tCode, "200 ", "the person's delete answers 200: " _ $Select($IsObject(tSent): tSent.%ToJSON(), 1: tSent))
+        Set tLines = ..OutcomeText(tSent)
+        Do $$$AssertTrue(($Piece(tLines, $Char(10), 1) [ (..OutcomeLine("delete", tA, 0) _ ": ")) && ($Piece(tLines, $Char(10), 2) [ (..OutcomeLine("delete", tB, 0) _ ": ")) && ($Length(tLines, $Char(10)) = 2), "the person reads both not deleted, with the vendor's text: " _ tLines)
+        Do ..EnableKey(..#DELETEKEY)
+        Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
+        Set tSC = $ClassMethod(..#CONTROL, "MintAs", ..#DELETETOOL, {"Messages": (tSet)}, tUser, .tProposal, .tHttp, .tFault, .tTurn)
+        Do $$$AssertStatusOK(tSC, "the agent's delete mints: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+        If $IsObject($Get(tProposal)) {
+            Set tSC = $ClassMethod(..#CONTROL, "ConfirmHttp", tProposal.proposalId, .tStatus, .tRaw, .tAnswer)
+            Do $$$AssertEquals(tStatus, 200, "the agent's delete confirms over HTTP: " _ $Extract($Get(tRaw), 1, 300))
+            Set tLines = ..OutcomeText($Get(tAnswer))
+            Do $$$AssertTrue(($Piece(tLines, $Char(10), 1) [ (..OutcomeLine("delete", tA, 0) _ ": ")) && ($Piece(tLines, $Char(10), 2) [ (..OutcomeLine("delete", tB, 0) _ ": ")) && ($Length(tLines, $Char(10)) = 2), "the agent's answer reads both not deleted: " _ tLines)
+            Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+        }
+        Do $$$AssertEquals(..Status(tA) _ "|" _ ..Status(tB) _ "|" _ (..BodyOf(tA) = tBodyA) _ "|" _ (..BodyOf(tB) = tBodyB), "5|5|1|1", "both headers are still suspended with their bodies")
+    } Catch ex {
+        Do $$$AssertTrue(0, "the legs ran: " _ ex.DisplayString())
+    }
+    Do ..HoldBody(tBodyA, 0)
+    Do ..HoldBody(tBodyB, 0)
+}
+
 /// <p>AC4: a production that is not running refuses a resubmit and an edit and resubmit, 409 <code>INTEROP.PRODUCTION.NOTRUNNING</code>, through the review and the port's reads and writes, with nothing
 /// changed; a discard and a delete need no production and are reviewed all the same.</p>
 /// <p>Mutation (Rule 19): drop the not-running refusal from <method>OcuPilot.Port.InteropPort.ReadResend</method> -- the resubmit legs go red.</p>

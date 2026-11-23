@@ -85,6 +85,11 @@ Parameter ADMINISTRATORSCREENS = "InteropItemClassTab,InteropItemTestTab,Interop
 /// <p>See <parameter>ADMINISTRATORSCREENS</parameter>.</p>
 Parameter ADMINISTRATORTOOLS = "interop.itemclasses.read,interop.itemtest.read,interop.message.body,interop.message.detail,interop.messagecontents.read,interop.processes.read,interop.purge.read,interop.purgesettings.read,interop.rules.read,interop.transforms.read";
 
+/// <p>The one write tool the Administrator role holds the pairs of (Story 24.16 Batch 3): Export messages needs the Interoperability menu's pair, the message
+/// header's, <code>%Ens_MessageExport:USE</code> and <code>%Ens_MessageContent:USE</code> and READ on the globals database, which that role holds and the
+/// Operator and Monitor roles do not. Every other write tool needs a pair this role lacks.</p>
+Parameter ADMINISTRATORWRITES = "interop.messages.export";
+
 /// <p>The principals' password for this run.</p>
 Property PreparedPassword As %String;
 
@@ -162,7 +167,7 @@ ClassMethod Tools(pKind As %String) As %String
     Set tList = ..#BASETOOLS
     If $ListFind($ListBuild("monitor", "operator", "administrator"), pKind) Set tList = tList _ "," _ ..#MONITORTOOLS
     If $ListFind($ListBuild("operator", "administrator"), pKind) Set tList = tList _ "," _ ..#OPERATORTOOLS
-    If pKind = "administrator" Set tList = tList _ "," _ ..#ADMINISTRATORTOOLS
+    If pKind = "administrator" Set tList = tList _ "," _ ..#ADMINISTRATORTOOLS _ "," _ ..#ADMINISTRATORWRITES
     Quit tList
 }
 
@@ -489,7 +494,7 @@ Method TestEveryOpenScreenMatchesItsClassicPage()
 }
 
 /// <p><b>Tools.</b> Of every tool the registry lists, the ones whose required pairs each principal
-/// holds are exactly its <method>Tools</method> roster, and none of them is a write tool.</p>
+/// holds are exactly its <method>Tools</method> roster, and none of them is a write tool beyond <parameter>ADMINISTRATORWRITES</parameter>.</p>
 /// <p>Mutation: give <class>OcuPilot.Screen.Descriptor.WebAppList</class> an empty pair set ->
 /// <code>webapp.list.read</code> joins every principal's held set and this goes red.</p>
 Method TestTheToolsEachPrincipalHoldsAreItsRoster()
@@ -519,7 +524,7 @@ Method TestTheToolsEachPrincipalHoldsAreItsRoster()
             If tTool.kind = "write" Set tWrites = tWrites _ $Select(tWrites = "": "", 1: ",") _ tTool.name
         }
         Do $$$AssertEquals(##class(OcuPilot.Test.DeveloperFloor).Sorted(tHeld), ##class(OcuPilot.Test.DeveloperFloor).Sorted(..Tools(tKind)), tKind _ ": the tools it holds are its roster")
-        Do $$$AssertEquals(tWrites, "", tKind _ ": and it holds no write tool")
+        Do $$$AssertEquals(tWrites, $Select(tKind = "administrator": ..#ADMINISTRATORWRITES, 1: ""), tKind _ ": and it holds no write tool but the declared ones")
     }
 }
 

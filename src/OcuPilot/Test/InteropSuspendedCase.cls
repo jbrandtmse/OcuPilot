@@ -249,6 +249,40 @@ ClassMethod DropBody(pBody As %String)
     }
 }
 
+/// <p>The outcome line of the message <var>pId</var> a suspended write acted on, <code>&lt;id&gt;: discarded</code> or <code>deleted</code> (<var>pDone</var> 1), else the <code>not</code> form.</p>
+ClassMethod OutcomeLine(pKind As %String, pId As %String, pDone As %Boolean = 1) As %String
+{
+    Quit pId _ ": " _ ##class(OcuPilot.Port.InteropPort).SuspendedOutcomeWord(pKind, pDone)
+}
+
+/// <p>The outcome lines of the confirm or action answer <var>pAnswer</var>, newline-separated.</p>
+ClassMethod OutcomeText(pAnswer) As %String
+{
+    Set tText = ""
+    If '$IsObject(pAnswer) || '$IsObject(pAnswer.%Get("output")) || '$IsObject(pAnswer.output.%Get("lines")) Quit tText
+    Set tIterator = pAnswer.output.lines.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLine) {
+        Set tText = tText _ $Select(tText = "": "", 1: $Char(10)) _ tLine
+    }
+    Quit tText
+}
+
+/// <p>Take (<var>pHold</var> 1) or give back (0) this process's exclusive lock on the body <var>pBody</var> (<method>BodyOf</method>'s) in <code>USER</code>; whether the call succeeded. While it is held,
+/// another process's delete of the body waits for the lock and then fails.</p>
+ClassMethod HoldBody(pBody As %String, pHold As %Boolean) As %Boolean
+{
+    Set tOk = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tOk = $System.Status.IsOK($ClassMethod($Piece(pBody, "|", 1), $Select(pHold: "%LockId", 1: "%UnlockId"), $Piece(pBody, "|", 2)))
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tOk
+}
+
 /// <p>The rows of OcuPilot's own <code>ConfigChange</code> audit event since <var>pSince</var> whose payload carries the action <var>pAction</var> (<code>discard</code> or
 /// <code>delete</code>): their count, and the last one's data in <var>pData</var>.</p>
 ClassMethod OwnRows(pSince As %String, pAction As %String, Output pData) As %Integer

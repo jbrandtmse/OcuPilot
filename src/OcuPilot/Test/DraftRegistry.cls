@@ -68,7 +68,7 @@ Parameter PORTREADFIELDS = "osmgmt.localdatabases.update=Directory";
 /// no member and its port would render no step, as <code>tool=field:value</code> entries,
 /// comma-separated (Story 18.20's status change: the port builds <code>{Action}</code> from
 /// <code>Status</code>; Story 24.14's export: its script renders no step for a source or a class name its port's shape checks refuse, so the probe names a dataset, two classes and a cube and leaves the SQL and the class to link to empty).</p>
-Parameter ARGUMENTVALUES = "osmgmt.ecpdataservers.changestatus=Status:disabled,analytics.pmmlmodel.export=Source:dataset,analytics.pmmlmodel.export=SQL:,analytics.pmmlmodel.export=SourceClass:,analytics.pmmlmodel.export=ResultClass:Draft.Result,analytics.pmmlmodel.export=CubeClass:Draft.Cube,analytics.pmmlmodel.export=Cube:DraftCube,interop.purge.run=DaysToKeep:30";
+Parameter ARGUMENTVALUES = "osmgmt.ecpdataservers.changestatus=Status:disabled,analytics.pmmlmodel.export=Source:dataset,analytics.pmmlmodel.export=SQL:,analytics.pmmlmodel.export=SourceClass:,analytics.pmmlmodel.export=ResultClass:Draft.Result,analytics.pmmlmodel.export=CubeClass:Draft.Cube,analytics.pmmlmodel.export=Cube:DraftCube,interop.purge.run=DaysToKeep:30,interop.messages.export=Separator:CRLF,interop.messages.export=Charset:UTF8";
 
 /// <p>The tools whose port resolves the synthetic target against the instance and refuses it, so the
 /// script is the refusal's one <code>comment</code> step and carries no secret, comma-separated (Story

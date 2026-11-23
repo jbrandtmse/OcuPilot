@@ -573,6 +573,8 @@ export const CONSEQUENCE_INTEROPSUSPENDEDRESUBMIT = 'INTEROP.SUSPENDED.RESUBMIT'
 export const CONSEQUENCE_INTEROPSUSPENDEDEDIT = 'INTEROP.SUSPENDED.EDIT';
 export const CONSEQUENCE_INTEROPSUSPENDEDDISCARD = 'INTEROP.SUSPENDED.DISCARD';
 export const CONSEQUENCE_INTEROPSUSPENDEDDELETE = 'INTEROP.SUSPENDED.DELETE';
+/** Story 24.16 Batch 3: a message export, which saves the bodies of the messages marked to one file in the confirming browser. */
+export const CONSEQUENCE_INTEROPMESSAGEEXPORT = 'INTEROP.MESSAGE.EXPORT';
 /** Story 20.22: a set of a setting that is a location on the server (AD-21's ninth case). */
 export const CONSEQUENCE_INTEROPSETTINGLOCATION = 'INTEROP.SETTING.LOCATION';
 /** The field a setting set's diff names the value under. */
@@ -823,6 +825,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_INTEROPSUSPENDEDEDIT) return STRINGS.interopSuspendedEditConsequence;
   if (code === CONSEQUENCE_INTEROPSUSPENDEDDISCARD) return STRINGS.interopSuspendedDiscardConsequence;
   if (code === CONSEQUENCE_INTEROPSUSPENDEDDELETE) return STRINGS.interopSuspendedDeleteConsequence;
+  // Story 24.16 Batch 3: a message export's sentence, the one its own dialog shows.
+  if (code === CONSEQUENCE_INTEROPMESSAGEEXPORT) return STRINGS.interopMessageExportConsequence;
   return '';
 }
 

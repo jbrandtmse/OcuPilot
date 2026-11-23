@@ -289,6 +289,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 24.16: Purge management data, the list with its Purge dialog, and Purge data settings, on the settings page that adds Set value over the shared list.
   'OcuPilot.Screen.Descriptor.InteropPurgeList': () => import('../areas/interoperability/interop-purge-list.page').then((m) => m.InteropPurgeListPage),
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': CONFIG_SETTINGS_PAGE,
+  // Story 24.16 Batch 3: Messages, the search with its Export dialog.
+  'OcuPilot.Screen.Descriptor.InteropMessageList': () => import('../areas/interoperability/interop-message-list.page').then((m) => m.InteropMessageListPage),
   // Story 24.16: Suspended messages, the list with its Edit and resubmit form.
   'OcuPilot.Screen.Descriptor.InteropSuspendedMessageList': () => import('../areas/interoperability/interop-suspended-message-list.page').then((m) => m.InteropSuspendedMessageListPage),
   // Story 20.27: Data transformations, the list with its Test dialog.
