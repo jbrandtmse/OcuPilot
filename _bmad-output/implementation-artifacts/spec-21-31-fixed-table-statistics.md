@@ -2,7 +2,7 @@
 title: 'Story 21.31: Fixed table statistics'
 type: 'feature'
 created: '2026-11-23'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '2b6b656d06d800d4a60814da4beec183028a8f42'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -234,6 +234,7 @@ Code review 2026-11-23 (stage `21-31-cr`, Opus). The diff is `16a1401d9..0798022
 - 2026-11-23, orchestrator ruling after implement (vetoes U-152/U-153, the same two sentences filed twice; DW-2852), authoritative:
   - **Outlier value is data.** The caller sends a plain value: at most 128 characters, no control characters (CR, LF, `$C(0)`–`$C(31)` and DEL refused). The port builds the vendor's expression itself: a canonical number (`$Number(v)'=""` and `+v=v`) as is, anything else as `""""_$Replace(v,"""","""""")_""""`. No caller text is ever passed unquoted. The number-or-quoted-literal grammar leaves the caller contract. A read shows the stored value as that plain text, so an echoed value is never quoted twice.
   - **The read, and the omitted-value invariant** (orchestrator addendum). A stored value in the vendor's quoted form reads as its inner text, undoubled. A canonical number reads as the number. Anything else, such as an expression set through the classic page, reads verbatim. When a set omits an outlier field, the port passes the field's stored value raw, exactly as the vendor holds it and read just before the call. It never goes through the plain-text read and is never re-quoted. This is pinned by a test that seeds a quoted value, a number and `.5`, sets the selectivity alone, and checks that each outlier field reads back byte-equal. A value sent in is always data. The script preview shows the expression the port actually sends, quoting included.
+  - Measured 2026-11-23 (runner, `ocupilot-ci`): a bare expression is evaluated when it is set and stored as its result. `$Char(65)` set through `SetFieldSelectivity` reads back from `FieldCurrentSelectivity` as `"A"`, so the vendor never keeps an expression and the byte-equal test needs no expression seed.
   - **A set that fails after `FixTableStats` succeeded:** the screen (wherever it shows the 409's reason) and the agent's outcome say "The table's collected statistics were saved as its fixed statistics, but the new value was not set." It is pinned in EXPERIENCE.md's Fixed strings and by a test over HTTP.
   - **Map size 0 is refused,** because the vendor silently replaces 0 with the measured size. The hint and the refusal read "Enter a whole number, 1 or more." A boundary test accepts 1 and refuses 0.
 
