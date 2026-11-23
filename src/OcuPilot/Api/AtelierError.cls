@@ -419,6 +419,25 @@ Parameter TABLEREBUILDALL = "SQL.TABLE.REBUILDALL";
 
 Parameter REASONTABLEREBUILDALL = "Every index of this table is emptied and built again from its rows. The table is locked against changes while it runs.";
 
+/// <p>The removal of fixed statistics from a table that has none (Story 21.25).</p>
+Parameter TABLENOFIXEDSTATS = "SQL.TABLE.NOFIXEDSTATS";
+
+Parameter REASONTABLENOFIXEDSTATS = "This table has no fixed statistics.";
+
+/// <p>The consequence codes of the statistics writes: the collection of a table's statistics, the removal of its fixed statistics and the collection
+/// of every table's in a schema (Story 21.25).</p>
+Parameter TABLETUNE = "SQL.TABLE.TUNE";
+
+Parameter REASONTABLETUNE = "The table's extent size and each field's selectivity are measured from its current rows. Some of the table's cached queries may be purged, so their plans may change.";
+
+Parameter TABLECLEARSTATISTICS = "SQL.TABLE.CLEARSTATISTICS";
+
+Parameter REASONTABLECLEARSTATISTICS = "The fixed statistics saved for this table are removed. The optimizer uses collected statistics, or none.";
+
+Parameter TABLETUNESCHEMA = "SQL.TABLE.TUNESCHEMA";
+
+Parameter REASONTABLETUNESCHEMA = "Every table in this schema is measured as Collect statistics measures one.";
+
 /// <p>The sentence <var>pCode</var>, one of the <code>SQL.STATEMENT.*</code>, <code>SQL.CACHEDQUERY.*</code> and <code>SQL.TABLE.*</code> codes above,
 /// carries, or <code>""</code> for any other code (Stories 21.6 and 21.25).</p>
 ClassMethod SqlReasonFor(pCode As %String) As %String
@@ -427,6 +446,10 @@ ClassMethod SqlReasonFor(pCode As %String) As %String
     If pCode = ..#TABLEDATAMAP Quit ..#REASONTABLEDATAMAP
     If pCode = ..#TABLEREBUILD Quit ..#REASONTABLEREBUILD
     If pCode = ..#TABLEREBUILDALL Quit ..#REASONTABLEREBUILDALL
+    If pCode = ..#TABLENOFIXEDSTATS Quit ..#REASONTABLENOFIXEDSTATS
+    If pCode = ..#TABLETUNE Quit ..#REASONTABLETUNE
+    If pCode = ..#TABLECLEARSTATISTICS Quit ..#REASONTABLECLEARSTATISTICS
+    If pCode = ..#TABLETUNESCHEMA Quit ..#REASONTABLETUNESCHEMA
     If pCode = ..#STATEMENTVENDOR Quit ..#REASONSTATEMENTVENDOR
     If pCode = ..#STATEMENTALREADYFROZEN Quit ..#REASONSTATEMENTALREADYFROZEN
     If pCode = ..#STATEMENTPARALLEL Quit ..#REASONSTATEMENTPARALLEL

@@ -766,6 +766,11 @@ const ATELIER_REFUSALS = [
   ['REASONTABLEDATAMAP', 'sqlTableRefusalDataMap'],
   ['REASONTABLEREBUILD', 'sqlTableRebuildConsequence'],
   ['REASONTABLEREBUILDALL', 'sqlTableRebuildAllConsequence'],
+  // Story 21.25: the statistics writes' refusal of a table with no fixed statistics and the sentences their cards and dialogs state.
+  ['REASONTABLENOFIXEDSTATS', 'sqlTableRefusalNoFixed'],
+  ['REASONTABLETUNE', 'sqlTableTuneConsequence'],
+  ['REASONTABLECLEARSTATISTICS', 'sqlTableClearStatisticsConsequence'],
+  ['REASONTABLETUNESCHEMA', 'sqlSchemaTuneConsequence'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {

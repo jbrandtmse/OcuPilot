@@ -29,8 +29,8 @@ Parameter TASKIMPORT = "tasks.schedule.import";
 Parameter ENABLEINTEROP = "osmgmt.namespaces.enableinterop";
 
 /// <p>Story 19.2's two document deletes, Story 19.13's two document imports, Story 19.6's SQL run, Story 19.8's data browser save and Story 19.17's document database
-/// drop, which the baseline disables, and Story 21.25's two rebuilds.</p>
-Parameter EXPLORERDISABLED = "explorer.classes.delete,explorer.routines.delete,explorer.classes.import,explorer.routines.import,explorer.sqlquery.run,explorer.sqldata.save,explorer.docdb.delete,explorer.namespacediff.promote,explorer.unittests.run,explorer.command.run,explorer.classmethod.run,explorer.sqlstatements.clearstatistics,explorer.sqlstatements.clean,explorer.sqlindices.rebuild,explorer.sqltable.rebuildindices";
+/// drop, which the baseline disables, and Story 21.25's two rebuilds, its clear of fixed statistics and its schema tune.</p>
+Parameter EXPLORERDISABLED = "explorer.classes.delete,explorer.routines.delete,explorer.classes.import,explorer.routines.import,explorer.sqlquery.run,explorer.sqldata.save,explorer.docdb.delete,explorer.namespacediff.promote,explorer.unittests.run,explorer.command.run,explorer.classmethod.run,explorer.sqlstatements.clearstatistics,explorer.sqlstatements.clean,explorer.sqlindices.rebuild,explorer.sqltable.rebuildindices,explorer.sqltable.clearstatistics,explorer.sqlschematables.tune";
 
 /// <p>The remote database delete, which the baseline also disables (Story 18.16).</p>
 Parameter REMOTEDATABASEDELETE = "osmgmt.remotedatabases.delete";

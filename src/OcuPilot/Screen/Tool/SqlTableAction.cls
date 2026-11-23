@@ -66,6 +66,26 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
     Quit tSC
 }
 
+/// <p>The SQL name the kernel's own-name refusal judges before the state precondition is read (<method>RefusedBeforeState</method>): the table, as
+/// <code>Schema.Table</code>, <var>pIdValue</var> names. An index tool answers its composite id's table.</p>
+ClassMethod NameOf(pIdValue As %String) As %String
+{
+    Quit pIdValue
+}
+
+/// <p>Whether <method>NameOf</method> names a schema and not a table.</p>
+ClassMethod NamesSchema() As %Boolean
+{
+    Quit 0
+}
+
+/// <p>A table or schema in one of OcuPilot's own schemas is refused <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTTABLE</parameter> before the
+/// precondition is read, 403 for both callers, so a precondition that does not hold never answers in its place (AD-10).</p>
+ClassMethod RefusedBeforeState(pIdValue As %String, Output pCode As %String) As %Boolean
+{
+    Quit ##class(OcuPilot.Kernel.Proposal.Prohibited).RefusesOwnSqlName(..NameOf(pIdValue), ..NamesSchema(), .pCode)
+}
+
 /// <p>Whether <var>pName</var> has the shape of a table name, <code>Schema.Table</code>.</p>
 ClassMethod TableShaped(pName As %String) As %Boolean
 {

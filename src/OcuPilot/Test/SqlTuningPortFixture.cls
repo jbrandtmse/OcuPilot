@@ -20,9 +20,11 @@ ClassMethod StatementCall(pType As %String, pHash As %String, pNamespace As %Str
     Quit ##super(pType, pHash, pNamespace)
 }
 
-/// <p>The table writes' seam (Story 21.25), counted and refused as <method>StatementCall</method> is.</p>
+/// <p>The table writes' seam (Story 21.25), counted and refused as <method>StatementCall</method> is, and recording the type and values of each call
+/// as <code>type|values</code> for <method>OcuPilot.Test.SqlTuningGateSeam.TableCalls</method>.</p>
 ClassMethod TableCall(pType As %String, pTarget As %String, pValues As %String, pNamespace As %String) As %Status
 {
+    Set ^||OcuPilotSqlTuningTable($Increment(^||OcuPilotSqlTuningTable)) = pType _ "|" _ pValues
     Set ^||OcuPilotSqlTuningCalls = $Get(^||OcuPilotSqlTuningCalls) + 1
     If $Get(^||OcuPilotSqlTuningRefuse) '= "" Quit $$$ERROR($$$GeneralError, ^||OcuPilotSqlTuningRefuse)
     Quit ##super(pType, pTarget, pValues, pNamespace)

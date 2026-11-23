@@ -13,7 +13,9 @@
 /// <code>Table</code>. A schema with no tables reads no rows.</p>
 /// <p>Its privilege set is <parameter>OcuPilot.Port.AtelierPort.PAIRS</parameter>, beside READ on the
 /// namespace's code databases (AD-29). It replaces <code>%CSP.UI.Portal.SQL.Home</code>, whose custom
-/// resource also gates it (AD-44). No action and no refresh (AD-43).</p>
+/// resource also gates it (AD-44). It does not refresh (AD-43).</p>
+/// <p><b>Its entity type is <code>sql-schema</code></b> (Story 21.25): the schema, keyed by its name, which the tab's page action <code>tune</code> acts
+/// on, carried out by <class>OcuPilot.Screen.Tool.ExplorerSqlSchemaTune</class> for both callers (AD-53). A schema of OcuPilot's own is refused for both.</p>
 Class OcuPilot.Screen.Descriptor.ExplorerSqlSchema Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -29,16 +31,16 @@ XData Declaration
   "refreshes": false,
   "refreshRates": [],
   "privileges": [{"resource": "%Development", "permission": "USE"}],
-  "entityType": "class",
+  "entityType": "sql-schema",
   "secondaryEntityTypes": [],
   "scope": "namespace",
   "parentScope": "system-explorer/sql-schemas",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "tune", "selfProtection": ""}],
   "context": {"fields": ["Table", "Class", "Owner", "Sharded", "Partitioned"], "secretFields": []},
   "emptyStateKey": "explorerSqlSchemaTablesEmpty",
-  "commandAliases": [],
+  "commandAliases": ["tune table", "table statistics"],
   "suggestedPrompts": [
     {"groupKey": "webAppPromptGroupCode", "textKey": "explorerSqlTablesPrompt2"},
     {"groupKey": "webAppPromptGroupCode", "textKey": "explorerSqlTablesPrompt3"},
@@ -68,8 +70,8 @@ XData Declaration
       {"field": "Sharded", "labelKey": "explorerSqlColumnSharded", "kind": "status"},
       {"field": "Partitioned", "labelKey": "explorerSqlColumnPartitioned", "kind": "status"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "explorerSqlSchemaTuneEmptyAgent"
   },
   "tab": {"group": "system-explorer/sql-schemas/document", "position": 1, "labelKey": "explorerSqlColumnTables"},
   "rowTarget": {"route": "system-explorer/sql-tables/document", "field": "Table"},

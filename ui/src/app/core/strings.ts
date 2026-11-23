@@ -5568,6 +5568,28 @@ export const STRINGS = {
   sqlTableRefusalVendor: 'The instance did not apply this change to the table.',
   sqlTableRefusalOcuPilot: 'This table is one of OcuPilot\'s own, so OcuPilot does not rebuild or tune it.',
   explorerSqlTableMaintenanceEmptyAgent: 'rebuild indices',
+  // Story 21.25: the statistics writes -- the action labels of the Table info and Tables tabs, the sentences their cards and dialogs state, the
+  // refusal of a table with no fixed statistics -- and the Field statistics tab.
+  sqlTableTuneAction: 'Collect statistics',
+  sqlTableClearStatisticsAction: 'Clear fixed statistics',
+  sqlSchemaTuneAction: 'Tune all tables',
+  sqlTableTuneConsequence: 'The table\'s extent size and each field\'s selectivity are measured from its current rows. Some of the table\'s cached queries may be purged, so their plans may change.',
+  sqlTableClearStatisticsConsequence: 'The fixed statistics saved for this table are removed. The optimizer uses collected statistics, or none.',
+  sqlSchemaTuneConsequence: 'Every table in this schema is measured as Collect statistics measures one.',
+  sqlTableRefusalNoFixed: 'This table has no fixed statistics.',
+  explorerSqlSchemaTuneEmptyAgent: 'tune table',
+  explorerSqlTabFieldStatistics: 'Field statistics',
+  explorerSqlColumnOutlierValue: 'Outlier value',
+  explorerSqlColumnOutlierSelectivity: 'Outlier selectivity',
+  explorerSqlColumnAverageFieldSize: 'Average field size',
+  explorerSqlColumnFixedSelectivity: 'Fixed selectivity',
+  explorerSqlColumnFixedOutlierValue: 'Fixed outlier value',
+  explorerSqlColumnFixedOutlierSelectivity: 'Fixed outlier selectivity',
+  explorerSqlColumnFixedAverageFieldSize: 'Fixed average field size',
+  explorerSqlFieldStatisticsEmpty: 'No field statistics are recorded for this table.',
+  explorerSqlFieldStatisticsPrompt1: 'Which fields have fixed selectivity?',
+  explorerSqlFieldStatisticsPrompt2: 'Do the collected and fixed values differ?',
+  explorerSqlFieldStatisticsPrompt3: 'Which field has an outlier value?',
   // Story 18.6: License key and License servers -- their titles, License key's twelve field labels
   // beyond License usage's "License units", the authorization-key line, the activate dialog's
   // labels, validity, restart and reduction sentences and consequence, Print and its printed-by

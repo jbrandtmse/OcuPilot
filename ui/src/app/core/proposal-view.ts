@@ -494,9 +494,12 @@ export const CONSEQUENCE_SQLSTATEMENTCLEARSTATISTICS = 'SQL.STATEMENT.CLEARSTATI
 export const CONSEQUENCE_SQLSTATEMENTCLEARERROR = 'SQL.STATEMENT.CLEARERROR';
 export const CONSEQUENCE_SQLSTATEMENTCLEAN = 'SQL.STATEMENT.CLEAN';
 export const CONSEQUENCE_SQLCACHEDQUERYPURGE = 'SQL.CACHEDQUERY.PURGE';
-/** Story 21.25: the table maintenance rebuilds' cards; each is one published sentence. */
+/** Story 21.25: the table maintenance rebuilds' and statistics writes' cards; each is one published sentence. */
 export const CONSEQUENCE_SQLTABLEREBUILD = 'SQL.TABLE.REBUILD';
 export const CONSEQUENCE_SQLTABLEREBUILDALL = 'SQL.TABLE.REBUILDALL';
+export const CONSEQUENCE_SQLTABLETUNE = 'SQL.TABLE.TUNE';
+export const CONSEQUENCE_SQLTABLECLEARSTATISTICS = 'SQL.TABLE.CLEARSTATISTICS';
+export const CONSEQUENCE_SQLTABLETUNESCHEMA = 'SQL.TABLE.TUNESCHEMA';
 /** Story 24.2: the term list editor's delete and entry remove; each is one published sentence. */
 export const CONSEQUENCE_ANALYTICSTERMLISTDELETE = 'ANALYTICS.TERMLIST.DELETE';
 export const CONSEQUENCE_ANALYTICSTERMLISTREMOVE = 'ANALYTICS.TERMLIST.REMOVE';
@@ -767,6 +770,9 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_SQLCACHEDQUERYPURGE) return STRINGS.sqlCachedQueryPurgeConsequence;
   if (code === CONSEQUENCE_SQLTABLEREBUILD) return STRINGS.sqlTableRebuildConsequence;
   if (code === CONSEQUENCE_SQLTABLEREBUILDALL) return STRINGS.sqlTableRebuildAllConsequence;
+  if (code === CONSEQUENCE_SQLTABLETUNE) return STRINGS.sqlTableTuneConsequence;
+  if (code === CONSEQUENCE_SQLTABLECLEARSTATISTICS) return STRINGS.sqlTableClearStatisticsConsequence;
+  if (code === CONSEQUENCE_SQLTABLETUNESCHEMA) return STRINGS.sqlSchemaTuneConsequence;
   // Story 24.2: the term list editor's delete and entry remove sentences, each published once.
   if (code === CONSEQUENCE_ANALYTICSTERMLISTDELETE) return STRINGS.analyticsTermListDeleteConsequence;
   if (code === CONSEQUENCE_ANALYTICSFOLDERITEMDELETE) return STRINGS.analyticsFolderItemDeleteConsequence;

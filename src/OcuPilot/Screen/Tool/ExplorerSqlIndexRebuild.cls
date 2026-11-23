@@ -52,6 +52,12 @@ ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
     Quit ""
 }
 
+/// <p>The composite id's table, which the kernel's own-name refusal judges.</p>
+ClassMethod NameOf(pIdValue As %String) As %String
+{
+    Quit $ListGet(##class(OcuPilot.Kernel.EntityId).SplitComposite(pIdValue), 1)
+}
+
 /// <p>The derived schema with the table added and required, and the map described: the target is one index of one table.</p>
 ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 {

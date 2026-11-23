@@ -106,6 +106,7 @@ XData Titles
 "explorerSqlSchemasLabel": "SQL schemas",
 "explorerSqlTabCachedQueries": "Cached queries",
 "explorerSqlTabConstraints": "Constraints",
+"explorerSqlTabFieldStatistics": "Field statistics",
 "explorerSqlTabFields": "Fields",
 "explorerSqlTabIndices": "Maps/Indices",
 "explorerSqlTabPartitionMappings": "Partition mappings",

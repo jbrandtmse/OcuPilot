@@ -85,7 +85,7 @@ ClassMethod Statistics(pWhat As %String, pTable As %String)
 Method TestTheTabsDeclareTheirShape()
 {
     Set tTable = ..Declaration(..#TABLEDESCRIPTOR)
-    Do $$$AssertEquals(tTable.entityType _ "|" _ tTable.id.kind _ "|" _ ..Actions(tTable) _ "|" _ tTable.tab.position, "sql-table|single|rebuild-indices|1", "the table tab's entity type, id and page action")
+    Do $$$AssertEquals(tTable.entityType _ "|" _ tTable.id.kind _ "|" _ ..Actions(tTable) _ "|" _ tTable.tab.position, "sql-table|single|rebuild-indices,tune,clear-statistics|1", "the table tab's entity type, id and page actions")
     Set tIndices = ..Declaration(..#INDICESDESCRIPTOR)
     Do $$$AssertEquals(tIndices.entityType _ "|" _ tIndices.id.kind _ "|" _ tIndices.id.parts.%ToJSON() _ "|" _ ..Actions(tIndices) _ "|" _ tIndices.tab.position, "sql-index|composite|[""Table"",""Map""]|rebuild|3", "the indices tab's entity type, composite id and row action")
     Do $$$AssertTrue(tIndices.read.fields.%ToJSON() [ """Table"",""Index"",""Map""", "the indices tab reads the table beside the index and its map")
@@ -178,7 +178,7 @@ Method TestAbsentAndHostileIdsAreRefusedBeforeAnyCall()
         Set tVerdict = ..Read("INDEX", tId, .tAnswer, .tFault)
         Do $$$AssertEquals(tVerdict, "400 PORT.VALIDATION", "an index id outside the shape is refused: '" _ $Translate($Extract(tId, 1, 24), $Char(1, 7), "|!") _ "'")
     }
-    Set tVerdict = ..Read("TUNE", tTable, .tAnswer, .tFault)
+    Set tVerdict = ..Read("COMPACT", tTable, .tAnswer, .tFault)
     Do $$$AssertEquals(tVerdict, "501 PORT.NOTIMPLEMENTED", "a request type the endpoint does not serve is refused")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls"), 0, "the instance was asked for no write")
 }
@@ -210,13 +210,13 @@ Method TestTheGatesRefuseBeforeAnyReadOrWrite()
     Set tSeparator = $Char(1)
     Do $ClassMethod(..#PROBE, "KillIndex", ..#NAMESPACE, tTable, "IdxB")
     Do $ClassMethod(..#SEAM, "Deny", "USE")
-    For tCase = $ListBuild("TABLESTATS", tTable), $ListBuild("INDEX", tTable _ tSeparator _ "IdxB"), $ListBuild("REBUILD", tTable _ tSeparator _ "IdxB"), $ListBuild("REBUILDALL", tTable) {
+    For tCase = $ListBuild("TABLESTATS", tTable), $ListBuild("INDEX", tTable _ tSeparator _ "IdxB"), $ListBuild("REBUILD", tTable _ tSeparator _ "IdxB"), $ListBuild("REBUILDALL", tTable), $ListBuild("TUNE", tTable), $ListBuild("CLEARSTATS", tTable), $ListBuild("SCHEMA", "OcuProbe225"), $ListBuild("TUNESCHEMA", "OcuProbe225") {
         Set tVerdict = ..Read($List(tCase, 1), $List(tCase, 2), .tAnswer, .tFault)
         Do $$$AssertEquals(tVerdict _ " " _ $Select($IsObject($Get(tFault)): tFault.detail.failedPair, 1: ""), "403 " _ ##class(OcuPilot.Kernel.Denial).Code() _ " %Development:USE", $List(tCase, 1) _ ": refused naming the Explorer's pair")
     }
     Do $ClassMethod(..#SEAM, "Reset")
     Do $ClassMethod(..#SEAM, "Deny", "WRITE")
-    For tCase = $ListBuild("TABLESTATS", tTable, 200), $ListBuild("INDEX", tTable _ tSeparator _ "IdxB", 200), $ListBuild("REBUILD", tTable _ tSeparator _ "IdxB", 403), $ListBuild("REBUILDALL", tTable, 403) {
+    For tCase = $ListBuild("TABLESTATS", tTable, 200), $ListBuild("INDEX", tTable _ tSeparator _ "IdxB", 200), $ListBuild("SCHEMA", "OcuProbe225", 200), $ListBuild("REBUILD", tTable _ tSeparator _ "IdxB", 403), $ListBuild("REBUILDALL", tTable, 403), $ListBuild("TUNE", tTable, 403), $ListBuild("CLEARSTATS", tTable, 403), $ListBuild("TUNESCHEMA", "OcuProbe225", 403) {
         Set tVerdict = ..Read($List(tCase, 1), $List(tCase, 2), .tAnswer, .tFault)
         Do $$$AssertEquals(+tVerdict, $List(tCase, 3), $List(tCase, 1) _ ": " _ $Select($List(tCase, 3) = 200: "a read passes without WRITE", 1: "a write is refused without it"))
         If $List(tCase, 3) = 403 Do $$$AssertEquals($Piece($Select($IsObject($Get(tFault)): tFault.detail.failedPair, 1: ""), ":", 2), "WRITE", "naming the WRITE pair")

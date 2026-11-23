@@ -13,8 +13,9 @@
 /// namespace's code databases (AD-29). It replaces <code>%CSP.UI.Portal.SQL.Home</code>, whose
 /// custom resource also gates it (AD-44). It does not refresh (AD-43).</p>
 /// <p><b>Its entity type is <code>sql-table</code></b> (Story 21.25): the table, keyed by <code>Schema.Table</code>, which the tab's page action
-/// <code>rebuild-indices</code> acts on, carried out by <class>OcuPilot.Screen.Tool.ExplorerSqlTableRebuildIndices</class> for both callers (AD-53). A
-/// table of OcuPilot's own is refused for both.</p>
+/// <code>rebuild-indices</code>, <code>tune</code> and <code>clear-statistics</code> act on, carried out by
+/// <class>OcuPilot.Screen.Tool.ExplorerSqlTableRebuildIndices</class>, <class>OcuPilot.Screen.Tool.ExplorerSqlTableTune</class> and
+/// <class>OcuPilot.Screen.Tool.ExplorerSqlTableClearStatistics</class> for both callers (AD-53). A table of OcuPilot's own is refused for all three.</p>
 Class OcuPilot.Screen.Descriptor.ExplorerSqlTable Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -36,10 +37,10 @@ XData Declaration
   "parentScope": "system-explorer/sql-tables",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [{"id": "rebuild-indices", "selfProtection": ""}],
+  "rowActions": [{"id": "rebuild-indices", "selfProtection": ""}, {"id": "tune", "selfProtection": ""}, {"id": "clear-statistics", "selfProtection": ""}],
   "context": {"fields": ["Name", "Owner", "LastCompiled", "External", "ReadOnly", "Partitioned", "Class", "ExtentSize", "ExternalType"], "secretFields": []},
   "emptyStateKey": "explorerSqlTableEmpty",
-  "commandAliases": ["rebuild indices"],
+  "commandAliases": ["rebuild indices", "tune table", "table statistics"],
   "suggestedPrompts": [
     {"groupKey": "webAppPromptGroupCode", "textKey": "explorerSqlTablePrompt1"},
     {"groupKey": "webAppPromptGroupCode", "textKey": "explorerSqlTablePrompt2"},

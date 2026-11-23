@@ -8,7 +8,21 @@ Class OcuPilot.Test.SqlTuningGateSeam Extends %RegisteredObject
 /// <p>Forget what was armed and recorded.</p>
 ClassMethod Reset()
 {
-    Kill ^||OcuPilotSqlTuningDeny, ^||OcuPilotSqlTuningAsked, ^||OcuPilotSqlTuningCalls, ^||OcuPilotSqlTuningRefuse
+    Kill ^||OcuPilotSqlTuningDeny, ^||OcuPilotSqlTuningAsked, ^||OcuPilotSqlTuningCalls, ^||OcuPilotSqlTuningRefuse, ^||OcuPilotSqlTuningTable
+}
+
+/// <p>The table calls <method>OcuPilot.Test.SqlTuningPortFixture.TableCall</method> was asked since <method>Reset</method>, as <code>type|values</code>,
+/// joined by <code>;</code>.</p>
+ClassMethod TableCalls() As %String
+{
+    Set tText = ""
+    Set tKey = ""
+    For {
+        Set tKey = $Order(^||OcuPilotSqlTuningTable(tKey))
+        If tKey = "" Quit
+        Set tText = tText _ $Select(tText = "": "", 1: ";") _ ^||OcuPilotSqlTuningTable(tKey)
+    }
+    Quit tText
 }
 
 /// <p>Refuse every pair whose permission is <var>pPermission</var> until <method>Reset</method>.</p>
