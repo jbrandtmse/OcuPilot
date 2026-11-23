@@ -1045,3 +1045,6 @@
 2026-11-23T07:26:28Z	Story 21.25	code_head_pushed	sha=94d9e782a run=45131040837 missing=none contains=d5974757e(M_fa37fc5c2)
 2026-11-23T07:26:28Z	Story 21.25	gate_step	step=fresh_check+full_sweep+smoke head=94d9e782a started=2026-11-23T07:26:28Z dir=e21u/21-25/gate
 2026-11-23T07:39:35Z	Story 21.25	gate_step	step=fresh_check result=red stopped_before_sweep reds=MappingDescriptor(CLASSICROSTER_missing_5_21.25_tools;lead_patch_uncommitted),system-explorer-sql_20.38(USER_SCHEMATA_SQLCODE_-400_SYNTAX_GetNextSubscript^%SYS.SQLSEC_after_quote-name_probe) escalated=4th_pass_ruling
+2026-11-23T07:41:03Z	Story 21.25	rework_cap_exceeded	granted_by=orchestrator reason=vendor_residue_from_rework_3's_probe iteration=4
+2026-11-23T07:41:03Z	Story 21.25	rework_opened	iteration=4 cause=SCHEMATA_-400_after_quote_probe+MappingDescriptor_roster throwaway=rebuilt_07:40Z
+2026-11-23T07:41:03Z	Story 21.25	stage_spawned	stage=implement(rework4) spawn_at=2026-11-23T07:41:03Z model=sonnet agent_name=21-25-rework4 prior_lines_ended=verified(ae8c83965)

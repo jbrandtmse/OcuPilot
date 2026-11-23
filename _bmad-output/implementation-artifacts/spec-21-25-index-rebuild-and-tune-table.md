@@ -2,7 +2,7 @@
 title: 'Story 21.25: Index rebuild and tune table'
 type: 'feature'
 created: '2026-11-16'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '589acd2a905c2d6c57153783e2f1f6f15b78098f'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -231,6 +231,11 @@ Rejected:
   - Keep class up to date is measured once more before it ships: read the class dictionary before and after a collect with the box ticked and unticked (the storage `ExtentSize`, and each property's `Selectivity`, `OutlierSelectivity` and `AverageFieldSize` in its storage property definition). If anything differs, the consequence becomes, verbatim, "The class definition's stored statistics are updated with the measured values. The class is not recompiled." with the measured detail in Design Notes. If nothing differs on this build, the option is dropped from 21.25 entirely (no control with no effect) and recorded as a named limit.
 - 2026-11-23, orchestrator ruling (rework 2): rework 1's purge record has a collect on one table purging a single-table SELECT on the other table (1 of 8), which "Some of the table's cached queries may be purged" does not cover. Settle it by measurement: if that query is related to the tuned table (a view, a foreign key, a shared class or extent), the sentence stands and Design Notes name the relation; if it is unrelated, Collect statistics' consequence becomes, verbatim, "Some cached queries may be purged, including ones on other tables, so their plans may change." (server reason, `strings.ts`, EXPERIENCE.md and the self-protection pin), reported for a U-146 addendum.
 - 2026-11-23, orchestrator ruling (rework 3), since names reach the tunes bare: (1) confirm by measurement that every place a schema or table name reaches a vendor call does so as an argument, never concatenated into SQL text; (2) the copy-out scripts put the name inside an ObjectScript string literal (`SqlPort.Literal` doubles `"`; `SqlTableTune` pins it on a synthetic id): measure whether the instance allows `"` in a delimited schema or table name; if it does, add a probe and a test where the copy-out script and the real call round-trip it through both callers; if it does not, record that refusal in Design Notes as the reason no further escaping test is needed.
+- 2026-11-23, orchestrator ruling (rework 4, granted beyond the cap: vendor residue from rework 3's probe). After rework 3's tests ran, `INFORMATION_SCHEMA.SCHEMATA` in USER fails with SQLCODE -400 `<SYNTAX>GetNextSubscript+11^%SYS.SQLSEC`, and the SQL schemas list draws no row.
+  1. **Measure first** on a freshly rebuilt `ocupilot-ci`, in USER, reading SCHEMATA to SQLCODE 100 after each: (i) CREATE and DROP of a `"`-named schema and table with no OcuPilot call; (ii) the same plus OcuPilot's tune, clear statistics and rebuild; (iii) the same plus only the vendor calls those tools make, invoked directly. If (i) breaks SCHEMATA, it is a vendor DDL defect. If only (ii) or (iii) does, a vendor call the tools make leaves residue: stop and report the measurement before patching anything.
+  2. **The probe:** if the residue can be found and removed through an API, the probe removes it in cleanup and a test asserts SCHEMATA in USER reads to SQLCODE 100 after cleanup (mutation: skip the removal). Otherwise drop the `"`-name probe (the synthetic quote-doubling pin in `SqlTableTune` stays), record the measured vendor behavior in Design Notes, and file a ledger entry as a vendor defect candidate (severity medium, owner burndown) with the three-sequence evidence.
+  3. **Product check:** when the SCHEMATA read fails, the SQL schemas list must answer an error the person sees, never an empty list. If it shows empty, fix it here on the precedent of the reads that refuse on a failed query, pinned by a test that forces the failure through a seam.
+  4. The lead's uncommitted `MappingDescriptor` CLASSICROSTER patch (the five 21.25 write tools' classic pages, derived from the instance) rides this pass.
 
 ## Review Triage Log
 
