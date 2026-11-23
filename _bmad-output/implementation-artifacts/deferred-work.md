@@ -8495,6 +8495,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-22T17:48:57Z status=routed owner=burndown by=orchestrator note=the capture worked: the renderer answers no DevTools call at all, which is itself the finding. Next capture (burndown story's to rule, not 21.39): use the browser-level session, not the page's: SystemInfo.getProcessInfo for per-process CPU time before and after the stall, Target.getTargets for whether the renderer target is still attached, and a browser-level Tracing.start at visit setup flushed on an abandoned call to show main-thread layout, style, GC or IPC
 - 2026-11-22T18:09:44Z status=routed owner=burndown by=orchestrator note=(inference) the stall's red in run 45048213834 came on a uniformly slow runner (about 1.4x: client suite 11.8 against 8.5 min, gates timed out at 20 min), which fits the reading of a condition lasting minutes on the runner
 - 2026-11-23T14:32:21Z routed
+- 2026-11-23T20:27:49Z routed
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -14584,3 +14585,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-31-fixed-table-statistics.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: IdArgument, TargetName, NameOf, InputSchema and IdProblem exist in both SqlTableSetAction (21.31) and ExplorerSqlIndexRebuild (21.25, merged); unifying them in SqlTableAction touches 21.25's tool
 - 2026-11-23T14:06:06Z status=routed owner=burndown by=cr note=Rule 31; move into SqlTableAction with SECONDARGUMENT
+
+### DW-2862: SqlStatementRead's purge-read class case counts a different number of cached queries in a full sweep than alone
+- source: 21.31 gate2 sweep (runner) | severity: low | fix-risk: low | footprint: cross-story
+- evidence: Sweep on 79ad64ee2 shard 8/20 (run 371): TestTheStatementAndPurgeReadsAnswerTheirShapes failed '%sqlcq.USER.cls90: the cached queries it holds'; green alone right after (ci-runner, same throwaway); 21.31 touches no statement or purge path; gate1's sweep was green
+- 2026-11-23T22:19:17Z status=routed owner=burndown by=runner note=order-dependent (inference): a class earlier in the shard leaves or shares a cached-query class; measure beside DW-2843

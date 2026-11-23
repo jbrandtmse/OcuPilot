@@ -1091,3 +1091,8 @@
 2026-11-23T19:31:21Z	Story 21.31	integrated_forward	feature=39e56f9d2 merge=M=79ad64ee2 conflicts=6(EXPERIENCE,ClassicPageGate,MappingDescriptor,ReadTool,ToolRoundTrip,ToolWrite;m3w_token_merge,counts_re-derived) merge_fix=strings.ts_taskCreate_citation_:673->:674 checks=24_classes_green,test:tools_2413,ci.test_108,build,test:components_333_files
 2026-11-23T19:31:21Z	Story 21.31	code_head_pushed	sha=79ad64ee2 run=45249712294
 2026-11-23T19:31:21Z	Story 21.31	gate_step	step=fresh_check+full_sweep+smoke head=79ad64ee2 started=2026-11-23T19:31:21Z dir=e21-kit/21-31/gate2
+2026-11-23T19:39:30Z	Story 21.31	fresh_check	env=recipe(ci-throwaway_rebuild) tests=31_classes+2_specs result=pass order=forward,reverse head=79ad64ee2
+2026-11-23T20:27:49Z	Story 21.31	ci	run=45249712294 head=79ad64ee2 result=red browser_1/5_only(DW-1822_occurrence) rerun_failed=issued_by_orchestrator
+2026-11-23T20:46:03Z	Story 21.31	gate_step	step=full_sweep head=79ad64ee2 shard8_red=SqlStatementRead.TestTheStatementAndPurgeReadsAnswerTheirShapes(%sqlcq.USER.cls90_cached_query_count;21.6_test;21.31_touches_no_statement/purge_path;gate1_sweep_green) plan=rerun_class_alone_after_sweep
+2026-11-23T21:06:37Z	Story 21.31	ci	run=45249712294 head=79ad64ee2 result=green_on_rerun(browser_1/5_DW-1822_first_attempt)
+2026-11-23T22:19:17Z	Story 21.31	gate_step	step=full_sweep+smoke head=79ad64ee2 sweep=19/20+shard8_SqlStatementRead_green_alone(DW-2862,flake) smoke=50/50 result=pass
