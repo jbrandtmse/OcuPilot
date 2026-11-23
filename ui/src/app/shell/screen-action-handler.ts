@@ -174,6 +174,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.ExplorerSqlTable',
   'OcuPilot.Screen.Descriptor.ExplorerSqlIndices',
   'OcuPilot.Screen.Descriptor.ExplorerSqlSchema',
+  // Story 21.31: the Field statistics tab, whose Set selectivity warns first and collects the selectivity.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlFieldStatistics',
   // Story 24.2: the Term lists and the entries lists, whose Delete and Remove type the name or key, and whose Edit and Change dialogs send the rest.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList',
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
@@ -364,6 +366,15 @@ export const SQL_TABLE_CLEAR_STATISTICS = 'clear-statistics';
 /** A SQL schema's Tables tab (Story 21.25): its Tune all tables is a page action on the schema the route names. */
 export const EXPLORER_SQL_SCHEMA = 'OcuPilot.Screen.Descriptor.ExplorerSqlSchema';
 export const SQL_SCHEMA_TUNE = 'tune';
+
+/**
+ * The fixed-statistics setters (Story 21.31). Set extent size is a page action on the table the route names; Set map size is a row action on the
+ * Indices tab and Set selectivity one on the Field statistics tab, each on the selected row's composite id, warning first with one declared value.
+ */
+export const SQL_TABLE_SET_EXTENT_SIZE = 'set-extent-size';
+export const SQL_INDEX_SET_MAP_SIZE = 'set-map-size';
+export const EXPLORER_SQL_FIELD_STATISTICS = 'OcuPilot.Screen.Descriptor.ExplorerSqlFieldStatistics';
+export const SQL_FIELD_SET_SELECTIVITY = 'set-selectivity';
 
 /** The one target the freeze and the thaw name: the instance's database writes. */
 export const BACKUP_WRITES_TARGET = 'SYSTEM';
@@ -624,7 +635,7 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [EXPLORER_SQL_CACHED_QUERIES]: [SQL_CACHED_QUERY_PURGE_TABLE, SQL_CACHED_QUERY_PURGE_NAMESPACE],
   // The Table info tab's page registers Rebuild all indices, Collect statistics and Clear fixed statistics itself, on the table the route names, and
   // the schema's Tables tab Tune all tables on the schema the route names (Story 21.25).
-  [EXPLORER_SQL_TABLE]: [SQL_TABLE_REBUILD_INDICES, SQL_TABLE_TUNE, SQL_TABLE_CLEAR_STATISTICS],
+  [EXPLORER_SQL_TABLE]: [SQL_TABLE_REBUILD_INDICES, SQL_TABLE_TUNE, SQL_TABLE_CLEAR_STATISTICS, SQL_TABLE_SET_EXTENT_SIZE],
   [EXPLORER_SQL_SCHEMA]: [SQL_SCHEMA_TUNE],
   // The three settings screens' page registers Set value itself, whose dialog sends the value (Story 21.3).
   // Story 24.13 Batch 2: the General settings' Set value is the settings page's, and its key's own action is sent from the same dialog.
@@ -1129,9 +1140,12 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
     // Collecting statistics may purge cached queries, and clearing the fixed ones changes what the optimizer uses, so each warns first.
     [SQL_TABLE_TUNE]: STRINGS.sqlTableTuneConsequence,
     [SQL_TABLE_CLEAR_STATISTICS]: STRINGS.sqlTableClearStatisticsConsequence,
+    // Story 21.31: a fixed value overrides what the optimizer measures, so each setter warns first.
+    [SQL_TABLE_SET_EXTENT_SIZE]: STRINGS.sqlTableSetConsequence,
   },
-  [EXPLORER_SQL_INDICES]: { rebuild: STRINGS.sqlTableRebuildConsequence },
+  [EXPLORER_SQL_INDICES]: { rebuild: STRINGS.sqlTableRebuildConsequence, [SQL_INDEX_SET_MAP_SIZE]: STRINGS.sqlTableSetConsequence },
   [EXPLORER_SQL_SCHEMA]: { [SQL_SCHEMA_TUNE]: STRINGS.sqlSchemaTuneConsequence },
+  [EXPLORER_SQL_FIELD_STATISTICS]: { [SQL_FIELD_SET_SELECTIVITY]: STRINGS.sqlTableSetConsequence },
   // Story 20.15: a reset puts a screen back to the permissions its descriptor declares.
   [SCREEN_PERMISSIONS]: { [SCREEN_PERMISSIONS_RESET]: STRINGS.screenPermissionsResetConsequence },
   // Story 20.2: each production action but Start states the wait it makes, or what Recover does.
@@ -1175,7 +1189,8 @@ const WARNING_FILLS: Readonly<Record<string, Readonly<Record<string, string>>>> 
  * unavailable while a field holds no whole number; the instance's own rules answer the rest.
  */
 interface WarningValue {
-  readonly kind: 'flag' | 'field';
+  /** `'text'` (Story 21.31) is a field for any non-blank text the instance judges, as `'field'` is for a whole number. */
+  readonly kind: 'flag' | 'field' | 'text';
   readonly value: string;
   readonly labelKey: keyof typeof STRINGS;
   readonly hintKey?: keyof typeof STRINGS;
@@ -1196,6 +1211,17 @@ const WARNING_VALUES: Readonly<Record<string, Readonly<Record<string, WarningVal
   [BACKUP_TASK_LIST]: { [BACKUP_FREEZE]: { kind: 'field', value: BACKUP_LIMIT_VALUE, labelKey: 'backupFreezeLimitLabel', hintKey: 'backupFreezeLimitHelp' } },
   // Story 21.25: a schema's Tune all tables asks whether to clear the tables' fixed values.
   [EXPLORER_SQL_SCHEMA]: { [SQL_SCHEMA_TUNE]: { kind: 'flag', value: 'ClearValues', labelKey: 'sqlTuneClearValuesLabel' } },
+  // Story 21.31: each fixed-statistics setter asks for the one value it sets, hinted by its shape sentence. The selectivity is text the instance
+  // judges; the agent may also send the outlier values, which no screen collects.
+  [EXPLORER_SQL_TABLE]: {
+    [SQL_TABLE_SET_EXTENT_SIZE]: { kind: 'field', value: 'ExtentSize', labelKey: 'explorerSqlColumnExtentSize', hintKey: 'sqlTableExtentSizeShape' },
+  },
+  [EXPLORER_SQL_INDICES]: {
+    [SQL_INDEX_SET_MAP_SIZE]: { kind: 'field', value: 'SizeMB', labelKey: 'sqlIndexMapSizeLabel', hintKey: 'sqlTableWholeNumberShape' },
+  },
+  [EXPLORER_SQL_FIELD_STATISTICS]: {
+    [SQL_FIELD_SET_SELECTIVITY]: { kind: 'text', value: 'Selectivity', labelKey: 'explorerSqlColumnSelectivity', hintKey: 'sqlTableSelectivityShape' },
+  },
 };
 
 /**
@@ -1235,6 +1261,10 @@ const PUBLISHED_PROBLEMS: readonly string[] = [
   STRINGS.encryptionKeyInactive,
   STRINGS.encryptionKeyAllActive,
   STRINGS.encryptionKeyDefault,
+  // Story 21.31: the shape refusals of the fixed-statistics setters' values.
+  STRINGS.sqlTableExtentSizeShape,
+  STRINGS.sqlTableSelectivityShape,
+  STRINGS.sqlTableWholeNumberShape,
 ];
 
 /** The entity type of a production, which the re-read event names (AD-14). */
@@ -1340,6 +1370,8 @@ export interface PendingConfirm {
   /** A warning dialog's whole-number field's label and hint (Story 18.4); absent or `''` for none. */
   readonly fieldLabel?: string;
   readonly fieldHint?: string;
+  /** The field's kind: `'text'` for a value the instance judges (Story 21.31), else a whole number. */
+  readonly fieldKind?: 'number' | 'text';
   /** The broadcast dialog's count of checked rows (Story 16.6); absent for every other kind. */
   readonly count?: number;
   /** The broadcast dialog's message is being sent. */
@@ -1777,8 +1809,9 @@ export class ScreenActionHandler {
       consequence,
       advisory,
       flagLabel,
-      fieldLabel: asked?.kind === 'field' ? stringFor(asked.labelKey) : '',
-      fieldHint: asked?.kind === 'field' && asked.hintKey !== undefined ? stringFor(asked.hintKey) : '',
+      fieldLabel: asked !== null && asked.kind !== 'flag' ? stringFor(asked.labelKey) : '',
+      fieldHint: asked !== null && asked.kind !== 'flag' && asked.hintKey !== undefined ? stringFor(asked.hintKey) : '',
+      fieldKind: asked?.kind === 'text' ? 'text' : 'number',
       options,
       privileged,
       impact: '',

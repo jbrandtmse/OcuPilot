@@ -5,12 +5,14 @@
  * What it pins: on the probe table's Indices tab, Rebuild index on a killed index warns, confirms, and the index holds every row again while its
  * untouched sibling is as it was; on the Table info tab, Collect statistics warns, offers no box, and the table's extent size then reads the
  * probe's rows; Clear fixed statistics removes the extent size the fixture fixed; and Collect statistics on
- * one of OcuPilot's own tables shows the published refusal and changes nothing. Each step waits for the shell's answered signal and then for the
- * instance, read through the vendor's own calls, to show the result.
+ * one of OcuPilot's own tables shows the published refusal and changes nothing. Story 21.31 adds two: Set extent size on the Table info tab asks
+ * for a whole number, warns with the setters' sentence, and the instance then holds that fixed size; Set selectivity on the Field statistics tab
+ * takes text, and the field's row then reads the fixed selectivity the instance holds. Each step waits for the shell's answered signal and then for
+ * the instance, read through the vendor's own calls, to show the result.
  *
  * **It rebuilds, measures and clears on the instance** through the shipped screens, so it runs on a throwaway only. `SqlTuningProbe.Table` makes
- * the probe tables in `HSCUSTOM`, and the `after` hook removes them through `SqlTuningProbe.Remove` (purging their cached queries before it drops
- * them) and asserts that no probe table, statistic or cached query is left, whatever the tests answered.
+ * the probe tables in `HSCUSTOM`, and the `after` hook clears their fixed statistics, then removes them through `SqlTuningProbe.Remove` (purging
+ * their cached queries before it drops them) and asserts that no probe table, statistic or cached query is left, whatever the tests answered.
  *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
  *   node --test --test-concurrency=1 browser/system-explorer-sql-tuning.browser-spec.mjs` (after `npm run build` and the bundle copied into the
@@ -96,6 +98,9 @@ after(async () => {
     if (browser !== null) await browser.close();
   } finally {
     if (touched && /-ci$/.test(config.container)) {
+      for (const table of Object.values(tables).filter((name) => name !== '')) {
+        probe('TCLEAR', `$System.Status.IsOK($SYSTEM.SQL.Stats.Table.ClearTableStats("${table}"))`);
+      }
       const removed = probe('TGONE', `$System.Status.IsOK(##class(${PROBE}).Remove("${NS}"))`);
       assert.equal(removed.value, '1', `the probe objects are removed: ${removed.output}`);
       assert.equal(probe('TLEFT', `$ListLength(##class(${PROBE}).TablesOf("${NS}"))`).value, '0', 'no probe table is left');
@@ -222,6 +227,93 @@ test('AC3: Clear fixed statistics removes the extent size the fixture fixed', as
     await warningStates(page, STRINGS.sqlTableClearStatisticsConsequence);
     await proceed(page);
     assert.equal(await waitForInstance(() => statistics(table), wanted), wanted, 'the table is back to the statistics it held before the fixture fixed one');
+  } finally {
+    await context.close();
+  }
+});
+
+/** The dialog's one field, once drawn, and the hint under it. */
+async function dialogField(page) {
+  const selector = '[role="dialog"] [data-slot="field"] .ocu-field-input';
+  await page.waitForSelector(selector, { visible: true, timeout: config.navigationTimeoutMs });
+  const hint = await page.$eval('[role="dialog"] .ocu-field-caption', (node) => node.textContent.trim());
+  return { selector, hint };
+}
+
+/** The Field statistics tab's cell of the row whose Field reads `field`, in the column headed `heading`. */
+async function fieldCell(page, field, heading) {
+  return page.evaluate(
+    (rowSelector, wanted, column) => {
+      const headings = [...document.querySelectorAll('[role="columnheader"] .ocu-data-table-header-label')].map((node) => node.textContent.trim());
+      const at = headings.indexOf(column);
+      // A changed row's first cell carries the change note after the name, so the name is matched as its start.
+      const row = [...document.querySelectorAll(rowSelector)].find((candidate) => candidate.querySelector('[role="gridcell"]')?.textContent.trim().startsWith(wanted));
+      return at < 0 || row === undefined ? null : (row.querySelectorAll('[role="gridcell"]')[at]?.textContent.trim() ?? null);
+    },
+    ROW_SELECTOR,
+    field,
+    heading
+  );
+}
+
+test('AC1: Set extent size asks for a whole number, warns, and the instance then holds the fixed extent size', async () => {
+  const table = tables.measured;
+  const { context, page } = await signedInAt(browser, config, route('document', table), VIEWPORTS.wide);
+  try {
+    await answered(page);
+    await selectTheTable(page);
+    assert.ok((await barLabels(page)).includes(STRINGS.sqlTableSetExtentSizeAction), `the command bar offers ${STRINGS.sqlTableSetExtentSizeAction}`);
+    // Mutation (Rule 19): do not register the handler (drop `SQL_TABLE_SET_EXTENT_SIZE` from `SqlTablePage`'s actions, and rebuild and redeploy the
+    // bundle) -> the command bar never draws Set extent size and the label assertion goes red.
+    await bar(page, STRINGS.sqlTableSetExtentSizeAction);
+    await warningStates(page, STRINGS.sqlTableSetConsequence);
+    const { selector, hint } = await dialogField(page);
+    assert.equal(hint, STRINGS.sqlTableExtentSizeShape, 'the field is hinted by its shape sentence');
+    await page.type(selector, '5000');
+    await proceed(page);
+    assert.equal(await waitForInstance(() => statistics(table), 'fixed 5000'), 'fixed 5000', 'the instance holds the fixed extent size when the confirm has answered');
+    await selectTheTable(page);
+    await bar(page, STRINGS.sqlTableClearStatisticsAction);
+    await warningStates(page, STRINGS.sqlTableClearStatisticsConsequence);
+    await proceed(page);
+    const restored = await waitForInstance(() => statistics(table).split(' ')[0], 'collected');
+    assert.notEqual(restored, 'fixed', `the fixed extent size is cleared through the product's own action: ${statistics(table)}`);
+  } finally {
+    await context.close();
+  }
+});
+
+test('AC1: Set selectivity on the Field statistics tab takes text, and the field\'s row reads the fixed selectivity', async () => {
+  const table = tables.indexed;
+  assert.equal(probe('TFSB', `##class(${PROBE}).FixedField("${NS}","${table}","B")`).value.split('|')[0], '', 'the field holds no fixed selectivity to begin with');
+  const { context, page } = await signedInAt(browser, config, route('field-statistics', table), VIEWPORTS.wide);
+  try {
+    await answered(page);
+    await selectRow(page, 'B');
+    assert.ok((await barLabels(page)).includes(STRINGS.sqlFieldSetSelectivityAction), `the command bar offers ${STRINGS.sqlFieldSetSelectivityAction}`);
+    // Mutation (Rule 19): `ExplorerSqlFieldStatistics` loses its `set-selectivity` row action (and rebuild and redeploy the bundle) -> the command bar
+    // never draws Set selectivity and the label assertion goes red.
+    await bar(page, STRINGS.sqlFieldSetSelectivityAction);
+    await warningStates(page, STRINGS.sqlTableSetConsequence);
+    const { selector, hint } = await dialogField(page);
+    assert.equal(hint, STRINGS.sqlTableSelectivityShape, 'the field is hinted by its shape sentence');
+    await page.type(selector, '2.5%');
+    await proceed(page);
+    const held = await waitForInstance(() => probe('TFSA', `##class(${PROBE}).FixedField("${NS}","${table}","B")`).value.split('|')[0], '2.5000%');
+    assert.equal(held, '2.5000%', 'the instance holds the fixed selectivity when the confirm has answered');
+    const heading = STRINGS.explorerSqlColumnFixedSelectivity;
+    await page.waitForFunction(
+      (rowSelector, column) => {
+        const headings = [...document.querySelectorAll('[role="columnheader"] .ocu-data-table-header-label')].map((node) => node.textContent.trim());
+        const row = [...document.querySelectorAll(rowSelector)].find((candidate) => candidate.querySelector('[role="gridcell"]')?.textContent.trim().startsWith('B'));
+        return row !== undefined && row.querySelectorAll('[role="gridcell"]')[headings.indexOf(column)]?.textContent.trim() === '2.5000%';
+      },
+      { timeout: config.navigationTimeoutMs },
+      ROW_SELECTOR,
+      heading
+    );
+    assert.equal(await fieldCell(page, 'B', heading), held, 'the field\'s row reads the fixed selectivity the instance holds');
+    assert.notEqual(await fieldCell(page, 'C', heading), held, 'and a sibling field\'s row does not');
   } finally {
     await context.close();
   }

@@ -771,6 +771,11 @@ const ATELIER_REFUSALS = [
   ['REASONTABLETUNE', 'sqlTableTuneConsequence'],
   ['REASONTABLECLEARSTATISTICS', 'sqlTableClearStatisticsConsequence'],
   ['REASONTABLETUNESCHEMA', 'sqlSchemaTuneConsequence'],
+  // Story 21.31: the fixed-statistics setters' shared consequence and the shape refusals of their values.
+  ['REASONTABLESET', 'sqlTableSetConsequence'],
+  ['REASONTABLEEXTENTSIZE', 'sqlTableExtentSizeShape'],
+  ['REASONTABLESELECTIVITY', 'sqlTableSelectivityShape'],
+  ['REASONTABLEWHOLENUMBER', 'sqlTableWholeNumberShape'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {

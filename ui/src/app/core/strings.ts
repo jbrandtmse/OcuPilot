@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:672 */
+  /** EXPERIENCE.md:673 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5592,6 +5592,16 @@ export const STRINGS = {
   explorerSqlFieldStatisticsPrompt3: 'Which field has an outlier value?',
   // Story 21.25: the schema Tune dialog's value label.
   sqlTuneClearValuesLabel: 'Clear values',
+  // Story 21.31: the fixed-statistics setters -- the three action labels, the map size's value label, the consequence the three share and the
+  // shape sentences their dialogs hint and the instance answers.
+  sqlTableSetExtentSizeAction: 'Set extent size',
+  sqlFieldSetSelectivityAction: 'Set selectivity',
+  sqlIndexSetMapSizeAction: 'Set map size',
+  sqlIndexMapSizeLabel: 'Map size (MB)',
+  sqlTableSetConsequence: 'The optimizer uses this value in place of the collected one until the table\'s fixed statistics are cleared. If the table\'s statistics were collected, they are first saved as its fixed statistics.',
+  sqlTableExtentSizeShape: 'Enter a whole number from 0 to 1,000,000,000,000.',
+  sqlTableSelectivityShape: 'Enter 1, or a percentage over 0% and up to 99.999%.',
+  sqlTableWholeNumberShape: 'Enter a whole number, 0 or more.',
   // Story 18.6: License key and License servers -- their titles, License key's twelve field labels
   // beyond License usage's "License units", the authorization-key line, the activate dialog's
   // labels, validity, restart and reduction sentences and consequence, Print and its printed-by

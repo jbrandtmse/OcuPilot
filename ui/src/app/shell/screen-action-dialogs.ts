@@ -80,6 +80,7 @@ import { WarningDialog, type WarningAnswer } from './warning-dialog';
         [flagLabel]="pending.flagLabel"
         [fieldLabel]="pending.fieldLabel ?? ''"
         [fieldHint]="pending.fieldHint ?? ''"
+        [fieldKind]="pending.fieldKind ?? 'number'"
         (confirmed)="onWarning($event)"
         (cancelled)="onCancel()"
       />
