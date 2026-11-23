@@ -133,6 +133,16 @@ Each is the lead's to take to the veto gate; the recommended option is first.
 
 No new dependency; no privilege, role or access grant.
 
+**Lead rulings at the spec gate (2026-11-23; filed as an INBOX veto item, so binding unless the orchestrator reverses them).**
+
+- **V1:** kept. Both callers reach the export.
+- **V2: Alternative A. No file is written on the instance.** Each body is rendered and converted in memory to the chosen character set (`$ZCONVERT`). The bytes are gathered in a `%Stream.TmpBinary` or an equivalent in-process stream, and leave base64-encoded on the answer under the same 3,000,000-character cap, refused whole above it. Nothing is created under the OS temporary directory, so no copy of message content is ever readable by another OS account, and there is nothing to clean up. `LocalePort.TransferFile`, `TransferParent` and Task 0 (c) drop out. Task 0 (a) must show that the in-memory bytes equal the classic `CreateTempFile` bytes for every separator and for `UTF8` and `CP1252`. If a listed character set cannot reach the classic bytes in memory, HALT with `## Clarification Needed`; never fall back to a disk file.
+- **V3: the stricter posture.** The pairs are `%Ens_Portal:USE`, `%Ens_MessageHeader:USE`, `%Ens_MessageExport:USE`, `%Ens_MessageContent:USE` and the namespace's database READ. The export writes exactly what OcuPilot's Contents tab shows, and Contents requires `%Ens_MessageContent:USE`, so an export must never be a way round it. Task 0 (d)'s principal holds the extra pair. A test shows a principal without it is refused before any render.
+- **V4:** kept. The strings are as quoted.
+- **V5:** kept for story end, reworded to V2 and V3. AD-62 item 21 says the bytes are built in memory and names `%Ens_MessageContent:USE` beside `%Ens_MessageExport:USE`. AD-7 reads: "**A message export (Story 24.16)** runs in its confirm or action request and writes no file on the instance."
+- **V6:** accepted. DW-2849 stays routed to burndown, because the change needs logic edits in three files that are add-only for this run. Batch 3 does not carry it.
+- **Decided in-stage 7** (`Failed` is a count, and `Messages` names each id) matches the orchestrator's ruling on Batch 2 (200 with each failed id named, resend family).
+
 ## Design Notes
 
 **Decided in-stage (plan).**

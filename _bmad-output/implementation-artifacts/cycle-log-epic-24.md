@@ -784,3 +784,6 @@
 2026-11-23T08:15:05Z	Story 24.16	code_head_pushed	scope=batch2 sha=d2afb9d29 run=45137088496 rides=5625b48d1(DW-1721)
 2026-11-23T08:16:47Z	Story 24.16	ruling	source=orchestrator scope=batch2 http200_with_Failed=accepted(resend_family_contract;batch3_first_pass_checks_all-failed_set) probe_arming=accepted label_restored=accepted DW-2849=routed_burndown(UX:discard_ordinary_confirm;fix_in_batch3_if_one-line) DW-2850=routed_burndown(measure_classic_orphan_first) process_slip=recorded merge_on_green=orchestrator(run_45137088496)
 2026-11-23T08:18:00Z	Story 24.16	stage_spawned	stage=plan spawn_at=2026-11-23T08:18:00Z model=opus agent_name=24-16-plan-batch3 cycle_iteration=3 scope=batch3_export_messages carries=all-failed_check,DW-2849
+2026-11-23T08:36:00Z	Story 24.16	story_created	scope=batch3_export_messages path=_bmad-output/implementation-artifacts/spec-24-16-purge-suspended-messages-export-and-the-archive-manager-3.md commit=fff39d8ae build_status=ready-for-dev
+2026-11-23T08:42:00Z	Story 24.16	ruling	question=batch3_veto_set choice=keep(V1,V4,V5_reworded,V6)+V2_alternative_A_in_memory+V3_stricter_MessageContent category=veto inbox=U-150 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 DW-2849=not_in_batch3(add-only_contention)
+2026-11-23T08:43:00Z	Story 24.16	spec_validated	scope=batch3
