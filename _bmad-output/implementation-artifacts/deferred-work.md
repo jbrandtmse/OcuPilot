@@ -7824,6 +7824,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-19-impact-lines-on-removals.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: failed once in the 16.19 implement sweep on ocupilot-ci, green re-run alone (run 15179); not touched by 16.19
 - 2026-09-27T01:32:52Z status=wontfix-accepted owner=16-19-impact-lines-on-removals by=harvest note=reopen_if=CI's instance job reports this test red
+- 2026-11-23T00:30:41Z by=epic-24-runner note=reopen_if met: CI run 45085970255 (24.16 Batch 1 integrate head e275b4956), instance shard 2/8, TestABadMaxRowsIsRefusedNotDefaulted red ('a date holding two or more errors to cap'; <INVALID OREF> at +24); no 24.16 change touches the error log
+- 2026-11-23T00:31:08Z status=routed owner=burndown by=orchestrator note=reopen_if met: CI instance shard 2/8 red, run 45085970255, ErrorLog.TestABadMaxRowsIsRefusedNotDefaulted INVALID OREF +24; fix the sweep-order dependence at its cause
 
 ### DW-1723: EndpointCoverage documents expect only as a why's precondition; the impact row now uses it to assert a refusal code
 - source: spec-16-19-impact-lines-on-removals.md (cr rework re-review) | severity: low | fix-risk: low | footprint: out-of-footprint

@@ -762,3 +762,9 @@
 2026-11-22T23:09:59Z	Story 24.16	ruling	question=batch2_veto_set choice=keep category=veto inbox=U-147 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-22T23:09:59Z	Story 24.16	spec_validated	scope=batch2
 2026-11-22T23:09:59Z	Story 24.16	stage_spawned	stage=implement spawn_at=2026-11-22T23:09:59Z model=sonnet agent_name=24-16-implement-batch2 cycle_iteration=2 story_base=a4f7a1fec
+2026-11-22T23:10:59Z	Story 24.16	coordinator_conditions_relayed	scope=batch2 to=implement conditions=vendor_delete_routine_or_bound+2tests,ProductionProbe_armed_only+cleanup,20.31_before/after,discard_resubmittable_or_halt
+2026-11-22T23:46:38Z	Story 24.16	ci_rerun	scope=batch1 run=45080247136 reason=gates_node22_cancelled(timeout_hang;standing_order_rerun_once)
+2026-11-22T23:59:37Z	Story 24.16	integrate_head_pushed	scope=batch1 M=e275b4956(5a6823bd2+feature_c141bd5b5_21.6) run=45085970255 conflicts=10(ReadTool597/334,ToolWrite171,vocab119,EXPERIENCE_two_rows,strings_citations_627->628,taskCreate_669->670,ci.yml_browser-shard_62->63(AC9)) local_roster_check=void(concurrent_batch2_implement_synced_its_src_into_ocupilot-b-ci_mid-run)
+2026-11-23T00:00:13Z	Story 24.16	ruling	source=orchestrator M_gate=CI_45085970255(option_a) second_throwaway=declined collision=batch2_results_void_until_its_rebuild(rebuild_time_in_report) browser-shard_63=accepted lesson=one_owner_per_throwaway
+2026-11-23T00:30:41Z	Story 24.16	ci_red	scope=batch1 sha=e275b4956 run=45085970255 failed=shard8:Prohibited_covered-types_order(my_integrate_slip),shard2:ErrorLog_DW-1721(order_dependence) fix=e57a7f09a(COVEREDTYPES_reorder) new_run=45089102690
+2026-11-23T00:31:09Z	Ledger	reopened	DW-1721 routed burndown (orchestrator)
