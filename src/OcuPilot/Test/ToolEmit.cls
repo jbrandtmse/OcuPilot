@@ -340,7 +340,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
             Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase($Namespace, .tGlobalResource, .tReadOnly), tTool.name _ ": this namespace's globals database resolves")
             Set tOwnPairs = $ListBuild($ListBuild("%Ens_MessageResend", "USE"))
-            If tTool.class = "OcuPilot.Screen.Tool.InteropMessageEditResend" Set tOwnPairs = $ListBuild($ListBuild("%Ens_MessageContent", "USE"), $ListBuild("%Ens_MessageResend", "USE"), $ListBuild("%Ens_MessageEditResend", "USE"))
+            If (tTool.class = "OcuPilot.Screen.Tool.InteropMessageEditResend") || (tTool.class = "OcuPilot.Screen.Tool.InteropSuspendedEditResubmit") Set tOwnPairs = $ListBuild($ListBuild("%Ens_MessageContent", "USE"), $ListBuild("%Ens_MessageResend", "USE"), $ListBuild("%Ens_MessageEditResend", "USE"))
+            ; Story 24.16: a suspended message's discard and delete declare the classic Suspended Messages page's %Ens_MessageDiscard:USE in its place.
+            If (tTool.class = "OcuPilot.Screen.Tool.InteropSuspendedDiscard") || (tTool.class = "OcuPilot.Screen.Tool.InteropSuspendedDelete") Set tOwnPairs = $ListBuild($ListBuild("%Ens_MessageDiscard", "USE"))
             For tOwnIndex = 1:1:$ListLength(tOwnPairs) {
                 If '$ListFind(tExpected, $List(tOwnPairs, tOwnIndex)) Set tExpected = tExpected _ $ListBuild($List(tOwnPairs, tOwnIndex))
             }

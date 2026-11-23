@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { parentCriteria, screenForDescriptor } from '../../core/navigation';
@@ -7,7 +7,6 @@ import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { rowKey } from '../../core/table-model';
-import type { Violation } from '../../core/violations';
 import { DetailPage } from '../../shell/detail-page';
 import { ScreenActionDialogs } from '../../shell/screen-action-dialogs';
 import {
@@ -19,32 +18,7 @@ import {
   ScreenActionHandler,
 } from '../../shell/screen-action-handler';
 import { InteropItemTestDialog, type TestRequest } from './interop-item-test-dialog';
-
-/** The value the review of an edit is made with and the confirmed edit sends: the changed fields, as JSON text (AD-56). */
-const FIELDS_VALUE = 'fields';
-
-/** `text` with every line ending as a line feed, which is what a text area reports back for text it was given. */
-function lines(text: string): string {
-  return text.replace(/\r\n?/g, '\n');
-}
-
-/** The members of the form `rows` that are records, which the instance sent as the fields of the message body. */
-function formRowsOf(rows: unknown): readonly Readonly<Record<string, unknown>>[] {
-  if (!Array.isArray(rows)) return [];
-  return (rows as readonly unknown[]).filter(
-    (row): row is Readonly<Record<string, unknown>> => row !== null && typeof row === 'object' && !Array.isArray(row)
-  );
-}
-
-/** The value each field of the form holds now, keyed by the field's path. */
-function valuesOf(rows: readonly Readonly<Record<string, unknown>>[]): Readonly<Record<string, string>> {
-  const values: Record<string, string> = {};
-  for (const row of rows) {
-    const field = row['Field'];
-    if (typeof field === 'string' && field !== '') values[field] = typeof row['Value'] === 'string' ? row['Value'] : '';
-  }
-  return values;
-}
+import { MessageEditFlow } from './message-edit-flow';
 
 /**
  * A message's Header tab (Story 20.31, AD-5): the detail page over the shared list page, with the tab's two actions -- Resend and Edit
@@ -86,11 +60,11 @@ function valuesOf(rows: readonly Readonly<Record<string, unknown>>[]): Readonly<
         [submitLabel]="STRINGS.interopEditResendReview"
         [consequence]="STRINGS.interopMessageEditResendConsequence"
         [secretCaption]="STRINGS.interopRefusalEditSecret"
-        [rows]="formRows()"
-        [values]="formValues()"
-        [sending]="sending()"
-        [refusal]="refusal()"
-        [violations]="violations()"
+        [rows]="flow.rows()"
+        [values]="flow.values()"
+        [sending]="flow.sending()"
+        [refusal]="flow.refusal()"
+        [violations]="flow.violations()"
         (submitted)="onReview($event)"
         (cancelled)="onClose()"
       />
@@ -115,18 +89,6 @@ export class InteropMessageHeaderPage {
 
   private readonly store: ScreenStore | null;
 
-  private readonly open = signal(false);
-
-  protected readonly formRows = signal<readonly Readonly<Record<string, unknown>>[]>([]);
-
-  protected readonly formValues = signal<Readonly<Record<string, string>>>({});
-
-  protected readonly sending = signal(false);
-
-  protected readonly refusal = signal('');
-
-  protected readonly violations = signal<readonly Violation[]>([]);
-
   /** An action of this page is waiting on the instance, so a second press waits for the first. */
   private busy = false;
 
@@ -134,6 +96,9 @@ export class InteropMessageHeaderPage {
   private readonly banner: ActionSink = {
     setRefusal: (reason) => this.store?.setRefusal(reason),
   };
+
+  /** Edit and resend's form, dry runs and review, shared with the Suspended messages list's Edit and resubmit. */
+  protected readonly flow = new MessageEditFlow(this.handler, INTEROP_MESSAGE_HEADER, MESSAGE_EDIT_RESEND, this.banner);
 
   constructor() {
     this.store = this.screen === null ? null : this.stores.for(this.screen.descriptor, this.screen.refreshRates);
@@ -149,7 +114,7 @@ export class InteropMessageHeaderPage {
   }
 
   protected get isOpen(): boolean {
-    return this.open();
+    return this.flow.isOpen;
   }
 
   /** The message the route names: the tab's one criterion, read off the URL. */
@@ -172,7 +137,7 @@ export class InteropMessageHeaderPage {
   /** Resend: the dry run of this message, then the typed-name review, through the Messages list's action. */
   private async onResend(): Promise<void> {
     const id = this.messageId;
-    if (this.busy || this.open() || id === '' || this.handler.pending() !== null) return;
+    if (this.busy || this.flow.isOpen || id === '' || this.handler.pending() !== null) return;
     this.busy = true;
     try {
       await this.handler.startDryRun(INTEROP_MESSAGE_LIST, MESSAGE_RESEND, id, undefined, this.banner);
@@ -184,69 +149,21 @@ export class InteropMessageHeaderPage {
   /** Edit and resend, step one: the dry run with no fields answers the form; a refusal is the tab's banner and no form opens. */
   private async onEdit(): Promise<void> {
     const id = this.messageId;
-    if (this.busy || this.open() || id === '' || this.handler.pending() !== null) return;
+    if (this.busy || this.flow.isOpen || id === '' || this.handler.pending() !== null) return;
     this.busy = true;
     try {
-      this.store?.setRefusal('');
-      const run = await this.handler.dryRunFor(INTEROP_MESSAGE_HEADER, MESSAGE_EDIT_RESEND, id);
-      if (run.kind === 'refused') {
-        this.store?.setRefusal(run.refusal.reason);
-        return;
-      }
-      const form = formRowsOf(run.review['Form']);
-      if (form.length === 0) return;
-      this.formRows.set(form);
-      this.formValues.set(valuesOf(form));
-      this.refusal.set('');
-      this.violations.set([]);
-      this.sending.set(false);
-      this.open.set(true);
+      await this.flow.begin(id);
     } finally {
       this.busy = false;
     }
   }
 
   protected onClose(): void {
-    this.open.set(false);
-    this.sending.set(false);
-    this.refusal.set('');
-    this.violations.set([]);
+    this.flow.close();
   }
 
-  /**
-   * Edit and resend, step two: Review. The fields whose text differs from the value the form opened with go to the dry run as JSON
-   * text; a form that changed nothing says so without a request. A refusal stays in the form, on the field the instance names where the
-   * form draws it; an answer closes the form and opens the typed-name review over the lines the change makes.
-   */
+  /** Edit and resend, step two: Review of the fields the person changed (`MessageEditFlow.review`). */
   protected async onReview(request: TestRequest): Promise<void> {
-    if (!this.open() || this.sending()) return;
-    const id = this.messageId;
-    const was = this.formValues();
-    const changed: Record<string, string> = {};
-    for (const [field, text] of Object.entries(request.fields)) {
-      if (lines(text) !== lines(was[field] ?? '')) changed[field] = text;
-    }
-    this.violations.set([]);
-    if (Object.keys(changed).length === 0) {
-      this.refusal.set(STRINGS.interopRefusalEditNoChange);
-      return;
-    }
-    this.sending.set(true);
-    this.refusal.set('');
-    const values = { [FIELDS_VALUE]: JSON.stringify(changed) };
-    const run = await this.handler.dryRunFor(INTEROP_MESSAGE_HEADER, MESSAGE_EDIT_RESEND, id, values);
-    this.sending.set(false);
-    // A form canceled while the review was in flight no longer takes its answer.
-    if (!this.open()) return;
-    if (run.kind === 'refused') {
-      const fields = run.refusal.violations;
-      const drawn = new Set(Object.keys(was));
-      const elsewhere = fields.find((violation) => !drawn.has(violation.field));
-      this.violations.set(fields);
-      this.refusal.set(elsewhere !== undefined ? elsewhere.reason : fields.length > 0 ? '' : run.refusal.reason);
-      return;
-    }
-    this.onClose();
-    this.handler.openReview(INTEROP_MESSAGE_HEADER, MESSAGE_EDIT_RESEND, id, values, run, this.banner);
+    await this.flow.review(this.messageId, request);
   }
 }

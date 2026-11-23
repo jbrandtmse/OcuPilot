@@ -80,9 +80,26 @@ ClassMethod MessageLine(pMessage As %DynamicObject) As %String
     Quit pMessage.%Get("ID") _ " " _ $Char(183) _ " " _ pMessage.%Get("Source") _ " " _ $Char(8594) _ " " _ pMessage.%Get("Target") _ ": " _ tSentence
 }
 
-/// <p>The outcome a confirmed write shows a person, <code>{lines}</code>, one line for each message the write sent:
-/// <code>&lt;id&gt;: resent as &lt;new&gt;</code> or <code>&lt;id&gt;: not resent: &lt;text&gt;</code>. It reaches the screen alone
-/// (AD-39's fifth exception).</p>
+/// <p>The action a Suspended messages tool is (<code>resubmit</code>, <code>discard</code>, <code>delete</code> or <code>edit</code>), whose outcome words its
+/// lines use; <code>""</code> for the resends of Story 20.31, whose lines name the new message.</p>
+Parameter OUTCOMEKIND;
+
+/// <p>The outcome line of the message <var>pId</var> the write acted on: <code>&lt;id&gt;: resent as &lt;new&gt;</code> for a resend, and
+/// <code>&lt;id&gt;: resubmitted</code>, <code>discarded</code> or <code>deleted</code> for a suspended write, which keeps the id.</p>
+ClassMethod SuccessLine(pId As %String, pNewId As %String) As %String
+{
+    If ..#OUTCOMEKIND = "" Quit pId _ ": " _ ##class(OcuPilot.Port.InteropPort).OutcomeWord(1) _ " " _ pNewId
+    Quit pId _ ": " _ ##class(OcuPilot.Port.InteropPort).SuspendedOutcomeWord(..#OUTCOMEKIND, 1)
+}
+
+/// <p>The outcome line of the message <var>pId</var> the vendor refused, with the vendor's text <var>pText</var>.</p>
+ClassMethod FailureLine(pId As %String, pText As %String) As %String
+{
+    Quit pId _ ": " _ $Select(..#OUTCOMEKIND = "": ##class(OcuPilot.Port.InteropPort).OutcomeWord(0), 1: ##class(OcuPilot.Port.InteropPort).SuspendedOutcomeWord(..#OUTCOMEKIND, 0)) _ ": " _ pText
+}
+
+/// <p>The outcome a confirmed write shows a person, <code>{lines}</code>, one line for each message the write acted on
+/// (<method>SuccessLine</method> and <method>FailureLine</method>). It reaches the screen alone (AD-39's fifth exception).</p>
 ClassMethod WriteOutput(pWritten) As %DynamicObject
 {
     If '$IsObject($Get(pWritten)) || 'pWritten.%IsA("%Library.DynamicObject") Quit ""
@@ -90,14 +107,14 @@ ClassMethod WriteOutput(pWritten) As %DynamicObject
     If pWritten.%GetTypeOf("Messages") = "array" {
         Set tIterator = pWritten.%Get("Messages").%GetIterator()
         While tIterator.%GetNext(.tIndex, .tEntry) {
-            If tEntry.%GetTypeOf("NewId") = "string" {
-                Do tLines.%Push(tEntry.%Get("ID") _ ": " _ ##class(OcuPilot.Port.InteropPort).OutcomeWord(1) _ " " _ tEntry.%Get("NewId"), "string")
+            If tEntry.%GetTypeOf("Error") '= "string" {
+                Do tLines.%Push(..SuccessLine(tEntry.%Get("ID"), tEntry.%Get("NewId")), "string")
             } Else {
-                Do tLines.%Push(tEntry.%Get("ID") _ ": " _ ##class(OcuPilot.Port.InteropPort).OutcomeWord(0) _ ": " _ tEntry.%Get("Error"), "string")
+                Do tLines.%Push(..FailureLine(tEntry.%Get("ID"), tEntry.%Get("Error")), "string")
             }
         }
     } ElseIf pWritten.%GetTypeOf("NewId") = "string" {
-        Do tLines.%Push(pWritten.%Get("Message") _ ": " _ ##class(OcuPilot.Port.InteropPort).OutcomeWord(1) _ " " _ pWritten.%Get("NewId"), "string")
+        Do tLines.%Push(..SuccessLine(pWritten.%Get("Message"), pWritten.%Get("NewId")), "string")
     }
     Set tOutput = {}
     Do tOutput.%Set("lines", tLines)

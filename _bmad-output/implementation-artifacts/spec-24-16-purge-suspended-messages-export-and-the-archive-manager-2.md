@@ -2,7 +2,8 @@
 title: 'Story 24.16: Purge, suspended messages, export and the archive manager (Batch 2: suspended messages)'
 type: 'feature'
 created: '2026-11-22'
-status: 'ready-for-dev'
+status: 'in-review'
+baseline_revision: '9cf8dbc4a294d93718b385dbd04e350c59d0b787'
 review_loop_iteration: 0
 followup_review_recommended: false
 owned_ledger: ''
@@ -81,11 +82,11 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a4f7a1fec`).
 
 **Execution:**
 
-- [ ] **Task 0** (`ocupilot-b-ci`, USER and HSCUSTOM, auditing on; the probe production brought up as the tests do, `ProductionProbe.HighWater()` recorded, `InteropResendFixture.Prepare` and `Start`, and ended with `Settle`, `SweepSince(<mark>)` reading `0|0`, `Remove` and `Gone()`; HSCUSTOM probes dropped by marker; probe roles and users removed; record under Design Notes, Measured): (a) a message the probe production suspends itself (an operation answering an error under `ReplyCodeActions` `E=S`) stores what a fixture Status-5 header stores, with no queue entry, and the running production leaves it alone; (b) resubmit in the running production: the same id, the status path, the body, `Description`, the vendor's audit event name; with the production stopped, the target disabled, a non-suspended header and a suspended response, what the vendor answers and does; (c) edit-and-resubmit: the same id, a new body id, the old body kept; (d) discard: status 4, body kept, no audit row, no queue change, and a later resend from Messages works; (e) delete: the header, the unshared body and an HL7 search-table row gone, a shared body kept, no audit row, and whether `%DeleteId` differs from the bound `DELETE` (the trigger); (f) a principal with `%Ens_Portal:USE`, `%Ens_MessageHeader:USE`, the action's resource and `%DB_USER:RW` does each action, and whether any SQL privilege is needed; (g) `$USERNAME` and `$ROLES` read the same after each vendor call. HALT if a read writes, if (d) or (e) finds a vendor audit row, if a vendor call escalates, or if a consequence sentence measures untrue (`intent gap: new string`).
-- [ ] `InteropPort.cls`, `InteropError.cls`: the endpoint, its gate, list, verdicts with a type argument, the four writes through one generalised loop, snippets, codes.
-- [ ] The five tool classes, the descriptor, the baseline keys.
-- [ ] Client: the page, the shared edit flow, the handler maps, strings, the regenerated mirror and titles, the EXPERIENCE.md row.
-- [ ] Tests: the matrix in the five classes, case, fixture method and seam; the browser and component specs; the rosters the sweep names.
+- [x] **Task 0 (done; results under Design Notes, Measured)** (`ocupilot-b-ci`, USER and HSCUSTOM, auditing on; the probe production brought up as the tests do, `ProductionProbe.HighWater()` recorded, `InteropResendFixture.Prepare` and `Start`, and ended with `Settle`, `SweepSince(<mark>)` reading `0|0`, `Remove` and `Gone()`; HSCUSTOM probes dropped by marker; probe roles and users removed; record under Design Notes, Measured): (a) a message the probe production suspends itself (an operation answering an error under `ReplyCodeActions` `E=S`) stores what a fixture Status-5 header stores, with no queue entry, and the running production leaves it alone; (b) resubmit in the running production: the same id, the status path, the body, `Description`, the vendor's audit event name; with the production stopped, the target disabled, a non-suspended header and a suspended response, what the vendor answers and does; (c) edit-and-resubmit: the same id, a new body id, the old body kept; (d) discard: status 4, body kept, no audit row, no queue change, and a later resend from Messages works; (e) delete: the header, the unshared body and an HL7 search-table row gone, a shared body kept, no audit row, and whether `%DeleteId` differs from the bound `DELETE` (the trigger); (f) a principal with `%Ens_Portal:USE`, `%Ens_MessageHeader:USE`, the action's resource and `%DB_USER:RW` does each action, and whether any SQL privilege is needed; (g) `$USERNAME` and `$ROLES` read the same after each vendor call. HALT if a read writes, if (d) or (e) finds a vendor audit row, if a vendor call escalates, or if a consequence sentence measures untrue (`intent gap: new string`).
+- [x] `InteropPort.cls`, `InteropError.cls`: the endpoint, its gate, list, verdicts with a type argument, the four writes through one generalised loop, snippets, codes.
+- [x] The five tool classes, the descriptor, the baseline keys.
+- [x] Client: the page, the shared edit flow, the handler maps, strings, the regenerated mirror and titles, the EXPERIENCE.md row.
+- [x] Tests: the matrix in the five classes, case, fixture method and seam; the browser and component specs; the rosters the sweep names.
 
 **Acceptance Criteria:**
 
@@ -101,7 +102,31 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a4f7a1fec`).
 
 - 2026-11-22, spec gate (runner, veto item U-147): Design Notes 1 to 6 kept as recommended. The four consequence sentences are provisional until Task 0 measures them true on `ocupilot-b-ci` with the probe production; a sentence measured untrue, or a vendor call that changes `$ROLES`, HALTs `blocked` with an intent gap.
 
+- 2026-11-22, implement (Task 0): the four consequence sentences measured true; no vendor call changed `$ROLES`; a Discarded header can still be resent. Four orchestrator conditions recorded under Design Notes.
+
+- 2026-11-22, implement: built to the spec with no new user-facing string beyond the ruled ones; the 25 keys are one Fixed-strings row (EXPERIENCE.md:628).
+
 ## Review Triage Log
+
+### 2026-11-23 — Review pass
+
+- verdicts: 15 findings — high 0, medium 6, low 6, false 3, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` verification-gap: the discard and delete copy-out drafts (`SuspendedSnippet`) are never taken or run, though the Script matrix row names all four tools — `InteropSuspendedRemove` gained a draft test for both (line shapes, run, statuses, shared body kept, unshared and HL7 rows gone, a bad id renders no draft); mutation line recorded.
+  - `[medium]` `[patch]` verification-gap: discard and delete read their own verdict before `nobody` and `targetoff`, and no test reads a body-gone or disabled-target suspended message — body-gone and disabled-target members added to the discard and delete test in `InteropSuspendedRefusals`; mutation line recorded.
+  - `[medium]` `[patch]` verification-gap: the seam's `RefuseEditAfterSave` was never driven for the suspended edit, so the orphan-clone cleanup was unpinned — `InteropSuspendedResubmit` gained the test; mutation line recorded.
+  - `[low]` `[reject]` verification-gap: a delete whose body delete fails, and the tolerated delete codes, have no test — needs new seam hooks for a vendor failure the delete's own log path already reports; reopen_if a delete is seen to misreport a refused body delete.
+  - `[medium]` `[patch]` verification-gap: `TestTheDeleteIsConfirmedInTheNamespaceItWasReadIn` read `1|1` only because it sorts first, so the class was not order-independent — the case drops probes in both namespaces before and after every test and asserts none at each start; mutation line recorded.
+  - `[low]` `[reject]` verification-gap: AC4, AC2 and AC1 each have one recorded mutation although more legs exist — Rule 19 asks one demonstrated mutation per AC, and each AC has one.
+  - `[medium]` `[patch]` verification-gap: the negative `ConfigChange` marker check for a resubmit had no positive control — the discard test asserts one row under the same marker; mutation line recorded.
+  - `[low]` `[reject]` verification-gap: the unarmed path of `ProductionProbe.CheckOwn` has no test — the sibling arming gates have none either, and every armed class would refuse to start if it broke; reopen_if an armed class runs on a product instance.
+  - `[medium]` `[patch]` intent-alignment: the script form of discard and delete is untested — the same root cause as the first row, patched there.
+  - `[false]` `[reject]` intent-alignment: `ProductionProbe` arming is a change the intent does not mention — the orchestrator's relayed condition 2 asks for it (Design Notes, Orchestrator conditions).
+  - `[false]` `[reject]` intent-alignment: the browser spec drives Resubmit and Delete only — AC6 is exactly that; the other two actions reach HTTP and component tests.
+  - `[low]` `[reject]` intent-alignment: resubmit and edit also answer `noreplyqueue` for a suspended response, beyond "only `nobody` and `targetoff`" — the resend family's rule is reused (Decided in-stage 1), it only refuses what the vendor would queue to no job, and removing it would weaken a refusal.
+  - `[low]` `[reject]` intent-alignment: gate ordering and "never cached" are tested for the writes, the list's pairs by one test — the list's own pairs test exists; a second leg adds no behavior.
+  - `[false]` `[reject]` intent-alignment: collateral edits to `InteropMessageAction`, `InteropMessageEditResend`, rosters and one `ci-throwaway.sh` block — each is an add-only or parameter extension within the contended-file rules.
+  - `[low]` `[reject]` intent-alignment: no test audits an all-failed set — the audit runs whenever any id is done or failed, and the mixed set is asserted; reopen_if a failed-only discard writes no row.
 
 ## Design Notes
 
@@ -132,6 +157,30 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a4f7a1fec`).
 6. Siblings (Rule 31): `InteropMessageAction`/`InteropMessageResend`/`InteropMessageEditResend` and the resend port family (tools, port), `InteropMessageList` (descriptor), `interop-purge-list.page.ts` (page), the header page's edit flow (shared, not copied), `InteropResendCase`/`InteropResendFixture`/`InteropResendSeam` (tests), Batch 1's `AuditRuntime` row (audit).
 7. Side-bar position 18, after Purge data settings.
 
+**Measured (Task 0, 2026-11-22, `ocupilot-b-ci`, USER, probe production running, auditing on, scratch class removed, probe removed, `SweepSince` `0|0`, `Gone()` 1).** No consequence sentence measured untrue; no `$ROLES` change.
+
+- (a) A probe operation answering an error under `ReplyCodeActions` `E=S` leaves its message at Status 5 with no queue entry, the log line "Suspending message ... as requested by message handler"; its stored fields equal a fixture Status-5 header's (`Suspend` also sets `TimeProcessed`, which a real one has). The running production leaves a fixture Status-5 header alone (4 s, queue 0, Status 5).
+- (b) `ResubmitMessage(id)` in the running production: same id, Status 5 straight to 9 (3 then 9 for a slower target), `Resent` 1, `Description` "Resubmitted", body unchanged; one `Resend` audit row (source `%Ensemble`, type `%Message`, description "Resend Message", data `MessageHeaderId = <id>, MessageBodyClassName = ..., MessageBodyId = ..., SessionId = ...`). Production stopped: "ProductionNotRunning; not resubmitting message '<id>'", header unchanged. Target a disabled item: answers OK and leaves the header Queued (2) on a queue no job reads, so `targetoff` is needed. A Completed header and a suspended response are resubmitted too (the vendor checks no status), so `notsuspended` is OcuPilot's rule. A missing id answers "can not open message header". A real suspended message resubmitted to its failing target is suspended again (3 then 5).
+- (c) `ResubmitMessage(id, "", clone)`: same id, a new body id, `Description` "Resubmitted; old body = '<class> : <id>'", Completed; the old body is kept; one `Resend` row naming the new body. The case must delete the old body itself: a header sweep does not name it.
+- (d) Discard (`SetStatus(4)`, `%Save`): Status 4, `TimeProcessed` set, body kept, queue unchanged, no audit row. A later `ResubmitMessage` of the Discarded header works (3 then 9, `Resent` 1, one `Resend` row), and the Messages resend verdict reads no status, so "can still be resent from Messages" is true (orchestrator condition 4 met; no sentence change).
+- (e) Delete by the classic algorithm (`EnsPortal.SuspendedMsg.DeleteMessage`, a Zen method on the portal page, so no vendor routine can be called; the Purge methods select by age): own body and header gone; a body another header names kept; the last holder's delete removes it; an HL7 body indexed by `EnsLib.HL7.SearchTable.IndexDoc` loses its 4 rows (`%DeleteId` of the body alone removes them; `RemoveSearchTableEntries` is the classic's extra call); no audit row; header `%DeleteId` and the bound `DELETE` read the same.
+- (f) A principal holding only `%Ens_Portal:U`, `%Ens_MessageHeader:U`, `%Ens_MessageResend:U`, `%Ens_MessageDiscard:U` and `%DB_USER:RW` (plus the console resources to log in) resubmits, discards, and deletes through `%ExecDirectNoPriv`; a checked `DELETE` answers SQLCODE -99 ("not privileged"). So the writes use `%ExecDirectNoPriv` after the gate and need no pair beyond the spec's.
+- (g) `$USERNAME` and `$ROLES` read the same before and after every vendor call, as `irisowner` (`%All,OcuPilotAdmin`) and as the limited principal.
+
+**Orchestrator conditions (relayed to the runner 2026-11-22, outside the intent contract).** 1. Delete: no vendor routine deletes by id, so OcuPilot's bound `DELETE` follows the classic page's path, with two tests each carrying a `mutation:` line: a body shared by two headers survives the delete of one; the last header's delete removes the body and its search-table rows. 2. `ProductionProbe` starts a production only on an armed throwaway (an existing `OCUPILOT_ALLOW_*` variable, add-only roster lines where a roster pins it), and every test that starts the probe stops and removes it on every exit and asserts no production is left running in USER. 3. The edit-flow extraction changes Story 20.31's client code: its classes and browser spec run before and after, same requests and answers, both recorded in Verification. 4. Discard ships on (met above).
+
+**Decided in-stage (implement).**
+
+1. Resubmit and edit-and-resubmit keep `noreplyqueue` for a Response, by reusing the resend family's `MessageVerdict`.
+2. The edit's read type is `EDITSUBMIT` (the spec's pair name); the new words are in `SUSPENDEDVERDICTS`, so `VERDICTS` keeps its five words, which `InteropResendDescriptor` asserts.
+3. OcuPilot's `ConfigChange` row is one per write call, its id the done and failed ids, its details the namespace, action, done and failed ids; discard and delete only.
+4. The refusal tests' gate legs run through the fake `ScreenGate` the resend seam already provides rather than through real principals; the real-principal pair check is Task 0 (f), and `ClassicPageGate` pins the pairs.
+5. The arming check of `ProductionProbe` sits in `CheckOwn` and reads `OCUPILOT_ALLOW_PRINCIPALS`; the six new classes declare it as their `ARMINGVARIABLE`, with a `# classes:` block in `ci-throwaway.sh`.
+6. The edit dialog reuses the Review button and the credential caption keys Messages already carries; the 25 new keys are quoted in one Fixed-strings row (EXPERIENCE.md:628), and `taskCreate`'s citation moved to :670. Tool descriptions and input-schema text are agent-facing, not user-facing strings.
+7. The handler's `SCREEN_ACTION_DESCRIPTORS` carries the new descriptor, which registers Resubmit, Discard and Delete; the page registers Edit and resubmit.
+8. The descriptor declares no `read.label`, as Batch 1's purge list: `ReadDescriptions` requires every labeled read tool to sit in a confusable group, and the list is in none; the mirror and `Titles.cls` were regenerated.
+9. A delete whose body cannot be deleted for a reason other than "already gone" leaves the header in place and reports the message as not deleted; the classic page deletes the header anyway unless the failure is `<PROTECT>`. Stricter, and a retry finds the body.
+
 **Governing ADs (Rule 6):** AD-3, AD-6, AD-7, AD-8, AD-10, AD-11, AD-13, AD-14, AD-15, AD-16, AD-21, AD-22, AD-29, AD-34, AD-36, AD-44, AD-51, AD-52, AD-53, AD-56, AD-58, AD-59, AD-60, AD-62 (items 1-5, 15, 17). Not engaged: AD-9 (no `$ROLES` frame unless Task 0 (g) finds an escalation, which HALTs), AD-23, AD-35, AD-54, AD-63, AD-65, AD-66.
 
 **Integration and linkage (Rules 1, 2).** Integration: AC5 (the kernel's confirm consumes each stored proposal in its own namespace) and AC1's agent leg (the derived read tool). Consumes: `InteropPort`'s resend family, `InteropMessageAction`, `InteropMessageEditResend`, Batch 1's `InteropPurgeFixture` probes, `ProductionProbe`, the kernel's proposal, confirm, governance and audit. Consumed-by: Batch 3's export reuses the selection and `MessageSet`; Story 24.20's undo names these writes as not restorable.
@@ -154,9 +203,35 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `a4f7a1fec`).
 
 **Mutations** (each AC's pinning test shown red on `ocupilot-b-ci`, `src` reloaded with subclasses and reverted byte-identical; the client one on a rebuilt, redeployed bundle), recorded here by the implement stage as `mutation: <change> -> <test red>`, one per AC. Planned: AC1 the list's `WHERE` without the status -> `InteropSuspendedList` red; AC2 `ResubmitMessage` given the clone's original body -> `InteropSuspendedResubmit` red (the edit leg); AC3 the delete removes a body another header names -> `InteropSuspendedRemove` red (the shared-body leg); AC4 the `notsuspended` rule removed -> `InteropSuspendedRefusals` red; AC5 a tool's `FINGERPRINTSUBJECT` without `Namespace` -> `InteropSuspendedElsewhere` red; AC6 the page sends the discard action for Delete -> the browser spec red; AC7 the case's HSCUSTOM `DropProbes` skipped -> `InteropSuspendedElsewhere`'s after-all check red.
 
+**Recorded (`ocupilot-b-ci`, brought up 2026-11-23T04:06:09Z and healthy at 04:06:41Z from this working tree; every result below was measured after it, by the resume pass; the throwaway's `src` equalled the tree before the sweep, and no production ran in USER before the first test or after the last).**
+
+- mutation: the list's `WHERE Status = ?` replaced by `WHERE ID >= ?` -> `InteropSuspendedList.TestTheListHoldsTheSuspendedHeadersNewestFirstForEveryReader` red (AC1).
+- mutation: `VendorResubmitWithBody` calls `ResubmitMessage(id)` without the clone -> `InteropSuspendedResubmit.TestTheAgentsEditAndResubmitSavesACopyAndKeepsTheId` and `TestThePersonsEditAndResubmitIsAFormThenAReviewThenASend` red (AC2).
+- mutation: the delete's shared-body guard `tHolders = 1` made `>= 1` -> `InteropSuspendedRemove.TestABodyAnotherHeaderNamesSurvivesTheDeleteOfOneHeader` red (AC3, condition 1).
+- mutation: `BodyPurgeableHere` always answers 0 -> `InteropSuspendedRemove.TestTheLastHeadersDeleteRemovesTheBodyAndItsSearchTableRows` and `TestTheAgentsDeleteConfirmsOverHttpAndRemovesTheBodiesAndRows` red (AC3, condition 1).
+- mutation: the `notsuspended` rule removed from `MessageVerdict` -> `InteropSuspendedRefusals` red, four tests (AC4).
+- mutation: `Namespace` removed from `InteropSuspendedAction.FINGERPRINTSUBJECT` -> `InteropSuspendedElsewhere` red, its resubmit, discard and delete confirm tests (AC5).
+- mutation: the Delete consequence in `DESTRUCTIVE_CONSEQUENCES` read from the discard sentence, bundle rebuilt and redeployed -> `interop-suspended-messages.browser-spec.mjs` red at "the dialog states what a delete does" (AC6).
+- mutation: the delete script's body guard `(tHolders = 1)` in `SuspendedSnippet` made `>= 1` -> `InteropSuspendedRemove.TestTheCopyOutDraftsOfADiscardAndADeleteRenderTheirScriptsAndRunningThemDoesTheSame` red (AC3, Script row).
+- mutation: the `nobody` check moved above the discard and delete line in `MessageVerdict` -> `InteropSuspendedRefusals.TestADiscardAndADeleteActOnTheSuspendedMessageAlone` red.
+- mutation: the clone's `%DeleteId` in `EditCloneHere` guarded by `If 'pSuspended` -> `InteropSuspendedResubmit.TestAnEditTheVendorRefusedAfterTheCopyWasSavedLeavesTheHeaderAndNoCopy` red.
+- mutation: both `DropProbes` calls in the case's `OnBeforeOneTest` and `OnAfterOneTest` removed -> `InteropSuspendedElsewhere` red, its discard, edit and resubmit tests (AC7).
+- mutation: the discard and delete audit row recorded under entity type `interop-messages` -> `InteropSuspendedRemove` red, five tests (the row is not found under the shipped type).
+- Each mutated file was restored through the Edit tool and compared byte-identical to a copy taken before the edits (`cmp`), then reloaded with its subclasses. The sweep below ran after every revert.
+- Condition 4 (a Discarded header can still be resent): `InteropSuspendedRemove.TestThePersonsDiscardKeepsHeaderAndBodyAndIsAuditedOnce` now sends the discarded header through the Messages resend write and waits for the copy to complete; no mutation was run on that new leg.
+- Condition 3 (edit-flow extraction), side by side: `interop-message-header.page.spec.ts` 9 pass before (worktree of `a4f7a1fec`) and 9 after; `interop-message-resend.browser-spec.mjs` 5 pass before and 5 after (6 with the new spec in one run); the resend classes after: `InteropResend` 9, `InteropEditResend` 13, `InteropResendDescriptor` 8, `InteropResendLimits` 8, `InteropResendSweep` 2, all green.
+- Condition 1 (delete): `EnsPortal.SuspendedMsg.DeleteMessage` (`irislib/`, :446-528) was read against `DeleteHeaderHere` step by step: the body is read from the header, counted among headers, deleted only when one header holds it, with the `Ens.MessageBody` default for an id-only body, the persistent-or-stream and `ENSPURGE` test, the tolerated codes, the search-table call, then the header delete. Two differences, both on the safe side: no journaling suspension or bitmap purge (Design Notes 5), and a body delete that fails for another reason leaves the header in place, where the classic page deletes the header unless the failure is `<PROTECT>`.
+- Condition 2 (probe arming): every class that starts the probe declares `OCUPILOT_ALLOW_PRINCIPALS` as its arming variable, except `CompileWithoutInterop`, which declares `OCUPILOT_ALLOW_DATABASE_CONFIG` and refuses itself unless `OCUPILOT_ALLOW_PRINCIPALS` reads 1; `InteropResendCase` stops the probe after every test and removes it, asserting it gone, after the last. `node --test tools/ci.test.mjs` 107 of 107.
+- Sweep, `ci-runner --shard k/17` for k = 1 to 17 (classes, tests, failed): 1 (50, 312, 0), 2 (50, 307, 0), 3 (51, 418, 0), 4 (52, 437, 0), 5 (51, 382, 0), 6 (51, 337, 0), 7 (52, 348, 0), 8 (51, 368, 0), 9 (51, 485, 0), 10 (51, 409, 0), 11 (52, 394, 0), 12 (52, 394, 2), 13 (52, 448, 0), 14 (53, 427, 0), 15 (52, 421, 0), 16 (52, 374, 0), 17 (52, 360, 0): 875 classes, 6621 tests, no probe leftovers, no overlap. Shard 12's two failures were `ReadDescriptions` (the new descriptor declared a read label but is in no confusable group, Decided in-stage 8); after the label was removed the class read 9 of 9, and `ReadTool` 28, `Descriptor` 60 and `SurfaceCoverage` 4 were re-run green.
+- The new classes in the sweep: `InteropSuspendedList` 5, `InteropSuspendedResubmit` 6, `InteropSuspendedRemove` 7, `InteropSuspendedRefusals` 7, `InteropSuspendedElsewhere` 4.
+- Browser, on a freshly built and deployed bundle: `interop-suspended-messages.browser-spec.mjs` and `interop-message-resend.browser-spec.mjs` 6 of 6. Smoke: executed 50, passed 50.
+- Client: `npm run build` (every prebuild checker) clean; `npm run test:tools` 2400 of 2400; `npm run test:components` 326 files, 3890 tests; `check-objectscript` 0 problems; `lint-docs` clean after the Triage Log headings were spaced.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: in-review
 Blocking condition: none
 
 **Plan.** Batch 2 of four: Suspended messages through `InteropPort`, four writes (resubmit, edit-and-resubmit, discard, delete) on at most 100 reviewed ids, each reached by the screen and the agent, extending Story 20.31's resend family; every proposal keeps its namespace and every confirm judges there. Veto items: Design Notes 1 to 6. Read-only checks on `ocupilot-b-ci` (port 52777, image `irishealth-community:2026.2`): no production runs in USER or HSCUSTOM and neither holds a suspended message, so the tests bring up `ProductionProbe` in USER and remove it. Nothing was written to the instance.
+
+**Implement pass (resume after an outage).** The earlier pass's tree was re-read and every earlier result discarded; on a fresh throwaway the four orchestrator conditions were shown, twelve mutations re-run, and the full 17-shard sweep, browser, smoke and client gates measured as under Verification. The pass changed three things: the descriptor's read label was dropped (Decided in-stage 8), a real resend of a discarded header was added to `InteropSuspendedRemove`, and the Triage Log headings were spaced for lint.

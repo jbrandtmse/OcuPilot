@@ -157,6 +157,10 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   // Story 20.31: Resend, on Messages' checked rows and a message's Header tab, and Edit and resend, on the Header tab.
   resend: STRINGS.interopMessagesResendAction,
   editresend: STRINGS.interopMessagesEditResendAction,
+  // Story 24.16: Suspended messages' Resubmit, Edit and resubmit and Discard; its Delete is every delete's word.
+  resubmit: STRINGS.interopSuspendedResubmitAction,
+  editresubmit: STRINGS.interopSuspendedEditResubmitAction,
+  discard: STRINGS.interopSuspendedDiscardAction,
   // Story 21.19: a security recommendation's Ignore and Stop ignoring, on the Security advisor.
   ignore: STRINGS.securityAdvisorIgnoreAction,
   unignore: STRINGS.securityAdvisorUnignoreAction,

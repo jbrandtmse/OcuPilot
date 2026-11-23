@@ -23595,6 +23595,201 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropSuspendedMessageList",
+    "route": "interoperability/suspended-messages",
+    "area": "interoperability",
+    "labelKey": "interopSuspendedLabel",
+    "sideBarPosition": 18,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_MessageHeader",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_MessageHeader",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "interop-message",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "resubmit",
+        "selfProtection": ""
+      },
+      {
+        "id": "editresubmit",
+        "selfProtection": ""
+      },
+      {
+        "id": "discard",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "multiSelect": {
+      "action": "resubmit",
+      "max": 100,
+      "extraActions": [
+        "discard",
+        "delete"
+      ]
+    },
+    "context": {
+      "fields": [
+        "ID",
+        "TimeCreated",
+        "SessionId",
+        "Error",
+        "Type",
+        "Source",
+        "Target",
+        "BodyClass"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopSuspendedEmpty",
+    "commandAliases": [
+      "suspended messages"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopSuspendedPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopSuspendedPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopSuspendedPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.SuspendedMsg",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "suspended message",
+      "source": {
+        "port": "interop",
+        "endpoint": "SuspendedMessages",
+        "type": "LIST"
+      },
+      "fields": [
+        "ID",
+        "TimeCreated",
+        "SessionId",
+        "Error",
+        "Type",
+        "Source",
+        "Target",
+        "BodyClass"
+      ],
+      "filter": [
+        "Type",
+        "Source",
+        "Target",
+        "BodyClass",
+        "SessionId"
+      ],
+      "sort": {
+        "fields": [
+          "TimeCreated",
+          "Type",
+          "Source",
+          "Target",
+          "BodyClass",
+          "SessionId"
+        ],
+        "default": "TimeCreated",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ID",
+          "labelKey": "interopColumnId",
+          "kind": "name"
+        },
+        {
+          "field": "TimeCreated",
+          "labelKey": "journalColumnCreated",
+          "kind": "text"
+        },
+        {
+          "field": "SessionId",
+          "labelKey": "webSessionColumnSession",
+          "kind": "identifier"
+        },
+        {
+          "field": "Error",
+          "labelKey": "errorLogColumnText",
+          "kind": "status"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Source",
+          "labelKey": "auditEventFieldSource",
+          "kind": "text"
+        },
+        {
+          "field": "Target",
+          "labelKey": "agentLedgerColumnTarget",
+          "kind": "text"
+        },
+        {
+          "field": "BodyClass",
+          "labelKey": "interopColumnBodyClass",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopSuspendedEmptyAgent"
+    },
+    "toolIdentifier": "interop.suspendedmessages",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.InteropTransformEditor",
     "route": "interoperability/transforms/document",
     "area": "interoperability",

@@ -155,6 +155,7 @@ XData Titles
 "interopRulesLabel": "Business rules",
 "interopSchedulesLabel": "Schedule specs",
 "interopSchemaViewerTitle": "Schema viewer",
+"interopSuspendedLabel": "Suspended messages",
 "interopTransformsLabel": "Data transformations",
 "interopUsageImpactLabel": "Database impact",
 "interopUsageLabel": "Interoperability usage",

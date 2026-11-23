@@ -238,6 +238,7 @@ XData Elsewhere
 <screen name="InteropScheduleList"/>
 <screen name="InteropPurgeList"/>
 <screen name="InteropPurgeSettingList"/>
+<screen name="InteropSuspendedMessageList"/>
 <screen name="InteropItemClassTab"/>
 <screen name="InteropItemJobTab"/>
 <screen name="InteropItemList"/>
