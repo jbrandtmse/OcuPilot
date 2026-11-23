@@ -674,6 +674,10 @@ Parameter DEFAULTCHARSET = "UTF8";
 /// two equal); an export over it is refused whole, never cut.</p>
 Parameter EXPORTMAXBYTES = 2250000;
 
+/// <p>The most characters an export converts to its character set in one piece: at nine bytes a character, the widest any listed character set writes, a piece stays under
+/// the longest string the instance holds.</p>
+Parameter EXPORTCHUNK = 300000;
+
 /// <p>The text an edited HL7 message's <code>Source</code> ends with, followed by the original body's id, as the classic Edit and
 /// Resend page writes it, and the lower-case prefix of the body class names OcuPilot never edits.</p>
 Parameter EDITEDCOPY = "; Edited copy of ";
@@ -1174,7 +1178,7 @@ ClassMethod IsMessageWrite(pType As %String) As %Boolean
     Quit (pType = ..#TYPERESENDMESSAGES) || (pType = ..#TYPEEDITRESEND)
 }
 
-/// <p>Whether <var>pType</var> is one of the Messages endpoint's four resend types, the two reads and the two writes.</p>
+/// <p>Whether <var>pType</var> is one of the Messages endpoint's types: the four resend types, the two reads and the two writes, and the three export types.</p>
 ClassMethod IsMessageType(pType As %String) As %Boolean
 {
     Quit (pType = ..#TYPERESEND) || (pType = ..#TYPEEDIT) || ..IsMessageWrite(pType) || ..IsMessageExportType(pType)
@@ -5599,7 +5603,7 @@ ClassMethod ExportByteOrderMark(pCharset As %String) As %String
 /// <p><var>pText</var> as the classic export's device carries it: each character above 255, which a byte cannot hold, is <code>?</code>. Pure.</p>
 ClassMethod ExportNarrow(pText As %String) As %String
 {
-    If $Length($ZConvert(pText, "O", "UTF8")) = $Length(pText) Quit pText
+    If '$ZIsWide(pText) Quit pText
     Set tOut = ""
     Set tFrom = 1
     Set tLength = $Length(pText)
@@ -5610,6 +5614,22 @@ ClassMethod ExportNarrow(pText As %String) As %String
         }
     }
     Quit tOut _ $Extract(pText, tFrom, tLength)
+}
+
+/// <p>Write <var>pText</var> to <var>pBytes</var> converted to the character set <var>pCharset</var>, <parameter>EXPORTCHUNK</parameter> characters at a time, so no converted
+/// piece passes the longest string the instance holds in any character set; a piece never ends between the two halves of a surrogate pair. Stops, answering 1, once
+/// <var>pBytes</var> holds more than <parameter>EXPORTMAXBYTES</parameter> bytes; else 0.</p>
+ClassMethod ExportWrite(pBytes As %Stream.Object, pText As %String, pCharset As %String) As %Boolean
+{
+    Set tFrom = 1
+    Set tLength = $Length(pText)
+    While (tFrom <= tLength) && (pBytes.Size '> ..#EXPORTMAXBYTES) {
+        Set tTo = tFrom + ..#EXPORTCHUNK - 1
+        If (tTo < tLength) && ($Ascii(pText, tTo) >= 55296) && ($Ascii(pText, tTo) <= 56319) Set tTo = tTo + 1
+        Do pBytes.Write($ZConvert($Extract(pText, tFrom, tTo), "O", pCharset))
+        Set tFrom = tTo + 1
+    }
+    Quit (pBytes.Size > ..#EXPORTMAXBYTES)
 }
 
 /// <p>The text of the body <var>pObject</var> of header <var>pHeaderId</var> as the classic export writes it to its device (Story 24.16 Batch 3), in <var>pWire</var>, one
@@ -5684,10 +5704,7 @@ ClassMethod ExportMemberHere(pNamespace As %String, pHeaderId As %String, pPrefi
             Set pRenderSC = $$$ERROR($$$GeneralError, "The message body is no longer there.")
         } Else {
             Set pRenderSC = ..ExportRenderHere(pHeaderId, tObject, .tWire, .pTooLarge)
-            If $$$ISOK(pRenderSC) && 'pTooLarge {
-                Do pBytes.Write($ZConvert($Replace(pPrefix _ tWire, $Char(13, 10), $Char(10)), "O", pCharset))
-                If pBytes.Size > ..#EXPORTMAXBYTES Set pTooLarge = 1
-            }
+            If $$$ISOK(pRenderSC) && 'pTooLarge Set pTooLarge = ..ExportWrite(pBytes, $Replace(pPrefix _ tWire, $Char(13, 10), $Char(10)), pCharset)
         }
         Set tObject = ""
         Set $NAMESPACE = tOrigNS
@@ -6961,7 +6978,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTITEMS) && (..IsItemWrite(pType) || ..IsItemRunWrite(pType)) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTSETTINGS) && ..IsSettingWrite(pType) Quit "objectscript"
     If ..IsRuntimeWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
-    If (..IsLookupWrite(pType) || (pType = ..#TYPEEXPORT)) && ..Serves(pEndpoint, pType) Quit "objectscript"
+    If (..IsLookupWrite(pType) || ((pType = ..#TYPEEXPORT) && (pEndpoint = ..#ENDPOINTLOOKUPTABLES))) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTBUSINESSPARTNERS) && ..IsPartnerWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTDEFAULTSETTINGS) && ..IsDefaultSettingWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTCREDENTIALS) && ..IsCredentialWrite(pType) Quit "objectscript"

@@ -1730,7 +1730,7 @@ test("a confirmed message export's file is saved by the confirming browser and t
   assert.equal(JSON.stringify(turn.entries()).includes('YWJj'), false, 'no part of the file reaches the transcript the card draws');
 });
 
-test('a confirmed export that exported nothing saves no file and shows the lines the instance answered; a cancel saves none either (Story 24.16 Batch 3)', async () => {
+test('a confirmed export that exported nothing saves no file and shows the lines the instance answered (Story 24.16 Batch 3)', async () => {
   const failures = [`12: ${STRINGS.interopExportOutcomeNotExported}: refused`];
   const saved = [];
   const api = fakeApi({

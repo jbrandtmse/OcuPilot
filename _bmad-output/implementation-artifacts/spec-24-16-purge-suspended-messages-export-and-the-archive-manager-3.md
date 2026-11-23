@@ -111,6 +111,34 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `b0e597306`).
 
 ## Review Triage Log
 
+### 2026-11-23 review (Opus; four layers: adversarial, edge cases, verification gaps, intent)
+
+Patched:
+
+- **M1** An oversize export in a widening character set, or of a long non-ASCII body, answered 500 (`<MAXSTRING>` in one `$ZConvert` of the whole body, or in `ExportNarrow`'s check) instead of 409 `INTEROP.EXPORT.TOOLARGE`. `ExportWrite` converts in pieces; Decided in-stage (review) 1.
+- **M2** `PerformExport`'s end compare had no red leg: a body at the cap with `LF` sent 2,250,001 bytes under mutation. New leg.
+- **M3** The per-body read-limit guard (`'AtEnd`) had no red leg: a cut file was sent under mutation. New leg.
+- **M4** AC2's state sweep looked for the sentinel in plain text, which the base64 file never holds. The sweep now looks for the file as the answer carries it.
+- **L1** `SnippetForm` gave the Messages review `EXPORT` a script form. Decided in-stage (review) 3.
+- **L2** AC7's HTTP delete leg did not assert the `ConfigChange` row; it does now.
+- **L3** `main.ts`'s `saveFile` wiring and `saveText`'s byte path were unpinned; two tool tests.
+- **L4** The verdict-order mutation a test named could not redden; it names one that does.
+- **L5** No byte comparison covered a byte order mark; AC1's loop adds `UnicodeLittle`.
+- **L6** Stale wording: `IsMessageType`, `OutcomeLine`, a turn test title naming a leg it lacks, and `InteropFloor`'s roster doc (point 4 (c)).
+
+Rejected (each with `reopen_if`):
+
+- A body past the read limit whose `CRLF`s would narrow it under the cap is refused (Decided in-stage (review) 2). reopen_if: a real message is refused that would fit.
+- None and moved reach the callers as the family's 400 `TOOL.ARGUMENTS` and `PROPOSAL.TARGETCHANGED`, the port's 409 behind them (Suspended messages and resend do the same). reopen_if: the spec means the port's code at the caller.
+- The gate legs run through the fake gate, which replaces the privilege check alone; the pairs and their order are the port's own, and real principals meet the pairs in `ClassicPageGate` and `InteropFloor`. reopen_if: a defect in the check the fake gate replaces.
+- Epic 21 files: the shell edits add entries to existing maps and lists with no logic change, and the roster lines are the Code Map's sweep. reopen_if: the orchestrator reads appending to an existing entry as non-add-only.
+- The classic writes nothing for a character stream, no "<Device Default>" set, a per-user size lookup; alarm bodies leave no view row; a stream's `CRLF` reads `LF`: each is a planned decision (plan 3, 4; V2; "as Contents records it"). reopen_if: the owner wants the classic's behavior.
+- Latent client paths: any tool's `output.file` is saved as an export; the dialog keeps a stale digest after `CHANGED`; an empty digest or malformed file shows nothing. reopen_if: a second tool answers `file`, or a person meets one.
+- Script form: no character set, byte order mark or `CRLF` rule, and no guard for an id with no body; a draft is rendered, never run. reopen_if: drafts become runnable.
+- `EXPORTCHOICES` has no product caller; `nobody` reads for a header with no body; an explicit empty choice is refused by the tool. Spec words and rules. reopen_if: the agent needs the lists in its schema.
+
+Deferred (ledger candidates, returned to the lead): a stream's `Read` status is not checked; too large, fault, partial and all-failed are not run through the agent's confirm over HTTP, nor AC7's resubmit and discard; the consequence sentence says "between them" though the separator also follows the last message (a ruled string); AC8's test performs no export and `TempListing` compares a shared directory.
+
 ## Veto items
 
 Each is the lead's to take to the veto gate; the recommended option is first.
@@ -168,6 +196,8 @@ No new dependency; no privilege, role or access grant.
 - (d) A principal holding `%Ens_Portal:U`, `%Ens_MessageHeader:U`, `%Ens_MessageExport:U`, `%Ens_MessageContent:U`, READ on `%DB_HSCUSTOM` and `%Development:U` opens and renders every body kind and writes each view row; `$USERNAME` and `$ROLES` read the same after every call. Nothing more is needed, no write on the database either. Reading the audit rows takes a privilege the principal lacked, so the rows were counted as an administrator.
 - (e) 100 HL7 probes of about 9.9 KB (not 20 KB): 986,746 bytes, 0.13 s in memory against 0.27 s for the classic call, equal; 1,315,664 base64 characters. A file of exactly the cap, 2,250,000 bytes, is 3,000,000 characters and travels through the port and over HTTP to the browser's route. Stored body sizes do not predict the rendered size (an XML object's rendering has nothing to do with its stored size), so the cap is judged on the rendered stream, before any view is audited.
 - (f) The all-failed answers for resubmit, discard and delete are the resend family's contract on the unchanged code: 200, `Done` 0, `Failed` 2, both ids in `Messages`. Whether the vendor audits a refused resubmit was not measured: the seam answers before the vendor call.
+- (g) Review, on `ocupilot-b-ci`, a probe user holding `%EnsRole_Administrator` alone (removed after): `CheckUserPermission` reads 1 for `%Ens_Portal:USE`, `%Ens_MessageHeader:USE` (through the granted `%EnsRole_Operator`), `%Ens_MessageExport:USE` and `%Ens_MessageContent:USE`, and 0 for `%DB_USER:READ` and WRITE; the role holds no database resource. With `%DB_USER:R` beside it, as the floor's principal holds its code database's READ, the Message Viewer serves that user with `canExportContents` true, the classic Export button's own `%Ens_MessageExport:USE` check, and the dialog's `RESOURCE` is that same pair. The dialog is `PRIVATE`: a direct GET answers 403, for `_SYSTEM` too, so it opens only through the viewer's link. Every other write tool declares database WRITE, which the floor's principal lacks.
+- (h) Review: the widest listed character set, `URI`, writes 9 characters for one (measured over all 22 sets), so a piece of `EXPORTCHUNK` (300,000) characters stays under the longest string.
 
 **Named limits (the orchestrator's U-150 ruling).** Messages per export: `RESENDMAX` (100). Bytes per file: `EXPORTMAXBYTES` 2,250,000, which is `OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS` (3,000,000) over four times three, a test holding the two equal; (e) shows that value safe end to end, so it is not lowered. The file is built in a `%Stream.TmpBinary`, one body's text at most `EXPORTMAXBYTES` + 1 characters at a time, and encoded in one `Base64Encode` call without line breaks. An export over the limit is refused before any view is audited and before any byte leaves, with the sentence "The file is larger than OcuPilot imports or exports."
 
@@ -181,6 +211,14 @@ No new dependency; no privilege, role or access grant.
 6. The new classes start no probe production (`InteropMessageExportCase`). `HoldBody` moves from `InteropSuspendedRemove` to `InteropSuspendedCase`, and `OutcomeLine` and `OutcomeText` join it, for the follow-up 1 tests.
 7. Follow-up 1: the seam cannot cross into the HTTP process, so resubmit, discard and delete reach the person's screen leg through the port and the tool's `WriteOutput` (the lines both callers draw), and a delete whose two bodies are locked fails for real from both callers over HTTP.
 8. The Messages page wraps `AuditPage`, the search page its archetype already uses, with Export registered over it; `saveText` takes bytes, and `TurnStore` takes a `saveFile` option so `core/` touches no browser global.
+
+**Decided in-stage (review).**
+
+1. A body is converted to its character set `EXPORTCHUNK` characters at a time (`ExportWrite`), stopping once the bytes pass the cap, so an oversize file is the named 409 in every listed character set, never a `<MAXSTRING>` 500; `ExportNarrow` tests for wide characters with `$ZIsWide` rather than by converting.
+2. A body longer than the read limit (`EXPORTMAXBYTES` + 1 characters) stays refused whole even when its `CRLF` pairs would narrow it under the cap: the safe side of "never cut".
+3. `SnippetForm` gives `EXPORT` a script form on the lookup tables endpoint alone, so the Messages review, a read, has none (AD-59).
+4. `InteropFloor.ADMINISTRATORWRITES` is parity with the classic page (Measured (g); the orchestrator's ruling on point 4): it holds exactly `interop.messages.export`, and any other write tool the Administrator principal can reach turns the floor red.
+5. The two size compares stay: `ExportMemberHere`'s stops rendering at the first body that passes the cap, and `PerformExport`'s covers the bytes the file ends with; each now has its own red leg.
 
 **Governing ADs (Rule 6):** AD-3, AD-6, AD-7, AD-8, AD-10, AD-11, AD-12, AD-13, AD-14, AD-15, AD-16, AD-21, AD-22, AD-29, AD-34, AD-36, AD-39, AD-40, AD-44, AD-51, AD-52, AD-53, AD-56, AD-58, AD-59, AD-60, AD-62 (items 1-5, 15, 17). Not engaged: AD-9 (no `$ROLES` frame unless Task 0 (d) finds an escalation, which HALTs), AD-23, AD-35 (no secret), AD-54, AD-63, AD-65, AD-66.
 
@@ -220,10 +258,25 @@ No new dependency; no privilege, role or access grant.
 
 The planned AC3 mutation (`RemoveTransfer` skipped) does not apply: V2 builds the file in memory, so there is no transfer directory to remove.
 
+**Recorded (review).** Each on `ocupilot-b-ci`, the class reloaded with subclasses, red in the named test alone, green after the revert, `cmp`-identical to a copy taken before:
+
+- mutation: `PerformExport`'s end compare is `>` the cap plus one -> `InteropMessageExportRefusals.TestTheCapHoldsAtTheFilesEndForABodyReadInPartAndInAWideCharacterSet` red (2,250,001 bytes answered).
+- mutation: `ExportRenderHere` sets a stream's `pTooLarge` to 0 -> the same test red (a cut file of 1,125,001 bytes answered 200).
+- mutation: `EXPORTCHUNK` 3,000,000, one piece -> the same test red (500 `INTERNAL`).
+- mutation: `SnippetForm`'s `EXPORT` test without the endpoint -> `TestTheScriptFormRendersTheExportAndRunsNothingAndABadValueRendersNoDraft` red.
+- mutation: the export arm of `MessageVerdict` without its `nobody` test -> `TestEachMessageIsJudgedAndOnlyThoseWithATextBodyAreExported` red (and `TestAReviewThatMovedIsRefusedAndNothingIsExported`).
+- mutation: `ExportByteOrderMark` answers `""` -> `InteropMessageExport`'s AC1 test red, its six `UnicodeLittle` legs alone.
+- mutation: `Confirm` also keeps its `output` in `^OcuPilot.Kernel.State.LeakProbe` -> `TestTheAgentsExportConfirmsOverHttpAndKeepsNoBodyTextInItsState` red on the file leg, the sentinel leg green (global killed after).
+- mutation: `PerformResend` records the change row only when a message was done -> `InteropSuspendedRefusals` red, both all-failed tests.
+- mutation: `ADMINISTRATORWRITES` empty -> `InteropFloor.TestTheToolsEachPrincipalHoldsAreItsRoster` red, the Administrator leg alone; `InteropSuspendedDiscard` given `DATABASEPERMISSION` READ -> the same leg red.
+- mutation: `main.ts` without `saveFile`, and `saveText` decoding bytes as text -> `tools/message-export.test.mjs` and `tools/csv.test.mjs` red, one test each.
+
 ## Auto Run Result
 
 Status: in-review
 Blocking condition: none
+
+**Review (Opus, 2026-11-23).** Four medium findings and six low ones patched, none high (Review Triage Log). The size cap is now the named 409 in every character set (`ExportWrite`), and each of its guards has a red leg; the AC2 sweep sees the file as it travels; the Messages review has no script form; AC7's HTTP delete asserts its change row; the client's byte save and its `main.ts` wiring are pinned; and `InteropFloor`'s one Administrator write is measured as classic parity (Measured (g)). Verified on `ocupilot-b-ci`, rebuilt at 2026-11-23T14:11:15Z: `InteropSessionRoute` green, run first and cold; then every touched class, the rosters, the five `InteropSuspended*` classes and the five `InteropResend*` classes green, one class per call; the export, resend and suspended messages browser specs green on a rebuilt, redeployed bundle; no production or probe left. `npm run build`, `npm test` (2,410 tool tests, 330 component files), `ci.test.mjs`, `check-objectscript` and `lint-docs` clean. Mutations: Recorded (review).
 
 **Implemented (implement stage).** Export on the Messages screen's checked rows and as the agent's `interop.messages.export` write, through `InteropPort` (`ExportChoices`, `ReadExport`, `PerformExport`, the in-memory byte build in `ExportRenderHere`, `ExportMemberHere` and `ExportTail`), the tool `InteropMessageExport`, the row and checked-set action on `InteropMessageList`, the baseline key, and the client page `interop-message-list.page.ts` with its dialog, `message-export.ts`, the byte save in `csv.ts` and the confirm path's file save in `turn.ts`. Every proposal carries its namespace and its confirm judges there; the file is built in memory (V2), needs `%Ens_MessageContent:USE` as well (V3), and is capped at `EXPORTMAXBYTES` (2,250,000) with the named refusal. Follow-up 1's all-failed test for Batch 2's writes was added first and was green on the unchanged code, so no Batch 2 code changed.
 

@@ -1,5 +1,5 @@
 /// <p>Pins Story 24.16 Batch 3's message export end to end against probe messages stored in <code>USER</code> (AD-6, AD-13, AD-15, AD-21, AD-22, AD-39, AD-51, AD-53, AD-62): the person's
-/// export, reviewed and sent for each of the six separators and for <code>UTF8</code> and <code>CP1252</code>, answers a file whose bytes equal the classic Export dialog's for an HL7 message
+/// export, reviewed and sent for each of the six separators and for <code>UTF8</code>, <code>CP1252</code> and <code>UnicodeLittle</code>, answers a file whose bytes equal the classic Export dialog's for an HL7 message
 /// and an XML-adaptor body; a character stream is its text as Contents shows it and a binary stream is left out with its verdict line; the agent's export, confirmed over HTTP at its shipped
 /// key, answers the same bytes with no body text in OcuPilot's stored state; a message whose render fails is recorded and the rest are exported, and a set every render of which fails sends
 /// no file; each body exported records the vendor's one view row and no file is left on the instance.</p>
@@ -43,10 +43,11 @@ ClassMethod ContentsText(pId As %String) As %String
     Quit tText
 }
 
-/// <p>AC1: the person reviews and exports an HL7 message and an XML-adaptor body with each of the six separators and with <code>UTF8</code> and <code>CP1252</code>, and each file's bytes
+/// <p>AC1: the person reviews and exports an HL7 message and an XML-adaptor body with each of the six separators and with <code>UTF8</code>, <code>CP1252</code> and <code>UnicodeLittle</code>, and each file's bytes
 /// equal the classic export's for the same two messages; the answer's lines name both messages exported, each export leaves one view row for each body, and the instance's temporary directory
 /// holds nothing more than before.</p>
-/// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.ExportSeparatorChars</method> answers <code>LF</code> for <code>MLLP</code> -- the MLLP legs go red, alone.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.ExportSeparatorChars</method> answers <code>LF</code> for <code>MLLP</code> -- the MLLP legs go red, alone; <method>OcuPilot.Port.InteropPort.ExportByteOrderMark</method> answers
+/// <code>""</code> -- the <code>UnicodeLittle</code> legs go red, alone.</p>
 Method TestThePersonsExportEqualsTheClassicBytesForEachSeparatorAndCharacterSet()
 {
     Set tHl7 = ..Store("hl7", "a")
@@ -56,7 +57,7 @@ Method TestThePersonsExportEqualsTheClassicBytesForEachSeparatorAndCharacterSet(
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tExports = 0
     For tSeparator = "CRLF", "CR", "LF", "MLLP", "Tab", "None" {
-        For tCharset = "UTF8", "CP1252" {
+        For tCharset = "UTF8", "CP1252", "UnicodeLittle" {
             Set tCode = ..ExportThrough(tSet, .tAnswer, tSeparator, tCharset, .tDry)
             Do $$$AssertEquals(tCode, "200 ", tSeparator _ "/" _ tCharset _ ": the review and the action are admitted: " _ $Select($IsObject($Get(tAnswer)): $Extract(tAnswer.%ToJSON(), 1, 200), 1: $Get(tAnswer)))
             Set tExports = tExports + 1
@@ -105,7 +106,8 @@ Method TestACharacterStreamIsItsTextAsContentsShowsItAndABinaryStreamIsLeftOut()
 /// <p>AC2: the agent's export mints a proposal whose card lists each message's verdict, confirms over HTTP at the key it ships, and the confirming browser's answer carries the same bytes
 /// the classic export writes with the chosen separator and character set; OcuPilot's own audit holds no row for it, the ledger holds one row, and no body text is in any global of its stored
 /// state.</p>
-/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.InteropMessageExport.PortQuery</method> leaves the character set out -- the bytes leg goes red.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.InteropMessageExport.PortQuery</method> leaves the character set out -- the bytes leg goes red; the confirm also
+/// keeps its <code>output</code> in a global of OcuPilot's stored state -- the file leg goes red.</p>
 Method TestTheAgentsExportConfirmsOverHttpAndKeepsNoBodyTextInItsState()
 {
     Set tHl7 = ..Store("hl7", "a")
@@ -128,6 +130,9 @@ Method TestTheAgentsExportConfirmsOverHttpAndKeepsNoBodyTextInItsState()
     Do $$$AssertEquals(..OwnRows(tSince, "export", .tOwn), 0, "OcuPilot's own audit holds no row for an export: an export changes nothing")
     Do $$$AssertTrue(..BytesOf($Get(tAnswer)) = ..Oracle(tSet, "CP1252", "LF"), "the confirming browser's file equals the classic export's bytes")
     Do $$$AssertEquals(..StateHolding($Parameter(..#EXPORTFIXTURE, "SENTINEL")), "none", "no body text is in OcuPilot's stored state after the confirm")
+    Set tFile = $Select($IsObject($Get(tAnswer)) && $IsObject(tAnswer.%Get("output")): tAnswer.output.%Get("file"), 1: "")
+    Do $$$AssertTrue($Length(tFile) > 100, "the answer carries the file: " _ $Length(tFile) _ " characters")
+    Do $$$AssertEquals(..StateHolding($Extract(tFile, 1, 100)), "none", "nor is the file, as the answer carries it, in OcuPilot's stored state")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tTurn))
 }
 

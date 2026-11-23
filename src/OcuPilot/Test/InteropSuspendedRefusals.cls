@@ -170,8 +170,9 @@ Method TestEveryMessageFailingAnswersEachFailedIdForResubmitDiscardAndDelete()
 }
 
 /// <p>AC7: a delete whose two bodies cannot be deleted answers the same from each caller over HTTP -- the person's, reviewed and sent, and the agent's, confirmed -- 200 with both ids not deleted
-/// and carrying the vendor's text, both headers still suspended with their bodies.</p>
-/// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.PerformResend</method> answers 409 when nothing was done -- both legs go red.</p>
+/// and carrying the vendor's text, both headers still suspended with their bodies, and each delete leaving OcuPilot's <code>ConfigChange</code> row with both ids under <code>failed</code>.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.PerformResend</method> answers 409 when nothing was done -- both legs go red; it records the row only when a
+/// message was acted on -- the row leg goes red.</p>
 Method TestADeleteOfTwoBodiesThatCannotBeDeletedAnswersEachFailedIdToBothCallers()
 {
     Set tA = ..Susp("locked alpha")
@@ -180,6 +181,7 @@ Method TestADeleteOfTwoBodiesThatCannotBeDeletedAnswersEachFailedIdToBothCallers
     Set tBodyB = ..BodyOf(tB)
     Set tSet = tA _ "," _ tB
     Do $$$AssertTrue(..HoldBody(tBodyA, 1) && ..HoldBody(tBodyB, 1), "this process holds the lock on both bodies")
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Try {
         Set tCode = ..Dry("delete", tSet, .tDry)
         Do $$$AssertEquals(tCode, "200 ", "the dry run answers")
@@ -199,6 +201,8 @@ Method TestADeleteOfTwoBodiesThatCannotBeDeletedAnswersEachFailedIdToBothCallers
             Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
         }
         Do $$$AssertEquals(..Status(tA) _ "|" _ ..Status(tB) _ "|" _ (..BodyOf(tA) = tBodyA) _ "|" _ (..BodyOf(tB) = tBodyB), "5|5|1|1", "both headers are still suspended with their bodies")
+        Do $$$AssertEquals(..OwnRows(tSince, "delete", .tOwn), 2, "each caller's delete left one change row")
+        Do $$$AssertTrue((tOwn [ """done"":""""") && (tOwn [ ("""failed"":""" _ tSet _ """")), "the last lists both ids under failed and none under done: " _ $Get(tOwn))
     } Catch ex {
         Do $$$AssertTrue(0, "the legs ran: " _ ex.DisplayString())
     }

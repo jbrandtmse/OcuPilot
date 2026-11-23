@@ -47,3 +47,10 @@ test('the counts read the lines, and the card shows the status line and then eac
   assert.deepEqual(exportCardLines(output, 'USER-messages.txt'), ['Saved 2 messages as USER-messages.txt.', failure]);
   assert.equal(exportCardLines({ lines: [failure] }, 'USER-messages.txt'), null, 'an answer with no file is left to the generic lines');
 });
+
+// Mutation (Rule 19): drop the `saveFile` option from `main.ts`'s `TurnStore` -> this goes red.
+test("the app's turn store saves a confirmed export's bytes through saveText under the export's media type", async () => {
+  const { readFile } = await import('node:fs/promises');
+  const main = await readFile(join(uiRoot, 'src', 'main.ts'), 'utf8');
+  assert.match(main, /new TurnStore\(\{[^}]*saveFile: \(bytes, name\) => saveText\(document, bytes, name, EXPORT_FILE_TYPE\),/s);
+});

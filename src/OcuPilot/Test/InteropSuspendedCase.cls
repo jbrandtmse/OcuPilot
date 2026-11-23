@@ -249,7 +249,8 @@ ClassMethod DropBody(pBody As %String)
     }
 }
 
-/// <p>The outcome line of the message <var>pId</var> a suspended write acted on, <code>&lt;id&gt;: discarded</code> or <code>deleted</code> (<var>pDone</var> 1), else the <code>not</code> form.</p>
+/// <p>The outcome line of the message <var>pId</var> a write of kind <var>pKind</var> acted on (<method>OcuPilot.Port.InteropPort.SuspendedOutcomeWord</method>'s word,
+/// <var>pDone</var> 1), else the <code>not</code> form.</p>
 ClassMethod OutcomeLine(pKind As %String, pId As %String, pDone As %Boolean = 1) As %String
 {
     Quit pId _ ": " _ ##class(OcuPilot.Port.InteropPort).SuspendedOutcomeWord(pKind, pDone)

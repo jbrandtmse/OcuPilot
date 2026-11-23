@@ -38,7 +38,7 @@ ClassMethod Filler(pLength As %Integer) As %String
 
 /// <p>AC3: of an HL7 message, one whose body was deleted, a binary stream and an id no header holds, the review reads <code>will be exported</code>, <code>its body no longer exists</code>,
 /// <code>its body cannot be exported as text</code> and <code>no longer exists</code>, in id order, and the export sends the first alone and records its view alone.</p>
-/// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.MessageVerdict</method> reads <code>notext</code> before <code>nobody</code> -- the second line goes red.</p>
+/// <p>Mutation (Rule 19): the export arm of <method>OcuPilot.Port.InteropPort.MessageVerdict</method> drops its <code>nobody</code> test -- the second line goes red.</p>
 Method TestEachMessageIsJudgedAndOnlyThoseWithATextBodyAreExported()
 {
     Set tHl7 = ..Store("hl7", "a")
@@ -134,6 +134,31 @@ Method TestAFileAtTheCapIsExportedAndOneByteOverItIsRefusedBeforeAnyViewIsRecord
     Set tCode = ..ExportSend(tOver, ..Digest(tDryOver), .tRefused)
     Do $$$AssertEquals(tCode, "409 INTEROP.EXPORT.TOOLARGE", "the person's export of the file one byte over is refused")
     Do $$$AssertEquals(..TempListing(), tBefore, "no file or directory is left in the temporary directory")
+}
+
+/// <p>AC3: the cap holds where the last bytes come from the file's end, where a body is read only in part, and where the character set widens each character. A body of
+/// exactly <parameter>CAP</parameter> bytes followed by the <code>LF</code> the file ends with is one byte over, and is refused; a body longer than the read limit is refused whole
+/// even when its <code>CRLF</code> pairs would narrow the part read to under the cap, so no file is ever cut; and a body whose <code>UnicodeLittle</code> bytes pass the longest
+/// string the instance holds is refused by the cap, not answered as a fault.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.PerformExport</method> compares the bytes after the file's end with the cap plus one -- the end leg goes red;
+/// <method>OcuPilot.Port.InteropPort.ExportRenderHere</method> reads a stream's <code>pTooLarge</code> as 0 -- the part-read leg answers 200 and goes red;
+/// <method>OcuPilot.Port.InteropPort.ExportWrite</method> converts the whole text in one piece -- the wide leg answers 500 and goes red.</p>
+Method TestTheCapHoldsAtTheFilesEndForABodyReadInPartAndInAWideCharacterSet()
+{
+    Set tAt = ..Store("chars", "a", ..Filler(..#CAP))
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tCode = ..XPort("EXPORTMESSAGES", tAt, .tResult, , "LF", "UTF8", , .tFault)
+    Do $$$AssertEquals(tCode, "409 INTEROP.EXPORT.TOOLARGE", "a body at the cap and the line feed after it are one byte over: " _ $Select($IsObject($Get(tResult)): $Length(..BytesOf(tResult)) _ " bytes answered", 1: "nothing answered"))
+    Do $$$AssertEquals(..Views(tSince, tAt), 0, "and no view is recorded")
+    Set tPairs = $Translate($Justify("", 1200000), " ", $Char(13))
+    Set tLong = ..Store("chars", "b", $Replace(tPairs, $Char(13), $Char(13, 10)))
+    Set tCode = ..XPort("EXPORTMESSAGES", tLong, .tResult, , "None", "UTF8", , .tFault)
+    Do $$$AssertEquals(tCode, "409 INTEROP.EXPORT.TOOLARGE", "a body past the read limit is refused whole, never cut: " _ $Select($IsObject($Get(tResult)): $Length(..BytesOf(tResult)) _ " bytes answered", 1: "nothing answered"))
+    Do $$$AssertEquals(..Views(tSince, tLong), 0, "and no view is recorded")
+    Set tWide = ..Store("chars", "c", ..Filler(1900000))
+    Set tCode = ..XPort("EXPORTMESSAGES", tWide, .tResult, , "None", "UnicodeLittle", , .tFault)
+    Do $$$AssertEquals(tCode, "409 INTEROP.EXPORT.TOOLARGE", "a body of two bytes a character past the longest string is refused by the cap: " _ $Select($IsObject($Get(tFault)): $Extract(tFault.%ToJSON(), 1, 200), 1: ""))
+    Do $$$AssertEquals(..Views(tSince, tWide), 0, "and no view is recorded")
 }
 
 /// <p>AC3: a render that throws is 500, with no bytes, no view recorded and no file or directory left; the fault is logged once, after the namespace is restored, in the install namespace.</p>
@@ -239,12 +264,16 @@ Method TestEachMissingPairIsRefusedByNameBeforeAnyRender()
 
 /// <p>AC3: the script form (AD-59) of an export renders the switch to the namespace, each exported message's body written with the separator and its view recorded, and the MLLP framing, and runs none of
 /// it: no view is recorded by rendering it. A set with a bad id, a separator outside its list or a character set outside its list renders no draft; ids the review read as another verdict are left out.</p>
-/// <p>Mutation (Rule 19): drop the character set test in <method>OcuPilot.Port.InteropPort.ExportSnippet</method> -- the bad character set renders a draft and this goes red.</p>
+/// <p>Mutation (Rule 19): drop the character set test in <method>OcuPilot.Port.InteropPort.ExportSnippet</method> -- the bad character set renders a draft and this goes red;
+/// drop the lookup table endpoint from the <code>EXPORT</code> test in <method>OcuPilot.Port.InteropPort.SnippetForm</method> -- the review reads a script form and this goes red.</p>
 Method TestTheScriptFormRendersTheExportAndRunsNothingAndABadValueRendersNoDraft()
 {
     Set tHl7 = ..Store("hl7", "a")
     Set tBinary = ..Store("binary", "b")
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tForms = ""
+    For tType = "EXPORT", "EXPORTMESSAGES", "EXPORTCHOICES" Set tForms = tForms _ $ClassMethod(..#PORT, "SnippetForm", ..#ENDPOINT, tType) _ "|"
+    Do $$$AssertEquals(tForms _ $ClassMethod(..#PORT, "SnippetForm", "LookupTables", "EXPORT"), "|objectscript||objectscript", "only the write has a script form, and the lookup table export keeps its own")
     Kill tQuery
     Set tQuery("namespace") = ..#NAMESPACE
     Set tQuery("id") = tHl7 _ "," _ tBinary
