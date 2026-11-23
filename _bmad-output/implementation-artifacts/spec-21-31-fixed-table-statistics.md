@@ -156,6 +156,73 @@ deferred:
 - AC4. Given a probe table, when the person opens the Field statistics tab and the agent calls `explorer.sqlfieldstatistics.read`, then both answer the same rows, each naming its `Table`, and a row's id is `[Table, Field]`. A stored `class` reference to the table still resolves to the class screen.
 - AC5. Given the throwaway, when the tuning browser spec runs forward and in reverse with `system-explorer-sql.browser-spec.mjs`, then it passes and leaves no probe schema, table, statistic or cached query.
 
+### Review Findings
+
+Code review 2026-11-23 (stage `21-31-cr`, Opus). The diff is `16a1401d9..0798022c1`. The spine is read at HEAD `a2ab9a618`, which carries AD-51's amendment `c08b08d38` (orchestrator ruling U-153, recorded after this stage was spawned).
+
+**Rework items** (in-story; the story re-opens for its one iteration):
+
+- [ ] [Review][Patch] HIGH (Rule 6, AD-51 as amended by U-153): the outlier value contract is still "the caller writes a literal" [src/OcuPilot/Port/SqlPort.cls:ValueProblem, OutlierLiteral, SettingCall, SettingSnippet; Screen/Tool/SqlTableSetAction.cls:ValueProblem; ExplorerSqlFieldSetSelectivity.cls:DESCRIPTION, VALUEDESCRIPTIONS; Test/SqlTableFixedStats.cls:TestAnOutlierValueIsNeverRun]
+  - The amended rule: the caller sends plain data (at most 128 characters, no control character). The port builds the expression: a canonical number as is, anything else as a quoted literal with its quotes doubled.
+  - Today, `'q'` and `q` are refused, and the agent is told to quote text itself.
+  - Fix-risk: med. The fix spans the port, the tool, the script and the tests.
+  - Before coding, the rework decides how `FIELDSTATS` presents a held value: the instance reads one back in expression form (`"q"`, `1`). An echo of the read must not be quoted twice.
+  - The current grammar is safe. Review probe run 1049 tried 21 code-shaped values against the port, the agent's mint and the screen. Every one was refused, with 0 vendor calls and the markers unset. Two doubled-quote literals were stored as data and passed back by both callers without running.
+  - Setter-argument audit (ruling `audit_all_setter_args`, measured on `ocupilot-ci`): only `OutlierValue` is evaluated, and the positive control incremented the marker. Selectivity, outlier selectivity, average size, extent size, block count, field name and map name are not run; an average size of `$Increment(^OcuRv)` was stored as text. A delimited field name cannot hold `^` (SQLCODE -1).
+- [ ] [Review][Patch] HIGH (Rule 6, AD-51 as amended by U-153): a map size of 0 is accepted, but the amended rule makes it 1 or more [SqlPort.cls:WHOLEPATTERN, ValueProblem; screen-action-handler.ts set-map-size hint; Test/SqlTableFixedStatsCard.cls:TestTheLowerBoundZeroIsAValidValue, TestAMapSizeOfZeroIsSetAndReadBack]
+  - Fix-risk: low. `AverageFieldSize` keeps 0.
+  - The refusal sentence for "1 or more" is not in the ruled set. The rework takes it from the U-153 package, or escalates it.
+- [ ] [Review][Patch] HIGH (U-151 condition; U-153 chose "the U-152 sentence"): a set that fails after `FixTableStats` reads "nothing changed" [SqlPort.cls:TableWritten; ui core/strings.ts, proposal-view.ts, screen-action-handler.ts]
+  - Both the screen and the card show `sqlTableRefusalVendor`, "The instance did not apply this change to the table.", while the table's collected statistics are now fixed (`HasFixed` 1). `detail.statisticsFixed` is read by no client code.
+  - Sentence proposed by this review, modeled on `explorerSaveNotCompiled` and **not shipped**: "The table's collected statistics were saved as its fixed statistics, but the instance did not apply this change." The rework ships the U-152 text as ruled.
+  - The `Catch` arm of `SettingCall` (a setter that throws after the save) is reached by no test. Give the seam a throw arm and pin 409 with `statisticsFixed`.
+- [ ] [Review][Patch] MED (AC2, AD-53): the screen's Set extent size and Set map size fields refuse any value over nine digits [ui/src/app/shell/warning-dialog.ts:16 `WHOLE_NUMBER`; screen-action-handler.ts `WARNING_VALUES`]
+  - The person cannot set 1,000,000,000 to 1,000,000,000,000. The hint offers those values and the agent can set them.
+  - Fix-risk: low. Use the text kind, or a per-field digit bound, and pin the limit on the screen.
+- [ ] [Review][Patch] MED (I/O "Changed target", AD-6): Set map size's fingerprint has no `StatsKind`, `HasFixed` or `CollectedAt`, so statistics collected after the mint are not refused [Screen/Tool/ExplorerSqlIndexSetMapSize.cls:READANSWERS, FINGERPRINTSUBJECT; SqlPort.cls:TableAnswer INDEX]
+  - Fix-risk: low to med. Add a map leg to `TestAChangedTargetIsRefusedTargetChanged`.
+- [ ] [Review][Patch] MED: a held numeric outlier value below 1 is cleared by a later selectivity-only set [SqlPort.cls:OUTLIERNUMBERPATTERN; SettingCall's average-size check]
+  - The instance stores the evaluated value. An outlier value of `0.5` is stored as `.5`, which the pass-back pattern rejects, so it is dropped and the instance clears it. The average-size pass-back pattern has the same gap.
+  - Fix-risk: low. Accept the canonical form, and pin it with a kept-`0.5` leg.
+- [ ] [Review][Patch] MED (Rule 19 hermeticity): the browser spec's Set extent size step waits for `collected`, which only an earlier step's collect makes true [ui/browser/system-explorer-sql-tuning.browser-spec.mjs:279]
+  - Run alone, it times out and then passes on `notEqual(restored, 'fixed')`.
+  - The Set selectivity step leaves its restore to the `after` hook's direct `ClearTableStats`, not to the product's Clear fixed statistics (Boundaries, Always).
+  - Fix-risk: low. Compare with the value the step read before it set, as 21.25's Clear step does.
+- [ ] [Review][Patch] MED (I/O "Delimited name"): `TestATableWithADelimitedNameIsSetOnBothCallers` covers 4 of its 6 legs [Test/SqlTableFixedStats.cls:423]
+  - The agent's selectivity (through the new `SqlFieldMint`) and the screen's map size are not covered, although the doc comment claims all six.
+  - Fix-risk: low.
+- [ ] [Review][Patch] LOW: the 21.31 Fixed strings row omits the ruled alias "table statistics", which the descriptor ships [EXPERIENCE.md:631]
+  - Add it with the row's other rework edits.
+- [ ] [Review][Patch] LOW (AD-59): `SettingSnippet` differs from the write in two ways [SqlPort.cls:SettingSnippet]
+  - Its condition for the save is `HasFixedStats` plus a stat object, where the write's is `StatsKind` `collected`.
+  - The save's `tSC` is overwritten before it is checked.
+  - Bring both in step when the outlier rule changes.
+
+**Patched in this pass:**
+
+- [x] [Review][Patch] LOW: a 409 that saved nothing is pinned to omit `statisticsFixed` [Test/SqlIndexRebuild.cls:TestTheInstancesRefusalIsAnsweredWithItsMessageInDetailAlone]
+- [x] [Review][Patch] LOW: the own-table test asserts the extent size was read before it compares [Test/SqlTableFixedStats.cls:TestATableOfOcuPilotsOwnIsRefusedOnBothCallers]
+- [x] [Review][Patch] LOW: the selectivity's accepted edges (99.999 with and without `%`, six decimals, `1`) and one step over are pinned [Test/SqlTableFixedStatsCard.cls:TestASelectivityAtItsBoundsIsAValidValue]
+
+**Routed:**
+
+- [x] [Review][Defer] MED (Rule 2/31): `SqlTableSetAction`'s composite-target methods (`IdArgument`, `TargetName`, `NameOf`, `InputSchema`, `IdProblem`) are a parameterized near-copy of `ExplorerSqlIndexRebuild`'s, which 21.25 left in place [Screen/Tool/SqlTableSetAction.cls; ExplorerSqlIndexRebuild.cls:36-84] — deferred: the fix moves them into `SqlTableAction` and touches 21.25's merged tool, so it is routed to burndown (DW-2853).
+
+**Decided:**
+
+- The kernel's `sql-field` own-table arm cannot be reached from a caller. Every OcuPilot class projects to an `OcuPilot_*` SQL schema (`SqlTableName` overrides keep the package schema), so the tool's own-name refusal answers first. `Test.Prohibited`'s pin stands.
+- The extent-size boundary (`MAXEXTENTSIZE` accepted, one over refused) is pinned through the agent and the port (`SqlTableFixedStats.cls:214`). Rework item 4 covers the screen's side of it.
+
+**Rejected:**
+
+- `false`: "Enter at most 128 characters." reaches no screen. No screen collects an outlier value, and the screen's Set selectivity refuses one it is sent (probe run 1049).
+- `false`: an outlier value without an outlier selectivity "silently does nothing". The tool's description and value text say so.
+- `low`, rejected: a JSON-type mismatch from the agent (a string `"5000"` for `ExtentSize`) is refused with the shape sentence. It conforms to the declared schema, and a type-naming branch adds surface.
+- `low`, rejected: "Enter 1" means a unique field for Selectivity, while an outlier selectivity of `1` is sent as `1%`. The vendor itself stores an outlier `1` as `1%` (Task 0 (b)).
+- `low`, rejected: the own-table test uses `OcuPilot_Kernel_State.Convo`, not `Turn`, and compares only the extent size. Both are OcuPilot tables, and the seam's 0 calls pins that nothing was written.
+- `low`, rejected (theoretical): a non-numeric average size coerced to 0, a schema name holding `.`, and a `<Null>` outlier passed back as empty. The instance emits none of these through this path.
+- `maybe-false`, rejected: an extent size of 0 may read back as `differs`. Task 0 (f) measured that the vendor accepts 0. If it is wrong, the fix is a one-leg test, which rework item 2 can add.
+
 ## Spec Change Log
 
 - 2026-11-23, orchestrator ruling at the spec gate (veto U-151), authoritative:
@@ -333,6 +400,10 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
   - mutation: AD-6, `FINGERPRINTSUBJECT` of `SqlTableAction` without `StatsKind` and `CollectedAt` -> every setter test is red (run 1042; the confirms answer nothing, the cause being the narrowed payload losing `StatsKind` (inference)), so the subject leg cannot be isolated; `Confirm` not refusing a mismatched fingerprint (`If 0` for `If 'tMatches`) -> `TestAChangedTargetIsRefusedTargetChanged` red alone, on both legs (run 1043).
   - mutation: AC3 gate, `SqlPort.TablesInvoke` gates every type as a read -> `TestTheGatesRefuseBeforeAnyReadOrWrite` red on the three setters' WRITE legs and the no-call assertion (run 1044).
   - mutation: AC4, the Field statistics screen back on `class` in `screens.generated.ts` -> `citation-chips.test.mjs`'s "a stored class citation of a table still resolves to the class screen" red alone.
+
+- Observed (code review, each applied on `ocupilot-ci`, reverted, `git diff --stat` showing only the review's test patches, source reloaded):
+  - mutation: AC2, `SqlPort.PercentValid` bounds with `<` for `<=` -> `SqlTableFixedStatsCard.TestASelectivityAtItsBoundsIsAValidValue` red alone, on 99.999 with and without `%` (run 1051).
+  - mutation: U-151, `SqlPort.TableWritten` sets `statisticsFixed` unconditionally -> `SqlIndexRebuild.TestTheInstancesRefusalIsAnsweredWithItsMessageInDetailAlone` red alone, on REBUILD and REBUILDALL (run 1054).
 
 ## Auto Run Result
 

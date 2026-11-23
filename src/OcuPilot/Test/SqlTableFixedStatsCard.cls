@@ -125,6 +125,19 @@ Method TestTheLowerBoundZeroIsAValidValue()
     }
 }
 
+/// <p>AC2. A selectivity's upper bound 99.999, with or without its percent sign, and its smallest step, six decimals, are accepted, and one step over
+/// the bound is not.</p>
+Method TestASelectivityAtItsBoundsIsAValidValue()
+{
+    Set tPort = ..#PORT
+    For tValue = "99.999%", "99.999", "0.000001", "0.000001%", "1" {
+        Do $$$AssertEquals($ClassMethod(tPort, "ValueProblem", "Selectivity", tValue), "", "Selectivity: " _ tValue _ " is accepted")
+    }
+    For tValue = "99.9991%", "0.0000001", "100" {
+        Do $$$AssertTrue($ClassMethod(tPort, "ValueProblem", "Selectivity", tValue) '= "", "Selectivity: " _ tValue _ " is refused")
+    }
+}
+
 /// <p>AC1. A map size of 0, which the instance reads as "use the measured size", is set through the agent's confirmed proposal on a probe map and the
 /// map reads its measured size again, so the read-back, comparing the declared 0, reads <code>differs</code> and names <code>SizeMB</code>.</p>
 Method TestAMapSizeOfZeroIsSetAndReadBack()

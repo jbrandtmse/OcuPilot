@@ -14552,3 +14552,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-31-fixed-table-statistics.md (Task 0) | severity: low | fix-risk: low | footprint: cross-story
 - evidence: Measured on ocupilot-ci at Story 21.31's Task 0: an outlier value of $Increment(^X) passed to the vendor's field selectivity setter ran (^X incremented)
 - 2026-11-23T13:39:12Z status=routed owner=burndown by=orchestrator note=vendor defect candidate; OcuPilot quotes every caller value itself so the caller's text never runs
+
+### DW-2853: SqlTableSetAction's composite-target methods are a parameterized near-copy of ExplorerSqlIndexRebuild's, which keeps its own
+- source: spec-21-31-fixed-table-statistics.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: IdArgument, TargetName, NameOf, InputSchema and IdProblem exist in both SqlTableSetAction (21.31) and ExplorerSqlIndexRebuild (21.25, merged); unifying them in SqlTableAction touches 21.25's tool
+- 2026-11-23T14:06:06Z status=routed owner=burndown by=cr note=Rule 31; move into SqlTableAction with SECONDARGUMENT

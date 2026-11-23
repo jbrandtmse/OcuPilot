@@ -452,6 +452,7 @@ Method TestATableOfOcuPilotsOwnIsRefusedOnBothCallers()
     Do $$$AssertTrue(tField '= "", "and a field: " _ tField)
     If tField = "" Quit
     Set tBefore = ..OwnExtent()
+    Do $$$AssertTrue(tBefore '= "unread", "the own table's extent size is read before the attempts: " _ tBefore)
     For tCase = $ListBuild(..#TABLESCREEN, "set-extent-size", tOwn, "{""ExtentSize"":""5""}"), $ListBuild(..#INDEXSCREEN, "set-map-size", ..Id(tOwn, tMap), "{""SizeMB"":""1""}"), $ListBuild(..#FIELDSCREEN, "set-selectivity", ..Id(tOwn, tField), "{""Selectivity"":""25%""}") {
         Set tStatus = ..Act($List(tCase, 1), $List(tCase, 2), $List(tCase, 3), ##class(%DynamicAbstractObject).%FromJSON($List(tCase, 4)), ..#OWNNAMESPACE, .tAnswer)
         Do $$$AssertEquals($ClassMethod(..#HELPERS, "Verdict", tStatus, tAnswer) _ "|" _ $Select($IsObject(tAnswer): tAnswer.reason, 1: ""), "403 PROHIBITED.OCUPILOTTABLE|" _ tReason, "the screen's " _ $List(tCase, 2) _ " is refused with the published sentence")

@@ -356,6 +356,7 @@ Method TestTheInstancesRefusalIsAnsweredWithItsMessageInDetailAlone()
         Do $$$AssertEquals($Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "409 SQL.TABLE.VENDOR", $List(tCase, 1) _ ": the refusal is 409 with its code")
         Do $$$AssertEquals($Select($IsObject($Get(tFault)): tFault.reason, 1: ""), "The instance did not apply this change to the table.", $List(tCase, 1) _ ": its reason is the ruled sentence")
         Do $$$AssertTrue($IsObject($Get(tFault)) && (tFault.detail.message [ "5798") && (tFault.reason '[ "5798"), $List(tCase, 1) _ ": the instance's message is in detail alone: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+        Do $$$AssertEquals($Select($IsObject($Get(tFault)): tFault.detail.%GetTypeOf("statisticsFixed"), 1: ""), "unassigned", $List(tCase, 1) _ ": a refusal that saved no statistics does not say it did")
         Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls") _ "|" _ ..Entries(tTable), "1|0|5", $List(tCase, 1) _ ": one call was made and the killed index is still empty")
     }
 }
