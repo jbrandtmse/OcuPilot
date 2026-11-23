@@ -136,6 +136,16 @@ Each is the lead's to take to the veto gate; the recommended option is first.
 
 No new dependency; no privilege, role or access grant.
 
+**Lead rulings at the spec gate (2026-11-23; filed as an INBOX veto item, so binding unless the orchestrator reverses them).** Every veto item is kept as recommended, with these conditions:
+
+- **V1:** kept. If Task 0 (b), (c) or (e) contradicts `ARCHIVERUN`, HALT with `## Clarification Needed`. Never reword it in-stage.
+- **V2:** kept. The README count is never typed from this plan. The implement stage derives it from the shipped `false` keys in the merged `Baseline`, on the tree it commits. The lead re-derives it after integrating feature, since Epic 21's keys move it. Whatever test pins the README count is updated with it.
+- **V3:** kept. If Task 0 (f) shows a full run also needs READ on the target or an SQL right, the pairs gain it. That is a stricter posture inside this ruling.
+- **V4:** kept. The run's key ships `false` behind the typed namespace name. The settings key ships `true`.
+- **V5:** kept. The target must be a namespace the classic page lists, other than the namespace itself, judged at the review and again at the write.
+- **V6:** all four stricter refusals kept. `ARCHIVEMAXMESSAGES` is fixed by Task 0 (h) as planned: a named limit with a boundary test, never above 10,000. If no multiple of 1,000 fits, HALT.
+- **V7:** kept for story end; the lead writes the lines. The AD-9 line names `InteropPort.PurgeFrame`'s `New $ROLES` as an exception that contains a vendor escalation, never a way for OcuPilot to add a role.
+
 ## Design Notes
 
 **Decided in-stage (plan).**

@@ -14574,3 +14574,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-25-index-rebuild-and-tune-table.md (rework 4 measurement) | severity: medium | fix-risk: medium | footprint: cross-story
 - evidence: Measured on ocupilot-ci in USER, three sequences on one instance with the residue removed between them: (i) CREATE then DROP of a "-named schema and table with no OcuPilot call breaks SCHEMATA at the DROP TABLE of the last table; (ii) OcuPilot's tune, clear statistics and rebuild and (iii) the vendor calls they make leave SCHEMATA at SQLCODE 100 until that DROP
 - 2026-11-23T08:10:50Z status=routed owner=burndown by=orchestrator note=vendor defect candidate; product answers 500 on the SQL schemas list (pinned by AtelierPortCatalog); DropSchema^%apiDDL clears it (internal entry, test probe only)
+
+### DW-2859: CI's gates 'client suite' step bound (timeout-minutes 12) is below 1.5x its duration on a slow runner as the component suite grows, so a slower node-22 runner times the step out mid-suite though nothing hangs
+- source: ci run 45197647823 (24.16 Batch 3 code head 92f0235be) | severity: medium | fix-risk: low | footprint: cross-story
+- evidence: job 137772299472 gates (node 22.22.3): component runner still passing at 14:58:53Z, 297 of 332 files started, step killed at 12 min; the node 24.15.0 and 26.0.0 legs finished all 332 files in 409-414 s
+- 2026-11-23T15:03:04Z status=routed owner=burndown by=epic-24-runner note=the step bound wants the same 1.5x-of-largest-observed rule DW-2842 gave the job, pinned in ci.test.mjs; ci.yml change is the orchestrator's call

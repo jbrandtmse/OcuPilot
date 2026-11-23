@@ -802,3 +802,8 @@
 2026-11-23T14:45:40Z	Story 24.16	code_head_pushed	scope=batch3 sha=92f0235be run=45197647823
 2026-11-23T14:47:01Z	Story 24.16	stage_spawned	stage=plan spawn_at=2026-11-23T14:47:01Z model=opus agent_name=24-16-plan-batch4 cycle_iteration=4 scope=batch4_archive_manager+README
 2026-11-23T14:47:23Z	Story 24.16	ruling	source=orchestrator scope=batch3 pre-CI=pass(92f0235be) DW-2856=reworded("each_marked_off_by_the_chosen_separator")_ships_batch4 inbox=U-154(veto_addendum_U-150) carried_into=batch4_plan
+2026-11-23T14:59:08Z	Story 24.16	ci_red	scope=batch3 sha=92f0235be run=45197647823 failed=gates(node_22.22.3)_client_suite_step_12min_bound(component_runner_297/332_files_at_cutoff;node24/26_414s_green) ledger=DW-2859(medium,burndown) action=rerun_failed_once_on_completion(standing_order)
+2026-11-23T15:02:52Z	Story 24.16	story_created	scope=batch4_archive_manager+README path=_bmad-output/implementation-artifacts/spec-24-16-purge-suspended-messages-export-and-the-archive-manager-4.md commit=29126bd02 build_status=ready-for-dev
+2026-11-23T15:06:16Z	Story 24.16	ruling	question=batch4_veto_set choice=keep(V1-V7)+conditions(V1_halt_if_measured_untrue,V2_README_count_derived,V3_extra_pairs_if_measured,V6_cap_by_TaskO_h,V7_AD-9_wording) category=veto inbox=U-155 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-23T15:07:01Z	Story 24.16	spec_validated	scope=batch4
+2026-11-23T15:07:01Z	Story 24.16	stage_spawned	stage=implement spawn_at=2026-11-23T15:07:01Z model=sonnet agent_name=24-16-implement-batch4 cycle_iteration=4 story_base=29126bd02
