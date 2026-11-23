@@ -8542,6 +8542,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T17:29:36Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=lead note=reopened: staging 36741141564 shard 2/3 agent leg OnAfterOneTest found the held compact running; seed left
 - 2026-09-30T20:28:36Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=398c0190: teardown waits 60 s, unopenable row not ended; stall leg r252 red/r255-258 green; CI 36768363028
 - 2026-11-21T06:14:39Z by=epic-24-runner note=occurrence: BackgroundTasksLive red once in 24.14 Batch 4's local full sweep on ocupilot-b-ci (shard 10/17; a seeded compact ended before its pause), green on one re-run
+- 2026-11-23T12:23:43Z by=orchestrator note=occurrence: BackgroundTasksLive.TestAnAdminApiCompactIsListedAndPausedThroughAsyncResult Pause 409 TASK.BACKGROUND.STATE on CI run 45160592270 shard 2/8 (21.25 M 5282c9e77; seeded compact ended before its pause), green on one rerun
 
 ### DW-1830: BackgroundTasksLive.cls is 537 lines after 18.3 rework 2's bounded retry, over the ~500-line test-class guideline
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: in-story
