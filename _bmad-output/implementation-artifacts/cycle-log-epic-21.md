@@ -1063,3 +1063,4 @@
 2026-11-23T10:57:25Z	Story 21.31	stage_spawned	stage=plan spawn_at=2026-11-23T10:57:25Z model=opus agent_name=21-31-plan cycle_iteration=1 prior_lines_ended=verified(a5743f258)
 2026-11-23T11:09:13Z	Story 21.31	stage_complete	stage=plan agent=ac0370005 result=ready-for-dev escalated=strings_batch(5_groups;consequence_starting_text_contradicted_by_21.25_measure;Map_size_unit_measure-first),sql-field_move(consumer_list;no_stored_rows),AD-51_add-only_record bashedits=none lines_ended=verified
 2026-11-23T11:09:13Z	Story 21.31	escalation_sent	to=orchestrator items=strings,sql-field,AD-51 at=2026-11-23T11:09:13Z
+2026-11-23T11:10:45Z	Story 21.31	spec_gate	result=pass ruling=U-151(sql-field,strings_as_written+measure-first,extent_bound_constant+boundary_test,AD-51_add-only,FixTableStats_ordering_pin) spine=4ac5b13c4
