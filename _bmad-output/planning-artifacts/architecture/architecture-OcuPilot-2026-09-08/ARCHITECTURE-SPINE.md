@@ -1272,6 +1272,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 21.31's case** [AMENDED 2026-11-23, Story 21.31 spec gate, orchestrator ruling U-151, Rule 20]: `INDEX` answers the map's `SizeMB` and `FIELDSTATS` answers one field's row, each the value in use. A selectivity's outlier selectivity, outlier value and average size are optional; an omitted one is the field's fixed value read just before the call. Any preparatory vendor call runs only inside the confirmed write, after the prohibited check and the value-shape check, never at mint or preview.
 
+  **Story 21.31's preparatory call** [AMENDED 2026-11-23, Story 21.31 Task 0, orchestrator ruling U-151, Rule 20]: before a setter, when the table's statistics are collected, `SqlPort` calls `$SYSTEM.SQL.Stats.Table.FixTableStats` for the table, as the classic page does (measured: without it a set leaves every other field's fixed value blank). The vendor evaluates an outlier value as an ObjectScript expression (measured), so the port admits only a number or a double-quoted string literal there, and a map size is sent in the vendor's 2 KB blocks (`SizeMB` × 512).
+
 ### AD-52 — A write tool declares the port it reaches its target through
 
 - **Binds:** every write tool; Story 5.13 (application-error deletes) and every later write whose target is not an admin API endpoint; AD-2, AD-6, AD-29, AD-34, AD-40, AD-48
