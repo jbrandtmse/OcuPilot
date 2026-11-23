@@ -14512,3 +14512,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-6-the-sql-tuning-track.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: PURGECLASS is fixed to ConfigPort, so ConfigGateSeam.PurgeFails cannot reach SqlPort; the 409 test calls SqlTuningPortFixture.Invoke directly.
 - 2026-11-22T20:28:34Z status=wontfix-accepted owner=21-6-the-sql-tuning-track by=cr note=reopen_if=a purge or statement write the instance refuses answers 200 or another code than 500/409 on either caller
+
+### DW-2847: SqlPort.QuotedName's delimited-name branch (a schema or table whose name needs quotes) is run by no test, though 21.25's tune and schema-tune targets already pass every Tables-list name through it
+- source: spec-21-25-index-rebuild-and-tune-table.md (implement review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlPort.cls:1263 QuotedName quotes any name not matching ^[A-Za-z%][A-Za-z0-9_]*$; callers SqlPort.cls:1258 (schema tune) and :1411 (table tune target), both reachable from a name the Tables list shows
+- 2026-11-23T04:46:59Z status=routed owner=21-25-index-rebuild-and-tune-table by=orchestrator note=21.25's own writes reach a delimited name, so the test is 21.25's: a probe schema or table needing quotes, tuned and rebuilt through both callers, at the code review; 21.31 reuses the helper after
