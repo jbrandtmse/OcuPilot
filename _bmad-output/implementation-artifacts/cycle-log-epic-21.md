@@ -1076,3 +1076,7 @@
 2026-11-23T14:12:33Z	Story 21.31	stage_complete	stage=code_review agent=a167bc80b result=in-progress commit=390cc7437 high=3 med=5(1_routed_DW-2853) low=2 security_probes=held(21_inputs,0_vendor_calls) lines_ended=verified bashedits=none
 2026-11-23T14:12:33Z	Story 21.31	rework_opened	iteration=1 items=3H+5M+2L(ruled_U-152/U-153)
 2026-11-23T14:12:33Z	Story 21.31	stage_spawned	stage=implement(rework1) spawn_at=2026-11-23T14:12:33Z model=sonnet agent_name=21-31-rw1 prior_lines_ended=verified(a167bc80b)
+2026-11-23T14:13:29Z	Story 21.31	ruling	question=read_display via=orchestrator choice=quoted->inner,number->number,else_verbatim;omitted_value_passed_raw(test_byte-equal);preview=sent_expression delivered=spec_change_log_addendum_while_rework1_ran(verify_on_return)
+2026-11-23T14:32:24Z	Story 21.31	ci	run=45185680811 head=9cb5ce5b9 result=red browser_shard_1/5_only(DW-1822_occurrence,a11y_governance_stall) other_legs=green superseded_by_rework1_head
+2026-11-23T15:26:30Z	Story 21.31	stage_complete	stage=implement(rework1) agent=a232806df result=done commit=ec8d7c9d7 followup_review=false new_class=SqlTableOutlierValues invariant=omitted_value_raw(byte-equal_test:quoted,130-char_quoted,.5) audit=only_OutlierValue_evaluated(measured;vendor_source_hidden:%SQL.Manager.Catalog) lines_ended=verified bashedits=scratch_only(diff.patch) note=one_read-only_Write_via_ocupilot-slot-a(nothing_written)
+2026-11-23T15:26:30Z	Story 21.31	code_head_pushed	sha=ec8d7c9d7 run=45205169782 feature=9e09385c8(already_ancestor,no_new_M)
