@@ -157,6 +157,9 @@ export const SKIP = {
   // Story 24.5: a fresh instance records no unit-test run, so the Unit tests list opens with no row to open;
   // unit-tests.browser-spec.mjs opens a run's methods list on the run it makes.
   'system-explorer/unit-tests/methods': 'a fresh instance records no unit-test run, so the Unit tests list opens with no row to open',
+  // Story 24.17 Batch 1: a fresh instance holds no managed alert, so the Managed alerts list opens with no row to open;
+  // interop-managed-alerts.browser-spec.mjs opens an alert's history on the probe alert it creates.
+  'interoperability/managed-alerts/history': 'a fresh instance holds no managed alert, so the Managed alerts list opens with no row to open',
 };
 
 /** The limits class the seeded entry is capped by, as the turn's own append is. */
