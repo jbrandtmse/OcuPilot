@@ -1,8 +1,8 @@
 /// <p>Pins Story 24.17 Batch 1's managed alert update end to end against probe alerts in <code>USER</code> (AD-6, AD-14, AD-15, AD-22, AD-51, AD-53, AD-58, AD-59, AD-62): a person's Update
 /// and the agent's confirmed proposal each leave the alert as the vendor's <code>Ens.Alerting.ManagedAlert</code> reads it (owner, open state, escalation level and next action time as sent),
 /// add one history row naming the caller and the reason, and record one OcuPilot <code>ConfigChange</code> that names the changed fields and never the reason. A closed alert is opened
-/// again, the next action time is the clock at the write plus the minutes, an update made after the agent's proposal closes it as moved, and the script form renders the guarded update and
-/// runs nothing.</p>
+/// again, the next action time is the clock at the write plus the minutes, an update made after the agent's proposal closes it as moved, and the script form renders the guarded update,
+/// runs nothing itself, and updates the alert when it is pasted one line at a time.</p>
 /// <p><b>What it needs from the environment:</b> what <class>OcuPilot.Test.InteropAlertCase</class> needs.</p>
 Class OcuPilot.Test.InteropAlertUpdate Extends OcuPilot.Test.InteropAlertCase
 {
@@ -111,8 +111,9 @@ Method TestAClosedAlertIsOpenedAgain()
     Do $$$AssertEquals($Select($IsObject($Get(tHistory)) && tHistory.%Size(): tHistory.%Get(0).Action _ "|" _ tHistory.%Get(0).NewValues, 1: ""), "Close|IsOpen: 1", "and the history reads it in the vendor's words")
 }
 
-/// <p>AC2: an update made after the agent's proposal closes the confirm as moved, and nothing is saved by it: the proposal's fingerprint covers the number of history rows, so any update does.</p>
-/// <p>Mutation (Rule 19): drop <code>ActionCount</code> from <parameter>OcuPilot.Screen.Tool.InteropManagedAlertUpdate.FINGERPRINTSUBJECT</parameter> and from the fields it names -- this goes red.</p>
+/// <p>AC2: an update made after the agent's proposal closes the confirm as moved, and nothing is saved by it: the proposal's fingerprint covers the number of history rows, so a history row the
+/// vendor's alert monitor adds (a reoccurrence, which changes no owner, open state, level or next action time) does.</p>
+/// <p>Mutation (Rule 19): drop <code>ActionCount</code> from <parameter>OcuPilot.Screen.Tool.InteropManagedAlertUpdate.FINGERPRINTSUBJECT</parameter> -- this goes red.</p>
 Method TestAnUpdateAfterTheMintClosesTheConfirmTargetChanged()
 {
     Set tFx = ..#FIXTURE
@@ -120,11 +121,11 @@ Method TestAnUpdateAfterTheMintClosesTheConfirmTargetChanged()
     Do $$$AssertEquals(..Mint(tId, {"EscalationLevel": 1, "Reason": "raise it"}, .tReason, .tProposal, .tTurn), "minted", "the agent's update mints: " _ tReason)
     If '$IsObject($Get(tProposal)) Quit
     Kill tValues
-    Set tValues("EscalationLevel") = 1
-    Do $$$AssertStatusOK($ClassMethod(tFx, "Touch", ..#SOURCE, tId, 4, .tValues, "somebody else"), "another update is made after the mint")
+    Do $$$AssertStatusOK($ClassMethod(tFx, "Touch", ..#SOURCE, tId, 32, .tValues, "it happened again"), "a reoccurrence is recorded after the mint")
+    Do $$$AssertEquals($ClassMethod(tFx, "State", ..#SOURCE, tId), "|1|0|1", "which adds a history row and changes nothing else")
     Set tSC = ..Confirm(tProposal.proposalId, .tConfirmStatus, .tRaw, .tConfirmed)
     Do $$$AssertEquals($Select($IsObject(tConfirmed): tConfirmed.%Get("code"), 1: tConfirmStatus), "PROPOSAL.TARGETCHANGED", "the proposal is closed target-changed: " _ $Extract($Get(tRaw), 1, 300))
-    Do $$$AssertEquals($ClassMethod(tFx, "State", ..#SOURCE, tId), "|1|1|1", "and the alert holds the other update alone")
+    Do $$$AssertEquals($ClassMethod(tFx, "State", ..#SOURCE, tId), "|1|0|1", "and the alert holds the reoccurrence alone")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tTurn))
 }
 
@@ -174,6 +175,62 @@ Method TestTheScriptFormRendersTheGuardedUpdateAndRunsNothing()
     }
     Set tScript("alertlevel") = 5
     Do $$$AssertEquals($ClassMethod(..#PORT, "Snippet", ..#ENDPOINT, "UPDATEALERT", .tScript, "").%Size(), 1, "a level that is far from the current one is a shape the script form accepts and its guard refuses when it runs")
+}
+
+/// <p>AC6: the script form runs as a person pastes it, one line at a time, because no line opens a block it does not close (AD-59): pasted, it updates the alert as the port does, and pasted again
+/// without the next action time it changes nothing and stops on the unchanged sentence.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.AlertSnippet</method> open one block before the value lines and close it after them -- the opening line does not run and this goes
+/// red.</p>
+Method TestTheScriptFormRunsPastedLineByLine()
+{
+    Set tFx = ..#FIXTURE
+    Set tId = $ClassMethod(tFx, "Probe", ..#SOURCE, "", 1, 0, "for the pasted draft")
+    Kill tScript
+    Set tScript("namespace") = ..#SOURCE
+    Set tScript("id") = tId
+    Set tScript("alertowner") = $USERNAME
+    Set tScript("alertopen") = 0
+    Set tScript("alertlevel") = 1
+    Set tScript("alertminutes") = 60
+    Set tScript("alertreason") = "pasted"
+    Set tText = ..StepText($ClassMethod(..#PORT, "Snippet", ..#ENDPOINT, "UPDATEALERT", .tScript, ""))
+    Do $$$AssertEquals(..Pasted(tText), "", "every line of the draft runs on its own: " _ tText)
+    Do $$$AssertEquals($ClassMethod(tFx, "State", ..#SOURCE, tId), $USERNAME _ "|0|1|1", "and the pasted draft updated the alert with one history row")
+    Kill tScript("alertminutes")
+    Set tAgain = ..Pasted(..StepText($ClassMethod(..#PORT, "Snippet", ..#ENDPOINT, "UPDATEALERT", .tScript, "")))
+    Do $$$AssertTrue(tAgain [ ##class(OcuPilot.Api.InteropError).#REASONALERTUNCHANGED, "a second paste that changes nothing stops on the unchanged sentence: " _ tAgain)
+    Do $$$AssertEquals($ClassMethod(tFx, "State", ..#SOURCE, tId), $USERNAME _ "|0|1|1", "and the alert is as the first paste left it")
+    Set tOwned = $ClassMethod(tFx, "Probe", ..#SOURCE, "OcuProbeOther", 1, 0, "owned by a user the owner list does not offer")
+    Kill tKept
+    Set tKept("namespace") = ..#SOURCE
+    Set tKept("id") = tOwned
+    Set tKept("alertowner") = "OcuProbeOther"
+    Set tKept("alertopen") = 0
+    Set tKept("alertreason") = "closed, owner kept"
+    Do $$$AssertEquals(..Pasted(..StepText($ClassMethod(..#PORT, "Snippet", ..#ENDPOINT, "UPDATEALERT", .tKept, ""))), "", "an owner kept as it is is not judged against the owner list, as the port does not")
+    Do $$$AssertEquals($ClassMethod(tFx, "State", ..#SOURCE, tOwned), "OcuProbeOther|0|0|1", "and the alert is closed with its owner kept")
+}
+
+/// <p>Run <var>pText</var> one line at a time, as a person pastes it into a terminal, then return to this namespace: <code>""</code> when every line ran and the script's <code>tSC</code> is OK,
+/// else the error a line raised or the status's text.</p>
+ClassMethod Pasted(pText As %String) As %String [ PublicList = (tSC, tOk, tId, tAlert, tBits, tNew, tOwners) ]
+{
+    New tSC, tOk, tId, tAlert, tBits, tNew, tOwners
+    Set tOrigNS = $NAMESPACE
+    Set tProblem = ""
+    Try {
+        For tI = 1:1:$Length(pText, $Char(10)) {
+            Set tLine = $Piece(pText, $Char(10), tI)
+            If $ZStrip(tLine, "<>W") = "" Continue
+            Xecute tLine
+        }
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR($Get(tSC, $$$OK)) Set tProblem = $System.Status.GetErrorText(tSC)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tProblem = ex.DisplayString()
+    }
+    Quit tProblem
 }
 
 }

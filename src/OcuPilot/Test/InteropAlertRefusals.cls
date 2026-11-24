@@ -12,7 +12,7 @@ Parameter GENERATOR = "OcuPilot.Test.InteropArchiveFixture";
 Parameter PRINCIPALS = "OcuP2417aExact:%Development:U,%Ens_Portal:U,%Ens_Alerts:RW,%DB_HSCUSTOM:RW,%DB_USER:RW;OcuP2417aAdmin:%Development:U,%Ens_Portal:U,%Ens_Alerts:RW,%Ens_AlertAdministration:U,%DB_HSCUSTOM:RW,%DB_USER:RW;OcuP2417aNoWrite:%Development:U,%Ens_Portal:U,%Ens_Alerts:R,%DB_HSCUSTOM:RW,%DB_USER:RW;OcuP2417aNoRead:%Development:U,%Ens_Portal:U,%DB_HSCUSTOM:RW,%DB_USER:RW;OcuP2417aDbRead:%Development:U,%Ens_Portal:U,%Ens_Alerts:RW,%DB_HSCUSTOM:RW,%DB_USER:R";
 
 /// <p>The legs a probe runs, in order, <code>&lt;name&gt;|&lt;endpoint&gt;|&lt;type&gt;</code>.</p>
-Parameter LEGS = "list|ManagedAlerts|LIST,history|ManagedAlertActions|LIST,owners|ManagedAlerts|ALERTOWNERS,mine|ManagedAlerts|UPDATEALERT,other|ManagedAlerts|UPDATEALERT";
+Parameter LEGS = "list|ManagedAlerts|LIST,history|ManagedAlertActions|LIST,owners|ManagedAlerts|ALERTOWNERS,mine|ManagedAlerts|UPDATEALERT,other|ManagedAlerts|UPDATEALERT,review|ManagedAlerts|ALERT";
 
 Property PreparedPassword As %String;
 
@@ -48,7 +48,8 @@ Method Arrange() As %Integer
 /// <p>AC3: each value outside its rule is refused by its own code, in the port's answer, and leaves the alert as it was: an owner nobody lists, a level two above or below the current one or below
 /// 0, minutes of 0, 20161 or not a number, and a reason that is empty, 501 characters or holds a tab. The limits themselves, 1 and 20160 minutes and a reason of 1 and 500 characters, are
 /// accepted, each as an update of its own.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.AlertMinutesOK</method> compare with <code>&lt;</code> in place of <code>'&gt;</code> -- the 20160 leg goes red.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.AlertMinutesOK</method> compare with <code>&lt;</code> in place of <code>'&gt;</code> -- the 20160 leg goes red; let
+/// <method>OcuPilot.Port.InteropPort.AlertLevelShapeOK</method> take a minus sign -- the leg one step below level 0 goes red.</p>
 Method TestEachValueOutsideItsRuleIsRefusedByNameAndNothingIsSaved()
 {
     Set tId = ..Arrange()
@@ -75,6 +76,12 @@ Method TestEachValueOutsideItsRuleIsRefusedByNameAndNothingIsSaved()
     Set tValues("alertreason") = $Translate($Justify("", 500), " ", "y")
     Do $$$AssertEquals(..Update(tId, .tValues, .tRow, .tFault), "200 ", "20160 minutes, the level one down and a reason of 500 characters are accepted")
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "State", ..#SOURCE, tId), "|1|0|2", "each was saved as an update of its own")
+    Set tZero = $ClassMethod(..#FIXTURE, "Probe", ..#SOURCE, "", 1, 0, "at level 0")
+    Kill tValues
+    Set tValues("alertlevel") = -1
+    Set tValues("alertreason") = "below 0"
+    Do $$$AssertEquals(..Update(tZero, .tValues, .tRow, .tFault), "422 INTEROP.ALERT.LEVEL", "one step below level 0 is refused by its own code")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "State", ..#SOURCE, tZero), "|1|0|0", "and that alert is as it was")
     Set tId2 = $ClassMethod(..#FIXTURE, "Probe", ..#SOURCE, "irisowner")
     Kill tValues
     Set tValues("alertowner") = ""
@@ -145,14 +152,17 @@ Method TestAVendorErrorIsNeverA200AndIsAuditedAsNotCompleted()
     Kill tValues
     Set tValues("alertopen") = 0
     Set tValues("alertreason") = "reason " _ $Parameter(tSeam, "MARKER")
+    ; One window for both modes: the probe's id is new, so its rows are counted cumulatively, one per update, whenever the audit stamps them.
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tExpect = 0
     For tMode = "status", "fault" {
         Set ^IRIS.Temp.OcuProbe2417Mode = tMode
         Do $ClassMethod(tSeam, "ClearLog")
-        Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+        Set tExpect = tExpect + 1
         Do $$$AssertEquals(..Update(tId, .tValues, .tRow, .tFault, ..#SOURCE, tSeam), "500 INTERNAL", tMode _ ": the answer is 500, never 200")
         Do $$$AssertEquals($ClassMethod(..#FIXTURE, "State", ..#SOURCE, tId), "|1|1|0", tMode _ ": the alert is unchanged")
-        Set tRows = ..OwnRows(tSince, tId, .tData)
-        Do $$$AssertEquals(tRows, 1, tMode _ ": OcuPilot records one ConfigChange (since " _ tSince _ ")")
+        Set tRows = ..OwnRows(tSince, tId, .tData, tExpect)
+        Do $$$AssertEquals(tRows, tExpect, tMode _ ": OcuPilot records one ConfigChange for each update (since " _ tSince _ "; -1 is a failed audit read)")
         Do $$$AssertTrue((tData [ """completed"":false") && (tData '[ $Parameter(tSeam, "MARKER")), tMode _ ": it reads completed false and carries neither the reason nor the vendor's text: " _ tData)
         Set tLog = $ClassMethod(tSeam, "LoggedText")
         Do $$$AssertTrue((tLog '= "") && (tLog '[ $Parameter(tSeam, "MARKER")), tMode _ ": the log line names no reason and no vendor text: " _ tLog)
@@ -200,8 +210,10 @@ ClassMethod Probe(pParent As %Integer, pUsername As %String)
             Set tName = $Piece(tSpec, "|", 1)
             Kill tQuery
             Set tQuery("namespace") = ..#SOURCE
-            Set tQuery("id") = $Get(^IRIS.Temp.OcuProbe2417Ids($Select(tName = "other": "other", 1: "mine")))
+            Set tQuery("id") = $Get(^IRIS.Temp.OcuProbe2417Ids($Select((tName = "other") || (tName = "review"): "other", 1: "mine")))
             If $Piece(tSpec, "|", 2) = "ManagedAlertActions" Set tQuery("alert") = $Get(^IRIS.Temp.OcuProbe2417Ids("mine"))
+            ; The review of an update of another user's alert, as the dialog's dry run and the agent's mint read it.
+            If $Piece(tSpec, "|", 3) = "ALERT" Set tQuery("action") = "UPDATEALERT"
             If $Piece(tSpec, "|", 3) = "UPDATEALERT" {
                 Set tQuery("alertopen") = 0
                 Set tQuery("alertreason") = "probe"
@@ -251,8 +263,9 @@ Method ProbeAs(pUser As %String) As %DynamicObject
 /// <p>AC3: the gate, as real principals in a child process, refuses before any vendor call and before any value is judged: a reader reads the list and the history and is refused the owners and the
 /// update naming <code>%Ens_Alerts:WRITE</code>; one without the resource is refused every read naming <code>%Ens_Alerts:READ</code>; one who cannot write <code>USER</code>'s database reads and
 /// is refused the owners and the update naming that pair; a writer updates an unassigned alert, and is refused another user's alert naming <code>%Ens_AlertAdministration:USE</code> until it holds
-/// that pair. A refused update changed nothing.</p>
-/// <p>Mutation (Rule 19): drop the administration pair check from <method>OcuPilot.Port.InteropPort.PerformAlertUpdate</method> -- the <code>OcuP2417aExact</code> leg of another's alert goes red.</p>
+/// that pair. The review of an update of another user's alert, as the dialog's dry run and the agent's mint read it, is refused naming that pair too. A refused update changed nothing.</p>
+/// <p>Mutation (Rule 19): drop the administration pair check from <method>OcuPilot.Port.InteropPort.PerformAlertUpdate</method> -- the <code>OcuP2417aExact</code> leg of another's alert goes red;
+/// drop it from <method>OcuPilot.Port.InteropPort.ReadAlert</method> -- the review leg goes red.</p>
 Method TestTheGateRefusesEachPrincipalBeforeAnyVendorCall()
 {
     Set tSC = $ClassMethod(..#GENERATOR, "CreatePrincipals", ..#PRINCIPALS, ..PreparedPassword)
@@ -264,11 +277,11 @@ Method TestTheGateRefusesEachPrincipalBeforeAnyVendorCall()
     Set tWrite = "403|" _ tDeny _ "|%Ens_Alerts:WRITE"
     Set tRead = "403|" _ tDeny _ "|%Ens_Alerts:READ"
     Set tDb = "403|" _ tDeny _ "|%DB_USER:WRITE"
-    Set tExpected("OcuP2417aExact") = $ListBuild(tOk, tOk, tOk, tOk, tAdmin)
-    Set tExpected("OcuP2417aAdmin") = $ListBuild(tOk, tOk, tOk, tOk, tOk)
-    Set tExpected("OcuP2417aNoWrite") = $ListBuild(tOk, tOk, tWrite, tWrite, tWrite)
-    Set tExpected("OcuP2417aNoRead") = $ListBuild(tRead, tRead, tRead, tRead, tRead)
-    Set tExpected("OcuP2417aDbRead") = $ListBuild(tOk, tOk, tDb, tDb, tDb)
+    Set tExpected("OcuP2417aExact") = $ListBuild(tOk, tOk, tOk, tOk, tAdmin, tAdmin)
+    Set tExpected("OcuP2417aAdmin") = $ListBuild(tOk, tOk, tOk, tOk, tOk, tOk)
+    Set tExpected("OcuP2417aNoWrite") = $ListBuild(tOk, tOk, tWrite, tWrite, tWrite, tAdmin)
+    Set tExpected("OcuP2417aNoRead") = $ListBuild(tRead, tRead, tRead, tRead, tRead, tRead)
+    Set tExpected("OcuP2417aDbRead") = $ListBuild(tOk, tOk, tDb, tDb, tDb, tAdmin)
     Set tUser = ""
     For {
         Set tUser = $Order(tExpected(tUser))

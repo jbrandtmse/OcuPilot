@@ -108,6 +108,22 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `eedeed40f`).
 
 ## Review Triage Log
 
+### 2026-11-24, Batch 1 code review (Opus; four layers: adversarial, edge cases, verification gaps, intent)
+
+- **H1** (patch) AD-36: `AlertCap` clamped a caller's cap to the limit, so a history over 1,000 rows (the default cap) or a list read at a cap of 2,000 or more dropped rows unreported. Siblings' form adopted (Decided in-stage (review) 1).
+- **H2** (patch) AD-59: `AlertSnippet` opened `If tOk {` on one line and closed it lines later; one line each now, and a new test pastes the draft line by line.
+- **M1** (patch) The moved-proposal test touched the level, which the fingerprint holds anyway; its interposed update is now a reoccurrence that moves only `ActionCount` (point 3).
+- **M2** (patch) Another user's alert was refused only at the write, after the dialog opened or the proposal was stored; the update's review now judges the pair (Decided in-stage (review) 2), with a gate-test leg per principal.
+- **M3** (patch) The draft judged a kept owner against the owner list, which the port does not; guard conditioned on a changed owner.
+- **M4** (patch) Nothing pinned `DryRunReview`'s owner list; `InteropAlertList` asserts a listed owner in it, and the HSCUSTOM owners verdict it discarded.
+- **M5** (patch) Point 4: `TestAVendorErrorIsNeverA200...` counted each mode's row from its own since-time and printed no count; one window and a cumulative count now. Not reproduced: four fresh runs green, three in a row. Cause undetermined.
+- **M6** (patch) "Never below 0" was only reached two steps away; a level-0 probe's `-1` leg added.
+- **M7** (defer) `READBACKFIELDS` leaves out the next action time against the Always line "read-back compares the four fields" (implement Decided item 2); spec-bound, for the lead.
+- **M8** (veto addendum) `homeSuggestedOpen` is a verb ("the accessible name of a suggested-view line's open control", EXPERIENCE.md:355); here it labels a state. Reuse left in place.
+- **Low, patched:** `TestTheFreshReadAtTheConfirmIsTheProposalsNamespaces` asserted only non-200 and claimed a mutation it cannot meet (both namespaces close it as moved): it asserts `PROPOSAL.TARGETCHANGED` and drops the claim; the `ci-throwaway.sh` comment's "each missing one pair" corrected.
+- **Low, rejected** (`reopen_if` in brackets): no agent read of the owner choices [an agent proposal is refused `INTEROP.ALERT.OWNER` for a name the dialog offers]; history values and the `ALERT` next action time as stored UTC, by-design (Decided item 6); history prompt groups [a prompt reads wrong on the history screen]; the screen's "'Open' must be 0 or 1", the siblings' argument form and unreachable from the dialog; `DryRunReview` answers `[]` on an owner-list fault [a writer reports an empty owner list]; the `taskCreate` line reference in `strings.ts`, forced by the EXPERIENCE.md row [it conflicts at an Epic 21 merge]; HSCUSTOM's raised id counter [a later class counts on it]; status-only screen leg and the counter-only write check [either hides a regression].
+- **False:** JSON-type drops (`Registry.ValidateArguments` refuses a type the schema does not declare before the tool runs); `element_key` text order (measured: 11 rows read newest first); `InputSchema`'s `required` guard (the derived schema always carries it); a stale owner between the read and the vendor (the vendor's `%OnAddToSaveSet` judges the stored owner again); a 129-character owner (theoretical); OcuPilot hooks while switched (`AlertHere`, `VendorAlertUpdate`, as the archive family's).
+
 ## Veto items
 
 Each is the lead's to take to the veto gate; the recommended option is first.
@@ -171,7 +187,7 @@ No new dependency; no privilege, role or access grant; nothing is written into a
 
 **Decided in-stage (implement, ObjectScript half).**
 
-1. `ALERTSMAX` is 2,000 (Measured (e)); `ALERTACTIONSMAX` 1,000; `ALERTNEXTMAX` 20,160; the list answers `min(maxRows, cap)` rows, so the caller's cap-plus-one row is its truncation signal (AD-36), and a seam subclass (`InteropAlertCapSeam`) lowers both caps to three.
+1. `ALERTSMAX` is 2,000 (Measured (e)); `ALERTACTIONSMAX` 1,000; `ALERTNEXTMAX` 20,160; a list answers the caller's `maxRows` when it names one and the named limit otherwise, as the port's other capped lists do, so the caller's cap-plus-one row is its truncation signal (AD-36), and a seam subclass (`InteropAlertCapSeam`) lowers both caps to three.
 2. The fresh read `ALERT` answers `{ID, CurrentOwner, IsOpen, EscalationLevel, NextActionTime, ActionCount, Namespace}` and four more members, `Owner` and `Open` (what the alert holds, so a merge that sets one to that leaves it unchanged), `NextActionMinutes` and `Reason` (empty), because the screen action's merge (`Mint.Merge`) refuses an argument its read does not carry. `FINGERPRINTSUBJECT` and `READANSWERS` name them beside the spec's six, since the stored payload is narrowed to the subject and the port reads the values from it; the read-back compares `Owner`, `Open` and `EscalationLevel`, not the next action time, which is set from the clock at the write.
 3. The three `Prohibited.cls` edits are additive (type parameter, `COVEREDTYPES` last, the uncovered guard extended by suffix, one review arm after the archive's); no `PermittedChangeFields` arm, because the tool's values travel in the port's query and are no field of the type (`Test/Prohibited` pins both).
 4. A review that carries no value (the dry run that opens the dialog) reads the state alone; any value present is judged, `Reason` required. An owner equal to the alert's own is never judged against the owner list.
@@ -187,6 +203,13 @@ No new dependency; no privilege, role or access grant; nothing is written into a
 3. The dialog sends only the values that differ from the alert, and `Reason` only when typed, so an empty reason reaches the instance's own `INTEROP.ALERT.REASON` sentence; the caller's name comes from `Session.userName()`.
 4. The history opens from the list's name cell through the shared child-list mechanism; the list descriptor carries no `rowTarget`.
 5. Three rosters outside the Code Map pinned the changed shared surfaces and were updated: `Test/Navigation` (41 Interoperability screens, two order entries), `Test/InteropHostDescriptor` (`ENDPOINTS`) and `Test/InteropMessageDescriptor` (`SEARCHENDPOINTS`); each is green alone.
+
+**Decided in-stage (review).**
+
+1. Both lists answer the caller's own `maxRows` when it names one (the siblings' form, `ListMessages`, `ListSuspended`, `ListArchiveErrors`); `ALERTSMAX` and `ALERTACTIONSMAX` bound a call that names none. A clamp at the limit lost AD-36's truncation signal whenever the caller's cap reached it (the history's 1,000 equals the default cap).
+2. The review of an update (the dialog's dry run and the agent's mint, which ask the read for the update action) judges the administration pair for another user's alert, as the write does, so a non-administrator gets the refusal before a dialog or a proposal; the stored payload's re-read and read-back ask no action and are unaffected.
+3. The script form's value lines are one line each, so no line opens a block it does not close (AD-59); its owner-list guard runs only for an owner that differs from the alert's own, as the port judges.
+4. "Open" keeps `homeSuggestedOpen` for now; its published meaning is a verb, so a distinct string is proposed to the lead as a veto addendum ("Is open"), never decided here.
 
 **Governing ADs (Rule 6):** AD-3, AD-6, AD-7, AD-8, AD-10, AD-11, AD-13, AD-14, AD-15, AD-16, AD-21, AD-22, AD-29, AD-34, AD-36, AD-44, AD-51, AD-52, AD-53, AD-56, AD-58, AD-59, AD-60, AD-62. Not engaged: AD-9 (the vendor's owner list adds `%All` in its own frame; a change after it returns HALTs), AD-23, AD-35, AD-54, AD-63, AD-65, AD-66.
 
@@ -224,13 +247,22 @@ No new dependency; no privilege, role or access grant; nothing is written into a
 - mutation: AC6 the managed alert arm placed ahead of the table arm and widened to `sql-table` -> `Prohibited.TestTheManagedAlertArmLeavesEarlierTypesTheirOwnVerdicts` red (and two more); `interop-managed-alert` removed from `COVEREDTYPES` -> `Prohibited.TestTheManagedAlertArmLeavesEarlierTypesTheirOwnVerdicts`, `.TestAnUncoveredEntityTypeIsRefusedWholesale` and `.TestNoRegisteredWriteToolHasAnUncoveredEntityType` red.
 - mutation: AC7 the dialog sends no reason (bundle rebuilt and redeployed) -> `interop-managed-alerts.browser-spec.mjs` red at the dialog-close wait; green again on a bundle rebuilt from the reverted source.
 - mutation: AC8 `DropProbes` skips the delete -> `InteropAlertElsewhere` red in all three tests at the case's `OnAfterOneTest` assertion; the reverted class's first run removed the leftovers.
+- mutation (review): AC2 `ActionCount` dropped from `FINGERPRINTSUBJECT` -> `InteropAlertUpdate.TestAnUpdateAfterTheMintClosesTheConfirmTargetChanged` red (its interposed update is now a reoccurrence, which moves only `ActionCount`).
+- mutation (review): AC1 `AlertCap` clamps the caller's cap to the limit again -> `InteropAlertList.TestBothListsStopAtTheirNamedLimit` red.
+- mutation (review): AC3 the administration check dropped from `ReadAlert` -> `InteropAlertRefusals.TestTheGateRefusesEachPrincipalBeforeAnyVendorCall` red (review leg).
+- mutation (review): AC3 `AlertLevelShapeOK` takes a minus sign -> `InteropAlertRefusals.TestEachValueOutsideItsRuleIsRefusedByNameAndNothingIsSaved` red (one step below level 0).
+- mutation (review): AC4 `AuditRuntime` skipped on a vendor error -> `InteropAlertRefusals.TestAVendorErrorIsNeverA200AndIsAuditedAsNotCompleted` red.
+- mutation (review): AC6 `AlertSnippet`'s value lines in one block opened and closed on different lines -> `InteropAlertUpdate.TestTheScriptFormRunsPastedLineByLine` red; its owner guard made unconditional -> the same test red (kept-owner leg).
+- mutation (review): AC2 `DryRunReview` asks the port for `ALERT` in place of `ALERTOWNERS` -> `InteropAlertList.TestTheOwnersAreTheUsersTheClassicFormOffersAndReadingWritesNothing` red.
 
-Unproven row: `ConfirmNamespaceRoster.CHECKEDFLOOR` raised to 129 stays green because the walk asks 147 write tools, so the floor (128) is a loose lower bound, not a pin; the tool's classification is pinned by the `FINGERPRINTSUBJECT` mutation above. One run of `InteropAlertRefusals.TestAVendorErrorIsNeverA200AndIsAuditedAsNotCompleted` (the first after a reload, byte-identical code) failed its `OcuPilot records one ConfigChange` assertion (the row count did not read 1 within the 5 s wait; the count itself was not recorded); the next run was green.
+Unproven row: `ConfirmNamespaceRoster.CHECKEDFLOOR` raised to 129 stays green because the walk asks 147 write tools, so the floor (128) is a loose lower bound, not a pin; the tool's classification is pinned by the `FINGERPRINTSUBJECT` mutation above. One run of `InteropAlertRefusals.TestAVendorErrorIsNeverA200AndIsAuditedAsNotCompleted` (the first after a reload, byte-identical code) failed its `OcuPilot records one ConfigChange` assertion; the count was not recorded, so the cause is undetermined (Review Triage Log, M5); the next run was green.
 
 ## Auto Run Result
 
 Status: in-review
 Blocking condition: none
+
+**Review (Batch 1).** Two high and six medium findings patched in `InteropPort.cls` and the four `InteropAlert*` test classes, one medium deferred and one proposed as a veto addendum (Review Triage Log). Verified on `ocupilot-b-ci` rebuilt at 02:10 UTC on 2026-11-24: the four classes forward and reversed, `InteropAlertRefusals` four times (three in a row), 21 rosters and eight Story 24.16 archive and purge classes, all green; the two browser specs on a rebuilt bundle; `ci.test.mjs`, `check-objectscript.py`. Eight mutations, under Verification. No probe alert, principal or production left.
 
 **Implement (Batch 1).** Built to the spec on `ocupilot-b-ci`; Task 0 under Design Notes, "Measured" (no HALT; `ALERTSMAX` 2,000). Verified: all 17 ObjectScript shards, 893 classes and 6,747 tests, green after three stale rosters outside the Code Map were updated (Decided in-stage, client half and sweep, item 5); new browser spec 1 of 1 and `interop-archive.browser-spec.mjs` 2 of 2 on a rebuilt bundle; `smoke.sh` 50 of 50; `npm run build`, `npm test` (2,413 tool tests; 335 component files, 3,948 tests) and `tools/ci.test.mjs` (109) green; `check-objectscript.py` 0 problems; `lint-docs.sh` 0 issues. Mutations: one or more per AC, under Verification. Residue: no managed alert in USER or HSCUSTOM, no production in USER; the role `OcuPilotProbeProhibitedRouteRole` belongs to `Test.ProhibitedRoute`, not this batch. One `InteropAlertRefusals` ConfigChange assertion did not read 1 once on the first run after a reload and was green in the sweep (Verification, last paragraph).
 

@@ -126,9 +126,10 @@ ClassMethod Canon(pRows As %DynamicArray, pFields As %String) As %String
     Quit tText
 }
 
-/// <p>AC1: both lists are cut at a named limit, and truncation is the caller's to read from the row it asks for beyond its own cap: at the limit all rows come, one over the limit answers the limit,
-/// and a caller that asks for fewer gets fewer. The shipped limits are 2,000 alerts and 1,000 history rows, measured.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.AlertCap</method> answer <var>pLimit</var> plus one -- this goes red.</p>
+/// <p>AC1: both lists are cut at a named limit when the caller names no cap, and truncation is the caller's to read from the row it asks for beyond its own cap: at the limit all rows come, one
+/// over the limit answers the limit, a caller that asks for one row beyond a cap at the limit is answered it, and one that asks for fewer gets fewer. The shipped limits are 2,000 alerts and
+/// 1,000 history rows, measured.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.AlertCap</method> answer no more than <var>pLimit</var> -- the row asked for beyond the cap is lost and this goes red.</p>
 Method TestBothListsStopAtTheirNamedLimit()
 {
     Set tCap = ..#CAPSEAM
@@ -148,7 +149,7 @@ Method TestBothListsStopAtTheirNamedLimit()
     Kill tQuery
     Set tQuery("maxRows") = 4
     Do ..Verdict(..#ENDPOINT, "LIST", .tAsked, .tFault, .tQuery, ..#SOURCE, tCap)
-    Do $$$AssertEquals($Select($IsObject($Get(tAsked)): tAsked.%Size(), 1: -1), 3, "a caller that asks for more than the limit is answered the limit")
+    Do $$$AssertEquals($Select($IsObject($Get(tAsked)): tAsked.%Size(), 1: -1), 4, "a caller whose cap is the limit asks for one row more and is answered it, so it reads the truncation")
     Kill tQuery
     Set tQuery("maxRows") = 2
     Do ..Verdict(..#ENDPOINT, "LIST", .tFewer, .tFault, .tQuery, ..#SOURCE, tCap)
@@ -170,11 +171,15 @@ Method TestBothListsStopAtTheirNamedLimit()
     Set tQuery("alert") = tId
     Do ..Verdict("ManagedAlertActions", "LIST", .tHistoryOver, .tFault, .tQuery, ..#SOURCE, tCap)
     Do $$$AssertEquals($Select($IsObject($Get(tHistoryOver)): tHistoryOver.%Size() _ "|" _ tHistoryOver.%Get(0).Reason, 1: ""), "3|step 4", "four history rows, one over: the limit, the newest three")
+    Set tQuery("maxRows") = 4
+    Do ..Verdict("ManagedAlertActions", "LIST", .tHistoryAsked, .tFault, .tQuery, ..#SOURCE, tCap)
+    Do $$$AssertEquals($Select($IsObject($Get(tHistoryAsked)): tHistoryAsked.%Size(), 1: -1), 4, "and a history caller whose cap is the limit is answered the row beyond it")
 }
 
 /// <p>AC1: the owner choices are the users the classic form offers for the namespace: a user holding <code>%EnsRole_AlertOperator</code> and WRITE on <code>USER</code>'s database is listed for
 /// <code>USER</code> and not for <code>HSCUSTOM</code>; reading the list, the history and the owners writes no node of the alert globals.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.AlertOwnerNames</method> limit the list to no namespace -- the user is listed for HSCUSTOM too and this goes red.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.AlertOwnerNames</method> limit the list to no namespace -- the user is listed for HSCUSTOM too and this goes red; make
+/// <method>OcuPilot.Screen.Tool.InteropManagedAlertUpdate.DryRunReview</method> ask the port for the wrong read -- the review offers no owner and this goes red.</p>
 Method TestTheOwnersAreTheUsersTheClassicFormOffersAndReadingWritesNothing()
 {
     Set tFx = ..#FIXTURE
@@ -200,8 +205,17 @@ Method TestTheOwnersAreTheUsersTheClassicFormOffersAndReadingWritesNothing()
             }
         }
         Do $$$AssertTrue(tNames [ ("," _ tUser _ ","), "the owner is offered for USER: " _ tNames)
+        Set tReview = ##class(OcuPilot.Screen.Tool.InteropManagedAlertUpdate).DryRunReview({"CurrentOwner": "", "IsOpen": true, "EscalationLevel": 0, "Namespace": (..#SOURCE)})
+        Set tReviewNames = ","
+        If $IsObject(tReview) && $IsObject(tReview.%Get("Owners")) {
+            Set tIterator = tReview.%Get("Owners").%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tName) {
+                Set tReviewNames = tReviewNames _ tName _ ","
+            }
+        }
+        Do $$$AssertTrue(tReviewNames [ ("," _ tUser _ ","), "and the Update dialog's review offers the owner: " _ tReviewNames)
         Kill tQuery
-        Do ..Verdict(..#ENDPOINT, "ALERTOWNERS", .tOther, .tFault, .tQuery, ..#OTHER)
+        Do $$$AssertEquals(..Verdict(..#ENDPOINT, "ALERTOWNERS", .tOther, .tFault, .tQuery, ..#OTHER), "200 ", "the owners of HSCUSTOM answer 200")
         Set tOtherNames = ","
         If $IsObject($Get(tOther)) {
             Set tIterator = tOther.%GetIterator()

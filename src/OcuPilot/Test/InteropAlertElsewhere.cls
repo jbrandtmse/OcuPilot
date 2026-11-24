@@ -66,7 +66,8 @@ Method TestAnOwnerIsJudgedInTheProposalsNamespace()
 }
 
 /// <p>AC5: an alert that is gone from the proposal's namespace closes the confirm as moved although HSCUSTOM holds one under the same id, so the fresh read is USER's.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.InteropAction.PortQuery</method> drop the payload's namespace -- the confirm reads HSCUSTOM's alert and this goes red.</p>
+/// <p>Not a mutation pin: a fresh read in either namespace closes this proposal as moved, because the fingerprint covers <code>Namespace</code>. AC5's pin is
+/// <method>TestTheUpdateIsConfirmedInTheNamespaceItWasReadIn</method>.</p>
 Method TestTheFreshReadAtTheConfirmIsTheProposalsNamespaces()
 {
     Set tId = ..Arrange()
@@ -80,7 +81,7 @@ Method TestTheFreshReadAtTheConfirmIsTheProposalsNamespaces()
     Set tHsc = $ClassMethod(..#FIXTURE, "ProbeWithId", ..#OTHER, tId)
     Do $$$AssertEquals(tHsc, tId, "HSCUSTOM holds an alert of the id again, USER none")
     Set tSC = ..Confirm(tProposal.proposalId, .tStatus, .tRaw, .tAnswer, ..#OTHER)
-    Do $$$AssertNotEquals(tStatus, 200, "the confirm is refused, though HSCUSTOM holds an alert of the id: " _ $Extract($Get(tRaw), 1, 300))
+    Do $$$AssertEquals($Select($IsObject($Get(tAnswer)): tAnswer.%Get("code"), 1: tStatus), "PROPOSAL.TARGETCHANGED", "the confirm is closed as moved, though HSCUSTOM holds an alert of the id: " _ $Extract($Get(tRaw), 1, 300))
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "State", ..#OTHER, tId), "|1|0|0", "and HSCUSTOM's alert is as it was")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tTurn))
 }

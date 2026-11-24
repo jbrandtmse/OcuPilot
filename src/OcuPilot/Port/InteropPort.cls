@@ -11219,10 +11219,11 @@ Parameter TYPEALERTOWNERS = "ALERTOWNERS";
 
 Parameter TYPEUPDATEALERT = "UPDATEALERT";
 
-/// <p>The most alerts a list answers: the larger of 1,000 and 2,000 whose read ended within 5 seconds with three history rows each (0.04 seconds at 2,000, measured). A call asking for fewer gets fewer.</p>
+/// <p>The most alerts a list answers to a call that names no cap of its own: the larger of 1,000 and 2,000 whose read ended within 5 seconds with three history rows each (0.04 seconds at 2,000,
+/// measured). A call that names a cap gets that many, so the one row it asks for beyond what it shows reports its truncation (AD-36).</p>
 Parameter ALERTSMAX As INTEGER = 2000;
 
-/// <p>The most history rows one alert's list answers.</p>
+/// <p>The most history rows one alert's list answers to a call that names no cap of its own.</p>
 Parameter ALERTACTIONSMAX As INTEGER = 1000;
 
 /// <p>The most minutes a next action time may be set ahead, two weeks, and the most characters of a reason (the vendor's <code>Ens.Alerting.Action.Reason</code>).</p>
@@ -11272,10 +11273,10 @@ ClassMethod IsAlertWrite(pType As %String) As %Boolean
     Quit pType = ..#TYPEUPDATEALERT
 }
 
-/// <p>The most rows a managed alert read answers: <var>pMax</var> when it is above zero and below <var>pLimit</var>, else <var>pLimit</var>. Pure.</p>
+/// <p>The most rows a managed alert read answers: <var>pMax</var> when it is above zero, else <var>pLimit</var>, as the other capped lists of this port answer. Pure.</p>
 ClassMethod AlertCap(pMax As %Integer, pLimit As %Integer) As %Integer
 {
-    Quit $Select((pMax > 0) && (pMax < pLimit): pMax, 1: pLimit)
+    Quit $Select(pMax > 0: pMax, 1: pLimit)
 }
 
 /// <p>Whether <var>pId</var> has an alert id's shape. Pure.</p>
@@ -11376,7 +11377,7 @@ ClassMethod AlertLocal(pUtc As %String) As %String [ Private ]
     Quit ..LocalStamp(tText)
 }
 
-/// <p>The managed alerts of <var>pNamespace</var>, newest first, at most <parameter>ALERTSMAX</parameter> (or <var>pMax</var> when that is lower): <code>{ID, AlertTime, AlertText, SourceConfigName,
+/// <p>The managed alerts of <var>pNamespace</var>, newest first, at most <var>pMax</var> (<parameter>ALERTSMAX</parameter> when that is not above zero): <code>{ID, AlertTime, AlertText, SourceConfigName,
 /// Production, SessionId, CurrentOwner, EscalationLevel, IsOpen, LastActionTime, NextActionTime, Namespace}</code>. The criterion <code>open</code> is <code>yes</code> or <code>no</code>; absent lists all.
 /// Every value is bound. A longer list than the cap is the caller's truncation, which it reads from the one row it asked for beyond its own cap.</p>
 ClassMethod ListAlerts(pNamespace As %String, ByRef pQuery, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
@@ -11431,7 +11432,7 @@ ClassMethod AlertActionRow(pLine As %List) As %DynamicObject [ Private ]
     Quit tRow
 }
 
-/// <p>The history of the alert named under <parameter>ALERTCRITERION</parameter>, newest first, at most <parameter>ALERTACTIONSMAX</parameter> rows (or <var>pMax</var> when that is lower):
+/// <p>The history of the alert named under <parameter>ALERTCRITERION</parameter>, newest first, at most <var>pMax</var> rows (<parameter>ALERTACTIONSMAX</parameter> when that is not above zero):
 /// <code>{ActionTime, Username, Action, Reason, OldValues, NewValues}</code>. A missing or malformed id is a 400 naming the criterion; an alert that is gone has no rows.</p>
 ClassMethod ListAlertActions(pNamespace As %String, ByRef pQuery, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
@@ -11469,15 +11470,25 @@ ClassMethod AlertFacts(pNamespace As %String, pId As %String, Output pFacts, Out
     Set pFacts("count") = +$List($Get(tCount(1)), 1)
 }
 
+/// <p>Whether the caller may update an alert whose stored owner is <var>pOwner</var>, as the vendor's own save rule reads it: an unassigned alert or the caller's own needs nothing more, and another
+/// user's needs <parameter>ALERTADMINRESOURCE</parameter> at <parameter>ALERTADMINPERMISSION</parameter>, which <var>pFailedPair</var> names when it is not held.</p>
+ClassMethod AlertAdminHeld(pOwner As %String, Output pFailedPair As %String) As %Boolean [ Private ]
+{
+    Set pFailedPair = ""
+    If (pOwner = "") || (pOwner = $USERNAME) Quit 1
+    Quit $ClassMethod(..GateClass(), "EvaluateRequired", $ListBuild($ListBuild(..#ALERTADMINRESOURCE, ..#ALERTADMINPERMISSION)), .pFailedPair)
+}
+
 /// <p>The state row of alert <var>pId</var> (Story 24.17 Batch 1): <code>{ID, CurrentOwner, IsOpen, EscalationLevel, NextActionTime, ActionCount, Namespace}</code>, the next action time as stored.
-/// With <var>pAction</var> <parameter>TYPEUPDATEALERT</parameter> the values the query carries are judged as the write judges them (<method>AlertJudge</method>), so a refusal is answered
-/// before anything is stored.</p>
+/// With <var>pAction</var> <parameter>TYPEUPDATEALERT</parameter> the caller's right to update the alert (<method>AlertAdminHeld</method>) and the values the query carries are judged as the
+/// write judges them (<method>AlertJudge</method>), so a refusal is answered before anything is stored.</p>
 ClassMethod ReadAlert(pNamespace As %String, pId As %String, pAction As %String, ByRef pQuery, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pRow = ""
     Do ..AlertFacts(pNamespace, pId, .tFacts, .tCaught)
     If $IsObject(tCaught) Quit ..AlertMapped(tCaught, "the managed alert read failed", .pHttpStatus, .pFault)
     If 'tFacts("found") Quit ..AlertGone(.pHttpStatus, .pFault)
+    If (pAction = ..#TYPEUPDATEALERT) && '..AlertAdminHeld(tFacts("owner"), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
     ; A review that carries no value yet (the dry run that opens the update dialog) reads the state alone.
     If (pAction = ..#TYPEUPDATEALERT) && ..AlertHasValues(.pQuery) {
         Set tSC = ..AlertJudge(pNamespace, .pQuery, .tFacts, .tValues, .pHttpStatus, .pFault)
@@ -11659,10 +11670,7 @@ ClassMethod PerformAlertUpdate(pNamespace As %String, pId As %String, ByRef pQue
     Do ..AlertFacts(pNamespace, pId, .tFacts, .tCaught)
     If $IsObject(tCaught) Quit ..AlertMapped(tCaught, "the managed alert read failed", .pHttpStatus, .pFault)
     If 'tFacts("found") Quit ..AlertGone(.pHttpStatus, .pFault)
-    If (tFacts("owner") '= "") && (tFacts("owner") '= $USERNAME) {
-        Set tFailedPair = ""
-        If '$ClassMethod(..GateClass(), "EvaluateRequired", $ListBuild($ListBuild(..#ALERTADMINRESOURCE, ..#ALERTADMINPERMISSION)), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
-    }
+    If '..AlertAdminHeld(tFacts("owner"), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
     Set tSC = ..AlertJudge(pNamespace, .pQuery, .tFacts, .tValues, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     ; Only what differs goes to the vendor, with its bits, as the classic form sends it.
@@ -11738,18 +11746,18 @@ ClassMethod AlertSnippet(pId As %String, ByRef pQuery) As %String [ Private ]
     Set tText = tText _ tNL _ " If tOk Set tAlert = ##class(Ens.Alerting.ManagedAlert).%OpenId(tId)"
     Set tText = tText _ tNL _ " If tOk, (tAlert.CurrentOwner '= """") && (tAlert.CurrentOwner '= $Username) && '$System.Security.Check(" _ ..Literal(..#ALERTADMINRESOURCE) _ ", " _ ..Literal(..#ALERTADMINPERMISSION) _ ") Set tOk = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Kernel.Denial).Reason()) _ ")"
     If $Data(tValues("owner")) && (tValues("owner") '= "") {
-        Set tText = tText _ tNL _ " If tOk { Do ##class(%SYS.Ensemble).ListAlertingUsers(.tOwners, $Namespace) If (" _ ..Literal(tValues("owner")) _ " '= $Username) && '$Data(tOwners(" _ ..Literal(tValues("owner")) _ ")) Set tOk = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONALERTOWNER) _ ") }"
+        Set tText = tText _ tNL _ " If tOk, " _ ..Literal(tValues("owner")) _ " '= tAlert.CurrentOwner { Do ##class(%SYS.Ensemble).ListAlertingUsers(.tOwners, $Namespace) If (" _ ..Literal(tValues("owner")) _ " '= $Username) && '$Data(tOwners(" _ ..Literal(tValues("owner")) _ ")) Set tOk = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONALERTOWNER) _ ") }"
     }
     If $Data(tValues("level")) {
         Set tText = tText _ tNL _ " If tOk, $ZAbs(" _ +tValues("level") _ " - tAlert.EscalationLevel) > 1 Set tOk = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONALERTLEVEL) _ ")"
     }
-    Set tText = tText _ tNL _ " If tOk { Kill tNew"
-    If $Data(tValues("owner")) Set tText = tText _ tNL _ "  If " _ ..Literal(tValues("owner")) _ " '= tAlert.CurrentOwner Set tNew(""CurrentOwner"") = " _ ..Literal(tValues("owner")) _ ", tBits = tBits + " _ ..#ALERTBITOWNER
-    If $Data(tValues("open")) Set tText = tText _ tNL _ "  If " _ tValues("open") _ " '= tAlert.IsOpen Set tNew(""IsOpen"") = " _ tValues("open") _ ", tBits = tBits + " _ ..#ALERTBITOPEN
-    If $Data(tValues("level")) Set tText = tText _ tNL _ "  If " _ +tValues("level") _ " '= tAlert.EscalationLevel Set tNew(""EscalationLevel"") = " _ +tValues("level") _ ", tBits = tBits + " _ ..#ALERTBITLEVEL
-    If $Data(tValues("minutes")) Set tText = tText _ tNL _ "  Set tNew(""NextActionTime"") = $System.SQL.DATEADD(""mi"", " _ +tValues("minutes") _ ", $ZDateTime($ZTimeStamp, 3, , 3)), tBits = tBits + " _ ..#ALERTBITNEXT
-    Set tText = tText _ tNL _ "  If 'tBits Set tOk = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONALERTUNCHANGED) _ ")"
-    Set tText = tText _ tNL _ " }"
+    ; Each line opens no block it does not close, so the script runs pasted line by line (AD-59).
+    Set tText = tText _ tNL _ " Kill tNew"
+    If $Data(tValues("owner")) Set tText = tText _ tNL _ " If tOk, " _ ..Literal(tValues("owner")) _ " '= tAlert.CurrentOwner Set tNew(""CurrentOwner"") = " _ ..Literal(tValues("owner")) _ ", tBits = tBits + " _ ..#ALERTBITOWNER
+    If $Data(tValues("open")) Set tText = tText _ tNL _ " If tOk, " _ tValues("open") _ " '= tAlert.IsOpen Set tNew(""IsOpen"") = " _ tValues("open") _ ", tBits = tBits + " _ ..#ALERTBITOPEN
+    If $Data(tValues("level")) Set tText = tText _ tNL _ " If tOk, " _ +tValues("level") _ " '= tAlert.EscalationLevel Set tNew(""EscalationLevel"") = " _ +tValues("level") _ ", tBits = tBits + " _ ..#ALERTBITLEVEL
+    If $Data(tValues("minutes")) Set tText = tText _ tNL _ " If tOk Set tNew(""NextActionTime"") = $System.SQL.DATEADD(""mi"", " _ +tValues("minutes") _ ", $ZDateTime($ZTimeStamp, 3, , 3)), tBits = tBits + " _ ..#ALERTBITNEXT
+    Set tText = tText _ tNL _ " If tOk, 'tBits Set tOk = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONALERTUNCHANGED) _ ")"
     Set tText = tText _ tNL _ " If tOk Set tSC = ##class(Ens.Alerting.ManagedAlert).UpdateManagedAlert(tId, tBits, .tNew, " _ ..Literal(tValues("reason")) _ ")"
     Quit tText
 }
