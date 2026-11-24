@@ -598,6 +598,11 @@ services:
       # missing one pair, and the elsewhere class confirms the agent's set and run from another namespace. The four extend one case class, which declares
       # the variable they all refuse on.
       # classes: InteropArchiveCase
+      # The managed alert classes store probe alerts in USER and HSCUSTOM and update them (Story 24.17 Batch 1), and start no production: the list
+      # class reads the alerts and their history through the port, the screen's route and the agent's tool, the update class updates from both
+      # callers, the refusals class meets every refusal and signs in as probe principals each holding its own set of pairs, and the elsewhere class confirms the
+      # agent's update from another namespace. The four extend one case class, which declares the variable they all refuse on.
+      # classes: InteropAlertCase
       # The host test classes compile and run the same probe production in USER, with a request class of their own and an
       # operation that echoes it (Story 20.6): the test class reads an item's Test tab and sends a request from both callers,
       # the refusals class meets every refusal and violation, a production started without testing and a disabled item, and

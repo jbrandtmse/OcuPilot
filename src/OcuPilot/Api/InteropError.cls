@@ -573,6 +573,36 @@ Parameter REASONARCHIVERUN = "Archiving moves every message in this namespace ol
 
 Parameter ACCEPTSNOARCHIVETARGET = "No other interoperability namespace on this instance.";
 
+/// <p>The managed alert update's refusals and consequence (Story 24.17 Batch 1): an alert that is gone (404), a value outside its rule (422: the owner, the escalation level, the
+/// next action time and the reason) and an update that would change nothing (409).</p>
+Parameter ALERTNOTFOUND = "INTEROP.ALERT.NOTFOUND";
+
+Parameter REASONALERTNOTFOUND = "This managed alert no longer exists.";
+
+Parameter ALERTUNCHANGED = "INTEROP.ALERT.UNCHANGED";
+
+Parameter REASONALERTUNCHANGED = "Nothing would change. Choose a new owner, open state, escalation level or next action time.";
+
+Parameter ALERTOWNER = "INTEROP.ALERT.OWNER";
+
+Parameter REASONALERTOWNER = "The owner must be unassigned, you, or a user who can work on managed alerts in this namespace.";
+
+Parameter ALERTLEVEL = "INTEROP.ALERT.LEVEL";
+
+Parameter REASONALERTLEVEL = "The escalation level moves one step up or down from its current level, and never below 0.";
+
+Parameter ALERTNEXTACTION = "INTEROP.ALERT.NEXTACTION";
+
+Parameter REASONALERTNEXTACTION = "Next action in (minutes) is a whole number from 1 to 20160.";
+
+Parameter ALERTREASON = "INTEROP.ALERT.REASON";
+
+Parameter REASONALERTREASON = "Give a reason of 1 to 500 characters, with no control characters.";
+
+Parameter ALERTUPDATE = "INTEROP.ALERT.UPDATE";
+
+Parameter REASONALERTUPDATE = "Updating saves each change in the alert's history with your username and the reason given. The alert can be updated again, and a closed alert can be opened again.";
+
 /// <p>The startup settings' refusals, violations and consequences (Story 24.3): the auto-start production and a production's shutdown
 /// group. <code>SAME</code> is 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, <code>ALLNAMESPACES</code> is 403,
 /// <code>READONLY</code> is 409, and <code>PRIORITY</code>, <code>GROUP</code> and <code>NOPRIORITY</code> are 422.</p>
@@ -824,13 +854,13 @@ Parameter OUTCOMENOTEXPORTED = "not exported";
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..ScheduleCodes() _ ..PurgeCodes() _ ..ArchiveCodes() _ ..SuspendedCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..ExportCodes() _ ..StartupCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..ScheduleCodes() _ ..PurgeCodes() _ ..ArchiveCodes() _ ..AlertCodes() _ ..SuspendedCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..ExportCodes() _ ..StartupCodes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP, ..#ARCHIVERUN, ..#SUSPENDEDRESUBMIT, ..#SUSPENDEDEDIT, ..#SUSPENDEDDISCARD, ..#SUSPENDEDDELETE, ..#MESSAGEEXPORT)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP, ..#ARCHIVERUN, ..#SUSPENDEDRESUBMIT, ..#SUSPENDEDEDIT, ..#SUSPENDEDDISCARD, ..#SUSPENDEDDELETE, ..#MESSAGEEXPORT, ..#ALERTUPDATE)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -972,6 +1002,13 @@ ClassMethod ArchiveCodes() As %List
 ClassMethod ArchivePreconditionCodes() As %List
 {
     Quit $ListBuild(..#ARCHIVERUNNING, ..#ARCHIVENOTARGET, ..#ARCHIVECLASS, ..#ARCHIVETOOMANY)
+}
+
+/// <p>The managed alert codes (Story 24.17 Batch 1), as a <class>%List</class>: an alert that is gone, an update that changes nothing and the four value rules. The consequence code is
+/// <method>ConsequenceCodes</method>'s.</p>
+ClassMethod AlertCodes() As %List
+{
+    Quit $ListBuild(..#ALERTNOTFOUND, ..#ALERTUNCHANGED, ..#ALERTOWNER, ..#ALERTLEVEL, ..#ALERTNEXTACTION, ..#ALERTREASON)
 }
 
 /// <p>The suspended message codes (Story 24.16), as a <class>%List</class>: the refusal of a selection none of which can be acted on and of a selection that changed
@@ -1187,6 +1224,13 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#ARCHIVETOOMANY Quit ..#REASONARCHIVETOOMANY
     If pCode = ..#ARCHIVETAKEN Quit ..#REASONARCHIVETAKEN
     If pCode = ..#ARCHIVERUN Quit ..#REASONARCHIVERUN
+    If pCode = ..#ALERTNOTFOUND Quit ..#REASONALERTNOTFOUND
+    If pCode = ..#ALERTUNCHANGED Quit ..#REASONALERTUNCHANGED
+    If pCode = ..#ALERTOWNER Quit ..#REASONALERTOWNER
+    If pCode = ..#ALERTLEVEL Quit ..#REASONALERTLEVEL
+    If pCode = ..#ALERTNEXTACTION Quit ..#REASONALERTNEXTACTION
+    If pCode = ..#ALERTREASON Quit ..#REASONALERTREASON
+    If pCode = ..#ALERTUPDATE Quit ..#REASONALERTUPDATE
     If pCode = ..#STARTUPSAME Quit ..#REASONSTARTUPSAME
     If pCode = ..#STARTUPPRIORITY Quit ..#REASONSTARTUPPRIORITY
     If pCode = ..#STARTUPGROUP Quit ..#REASONSTARTUPGROUP

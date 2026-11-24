@@ -1642,6 +1642,9 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.InteropItemStatusTab',
       'OcuPilot.Screen.Descriptor.InteropItemTestTab',
       'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
+      // Story 24.17 Batch 1: Alert history's alert criterion and Managed alerts' open criterion.
+      'OcuPilot.Screen.Descriptor.InteropManagedAlertHistory',
+      'OcuPilot.Screen.Descriptor.InteropManagedAlertList',
       'OcuPilot.Screen.Descriptor.InteropMessageContentsTab',
       'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab',
       'OcuPilot.Screen.Descriptor.InteropMessageList',
@@ -2847,6 +2850,9 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.InteropJobList',
       'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
       'OcuPilot.Screen.Descriptor.InteropLookupTableList',
+      // Story 24.17 Batch 1: Alert history and Managed alerts own %Ens_Alerts:READ.
+      'OcuPilot.Screen.Descriptor.InteropManagedAlertHistory',
+      'OcuPilot.Screen.Descriptor.InteropManagedAlertList',
       'OcuPilot.Screen.Descriptor.InteropMessageContentsTab',
       'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab',
       'OcuPilot.Screen.Descriptor.InteropMessageList',

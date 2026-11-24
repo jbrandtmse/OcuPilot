@@ -13,7 +13,8 @@
  * `SOURCE_VIEWER_IDS` names); one whose id cannot be found is named in
  * `SKIP` with its reason, and one in neither place fails the gate. The Transcripts list, which a
  * fresh instance leaves empty, gets one conversation seeded for the walk (`seedConversation`),
- * removed by its exact key when the walk ends.
+ * removed by its exact key when the walk ends; the Managed alerts list gets one probe alert
+ * (`seedManagedAlert`), removed by its id the same way.
  *
  * **It runs in baseline form.** `a11y-structural-invariants.browser-spec.mjs` compares what the walk
  * finds against `structural-baseline.json` by key and fails only on a key outside it; a baseline
@@ -191,6 +192,32 @@ export function removeConversation(config, key) {
     'Write "OCU-WALKUNSEED-START:",$System.Status.IsOK(sc),"|",$Select(rs.%Next():rs.%GetData(1),1:"none"),":OCU-WALKUNSEED-END",!',
   ]);
   assert.equal(markerValue(output, 'WALKUNSEED'), '1|0', `the seeded conversation ${key} is removed:\n${output}`);
+}
+
+/** The class that stores and removes the managed alert the walk seeds (Story 24.17 Batch 1's test fixture). */
+const ALERT_FIXTURE = 'OcuPilot.Test.InteropAlertFixture';
+
+/**
+ * Seed one open, unowned managed alert in HSCUSTOM, the namespace the walk browses, so the Managed
+ * alerts list has a row whose Alert history screen the walk can open. Answers the alert's id; throws
+ * when it cannot be stored.
+ */
+export function seedManagedAlert(config) {
+  const output = runIris(config.container, [
+    `Set id=##class(${ALERT_FIXTURE}).Probe("HSCUSTOM","",1,0,"walk probe alert")`,
+    'Write "OCU-WALKALERT-START:",id,":OCU-WALKALERT-END",!',
+  ]);
+  const id = String(markerValue(output, 'WALKALERT') ?? '0');
+  assert.ok(/^[1-9]\d*$/.test(id), `the walk seeds one managed alert in HSCUSTOM:\n${output}`);
+  return id;
+}
+
+/** Remove managed alert `id` from HSCUSTOM, and confirm it is gone. */
+export function removeManagedAlert(config, id) {
+  const output = runIris(config.container, [
+    `Write "OCU-WALKUNALERT-START:",##class(${ALERT_FIXTURE}).Delete("HSCUSTOM","${escapeOs(id)}"),":OCU-WALKUNALERT-END",!`,
+  ]);
+  assert.equal(markerValue(output, 'WALKUNALERT'), '1', `the seeded managed alert ${id} is removed:\n${output}`);
 }
 
 /** How long a screen may take to settle before the walk records it as unsettled. */
@@ -1214,7 +1241,8 @@ export function passRetrier(report, entries, browser, relaunch = null) {
  * retried pass. When `relaunch` (answers a new browser) is given, the rerun
  * runs on a newly launched browser and the stalled one is closed, as `passRetrier` says; the walk
  * answers the browser it ended on, which the caller closes. All of it runs with one conversation
- * seeded (`seedConversation`) and removed on every exit path. Answers `{entries, report, browser}`;
+ * seeded (`seedConversation`) and one managed alert seeded (`seedManagedAlert`), each removed on every
+ * exit path. Answers `{entries, report, browser}`;
  * `report` counts walked, skipped, not built, unresolved (an id-requiring screen neither walked nor
  * skipped), unsettled and unmeasurable, and `report.visits` holds each visit's `{visit, ms, settled,
  * why}`. When the walk throws after any pass was retried, the error
@@ -1241,7 +1269,9 @@ export async function walk(browser, config, relaunch = null) {
   const withRetry = passRetrier(report, entries, browser, relaunch);
 
   const seeded = seedConversation(config);
+  let alert = '';
   try {
+    alert = seedManagedAlert(config);
     await withRetry('1280px light then dark', async (found, held) => {
       const wide = await signedInAt(held, config, '/ocupilot/', VIEWPORTS.wide, reducedMotion);
       try {
@@ -1266,7 +1296,11 @@ export async function walk(browser, config, relaunch = null) {
       }
     });
   } finally {
-    removeConversation(config, seeded);
+    try {
+      if (alert !== '') removeManagedAlert(config, alert);
+    } finally {
+      removeConversation(config, seeded);
+    }
   }
   return { entries: collapse(entries), report, browser: withRetry.held() };
 }

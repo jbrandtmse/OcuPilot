@@ -14617,3 +14617,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-40-the-governance-page-s-render-cost.md (plan measurement) | severity: low | fix-risk: med | footprint: cross-story
 - evidence: ocupilot-ci 2026-11-23 tree 90e0b706d: ListTools first call 1.169 s, second 0.005 s; GET /agent/governance about 1.65 s by curl; grows per registered tool
 - 2026-11-24T03:59:44Z status=routed owner=burndown by=orchestrator note=cross-request cache needs invalidation on compile and upgrade; a story of its own
+
+### DW-2863: The agent has no read of the managed-alert owner choices: ALERTOWNERS is reachable only through the screen's dry-run review
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow.md (review 527b2b87b) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: ALERTOWNERS only via DryRunReview (InteropManagedAlertUpdate.cls)
+- 2026-11-24T02:26:13Z status=routed owner=burndown by=epic-24-runner note=reopen_if an agent proposal is refused INTEROP.ALERT.OWNER for a name the dialog offers
+
+### DW-2864: The Update alert dialog's review answers an empty owner list when the owner read fails, through a bare Catch, so the person sees no owners rather than the failure
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow.md (review 527b2b87b) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: bare Catch in InteropManagedAlertUpdate.cls DryRunReview
+- 2026-11-24T02:26:13Z status=routed owner=burndown by=epic-24-runner note=show the read's failure line instead of an empty list
+
+### DW-2865: AD-62 message reads may admit a principal the classic Message Viewer's SQL grant refuses; measure as in 24.17 B2 V3
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-2.md (Task 0 (b), orchestrator ruling) | severity: medium | fix-risk: low | footprint: cross-story
+- evidence: 24.17 B2 Task 0 (b): the classic Rule Log and BP Instances queries answer #5580 to a principal holding only the resource pair and database READ, while a %ExecDirectNoPriv read returns rows; Story 20.9's message reads use the same read path
+- 2026-11-24T03:28:46Z status=routed owner=burndown by=orchestrator note=measure each Messages read against the classic Message Viewer's prepare as in 24.17 B2 V3; add the vendor SELECT check where the classic refuses

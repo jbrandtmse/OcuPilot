@@ -145,6 +145,8 @@ XData Titles
 "interopJobsLabel": "Jobs",
 "interopLookupEntriesLabel": "Lookup table entries",
 "interopLookupTablesLabel": "Lookup tables",
+"interopManagedAlertHistoryLabel": "Alert history",
+"interopManagedAlertsLabel": "Managed alerts",
 "interopMessageContentsLabel": "Message contents",
 "interopMessageTraceLabel": "Session trace",
 "interopMonitorLabel": "Production monitor",

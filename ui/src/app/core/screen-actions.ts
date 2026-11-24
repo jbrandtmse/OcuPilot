@@ -364,6 +364,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   // Story 24.16 Batch 4: Archive manager's Run archive, which opens the dialog that shows what the run moves, and Archive settings' Set value.
   'OcuPilot.Screen.Descriptor.InteropArchiveList': { archive: STRINGS.interopArchiveAction },
   'OcuPilot.Screen.Descriptor.InteropArchiveSettingList': { set: STRINGS.interopItemSettingSetAction },
+  // Story 24.17 Batch 1: Managed alerts' Update alert, which opens the dialog that takes the changes and the reason.
+  'OcuPilot.Screen.Descriptor.InteropManagedAlertList': { update: STRINGS.interopManagedAlertUpdateAction },
   // Story 8.5: the X.509 list's Create imports a credential rather than typing one in.
   'OcuPilot.Screen.Descriptor.X509CredentialList': { create: STRINGS.actionImport },
   'OcuPilot.Screen.Descriptor.AgentSwitches': {
