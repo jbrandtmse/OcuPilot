@@ -66,9 +66,16 @@ describe('the Update alert dialog', () => {
     const { host } = mount();
     expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.interopManagedAlertUpdateAction);
     expect(host.querySelector('[data-interop-alert-consequence]')?.textContent?.trim()).toBe(STRINGS.interopManagedAlertUpdateConsequence);
-    for (const caption of [STRINGS.explorerSqlColumnOwner, STRINGS.homeSuggestedOpen, STRINGS.interopAlertColumnLevel, STRINGS.interopAlertFieldNextMinutes, STRINGS.agentSwitchesFieldReason]) {
+    for (const caption of [STRINGS.explorerSqlColumnOwner, STRINGS.interopAlertColumnOpen, STRINGS.interopAlertColumnLevel, STRINGS.interopAlertFieldNextMinutes, STRINGS.agentSwitchesFieldReason]) {
       expect(host.textContent).toContain(caption);
     }
+  });
+
+  // Mutation (Rule 19): point the checkbox's caption in the dialog back at `STRINGS.homeSuggestedOpen` -> this goes red.
+  it('captions the open state checkbox "Is open"', () => {
+    const { host } = mount();
+    expect(STRINGS.interopAlertColumnOpen).toBe('Is open');
+    expect(host.querySelector('[data-interop-alert-field="Open"]')?.closest('label')?.textContent?.trim()).toBe('Is open');
   });
 
   it('offers Unassigned, the signed-in user, the alert\'s owner and the listed owners once each, with the alert\'s own owner chosen', () => {

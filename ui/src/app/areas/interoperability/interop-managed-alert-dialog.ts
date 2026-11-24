@@ -61,7 +61,7 @@ let dialogCount = 0;
       <div class="ocu-field">
         <label class="ocu-field-checkbox">
           <input type="checkbox" data-interop-alert-field="Open" [id]="openId" [checked]="openChosen()" (change)="onOpen($event)" />
-          <span>{{ STRINGS.homeSuggestedOpen }}</span>
+          <span>{{ STRINGS.interopAlertColumnOpen }}</span>
         </label>
       </div>
       <div class="ocu-field">

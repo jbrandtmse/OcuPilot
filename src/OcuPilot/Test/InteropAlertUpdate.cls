@@ -111,6 +111,30 @@ Method TestAClosedAlertIsOpenedAgain()
     Do $$$AssertEquals($Select($IsObject($Get(tHistory)) && tHistory.%Size(): tHistory.%Get(0).Action _ "|" _ tHistory.%Get(0).NewValues, 1: ""), "Close|IsOpen: 1", "and the history reads it in the vendor's words")
 }
 
+/// <p>AC2: the read-back compares the four fields the update sets: a stored update whose owner, open state, level and next action minutes are what the alert holds reads back
+/// <code>matches</code>, and one whose next action minutes are not (the probe's next action is 60 minutes ahead) <code>differs</code> and names <code>NextActionMinutes</code>, so does a
+/// level the alert does not hold.</p>
+/// <p>Mutation (Rule 19): drop <code>NextActionMinutes</code> from <parameter>OcuPilot.Screen.Tool.InteropManagedAlertUpdate.READBACKFIELDS</parameter> -- the minutes leg reads <code>matches</code>
+/// and this goes red.</p>
+Method TestTheReadBackComparesTheNextActionTime()
+{
+    Set tFx = ..#FIXTURE
+    Set tId = $ClassMethod(tFx, "Probe", ..#SOURCE, "", 1, 0, "for the read-back")
+    Set tPayload = {"ActionCount": 0, "Namespace": (..#SOURCE), "Owner": "", "Open": true, "EscalationLevel": 0, "NextActionMinutes": 60, "Reason": "reading back"}
+    Set tSame = ##class(OcuPilot.Kernel.Proposal.ReadBack).Of(..#TOOL, tId, {}, {}, tPayload.%ToJSON(), ..#PORT)
+    Do $$$AssertEquals(tSame.verdict _ " " _ tSame.fields.%ToJSON(), "matches []", "an update that holds on all four fields reads back matches: " _ tSame.%ToJSON())
+    Do tPayload.%Set("NextActionMinutes", 600)
+    Set tMinutes = ##class(OcuPilot.Kernel.Proposal.ReadBack).Of(..#TOOL, tId, {}, {}, tPayload.%ToJSON(), ..#PORT)
+    Do $$$AssertEquals(tMinutes.verdict _ " " _ tMinutes.fields.%ToJSON(), "differs [""NextActionMinutes""]", "a next action 600 minutes ahead is not what the alert holds: " _ tMinutes.%ToJSON())
+    Do tPayload.%Set("NextActionMinutes", 60)
+    Do tPayload.%Set("EscalationLevel", 1)
+    Set tLevel = ##class(OcuPilot.Kernel.Proposal.ReadBack).Of(..#TOOL, tId, {}, {}, tPayload.%ToJSON(), ..#PORT)
+    Do $$$AssertEquals(tLevel.verdict _ " " _ tLevel.fields.%ToJSON(), "differs [""EscalationLevel""]", "and a level the alert does not hold differs on the level alone: " _ tLevel.%ToJSON())
+    Set tText = ..Act(tId, {"NextActionMinutes": "30", "Reason": "later"}, .tAnswer)
+    Do $$$AssertEquals(tText, "200 ", "a person's update of the next action alone answers 200: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
+    Do $$$AssertEquals($Select($IsObject(tAnswer) && $IsObject(tAnswer.%Get("readBack")): tAnswer.readBack.verdict, 1: ""), ##class(OcuPilot.Kernel.Proposal.ReadBack).#MATCHES, "and reads back matches on the minutes it set")
+}
+
 /// <p>AC2: an update made after the agent's proposal closes the confirm as moved, and nothing is saved by it: the proposal's fingerprint covers the number of history rows, so a history row the
 /// vendor's alert monitor adds (a reoccurrence, which changes no owner, open state, level or next action time) does.</p>
 /// <p>Mutation (Rule 19): drop <code>ActionCount</code> from <parameter>OcuPilot.Screen.Tool.InteropManagedAlertUpdate.FINGERPRINTSUBJECT</parameter> -- this goes red.</p>

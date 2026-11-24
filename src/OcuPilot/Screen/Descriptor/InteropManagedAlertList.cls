@@ -50,7 +50,7 @@ XData Declaration
     "paging": "cap",
     "criteria": {
       "fields": [
-        {"param": "open", "labelKey": "homeSuggestedOpen", "kind": "choice", "maxLength": 3, "options": ["yes", "no"]}
+        {"param": "open", "labelKey": "interopAlertColumnOpen", "kind": "choice", "maxLength": 3, "options": ["yes", "no"]}
       ]
     }
   },
@@ -64,7 +64,7 @@ XData Declaration
       {"field": "SessionId", "labelKey": "webSessionColumnSession", "kind": "identifier"},
       {"field": "CurrentOwner", "labelKey": "interopAlertColumnOwner", "kind": "text"},
       {"field": "EscalationLevel", "labelKey": "interopAlertColumnLevel", "kind": "number"},
-      {"field": "IsOpen", "labelKey": "homeSuggestedOpen", "kind": "status"},
+      {"field": "IsOpen", "labelKey": "interopAlertColumnOpen", "kind": "status"},
       {"field": "LastActionTime", "labelKey": "interopAlertColumnLastAction", "kind": "text"},
       {"field": "NextActionTime", "labelKey": "interopAlertColumnNextAction", "kind": "text"}
     ],

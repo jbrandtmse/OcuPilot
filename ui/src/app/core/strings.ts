@@ -9768,6 +9768,8 @@ export const STRINGS = {
   /** EXPERIENCE.md:633 */
   interopAlertColumnLevel: 'Escalation level',
   /** EXPERIENCE.md:633 */
+  interopAlertColumnOpen: 'Is open',
+  /** EXPERIENCE.md:633 */
   interopAlertColumnLastAction: 'Last action time',
   /** EXPERIENCE.md:633 */
   interopAlertColumnNextAction: 'Next action time',

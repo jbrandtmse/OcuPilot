@@ -117,6 +117,15 @@ describe('the Managed alerts page', () => {
     expect(LIST.rowActions.map((action) => action.id)).toEqual([INTEROP_MANAGED_ALERT_ACTION]);
   });
 
+  // Mutation (Rule 19): point the IsOpen column's `labelKey`, or the `open` criterion's, back at `homeSuggestedOpen` -> this goes red.
+  it('captions the open state "Is open" in the column and in the filter, where "Open" stays the verb', () => {
+    const column = LIST.table?.columns.find((candidate) => candidate.field === 'IsOpen');
+    const filter = LIST.read?.criteria?.fields.find((candidate) => candidate.param === 'open');
+    expect(column && STRINGS[column.labelKey as keyof typeof STRINGS]).toBe('Is open');
+    expect(filter && STRINGS[filter.labelKey as keyof typeof STRINGS]).toBe('Is open');
+    expect(STRINGS.homeSuggestedOpen).toBe('Open');
+  });
+
   // Mutation (Rule 19): drop this page's `actions.register` of `update` -> the first assertion goes red.
   it('registers Update alert, reviews the selected alert first and opens the dialog over what the review read', async () => {
     const { fixture, host, store, actions, calls } = mount([review({})]);

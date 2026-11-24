@@ -5,7 +5,7 @@
 /// <code>ConfigChange</code> from either caller (<method>OcuPilot.Port.InteropPort.PerformAlertUpdate</method>), never the reason.</p>
 /// <p><b>Its values travel in the port's query</b> (<method>PortQuery</method>), each optional but <code>Reason</code>: an absent one means unchanged. The fresh read answers each value's own
 /// current state under the value's name (<code>Owner</code>, <code>Open</code>, <code>EscalationLevel</code>), so a merge that sets a value to what the alert holds leaves it unchanged, and the
-/// two it cannot answer, <code>NextActionMinutes</code> and <code>Reason</code>, empty. The port judges every value again at the write, in the proposal's namespace.</p>
+/// two it cannot answer for a review, <code>NextActionMinutes</code> and <code>Reason</code>, empty. The port judges every value again at the write, in the proposal's namespace.</p>
 /// <p><b>It updates what was reviewed</b>: the fingerprint covers the alert's owner, open state, level, next action time and number of history rows, so any update after the review closes the
 /// proposal as moved.</p>
 Class OcuPilot.Screen.Tool.InteropManagedAlertUpdate Extends OcuPilot.Screen.Tool.InteropAction
@@ -54,8 +54,9 @@ Parameter PRECONDITIONCODES = "INTEROP.ALERT.NOTFOUND,INTEROP.ALERT.UNCHANGED,IN
 
 Parameter CONSEQUENCECODE = "INTEROP.ALERT.UPDATE";
 
-/// <p>The read-back compares what the update set with what the alert holds afterward. The next action time is set from the clock at the write, so it is not compared.</p>
-Parameter READBACKFIELDS = "Owner,Open,EscalationLevel";
+/// <p>The read-back compares what the update set with what the alert holds afterward: the owner, the open state, the level and the next action time, the last as the minutes left to the
+/// stored time, to the nearest minute.</p>
+Parameter READBACKFIELDS = "Owner,Open,EscalationLevel,NextActionMinutes";
 
 Parameter READBACKPAYLOAD As BOOLEAN = 1;
 

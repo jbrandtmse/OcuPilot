@@ -22318,7 +22318,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "fields": [
           {
             "param": "open",
-            "labelKey": "homeSuggestedOpen",
+            "labelKey": "interopAlertColumnOpen",
             "kind": "choice",
             "maxLength": 3,
             "options": [
@@ -22373,7 +22373,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         },
         {
           "field": "IsOpen",
-          "labelKey": "homeSuggestedOpen",
+          "labelKey": "interopAlertColumnOpen",
           "kind": "status"
         },
         {

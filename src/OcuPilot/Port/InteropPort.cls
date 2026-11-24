@@ -11377,6 +11377,22 @@ ClassMethod AlertLocal(pUtc As %String) As %String [ Private ]
     Quit ..LocalStamp(tText)
 }
 
+/// <p>The whole minutes from now until the stored UTC stamp <var>pNext</var>, rounded to the nearest minute, or <code>""</code> when it is empty or unreadable. Reads the clock.</p>
+ClassMethod AlertNextMinutes(pNext As %String) As %String [ Private ]
+{
+    If pNext = "" Quit ""
+    Set tNext = ""
+    Try {
+        Set tNext = $ZDateTimeH(pNext, 3)
+    } Catch {
+        Set tNext = ""
+    }
+    If tNext = "" Quit ""
+    Set tNow = $ZTimeStamp
+    Set tSeconds = (($Piece(tNext, ",", 1) - $Piece(tNow, ",", 1)) * 86400) + ($Piece(tNext, ",", 2) - $Piece(tNow, ",", 2))
+    Quit (tSeconds + 30) \ 60
+}
+
 /// <p>The managed alerts of <var>pNamespace</var>, newest first, at most <var>pMax</var> (<parameter>ALERTSMAX</parameter> when that is not above zero): <code>{ID, AlertTime, AlertText, SourceConfigName,
 /// Production, SessionId, CurrentOwner, EscalationLevel, IsOpen, LastActionTime, NextActionTime, Namespace}</code>. The criterion <code>open</code> is <code>yes</code> or <code>no</code>; absent lists all.
 /// Every value is bound. A longer list than the cap is the caller's truncation, which it reads from the one row it asked for beyond its own cap.</p>
@@ -11502,10 +11518,13 @@ ClassMethod ReadAlert(pNamespace As %String, pId As %String, pAction As %String,
     Do pRow.%Set("NextActionTime", tFacts("next"), "string")
     Do pRow.%Set("ActionCount", tFacts("count"), "number")
     Do pRow.%Set("Namespace", pNamespace, "string")
-    ; The values an update sets, answered as what the alert holds, so a merge that sets one to that leaves it unchanged; the two it cannot answer read empty.
+    ; The values an update sets, answered as what the alert holds, so a merge that sets one to that leaves it unchanged; the reason reads empty. The next action's minutes read empty
+    ; for a review and, for the re-read of a stored update (no action) that carries minutes, are the minutes left until the stored next action time, as text like the review's, which the read-back compares.
     Do pRow.%Set("Owner", tFacts("owner"), "string")
     Do pRow.%Set("Open", ''tFacts("open"), "boolean")
-    Do pRow.%Set("NextActionMinutes", "", "string")
+    Set tMinutes = ""
+    If (pAction '= ..#TYPEUPDATEALERT) && $Data(pQuery(..#ALERTMINUTESKEY)) Set tMinutes = ..AlertNextMinutes(tFacts("next"))
+    Do pRow.%Set("NextActionMinutes", tMinutes, "string")
     Do pRow.%Set("Reason", "", "string")
     Set pHttpStatus = 200
     Quit $$$OK
