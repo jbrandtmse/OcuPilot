@@ -115,7 +115,7 @@
 /// <method>StopSeconds</method>, <method>RoutineResource</method>, <method>SourceControlled</method>,
 /// <method>VendorAbortItem</method>, <method>VendorJob</method>, <method>LockTable</method>, <method>VendorSendTest</method>,
 /// <method>TestWait</method>, <method>AllNamespacesReadable</method>, <method>DefaultReadOnly</method>,
-/// <method>VendorSetAutoStart</method> and <method>VendorSetShutdownGroup</method>, and the parameter <parameter>ABORTMAX</parameter>. Production overrides none.</p>
+/// <method>VendorSetAutoStart</method>, <method>VendorSetShutdownGroup</method> and <method>VendorLogPurge</method>, and the parameters <parameter>ABORTMAX</parameter>, <parameter>RULELOGMAX</parameter> and <parameter>PROCESSLOGMAX</parameter>. Production overrides none.</p>
 Class OcuPilot.Port.InteropPort Extends %RegisteredObject
 {
 
@@ -125,7 +125,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules,PurgeSettings,Purge,SuspendedMessages,ArchiveSettings,Archive,ArchiveErrors,ManagedAlerts,ManagedAlertActions";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules,PurgeSettings,Purge,SuspendedMessages,ArchiveSettings,Archive,ArchiveErrors,ManagedAlerts,ManagedAlertActions,RuleLog,ProcessLog";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -239,7 +239,7 @@ Parameter ENDPOINTSESSIONMESSAGES = "SessionMessages";
 /// <p>The endpoints whose <code>LIST</code> declares search criteria of its own (Story 20.9). A declared read names criteria on
 /// the interoperability port only as its parent's route id, except on these; <file>ui/tools/screen-mirror.mjs</file> reads this
 /// list as it reads <parameter>ENDPOINTS</parameter>.</p>
-Parameter SEARCHENDPOINTS = "Messages,DefaultSettingsDiff,ManagedAlerts";
+Parameter SEARCHENDPOINTS = "Messages,DefaultSettingsDiff,ManagedAlerts,RuleLog,ProcessLog";
 
 /// <p>The query key naming the message header a header or contents read is about: its one criterion, the header's id kept exactly
 /// (AD-13).</p>
@@ -1222,7 +1222,7 @@ ClassMethod IsStartupWrite(pType As %String) As %Boolean
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
 ClassMethod IsAnyWrite(pType As %String) As %Boolean
 {
-    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsPurgeWrite(pType) || ..IsArchiveWrite(pType) || (pType = ..#TYPEARCHIVESETTINGSET) || ..IsSuspendedWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType) || ..IsAlertWrite(pType)
+    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsPurgeWrite(pType) || ..IsArchiveWrite(pType) || (pType = ..#TYPEARCHIVESETTINGSET) || ..IsSuspendedWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType) || ..IsAlertWrite(pType) || ..IsLogPurgeWrite(pType)
 }
 
 /// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads, Story 20.30's session trace and Story 24.4's three session reads. Each serves
@@ -1272,6 +1272,10 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
         Set tSpec = ..#ARCHIVEPAIRS
     } ElseIf (pEndpoint = ..#ENDPOINTMANAGEDALERTS) || (pEndpoint = ..#ENDPOINTMANAGEDALERTACTIONS) {
         Set tSpec = ..#ALERTPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTRULELOG {
+        Set tSpec = ..#RULELOGPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTPROCESSLOG {
+        Set tSpec = ..#PROCESSLOGPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
         Set tSpec = ..#TESTPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTITEMCLASSES {
@@ -1314,6 +1318,7 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     If ..IsScheduleWrite(pType) Set tSpec = tSpec _ "," _ ..#SCHEDULEWRITEPAIR
     If ((pEndpoint = ..#ENDPOINTARCHIVESETTINGS) && (pType = ..#TYPEARCHIVESETTINGSET)) || ((pEndpoint = ..#ENDPOINTARCHIVE) && ..IsArchiveWrite(pType)) Set tSpec = tSpec _ "," _ ..#ARCHIVEWRITEPAIR
     If (pEndpoint = ..#ENDPOINTMANAGEDALERTS) && (..IsAlertWrite(pType) || (pType = ..#TYPEALERTOWNERS)) Set tSpec = tSpec _ "," _ ..#ALERTWRITEPAIR
+    If ((pEndpoint = ..#ENDPOINTRULELOG) || (pEndpoint = ..#ENDPOINTPROCESSLOG)) && ..IsLogPurgeWrite(pType) Set tSpec = tSpec _ "," _ ..#LOGPURGEPAIR
     If pType = ..#TYPEAUTOSTART Set tSpec = tSpec _ "," _ ..#AUTOSTARTPAIR
     If pType = ..#TYPESHUTDOWNGROUP Set tSpec = tSpec _ "," _ ..#GROUPPAIR
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && ((pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)) Set tSpec = tSpec _ "," _ ..#DTLTESTPAIR
@@ -1359,6 +1364,8 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTARCHIVEERRORS Quit 0
     If pEndpoint = ..#ENDPOINTMANAGEDALERTS Quit (pType = ..#TYPEALERT) || (pType = ..#TYPEALERTOWNERS) || (pType = ..#TYPEUPDATEALERT)
     If pEndpoint = ..#ENDPOINTMANAGEDALERTACTIONS Quit 0
+    If pEndpoint = ..#ENDPOINTRULELOG Quit (pType = ..#TYPERULELOGSTATE) || (pType = ..#TYPEPURGERULELOG)
+    If pEndpoint = ..#ENDPOINTPROCESSLOG Quit (pType = ..#TYPEPROCESSLOGSTATE) || (pType = ..#TYPEPURGEPROCESSLOG)
     If pEndpoint = ..#ENDPOINTITEMTEST Quit (pType = ..#TYPETESTTARGET) || (pType = ..#TYPESENDTEST)
     If pEndpoint = ..#ENDPOINTTRANSFORMS Quit (pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)
     If pEndpoint = ..#ENDPOINTMESSAGES Quit ..IsMessageType(pType)
@@ -1545,6 +1552,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If (pEndpoint = ..#ENDPOINTMANAGEDALERTS) || (pEndpoint = ..#ENDPOINTMANAGEDALERTACTIONS) {
             Set tSC = ..InvokeAlerts(tNamespace, pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pEndpoint = ..#ENDPOINTRULELOG) || (pEndpoint = ..#ENDPOINTPROCESSLOG) {
+            Set tSC = ..InvokeLog(tNamespace, pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
         }
 
@@ -7012,6 +7023,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTARCHIVESETTINGS) && (pType = ..#TYPEARCHIVESETTINGSET) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTARCHIVE) && (pType = ..#TYPEARCHIVE) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTMANAGEDALERTS) && (pType = ..#TYPEUPDATEALERT) Quit "objectscript"
+    If ((pEndpoint = ..#ENDPOINTRULELOG) || (pEndpoint = ..#ENDPOINTPROCESSLOG)) && ..IsLogPurgeWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES) && ..IsSuspendedWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTITEMTEST) && ..IsTestWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && (pType = ..#TYPETRANSFORMTEST) Quit "objectscript"
@@ -7052,6 +7064,10 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tText = tText _ ..ArchiveSnippet()
     } ElseIf pEndpoint = ..#ENDPOINTMANAGEDALERTS {
         Set tPart = ..AlertSnippet($Get(pQuery(..#IDKEY)), .pQuery)
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf (pEndpoint = ..#ENDPOINTRULELOG) || (pEndpoint = ..#ENDPOINTPROCESSLOG) {
+        Set tPart = ..LogPurgeSnippet(pEndpoint, $Get(pQuery(..#NAMESPACEKEY)), $Get(pQuery(..#PURGEDAYSKEY)))
         If tPart = "" Quit []
         Set tText = tText _ tPart
     } ElseIf pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES {
@@ -10395,10 +10411,13 @@ ClassMethod VendorCodesStatus(pStatus As %Status, pWhat As %String = "the call")
 
 /// <p>The vendor's purge of the current namespace, which the caller has already switched, run in a frame of its own that saves the process's roles and gives them back on
 /// every exit, a thrown error included (<method>VendorPurge</method>). The vendor's bitmap cleanup adds <code>%All</code> in a frame of its own and drops it when it
-/// returns; this frame keeps any vendor path that does not from reaching the request's later code or the pooled process's next request.</p>
-ClassMethod PurgeFrame(pDays As %Integer, pKeepIntegrity As %Boolean, pBodiesToo As %Boolean, pBitmap As %Boolean, Output pDeleted) As %Status
+/// returns; this frame keeps any vendor path that does not from reaching the request's later code or the pooled process's next request. With <var>pKind</var>
+/// <parameter>LOGKINDRULE</parameter> or <parameter>LOGKINDPROCESS</parameter> the frame runs that log's purge (<method>VendorLogPurge</method>, Story 24.17 Batch 2) and
+/// the other arguments are not used; <code>""</code> is the full purge.</p>
+ClassMethod PurgeFrame(pDays As %Integer, pKeepIntegrity As %Boolean, pBodiesToo As %Boolean, pBitmap As %Boolean, Output pDeleted, pKind As %String = "") As %Status
 {
     New $ROLES
+    If pKind '= "" Quit ..VendorLogPurge(pKind, pDays, .pDeleted)
     Quit ..VendorPurge(pDays, pKeepIntegrity, pBodiesToo, pBitmap, .pDeleted)
 }
 
@@ -13956,6 +13975,308 @@ ClassMethod Literal(pValue As %String) As %String [ Private ]
         If tText [ $Char(tCode) Set tText = $Replace(tText, $Char(tCode), """_$Char(" _ tCode _ ")_""")
     }
     Quit tText
+}
+
+/// <p>The Business rule log endpoint (Story 24.17 Batch 2): <code>LIST</code> (the namespace's <code>Ens_Rule.Log</code> rows, newest first), <code>RULELOGSTATE</code> (the entries counted, which
+/// a purge's review and fingerprint read) and the write <code>PURGERULELOG</code>, the vendor's <code>Ens.Purge.PurgeRuleLogsByDate</code> with the days to keep in <parameter>PURGEDAYSKEY</parameter>.</p>
+Parameter ENDPOINTRULELOG = "RuleLog";
+
+/// <p>The Business process log endpoint (Story 24.17 Batch 2): <code>LIST</code> (the namespace's <code>Ens.BusinessProcess</code> rows, newest first), <code>PROCESSLOGSTATE</code> and the write
+/// <code>PURGEPROCESSLOG</code>, the vendor's <code>Ens.Purge.PurgeBusinessProcessesByDate</code> with integrity kept.</p>
+Parameter ENDPOINTPROCESSLOG = "ProcessLog";
+
+/// <p>The pairs each log endpoint requires: the portal's and the classic page's own resource (<code>EnsPortal.RuleLog</code>'s <code>%Ens_RuleLog:USE</code>,
+/// <code>EnsPortal.BPInstances</code>'s <code>%Ens_Jobs:READ</code>). A purge adds <parameter>LOGPURGEPAIR</parameter>, both pages' edit resource, and the gate's WRITE on the namespace's
+/// globals database. Every read also needs the SQL SELECT privilege on the log's table (<method>LogSelectGate</method>).</p>
+Parameter RULELOGPAIRS = "%Ens_Portal:USE,%Ens_RuleLog:USE";
+
+Parameter PROCESSLOGPAIRS = "%Ens_Portal:USE,%Ens_Jobs:READ";
+
+Parameter LOGPURGEPAIR = "%Ens_Purge:USE";
+
+Parameter TYPERULELOGSTATE = "RULELOGSTATE";
+
+Parameter TYPEPURGERULELOG = "PURGERULELOG";
+
+Parameter TYPEPROCESSLOGSTATE = "PROCESSLOGSTATE";
+
+Parameter TYPEPURGEPROCESSLOG = "PURGEPROCESSLOG";
+
+/// <p>The most rows each log list answers to a call that names no cap of its own: the classic pages' largest page size, within the 5 seconds the read may take (measured, Task 0).</p>
+Parameter RULELOGMAX As INTEGER = 2000;
+
+Parameter PROCESSLOGMAX As INTEGER = 2000;
+
+/// <p>The two kinds of log, which <method>PurgeFrame</method> takes to run one log's purge.</p>
+Parameter LOGKINDRULE = "rulelog";
+
+Parameter LOGKINDPROCESS = "processlog";
+
+Parameter ENTITYRULELOG = "interop-rule-log";
+
+Parameter ENTITYPROCESSLOG = "interop-process-log";
+
+/// <p>The columns of a list row, in the order <method>RuleLogRow</method> and <method>ProcessLogRow</method> read them, and the tables they come from.</p>
+Parameter RULELOGCOLUMNS = "ID, TimeExecuted, SessionId, RuleName, ConfigName, IsError, ReturnValue, Reason";
+
+Parameter PROCESSLOGCOLUMNS = "ID, %TimeCreated, %TimeCompleted, %IsCompleted, %ConfigName, %SessionId";
+
+Parameter RULELOGTABLE = "Ens_Rule.Log";
+
+Parameter PROCESSLOGTABLE = "Ens.BusinessProcess";
+
+/// <p>The criteria of the two lists: <code>errors</code> and <code>completed</code>, each <code>yes</code> or <code>no</code>; absent lists all.</p>
+Parameter LOGERRORSCRITERION = "errors";
+
+Parameter LOGCOMPLETEDCRITERION = "completed";
+
+/// <p>Whether <var>pType</var> is one of the two log purges, which need WRITE on the namespace's globals database.</p>
+ClassMethod IsLogPurgeWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEPURGERULELOG) || (pType = ..#TYPEPURGEPROCESSLOG)
+}
+
+/// <p>The kind of log <var>pEndpoint</var> serves, <parameter>LOGKINDRULE</parameter> or <parameter>LOGKINDPROCESS</parameter>, or <code>""</code>. Pure.</p>
+ClassMethod LogKind(pEndpoint As %String) As %String
+{
+    Quit $Select(pEndpoint = ..#ENDPOINTRULELOG: ..#LOGKINDRULE, pEndpoint = ..#ENDPOINTPROCESSLOG: ..#LOGKINDPROCESS, 1: "")
+}
+
+/// <p>The SQL table the log of kind <var>pKind</var> lives in. Pure.</p>
+ClassMethod LogTable(pKind As %String) As %String [ Private ]
+{
+    Quit $Select(pKind = ..#LOGKINDRULE: ..#RULELOGTABLE, 1: ..#PROCESSLOGTABLE)
+}
+
+/// <p>The days a log purge hands the vendor for <var>pDays</var>: days past the instance's calendar are the calendar's own count, since the vendor reads a cut-off before the
+/// instance's first day as an error and the days past it keep every record. Reads the clock.</p>
+ClassMethod LogKeepDays(pDays As %String) As %Integer
+{
+    Quit $Select(+pDays > (+$Horolog - 2): +$Horolog - 2, 1: +pDays)
+}
+
+/// <p>A point inside each namespace-switched block of the privilege check and the state read, which does nothing. A fixture overrides it to raise a fault there, so a test reads that the fault is
+/// logged after the namespace is restored; production never overrides it.</p>
+ClassMethod LogHere() [ Private ]
+{
+}
+
+/// <p>The vendor's purge of the log of kind <var>pKind</var> in the current namespace, which the caller has already switched, with <var>pDays</var> as <code>Ens.Purge</code> takes them:
+/// the business rule log's <code>PurgeRuleLogsByDate</code> or the business process purge <code>PurgeBusinessProcessesByDate</code> with integrity kept. <var>pDeleted</var> is the vendor's
+/// count. Overridable so a fixture can answer a fault; production never overrides it. Reached only through <method>PurgeFrame</method>.</p>
+ClassMethod VendorLogPurge(pKind As %String, pDays As %Integer, Output pDeleted) As %Status
+{
+    If pKind = ..#LOGKINDRULE Quit ##class(Ens.Purge).PurgeRuleLogsByDate(pDays, .pDeleted)
+    Quit ##class(Ens.Purge).PurgeBusinessProcessesByDate(pDays, .pDeleted, 1)
+}
+
+/// <p>The check that stands in for the classic pages' own query, which the vendor runs with the caller's SQL privileges: whether the caller's effective SQL SELECT privilege on the
+/// log of kind <var>pKind</var> is held in <var>pNamespace</var>, asked of the vendor (<code>$SYSTEM.SQL.Security.CheckPrivilege</code>) with the namespace switched, so roles, <code>%All</code> and
+/// grants through a role resolve as the vendor resolves them. 403 <code>AUTH.NOPRIVILEGE</code> naming the table and <code>SELECT</code> when it is not; the port's other reads run without it
+/// (<code>%ExecDirectNoPriv</code>), so this is what keeps a list from showing a caller what the classic page would refuse.</p>
+ClassMethod LogSelectGate(pNamespace As %String, pKind As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tTable = ..LogTable(pKind)
+    Set tHeld = 0
+    Set tCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..LogHere()
+        Set tAnswer = ##class(%SYSTEM.SQL.Security).CheckPrivilege($USERNAME, 1, tTable, "s", pNamespace)
+        Set $NAMESPACE = tOrigNS
+        Set tHeld = (tAnswer = 1)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the log table privilege check failed", .pHttpStatus, .pFault)
+    If 'tHeld Quit ..Deny(tTable _ ":SELECT", .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>One list row of the columns <parameter>RULELOGCOLUMNS</parameter> read as <var>pLine</var>: <code>{ID, TimeExecuted, SessionId, RuleName, ConfigName, IsError, ReturnValue, Reason,
+/// Namespace}</code>, the time as the instance's local time as the other lists show it.</p>
+ClassMethod RuleLogRow(pLine As %List, pNamespace As %String) As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("ID", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("TimeExecuted", ..AlertLocal($List(pLine, 2)), "string")
+    Do tRow.%Set("SessionId", ..AlertText($List(pLine, 3)), "string")
+    Do tRow.%Set("RuleName", ..AlertText($List(pLine, 4)), "string")
+    Do tRow.%Set("ConfigName", ..AlertText($List(pLine, 5)), "string")
+    Do tRow.%Set("IsError", ''$List(pLine, 6), "boolean")
+    Do tRow.%Set("ReturnValue", ..AlertText($List(pLine, 7)), "string")
+    Do tRow.%Set("Reason", ..AlertText($List(pLine, 8)), "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>One list row of the columns <parameter>PROCESSLOGCOLUMNS</parameter> read as <var>pLine</var>: <code>{ID, TimeCreated, TimeCompleted, IsCompleted, ConfigName, SessionId, Namespace}</code>.</p>
+ClassMethod ProcessLogRow(pLine As %List, pNamespace As %String) As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("ID", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("TimeCreated", ..AlertLocal($List(pLine, 2)), "string")
+    Do tRow.%Set("TimeCompleted", ..AlertLocal($List(pLine, 3)), "string")
+    Do tRow.%Set("IsCompleted", ''$List(pLine, 4), "boolean")
+    Do tRow.%Set("ConfigName", ..AlertText($List(pLine, 5)), "string")
+    Do tRow.%Set("SessionId", ..AlertText($List(pLine, 6)), "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The log of kind <var>pKind</var> of <var>pNamespace</var>, newest first, at most <var>pMax</var> rows (the log's own maximum when that is not above zero). The criterion <code>errors</code>
+/// (the rule log) or <code>completed</code> (business processes) is <code>yes</code> or <code>no</code>; absent lists all. The caller's SQL SELECT privilege is judged first
+/// (<method>LogSelectGate</method>). Every value is bound. A longer list than the cap is the caller's truncation, which it reads from the one row it asked for beyond its own cap.</p>
+ClassMethod ListLog(pNamespace As %String, pKind As %String, ByRef pQuery, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..LogSelectGate(pNamespace, pKind, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tRule = (pKind = ..#LOGKINDRULE)
+    Set tCriterion = $Select(tRule: ..#LOGERRORSCRITERION, 1: ..#LOGCOMPLETEDCRITERION)
+    Set tValue = $Get(pQuery(tCriterion))
+    If (tValue '= "") && (tValue '= "yes") && (tValue '= "no") Quit ..RefuseCriterion(tCriterion, .pHttpStatus, .pFault)
+    Kill tArgs
+    Set tArgs = 1
+    Set tArgs(1) = ..AlertCap(pMax, $Select(tRule: ..#RULELOGMAX, 1: ..#PROCESSLOGMAX))
+    Set tSql = "SELECT TOP ? " _ $Select(tRule: ..#RULELOGCOLUMNS, 1: ..#PROCESSLOGCOLUMNS) _ " FROM " _ ..LogTable(pKind)
+    If tValue '= "" {
+        Set tSql = tSql _ " WHERE " _ $Select(tRule: "IsError", 1: "%IsCompleted") _ " = ?"
+        Set tArgs(2) = (tValue = "yes")
+        Set tArgs = 2
+    }
+    Set tSql = tSql _ " ORDER BY ID DESC"
+    Set tSC = ..SqlRows(pNamespace, tSql, .tFound, .tCaught, tArgs...)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, $Select(tRule: "the business rule log list failed", 1: "the business process log list failed"), .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Do pRows.%Push($Select(tRule: ..RuleLogRow(tFound(tI), pNamespace), 1: ..ProcessLogRow(tFound(tI), pNamespace)))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The state row of the log of kind <var>pKind</var> (Story 24.17 Batch 2): <code>{Count, DaysToKeep, Namespace}</code>, <code>Count</code> the vendor's own count of the log's records
+/// (<code>Ens.Purge.RuleLogCount</code> or <code>BusinessProcessCount</code>) and <code>DaysToKeep</code> empty, since the days belong to the call that asks for the purge. The caller's SQL SELECT
+/// privilege is judged first, as the list's is (<method>LogSelectGate</method>), because the vendor's count reads the table with the caller's own privileges.</p>
+ClassMethod ReadLogState(pNamespace As %String, pKind As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Set tSC = ..LogSelectGate(pNamespace, pKind, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tCount = 0
+    Set tCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..LogHere()
+        Set tCount = $Select(pKind = ..#LOGKINDRULE: ##class(Ens.Purge).RuleLogCount(), 1: ##class(Ens.Purge).BusinessProcessCount())
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the log state read failed", .pHttpStatus, .pFault)
+    Set pRow = {}
+    Do pRow.%Set("Count", +tCount, "number")
+    Do pRow.%Set("DaysToKeep", "", "string")
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Purge the log of kind <var>pKind</var> of <var>pNamespace</var> as the classic page's <code>DoPurge</code> does, in this request (Story 24.17 Batch 2), and answer its state row, read again. The days are
+/// judged first (<method>PurgeDaysOK</method>), 422 <code>INTEROP.PURGE.DAYS</code>, before any vendor call. The vendor's purge runs in the namespace inside <method>PurgeFrame</method>, with no lock and no
+/// transaction, and the namespace is restored; OcuPilot's own audit row is recorded whatever the vendor answered, because the vendor records none: it names the namespace, the days, the count the vendor
+/// deleted and whether it completed. A vendor error status or a fault is 500 <code>INTERNAL</code>, never 200, even after a partial delete.</p>
+/// <p>A purge that outlasts the Web Gateway's response timeout runs to its end in this process, and its audit row is written then.</p>
+ClassMethod PerformLogPurge(pNamespace As %String, pKind As %String, pDays As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If '..PurgeDaysOK(pDays) {
+        Set tViolations = 1
+        Set tViolations(1) = $ListBuild("DaysToKeep", ##class(OcuPilot.Api.InteropError).#PURGEDAYS)
+        Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
+    Set tRule = (pKind = ..#LOGKINDRULE)
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Kill tDeleted
+    Set tKeepDays = ..LogKeepDays(pDays)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tVendorSC = ..PurgeFrame(tKeepDays, 1, 0, 0, .tDeleted, pKind)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("daysToKeep", +pDays, "number")
+    Do tEffects.%Set("deleted", +$Get(tDeleted), "number")
+    Do tEffects.%Set("completed", ($$$ISOK(tVendorSC) && '$IsObject(tCaught)), "boolean")
+    Do ..AuditRuntime(..#VERBPURGE, $Select(tRule: ..#ENTITYRULELOG, 1: ..#ENTITYPROCESSLOG), pNamespace, tEffects)
+    Set tMessage = $Select(tRule: "the business rule log purge failed", 1: "the business process purge failed")
+    If $IsObject(tCaught) Quit ..Statused(..VendorCodesStatus(tCaught.AsStatus(), "the purge"), tMessage, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the purge"), tMessage, .pHttpStatus, .pFault)
+    Set tReadSC = ..ReadLogState(pNamespace, pKind, .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) || '$IsObject(tRow) {
+        Set tRow = {}
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>Serve the RuleLog and ProcessLog endpoints after <method>Invoke</method>'s gate (Story 24.17 Batch 2): the list, the state read and the write, the purge of that log.</p>
+ClassMethod InvokeLog(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Set tKind = ..LogKind(pEndpoint)
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListLog(pNamespace, tKind, .pQuery, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tWrite = $Select(tKind = ..#LOGKINDRULE: ..#TYPEPURGERULELOG, 1: ..#TYPEPURGEPROCESSLOG)
+        Set tAction = $Select(..IsLogPurgeWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && (tAction '= tWrite) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = tWrite {
+            Set tSC = ..PerformLogPurge(pNamespace, tKind, $Get(pQuery(..#PURGEDAYSKEY)), .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadLogState(pNamespace, tKind, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the log call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The lines <method>Snippet</method> adds for the purge of the log <var>pEndpoint</var> serves with the days <var>pDays</var> (Story 24.17 Batch 2): the vendor's call, with the days the port itself would
+/// pass (<method>LogKeepDays</method>). <code>""</code> for a namespace or days the port would refuse by shape, which renders no draft. Nothing here runs; a person runs it.</p>
+ClassMethod LogPurgeSnippet(pEndpoint As %String, pNamespace As %String, pDays As %String) As %String [ Private ]
+{
+    If '$Match(pNamespace, ##class(OcuPilot.Port.AtelierPort).#NAMESPACEPATTERN) || '..PurgeDaysOK(pDays) Quit ""
+    Set tNL = $Char(10)
+    Set tDaysText = $Select(+pDays > (+$Horolog - 2): "+$Horolog - 2", 1: +pDays)
+    If pEndpoint = ..#ENDPOINTRULELOG Quit tNL _ " Set tSC = ##class(Ens.Purge).PurgeRuleLogsByDate(" _ tDaysText _ ", .tDeleted)"
+    Quit tNL _ " Set tSC = ##class(Ens.Purge).PurgeBusinessProcessesByDate(" _ tDaysText _ ", .tDeleted, 1)"
 }
 
 }

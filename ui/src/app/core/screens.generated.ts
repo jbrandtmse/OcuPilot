@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting' | 'statement-index-entry' | 'cached-query' | 'sql-table' | 'sql-index' | 'sql-schema' | 'interop-archive' | 'interop-archive-setting' | 'interop-managed-alert';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting' | 'statement-index-entry' | 'cached-query' | 'sql-table' | 'sql-index' | 'sql-schema' | 'interop-archive' | 'interop-archive-setting' | 'interop-managed-alert' | 'interop-rule-log' | 'interop-process-log';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -604,7 +604,9 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "sql-schema",
   "interop-archive",
   "interop-archive-setting",
-  "interop-managed-alert"
+  "interop-managed-alert",
+  "interop-rule-log",
+  "interop-process-log"
 ];
 
 /**
@@ -23545,6 +23547,177 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropProcessLogList",
+    "route": "interoperability/process-log",
+    "area": "interoperability",
+    "labelKey": "interopProcessLogLabel",
+    "sideBarPosition": 24,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Jobs",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_Jobs",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "interop-process-log",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "purge",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "ID",
+        "TimeCreated",
+        "TimeCompleted",
+        "IsCompleted",
+        "ConfigName"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopProcessLogEmpty",
+    "commandAliases": [
+      "business process log",
+      "business process instances"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopProcessLogPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopProcessLogPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopProcessLogPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.BPInstances",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "business process record",
+      "source": {
+        "port": "interop",
+        "endpoint": "ProcessLog",
+        "type": "LIST"
+      },
+      "fields": [
+        "ID",
+        "TimeCreated",
+        "TimeCompleted",
+        "IsCompleted",
+        "ConfigName",
+        "SessionId"
+      ],
+      "filter": [
+        "ConfigName"
+      ],
+      "sort": {
+        "fields": [
+          "ID",
+          "TimeCreated",
+          "TimeCompleted",
+          "IsCompleted",
+          "ConfigName"
+        ],
+        "default": "TimeCreated",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "completed",
+            "labelKey": "interopLogColumnCompleted",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ]
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ID",
+          "labelKey": "interopColumnId",
+          "kind": "name"
+        },
+        {
+          "field": "TimeCreated",
+          "labelKey": "journalColumnCreated",
+          "kind": "text"
+        },
+        {
+          "field": "TimeCompleted",
+          "labelKey": "taskHistoryColumnCompleted",
+          "kind": "text"
+        },
+        {
+          "field": "IsCompleted",
+          "labelKey": "interopLogColumnCompleted",
+          "kind": "status"
+        },
+        {
+          "field": "ConfigName",
+          "labelKey": "auditEventFieldSource",
+          "kind": "text"
+        },
+        {
+          "field": "SessionId",
+          "labelKey": "webSessionColumnSession",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopProcessLogEmptyAgent"
+    },
+    "toolIdentifier": "interop.processlog",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.InteropProductionDiagram",
     "route": "interoperability/productions/diagram",
     "area": "interoperability",
@@ -24612,6 +24785,193 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "interop.rules",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropRuleLogList",
+    "route": "interoperability/rule-log",
+    "area": "interoperability",
+    "labelKey": "interopRuleLogLabel",
+    "sideBarPosition": 23,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_RuleLog",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_RuleLog",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "interop-rule-log",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "purge",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "ID",
+        "TimeExecuted",
+        "RuleName",
+        "ConfigName",
+        "IsError",
+        "ReturnValue"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopRuleLogEmpty",
+    "commandAliases": [
+      "business rule log",
+      "rule log"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopRuleLogPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopRuleLogPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopRuleLogPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.RuleLog",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "business rule log entry",
+      "source": {
+        "port": "interop",
+        "endpoint": "RuleLog",
+        "type": "LIST"
+      },
+      "fields": [
+        "ID",
+        "TimeExecuted",
+        "SessionId",
+        "RuleName",
+        "ConfigName",
+        "IsError",
+        "ReturnValue",
+        "Reason"
+      ],
+      "filter": [
+        "RuleName",
+        "ConfigName",
+        "ReturnValue",
+        "Reason"
+      ],
+      "sort": {
+        "fields": [
+          "ID",
+          "TimeExecuted",
+          "RuleName",
+          "ConfigName",
+          "IsError"
+        ],
+        "default": "TimeExecuted",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "errors",
+            "labelKey": "interopMessagesCriterionErrors",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ]
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ID",
+          "labelKey": "interopColumnId",
+          "kind": "name"
+        },
+        {
+          "field": "TimeExecuted",
+          "labelKey": "auditColumnTime",
+          "kind": "text"
+        },
+        {
+          "field": "SessionId",
+          "labelKey": "webSessionColumnSession",
+          "kind": "identifier"
+        },
+        {
+          "field": "RuleName",
+          "labelKey": "explorerSqlColumnRule",
+          "kind": "text"
+        },
+        {
+          "field": "ConfigName",
+          "labelKey": "auditEventFieldSource",
+          "kind": "text"
+        },
+        {
+          "field": "IsError",
+          "labelKey": "errorLogColumnText",
+          "kind": "status"
+        },
+        {
+          "field": "ReturnValue",
+          "labelKey": "explorerSqlColumnReturnValue",
+          "kind": "text"
+        },
+        {
+          "field": "Reason",
+          "labelKey": "agentSwitchesFieldReason",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopRuleLogEmptyAgent"
+    },
+    "toolIdentifier": "interop.rulelog",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,

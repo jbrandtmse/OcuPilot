@@ -1649,7 +1649,11 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab',
       'OcuPilot.Screen.Descriptor.InteropMessageList',
       'OcuPilot.Screen.Descriptor.InteropMessageTraceTab',
+      // Story 24.17 Batch 2: Business process log's completed criterion.
+      'OcuPilot.Screen.Descriptor.InteropProcessLogList',
       'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
+      // Story 24.17 Batch 2: Business rule log's errors criterion.
+      'OcuPilot.Screen.Descriptor.InteropRuleLogList',
       'OcuPilot.Screen.Descriptor.JournalFileDatabaseList',
       'OcuPilot.Screen.Descriptor.JournalFileDetails',
       'OcuPilot.Screen.Descriptor.JournalRecordList',
@@ -2860,6 +2864,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.InteropMonitorList',
       'OcuPilot.Screen.Descriptor.InteropProcessEditor',
       'OcuPilot.Screen.Descriptor.InteropProcessList',
+      // Story 24.17 Batch 2: Business process log owns %Ens_Jobs:READ.
+      'OcuPilot.Screen.Descriptor.InteropProcessLogList',
       'OcuPilot.Screen.Descriptor.InteropProductionDiagram',
       'OcuPilot.Screen.Descriptor.InteropProductionList',
       // Story 24.16: Purge management data owns %Ens_Purge:USE and Purge data settings %Ens_PurgeSettings:WRITE.
@@ -2869,6 +2875,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
       'OcuPilot.Screen.Descriptor.InteropRuleEditor',
       'OcuPilot.Screen.Descriptor.InteropRuleList',
+      // Story 24.17 Batch 2: Business rule log owns %Ens_RuleLog:USE.
+      'OcuPilot.Screen.Descriptor.InteropRuleLogList',
       // Story 24.15: Schedule specs own %Ens_ProductionConfig:READ.
       'OcuPilot.Screen.Descriptor.InteropScheduleList',
       'OcuPilot.Screen.Descriptor.InteropSchemaViewer',

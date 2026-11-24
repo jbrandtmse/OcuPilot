@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:675 */
+  /** EXPERIENCE.md:676 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -9812,6 +9812,39 @@ export const STRINGS = {
   interopManagedAlertsPrompt4: 'Close this alert with the reason that it is resolved.',
   /** EXPERIENCE.md:633 */
   interopManagedAlertHistoryPrompt1: 'What has happened to this alert so far?',
+  // Story 24.17 Batch 2: the business rule log and business process log screens, the completed column and filter, the two purge consequences, the empty states and the prompts.
+  /** EXPERIENCE.md:634 */
+  interopRuleLogLabel: 'Business rule log',
+  /** EXPERIENCE.md:634 */
+  interopProcessLogLabel: 'Business process log',
+  /** EXPERIENCE.md:634 */
+  interopLogColumnCompleted: 'Is completed',
+  /** EXPERIENCE.md:634 */
+  interopRuleLogPurgeConsequence:
+    'Deletes this namespace\'s business rule log entries older than the days to keep. With 0 days, everything up to the end of today is deleted. It cannot be undone.',
+  /** EXPERIENCE.md:634 */
+  interopProcessLogPurgeConsequence:
+    'Deletes this namespace\'s completed business process records older than the days to keep; a business process still running is kept. With 0 days, every completed one up to the end of today is deleted. It cannot be undone.',
+  /** EXPERIENCE.md:634 */
+  interopRuleLogEmpty: 'No business rule log entries in this namespace.',
+  /** EXPERIENCE.md:634 */
+  interopRuleLogEmptyAgent: 'purge the business rule log',
+  /** EXPERIENCE.md:634 */
+  interopProcessLogEmpty: 'No business process records in this namespace.',
+  /** EXPERIENCE.md:634 */
+  interopProcessLogEmptyAgent: 'purge business process records',
+  /** EXPERIENCE.md:634 */
+  interopRuleLogPrompt1: 'Which rules returned an error recently?',
+  /** EXPERIENCE.md:634 */
+  interopRuleLogPrompt2: 'Which rule fires most often here?',
+  /** EXPERIENCE.md:634 */
+  interopRuleLogPrompt3: 'Purge business rule log entries older than 30 days.',
+  /** EXPERIENCE.md:634 */
+  interopProcessLogPrompt1: 'Which business processes are still running?',
+  /** EXPERIENCE.md:634 */
+  interopProcessLogPrompt2: 'Which business process has the most records?',
+  /** EXPERIENCE.md:634 */
+  interopProcessLogPrompt3: 'Purge completed business process records older than 30 days.',
 } as const;
 
 /**

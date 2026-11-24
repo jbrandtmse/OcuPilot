@@ -543,6 +543,16 @@ Parameter PURGEBITMAP = "INTEROP.PURGE.BITMAP";
 
 Parameter REASONPURGEBITMAP = "Deletes this namespace's event log entries, messages, completed business process records, business rule log entries, I/O log entries, host monitor data and managed alerts older than the days to keep, and their message bodies when Include message bodies is on. When Purge only completed sessions is on, a session with a message still in progress is kept whole, and so is an open managed alert. With 0 days, everything up to the end of today is deleted, except managed alerts from today. It cannot be undone. Bitmap cleanup then runs over every class in this namespace with full system rights, and can take a long time. Those rights end when it finishes.";
 
+/// <p>The consequences of the business rule log purge and the business process purge (Story 24.17 Batch 2); neither has a refusal of its own beyond
+/// <parameter>PURGEDAYS</parameter>.</p>
+Parameter RULELOGPURGE = "INTEROP.RULELOG.PURGE";
+
+Parameter REASONRULELOGPURGE = "Deletes this namespace's business rule log entries older than the days to keep. With 0 days, everything up to the end of today is deleted. It cannot be undone.";
+
+Parameter PROCESSLOGPURGE = "INTEROP.PROCESSLOG.PURGE";
+
+Parameter REASONPROCESSLOGPURGE = "Deletes this namespace's completed business process records older than the days to keep; a business process still running is kept. With 0 days, every completed one up to the end of today is deleted. It cannot be undone.";
+
 /// <p>The local archive manager's refusals and consequence (Story 24.16 Batch 4), each 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug: a run already
 /// running, no other interoperability namespace to archive to, a namespace that archives with its own class, a namespace holding more messages than one run takes, and a
 /// target that already holds an id the run would move. <parameter>ACCEPTSNOARCHIVETARGET</parameter> is what Archive to namespace accepts when no other namespace is
@@ -860,7 +870,7 @@ ClassMethod Codes() As %List
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP, ..#ARCHIVERUN, ..#SUSPENDEDRESUBMIT, ..#SUSPENDEDEDIT, ..#SUSPENDEDDISCARD, ..#SUSPENDEDDELETE, ..#MESSAGEEXPORT, ..#ALERTUPDATE)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP, ..#ARCHIVERUN, ..#SUSPENDEDRESUBMIT, ..#SUSPENDEDEDIT, ..#SUSPENDEDDISCARD, ..#SUSPENDEDDELETE, ..#MESSAGEEXPORT, ..#ALERTUPDATE, ..#RULELOGPURGE, ..#PROCESSLOGPURGE)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -1218,6 +1228,8 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#PURGERUNNING Quit ..#REASONPURGERUNNING
     If pCode = ..#PURGERUN Quit ..#REASONPURGERUN
     If pCode = ..#PURGEBITMAP Quit ..#REASONPURGEBITMAP
+    If pCode = ..#RULELOGPURGE Quit ..#REASONRULELOGPURGE
+    If pCode = ..#PROCESSLOGPURGE Quit ..#REASONPROCESSLOGPURGE
     If pCode = ..#ARCHIVERUNNING Quit ..#REASONARCHIVERUNNING
     If pCode = ..#ARCHIVENOTARGET Quit ..#REASONARCHIVENOTARGET
     If pCode = ..#ARCHIVECLASS Quit ..#REASONARCHIVECLASS
