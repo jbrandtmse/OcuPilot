@@ -1111,3 +1111,6 @@
 2026-11-24T04:51:47Z	Story 21.40	integrated_forward	feature=cd415b0d7 merge=M=9d715eaa7 conflicts=0 checks=GovernanceBaseline,Governance,GovernanceWire_green,test:tools_2415,ci.test_109
 2026-11-24T04:51:47Z	Story 21.40	code_head_pushed	sha=9d715eaa7 run=45329254964
 2026-11-24T04:52:06Z	Story 21.40	stage_spawned	stage=code_review spawn_at=2026-11-24T04:52:06Z model=opus agent_name=21-40-cr prior_lines_ended=verified(ab9af75cb)
+2026-11-24T05:21:56Z	Story 21.40	stage_complete	stage=code_review agent=aa32e7595 result=done commit=0e6a1b2c0 high=0 med=1(patched:TestRowsEqualThePerKeyPath) low=11 ledger=DW-2867,DW-2868,DW-2869,DW-2870(terminal) breach=two_test_classes_in_one_message(discarded,rerun_alone) lines_ended=verified bashedits=none lead_fix=stale_trailing_Status_block_removed
+2026-11-24T05:21:56Z	Story 21.40	code_head_pushed	sha=0e6a1b2c0 run=45332752358 feature=cd415b0d7(already_ancestor)
+2026-11-24T05:21:56Z	Story 21.40	gate_step	step=fresh_check+full_sweep+smoke head=0e6a1b2c0 started=2026-11-24T05:21:56Z dir=e21-kit/21-40/gate1
