@@ -829,5 +829,7 @@
 2026-11-23T21:26:39Z	Story 24.17	stage_spawned	stage=plan spawn_at=2026-11-23T21:26:39Z model=opus agent_name=24-17-plan cycle_iteration=1 story_base=626172470
 2026-11-23T21:38:50Z	Story 24.17	story_created	scope=batch1_managed_alerts(of_5) path=_bmad-output/implementation-artifacts/spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow.md commit=02e954355 build_status=ready-for-dev epic_context=recompiled
 2026-11-23T21:41:45Z	Story 24.17	ruling	question=batch1_veto_set choice=keep(V1-V6)+batch5_note(GetEnsMetrics_%All_needs_AD-9_containment) category=veto inbox=U-157 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
-2026-11-23T21:43:21Z	Story 24.17	spec_validated	scope=batch1
-2026-11-23T21:43:21Z	Story 24.17	stage_spawned	stage=implement spawn_at=2026-11-23T21:43:21Z model=sonnet agent_name=24-17-implement-batch1 cycle_iteration=1 story_base=02e954355
+2026-11-23T21:42:12Z	Story 24.17	spec_validated	scope=batch1
+2026-11-23T21:42:46Z	Story 24.17	stage_spawned	stage=implement spawn_at=2026-11-23T21:42:46Z model=sonnet agent_name=24-17-implement-batch1 cycle_iteration=1 story_base=02e954355
+2026-11-24T01:49:54Z	Story 24.17	stage_completed	stage=implement scope=batch1 commit=c94cacdb1(time=commit_time) taskO=no_halt(ALERTUPDATE_held,ALERTSMAX=2000:0.04s,ALERTACTIONSMAX=1000,ListAlertingUsers_needs_%Ens_Alerts:W) sweep=17/17(893_classes,6747_tests;3_stale_rosters_fixed:Navigation,InteropHostDescriptor,InteropMessageDescriptor) browser=managed-alerts1,archive2 smoke=50/50 tools=2413 components=3948 flake=InteropAlertRefusals_ConfigChange_count_once disclosed=python_heredoc_edits_x7(4_files,by_delegate) self_review=thin
+2026-11-24T01:55:11Z	Story 24.17	stage_spawned	stage=qa+code-review spawn_at=2026-11-24T01:55:11Z model=opus agent_name=24-17-review-batch1 cycle_iteration=1 diff=02e954355..c94cacdb1 rebuild_once_permitted=yes
