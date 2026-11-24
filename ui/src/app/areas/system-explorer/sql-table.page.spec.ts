@@ -16,6 +16,7 @@ import {
   EXPLORER_SQL_TABLE,
   SQL_TABLE_CLEAR_STATISTICS,
   SQL_TABLE_REBUILD_INDICES,
+  SQL_TABLE_SET_EXTENT_SIZE,
   SQL_TABLE_TUNE,
   ScreenActionHandler,
 } from '../../shell/screen-action-handler';
@@ -97,16 +98,22 @@ afterEach(() => {
 
 describe('the Table info tab', () => {
   // Mutation (Rule 19): the tune handler is not registered (drop `SQL_TABLE_TUNE` from the page's actions) -> the second assertion goes red.
-  it('registers its three actions after the handler', () => {
+  it('registers its four actions after the handler', () => {
     const { actions } = mount([]);
     expect(actions.has(EXPLORER_SQL_TABLE, SQL_TABLE_REBUILD_INDICES)).toBe(true);
     expect(actions.has(EXPLORER_SQL_TABLE, SQL_TABLE_TUNE)).toBe(true);
     expect(actions.has(EXPLORER_SQL_TABLE, SQL_TABLE_CLEAR_STATISTICS)).toBe(true);
+    expect(actions.has(EXPLORER_SQL_TABLE, SQL_TABLE_SET_EXTENT_SIZE)).toBe(true);
   });
 
-  it('draws a page action for each of the three on the declared descriptor', () => {
-    expect(TAB.rowActions.map((action) => action.id)).toEqual([SQL_TABLE_REBUILD_INDICES, SQL_TABLE_TUNE, SQL_TABLE_CLEAR_STATISTICS]);
-    expect(SCREENS.find((screen) => screen.descriptor === EXPLORER_SQL_INDICES)?.rowActions.map((action) => action.id)).toEqual(['rebuild']);
+  it('draws a page action for each of the four on the declared descriptor', () => {
+    expect(TAB.rowActions.map((action) => action.id)).toEqual([
+      SQL_TABLE_REBUILD_INDICES,
+      SQL_TABLE_TUNE,
+      SQL_TABLE_CLEAR_STATISTICS,
+      SQL_TABLE_SET_EXTENT_SIZE,
+    ]);
+    expect(SCREENS.find((screen) => screen.descriptor === EXPLORER_SQL_INDICES)?.rowActions.map((action) => action.id)).toEqual(['rebuild', 'set-map-size']);
   });
 
   it('Rebuild all indices warns first, then is sent on the table the route names and publishes the updated event', async () => {
@@ -145,6 +152,24 @@ describe('the Table info tab', () => {
     handler.confirmPending(false);
     await settle(fixture);
     expect(JSON.parse(calls[0].body)).toEqual({ action: SQL_TABLE_CLEAR_STATISTICS, id: TABLE });
+  });
+
+  // Mutation (Rule 19): drop `SQL_TABLE_SET_EXTENT_SIZE` from `WARNING_VALUES` -> the dialog draws no field and the label, hint and sent value assertions go red.
+  it('Set extent size warns with its sentence and a whole-number field, and sends the typed value on the table the route names', async () => {
+    const { fixture, actions, calls, events, handler } = mount([applied(TABLE)]);
+    actions.run(EXPLORER_SQL_TABLE, SQL_TABLE_SET_EXTENT_SIZE);
+    await settle(fixture);
+    expect(handler.pending()?.kind).toBe('warning');
+    expect(handler.pending()?.consequence).toBe(STRINGS.sqlTableSetConsequence);
+    expect(handler.pending()?.fieldLabel).toBe(STRINGS.explorerSqlColumnExtentSize);
+    expect(handler.pending()?.fieldHint).toBe(STRINGS.sqlTableExtentSizeShape);
+    expect(handler.pending()?.fieldKind).toBe('number');
+    expect(handler.pending()?.fieldDigits).toBe(13);
+    expect(calls).toHaveLength(0);
+    handler.confirmPending(false, '5000');
+    await settle(fixture);
+    expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action: SQL_TABLE_SET_EXTENT_SIZE, id: TABLE, values: { ExtentSize: '5000' } }]);
+    expect(events.map((event) => `${event.type}/${event.id}/${event.action}`)).toEqual([`sql-table/${TABLE}/updated`]);
   });
 
   it('a route that names no table opens nothing and sends nothing', async () => {

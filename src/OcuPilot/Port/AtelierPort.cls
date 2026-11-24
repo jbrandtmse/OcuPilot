@@ -1461,8 +1461,8 @@ ClassMethod CatalogRows(pVersion As %Integer, pNamespace As %String, pEndpoint A
             If '$IsObject(tRow) || 'tRow.%IsA("%Library.DynamicObject") Continue
             If (pEndpoint = ..#ENDPOINTCATALOGTABLE) && (tRow.%Get("NAME") '= tName) Continue
             Set tObject = ..CatalogRow(tRow, tColumns)
-            ; An index row names the table it belongs to, which the table's own indices tab keys it by (Story 21.25).
-            If pEndpoint = ..#ENDPOINTCATALOGINDICES Do tObject.%Set("Table", tSchema _ "." _ tName, "string")
+            ; An index row and a field statistics row name the table they belong to, which their tabs key them by (Stories 21.25 and 21.31).
+            If (pEndpoint = ..#ENDPOINTCATALOGINDICES) || (pEndpoint = ..#ENDPOINTCATALOGFIELDSTATISTICS) Do tObject.%Set("Table", tSchema _ "." _ tName, "string")
             Do tRows.%Push(tObject)
         }
         Set pRows = tRows

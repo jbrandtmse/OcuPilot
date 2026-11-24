@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:675 */
+  /** EXPERIENCE.md:676 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5592,6 +5592,20 @@ export const STRINGS = {
   explorerSqlFieldStatisticsPrompt3: 'Which field has an outlier value?',
   // Story 21.25: the schema Tune dialog's value label.
   sqlTuneClearValuesLabel: 'Clear values',
+  // Story 21.31: the fixed-statistics setters -- the three action labels, the map size's value label, the consequence the three share and the
+  // shape sentences their dialogs hint and the instance answers.
+  sqlTableSetExtentSizeAction: 'Set extent size',
+  sqlFieldSetSelectivityAction: 'Set selectivity',
+  sqlIndexSetMapSizeAction: 'Set map size',
+  sqlIndexMapSizeLabel: 'Map size (MB)',
+  sqlTableSetConsequence: 'The optimizer uses this value in place of the collected one until the table\'s fixed statistics are cleared. If the table\'s statistics were collected, they are first saved as its fixed statistics.',
+  sqlTableExtentSizeShape: 'Enter a whole number from 0 to 1,000,000,000,000.',
+  sqlTableSelectivityShape: 'Enter 1, or a percentage over 0% and up to 99.999%.',
+  sqlTableWholeNumberShape: 'Enter a whole number, 0 or more.',
+  sqlTableMapSizeShape: 'Enter a whole number, 1 or more.',
+  /** The Field statistics tab's command alias, which its descriptor carries. */
+  explorerSqlFieldStatisticsAlias: 'table statistics',
+  sqlTableRefusalSetAfterFix: 'The table\'s collected statistics were saved as its fixed statistics, but the new value was not set.',
   // Story 18.6: License key and License servers -- their titles, License key's twelve field labels
   // beyond License usage's "License units", the authorization-key line, the activate dialog's
   // labels, validity, restart and reduction sentences and consequence, Print and its printed-by
@@ -9753,64 +9767,64 @@ export const STRINGS = {
   /** EXPERIENCE.md:632 */
   interopArchiveSettingsPrompt1: 'Set the days before archiving to 90.',
   // Story 24.17 Batch 1: the managed alerts screen, the alert history screen, the Update alert dialog, the captions their columns and fields carry, the consequence, the six refusals, the empty states and the prompts.
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertsLabel: 'Managed alerts',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertHistoryLabel: 'Alert history',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertUpdateAction: 'Update alert',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopAlertColumnTime: 'Alert time',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopAlertColumnText: 'Alert text',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopAlertColumnOwner: 'Current owner',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopAlertColumnLevel: 'Escalation level',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopAlertColumnOpen: 'Is open',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopAlertColumnLastAction: 'Last action time',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopAlertColumnNextAction: 'Next action time',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopAlertColumnOldValues: 'Old values',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopAlertColumnNewValues: 'New values',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopAlertFieldNextMinutes: 'Next action in (minutes)',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopAlertOwnerUnassigned: 'Unassigned',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertUpdateConsequence:
     'Updating saves each change in the alert\'s history with your username and the reason given. The alert can be updated again, and a closed alert can be opened again.',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertRefusalNotFound: 'This managed alert no longer exists.',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertRefusalUnchanged: 'Nothing would change. Choose a new owner, open state, escalation level or next action time.',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertRefusalOwner: 'The owner must be unassigned, you, or a user who can work on managed alerts in this namespace.',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertRefusalLevel: 'The escalation level moves one step up or down from its current level, and never below 0.',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertRefusalNextAction: 'Next action in (minutes) is a whole number from 1 to 20160.',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertRefusalReason: 'Give a reason of 1 to 500 characters, with no control characters.',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertsEmpty: 'No managed alerts in this namespace.',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertsEmptyAgent: 'update a managed alert',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertHistoryEmpty: 'This alert has no history yet.',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertsPrompt1: 'Which managed alerts are open and unassigned?',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertsPrompt2: 'Which open alerts are past their next action time?',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertsPrompt3: 'Who owns the most open alerts?',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertsPrompt4: 'Close this alert with the reason that it is resolved.',
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   interopManagedAlertHistoryPrompt1: 'What has happened to this alert so far?',
 } as const;
 

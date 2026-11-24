@@ -12,9 +12,9 @@
 /// namespace's code databases (AD-29). It replaces <code>%CSP.UI.Portal.SQL.Home</code>, whose
 /// custom resource also gates it (AD-44). It does not refresh (AD-43).</p>
 /// <p><b>Its entity type is <code>sql-index</code></b> (Story 21.25): a row's id is the composite <code>[Table, Map]</code>, its <code>Table</code> the
-/// one the port names on each row, and the target of <code>rebuild</code>, carried out by
-/// <class>OcuPilot.Screen.Tool.ExplorerSqlIndexRebuild</class> for both callers (AD-53). The table's data map has no index to rebuild, and an
-/// index of one of OcuPilot's own tables is refused for both.</p>
+/// one the port names on each row, and the target of <code>rebuild</code> and <code>set-map-size</code>, carried out by
+/// <class>OcuPilot.Screen.Tool.ExplorerSqlIndexRebuild</class> and <class>OcuPilot.Screen.Tool.ExplorerSqlIndexSetMapSize</class> for both callers (AD-53). The
+/// table's data map has no index to rebuild, and an index of one of OcuPilot's own tables is refused for both.</p>
 Class OcuPilot.Screen.Descriptor.ExplorerSqlIndices Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -36,7 +36,7 @@ XData Declaration
   "parentScope": "system-explorer/sql-tables",
   "id": {"kind": "composite", "parts": ["Table", "Map"]},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [{"id": "rebuild", "selfProtection": ""}],
+  "rowActions": [{"id": "rebuild", "selfProtection": ""}, {"id": "set-map-size", "selfProtection": ""}],
   "context": {"fields": ["Table", "Index", "Map", "Fields", "Type", "SizeMB", "Inherited", "Global", "Status"], "secretFields": []},
   "emptyStateKey": "explorerSqlIndicesEmpty",
   "commandAliases": [],

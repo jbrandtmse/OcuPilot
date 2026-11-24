@@ -500,6 +500,9 @@ export const CONSEQUENCE_SQLTABLEREBUILDALL = 'SQL.TABLE.REBUILDALL';
 export const CONSEQUENCE_SQLTABLETUNE = 'SQL.TABLE.TUNE';
 export const CONSEQUENCE_SQLTABLECLEARSTATISTICS = 'SQL.TABLE.CLEARSTATISTICS';
 export const CONSEQUENCE_SQLTABLETUNESCHEMA = 'SQL.TABLE.TUNESCHEMA';
+export const CONSEQUENCE_SQLTABLESETEXTENTSIZE = 'SQL.TABLE.SETEXTENTSIZE';
+export const CONSEQUENCE_SQLTABLESETSELECTIVITY = 'SQL.TABLE.SETSELECTIVITY';
+export const CONSEQUENCE_SQLTABLESETMAPSIZE = 'SQL.TABLE.SETMAPSIZE';
 /** Story 24.2: the term list editor's delete and entry remove; each is one published sentence. */
 export const CONSEQUENCE_ANALYTICSTERMLISTDELETE = 'ANALYTICS.TERMLIST.DELETE';
 export const CONSEQUENCE_ANALYTICSTERMLISTREMOVE = 'ANALYTICS.TERMLIST.REMOVE';
@@ -787,6 +790,10 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_SQLTABLETUNE) return STRINGS.sqlTableTuneConsequence;
   if (code === CONSEQUENCE_SQLTABLECLEARSTATISTICS) return STRINGS.sqlTableClearStatisticsConsequence;
   if (code === CONSEQUENCE_SQLTABLETUNESCHEMA) return STRINGS.sqlSchemaTuneConsequence;
+  // Story 21.31: the three fixed-statistics setters share one sentence.
+  if (code === CONSEQUENCE_SQLTABLESETEXTENTSIZE || code === CONSEQUENCE_SQLTABLESETSELECTIVITY || code === CONSEQUENCE_SQLTABLESETMAPSIZE) {
+    return STRINGS.sqlTableSetConsequence;
+  }
   // Story 24.2: the term list editor's delete and entry remove sentences, each published once.
   if (code === CONSEQUENCE_ANALYTICSTERMLISTDELETE) return STRINGS.analyticsTermListDeleteConsequence;
   if (code === CONSEQUENCE_ANALYTICSFOLDERITEMDELETE) return STRINGS.analyticsFolderItemDeleteConsequence;

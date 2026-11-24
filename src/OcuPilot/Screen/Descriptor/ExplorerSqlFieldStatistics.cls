@@ -6,8 +6,11 @@
 /// tables list row's <code>Table</code>, sent as the one criterion <code>table</code>. The tab and the agent's read answer the same rows.</p>
 /// <p><b>The table is the one the caller's own privileges show it</b>: the port resolves the name through the information schema before it reads, and
 /// answers not found otherwise (AD-61 rule 7). Its privilege set is <parameter>OcuPilot.Port.AtelierPort.PAIRS</parameter>, beside READ on the
-/// namespace's code databases (AD-29). It replaces <code>%CSP.UI.Portal.SQL.TuneTable</code>, whose custom resource also gates it (AD-44). It is a read:
-/// no action and no refresh (AD-43).</p>
+/// namespace's code databases (AD-29). It replaces <code>%CSP.UI.Portal.SQL.TuneTable</code>, whose custom resource also gates it (AD-44). It does not
+/// refresh (AD-43).</p>
+/// <p><b>Its entity type is <code>sql-field</code></b> (Story 21.31): a row's id is the composite <code>[Table, Field]</code>, its <code>Table</code> the one
+/// the port names on each row, and the target of <code>set-selectivity</code>, carried out by
+/// <class>OcuPilot.Screen.Tool.ExplorerSqlFieldSetSelectivity</class> for both callers (AD-53). A field of one of OcuPilot's own tables is refused for both.</p>
 Class OcuPilot.Screen.Descriptor.ExplorerSqlFieldStatistics Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -23,16 +26,16 @@ XData Declaration
   "refreshes": false,
   "refreshRates": [],
   "privileges": [{"resource": "%Development", "permission": "USE"}],
-  "entityType": "class",
+  "entityType": "sql-field",
   "secondaryEntityTypes": [],
   "scope": "namespace",
   "parentScope": "system-explorer/sql-tables",
-  "id": {"kind": "single", "parts": []},
+  "id": {"kind": "composite", "parts": ["Table", "Field"]},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
-  "context": {"fields": ["Field", "Selectivity", "OutlierValue", "OutlierSelectivity", "AverageFieldSize", "FixedSelectivity", "FixedOutlierValue", "FixedOutlierSelectivity", "FixedAverageFieldSize"], "secretFields": []},
+  "rowActions": [{"id": "set-selectivity", "selfProtection": ""}],
+  "context": {"fields": ["Table", "Field","Selectivity", "OutlierValue", "OutlierSelectivity", "AverageFieldSize", "FixedSelectivity", "FixedOutlierValue", "FixedOutlierSelectivity", "FixedAverageFieldSize"], "secretFields": []},
   "emptyStateKey": "explorerSqlFieldStatisticsEmpty",
-  "commandAliases": [],
+  "commandAliases": ["table statistics"],
   "suggestedPrompts": [
     {"groupKey": "webAppPromptGroupCode", "textKey": "explorerSqlFieldStatisticsPrompt1"},
     {"groupKey": "webAppPromptGroupCode", "textKey": "explorerSqlFieldStatisticsPrompt2"},
@@ -43,7 +46,7 @@ XData Declaration
   "read": {
     "row": "field statistics of one SQL table",
     "source": {"port": "atelier", "endpoint": "Catalog.FieldStatistics", "type": "LIST"},
-    "fields": ["Field", "Selectivity", "OutlierValue", "OutlierSelectivity", "AverageFieldSize", "FixedSelectivity", "FixedOutlierValue", "FixedOutlierSelectivity", "FixedAverageFieldSize"],
+    "fields": ["Table", "Field", "Selectivity", "OutlierValue", "OutlierSelectivity", "AverageFieldSize", "FixedSelectivity", "FixedOutlierValue", "FixedOutlierSelectivity", "FixedAverageFieldSize"],
     "filter": ["Field", "Selectivity", "FixedSelectivity"],
     "sort": {"fields": ["Field", "Selectivity", "FixedSelectivity"], "default": "Field", "direction": "asc"},
     "paging": "cap",
@@ -65,8 +68,8 @@ XData Declaration
       {"field": "FixedOutlierSelectivity", "labelKey": "explorerSqlColumnFixedOutlierSelectivity", "kind": "text"},
       {"field": "FixedAverageFieldSize", "labelKey": "explorerSqlColumnFixedAverageFieldSize", "kind": "number"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "explorerSqlSchemaTuneEmptyAgent"
   },
   "tab": {"group": "system-explorer/sql-tables/document", "position": 10, "labelKey": "explorerSqlTabFieldStatistics"},
   "toolIdentifier": "explorer.sqlfieldstatistics"
