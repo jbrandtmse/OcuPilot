@@ -2,7 +2,7 @@
 title: 'Story 24.17: Managed alerts, logs, the system monitor and workflow (Batch 2: business rule log and business process log)'
 type: 'feature'
 created: '2026-11-23'
-status: 'ready-for-dev'
+status: 'blocked'
 baseline_revision: '26cc156bf3eb17a38b65c82e442c12626a83eb40'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -154,7 +154,14 @@ No new dependency; no privilege, role or access grant; nothing is written into a
 
 **Measured at plan (`ocupilot-b-ci`, read-only global and dictionary reads).** USER and HSCUSTOM hold no `^Ens.Rule.LogD` or `^Ens.BusinessProcessD` data; `OcuPilot.Test.InteropAlertCase` is compiled in HSCUSTOM and not in USER; `Ens.BusinessProcess` is not abstract.
 
-**Governing ADs (Rule 6):** AD-3, AD-6, AD-7, AD-8, AD-9, AD-10, AD-13, AD-14, AD-15, AD-16, AD-21, AD-22, AD-29, AD-34, AD-36, AD-44, AD-51, AD-52, AD-53, AD-56, AD-58, AD-59, AD-60, AD-62. Not engaged: AD-23, AD-35, AD-54, AD-63, AD-65, AD-66.
+**Measured (Task 0, `ocupilot-b-ci`, 2026-11-24, USER and HSCUSTOM, auditing on, probes marked `OcuProbe2417`; every probe row, user, role, resource and the probe class removed after; both namespaces hold no rule log or business process row; HALT at (b)).** The session ran as `irisowner`; principals ran in a child job after `$System.Security.Login`.
+
+- (a) Both vendor purges, run in a frame that saves `$ROLES`, wrote no vendor audit row (`%SYS.Audit` read since the start; positive control, a resource create and delete, wrote two `%System/%Security/ResourceChange` rows). Journal records by process id: the business process purge wrote only the namespace's own `^Ens.BusinessProcessD` and `^Ens.BusinessProcessI` (plus, cold in HSCUSTOM, the instance's SQL statement index `^%SYS` and `^rINDEXSQL`). The rule log purge wrote the namespace's `^Ens.Rule.LogD`, `^Ens.Rule.LogI` and `^Ens.Rule.DebugLogD`/`I` and, because `Ens.Rule.Log.Purge` reaches `%SYS.Maint.Bitmap.OneClass`, `^%SYS.Maint.BitmapD` and `^%SYS.Maint.BitmapResultsD` in the instance's manager database: one `%SYS_Maint.Bitmap` row, status Finished, per purge. The business process purge reaches no bitmap cleanup. A list read wrote no journal record.
+- (b) A principal holding `%Ens_Portal:U`, `%Ens_RuleLog:U` and `%DB_USER:R` (and one holding `%Ens_Portal:U`, `%Ens_Jobs:R` and `%DB_USER:R`) read each list through `%ExecDirectNoPriv`; the classic page's own query (`RuleLog.cls:374-377`, `BPInstances.cls:635-647`), prepared as that principal through `%Library.ResultSet`, was refused: `ERROR #5580: SQL Privilege Violation`. A principal holding only `%DB_USER:RW` is refused alike. In USER, SELECT on `Ens_Rule.Log` is granted to `%EnsRole_Operator` and `%EnsRole_RulesDeveloper`, and on `Ens.BusinessProcess` to `%EnsRole_Operator`: the SQL privilege is a table grant the gate's pairs do not name. Purges: with `%Ens_Purge:U` and `%DB_USER:RW` each succeeds and deletes the old probes and their debug rows; a principal holding `%DB_USER:RW` alone purges both alike (no SQL privilege is checked); with `%DB_USER:R` the rule log purge answers success having deleted nothing, and the business process purge answers `<PROTECT>` (status 5002).
+- `$ROLES`, `$USERNAME` and `$NAMESPACE` read the same after the frame for `_SYSTEM` (`%All`) and for three principals without `%All`.
+- (c) `Ens.BusinessProcess` itself cannot be saved as a probe: its `x__ClassName` is empty and the vendor purge raises `<SUBSCRIPT>`. `EnsLib.MsgRouter.RoutingEngine`, a concrete subclass present in USER and HSCUSTOM, saves with a back-dated `%TimeCreated`, `%IsCompleted`, `%ConfigName` and `%SessionId`. At 3650 days the purge deleted the old completed probe, kept the old running probe and the new one; the rule log purge deleted old rows with their debug rows and kept the new.
+- (d) Days 0 deleted today's rule log rows with their debug rows and today's completed business process, and kept a running one; days 1 kept all of today's. Both consequence sentences hold.
+- (e) List reads (port-shaped, `%ExecDirectNoPriv`, columns read): 1,000 rows 0.004 s and 2,000 rows 0.008 s for each list, so both caps are 2,000. Purges: rule log 10,000 rows (1,000 with a debug row) 0.10 s, 50,000 rows (5,000 with a debug row) 0.60 s; business processes 2,000 records 0.03 s, 10,000 records 0.13 s. Worst case 0.60 s at 50,000 rows, 1.5 times 0.90 s, within the orchestrator's 30 s bound (V5: no row cap).
 
 **Integration and linkage (Rules 1, 2).** Integration: AC6 (the kernel's confirm consumes each stored proposal in its own namespace) and AC1's agent leg (the derived read tools). Consumes: the purge family, `InteropPurgeRun`, `InteropAction`, the kernel's proposal, confirm, governance and audit. Consumed-by: no consumer in this story; Story 24.20's undo names these purges as not restorable (inference). DW-2841 (the database pair read in the confirming namespace, owner `burndown`) applies through `InteropAction`; not addressed here. Story 24.16's deferred agent marker on a failed agent purge applies alike.
 
@@ -178,7 +185,7 @@ No new dependency; no privilege, role or access grant; nothing is written into a
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: Task 0 (b) halt (veto V3): the classic pages' own queries need SQL privileges the gate does not ask for; see Design Notes, Measured. Nothing was built; no product file changed.
 
 **Plan.** Batch 2 of five: Business rule log and Business process log through `InteropPort`, each with a destructive Purge by days reached by the screen and the agent, run inside `PurgeFrame`, every proposal keeping its namespace. Veto items 1 to 6; decided-in-stage list and Task 0 above. Read-only check on `ocupilot-b-ci` (52777): no rule log or business process rows in USER or HSCUSTOM. Nothing was written to the instance.

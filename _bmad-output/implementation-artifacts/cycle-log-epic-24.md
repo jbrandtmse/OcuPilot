@@ -844,4 +844,7 @@
 2026-11-24T03:00:18Z	Story 24.17	stage_spawned	stage=plan spawn_at=2026-11-24T03:00:18Z model=opus agent_name=24-17-plan-batch2 cycle_iteration=2 scope=batch2_rule_and_bp_logs
 2026-11-24T03:11:36Z	Story 24.17	story_created	scope=batch2_rule_and_bp_logs path=_bmad-output/implementation-artifacts/spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-2.md commit=19c85b326 build_status=ready-for-dev warning=oversized
 2026-11-24T03:15:08Z	Story 24.17	ruling	question=batch2_veto_set choice=keep(V1-V6) category=veto inbox=U-159 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
-2026-11-24T03:17:14Z	Story 24.17	spec_validated	scope=batch2
+2026-11-24T03:15:43Z	Story 24.17	spec_validated	scope=batch2
+2026-11-24T03:16:11Z	Story 24.17	stage_spawned	stage=implement spawn_at=2026-11-24T03:16:11Z model=sonnet agent_name=24-17-implement-batch2 cycle_iteration=2 story_base=19c85b326
+2026-11-24T03:16:38Z	Story 24.17	ruling	source=orchestrator scope=batch1_M_and_batch2 M_verification=CI_for_rosters(local:README_test,ci.test,test:tools,screen-mirror_check) AD-9_PurgeFrame_extension=accepted(same_method_and_allowlist,rule6_unchanged) V5_condition=measure_worst_case_1.5x(<=30s_else_HALT) relayed_to=implement_batch2
+2026-11-24T03:27:55Z	Story 24.17	stage_halted	stage=implement scope=batch2 reason=V3_halt(classic_RuleLog/BPInstances_queries_need_SQL_SELECT_grant(#5580)_gate_reads_via_%ExecDirectNoPriv) taskO=done(no_vendor_audit;bitmap_bookkeeping_in_manager_DB;$ROLES_unchanged;consequences_true;caps_2000;V5_worst_0.60s@50k_x1.5=0.90s) build=none spec=blocked(Measured_recorded) escalated=orchestrator(recommend_option_2_SELECT_check)
