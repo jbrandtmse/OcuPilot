@@ -14593,3 +14593,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Ens.Archive.Manager.OnMessageHeader re-reads ^Ens.ArchiveManager("DaysToArchive") per header; InteropPort.PerformArchiveSetting takes no lock
 - 2026-11-23T20:16:16Z status=decision-pending owner=burndown by=epic-24-runner note=posture ruling: refuse an archive setting change while a run holds the lock (stricter than classic), or accept as the classic does
 - 2026-11-23T20:25:37Z status=routed owner=burndown by=orchestrator note=correction: the target is read once at start (Manager.cls:12); the days are re-read per header (:79-80), so a mid-run days change can move ids the start-time taken check never covered. Ruling (b): refuse an archive settings change while the vendor's archive lock is held, with the existing RUNNING-style sentence (no new string); test holds the lock, shows the set refused while the settings read still answers
+
+### DW-2863: The agent has no read of the managed-alert owner choices: ALERTOWNERS is reachable only through the screen's dry-run review
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow.md (review 527b2b87b) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: ALERTOWNERS only via DryRunReview (InteropManagedAlertUpdate.cls)
+- 2026-11-24T02:26:13Z status=routed owner=burndown by=epic-24-runner note=reopen_if an agent proposal is refused INTEROP.ALERT.OWNER for a name the dialog offers
+
+### DW-2864: The Update alert dialog's review answers an empty owner list when the owner read fails, through a bare Catch, so the person sees no owners rather than the failure
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow.md (review 527b2b87b) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: bare Catch in InteropManagedAlertUpdate.cls DryRunReview
+- 2026-11-24T02:26:13Z status=routed owner=burndown by=epic-24-runner note=show the read's failure line instead of an empty list
