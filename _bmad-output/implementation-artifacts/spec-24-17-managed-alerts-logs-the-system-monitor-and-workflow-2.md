@@ -2,7 +2,7 @@
 title: 'Story 24.17: Managed alerts, logs, the system monitor and workflow (Batch 2: business rule log and business process log)'
 type: 'feature'
 created: '2026-11-23'
-status: 'blocked'
+status: 'ready-for-dev'
 baseline_revision: '26cc156bf3eb17a38b65c82e442c12626a83eb40'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -132,7 +132,18 @@ No new dependency; no privilege, role or access grant; nothing is written into a
 - **V3:** kept. If Task 0 (b) shows the classic query needs an SQL privilege the gate does not ask for, HALT; never widen it quietly.
 - **V4:** kept, the narrower values.
 - **V5:** kept, as Story 24.16's AD-7 named limit for a purge. Task 0 (e) records the rate.
-- **V6:** kept for story end; the lead writes the lines. The AD-9 line extends `PurgeFrame`'s containment to these purges and still never lets OcuPilot add a role.
+- **V6:** kept for story end; the lead writes the lines. The AD-9 line extends `PurgeFrame`'s containment to these purges and still never lets OcuPilot add a role. It also names, as that escalation's known effect, the vendor's own maintenance records: the `^%SYS.Maint.BitmapD` and `^%SYS.Maint.BitmapResultsD` rows and the `%SYS_Maint.Bitmap` row. Story 24.16's purge falls under the same line.
+
+**Orchestrator rulings after Task 0's V3 halt (2026-11-24).**
+
+- **V3: option 2.** Both list reads check the user's effective SQL SELECT on their table (`Ens_Rule.Log`, `Ens.BusinessProcess`) and refuse by name before the read, with the existing `AUTH.NOPRIVILEGE` shape.
+  - Read the privilege through the vendor's own check, run in the target namespace (`$SYSTEM.SQL.Security.CheckPrivilege`, or this build's equivalent read from the class source). Never parse grants yourself, so roles, `%All` and grants through a role resolve the vendor's way.
+  - Pin it by equality with the classic behavior. For each probe principal (with the grant, without it, `%All`), the check's verdict equals whether the classic `%Library.ResultSet` prepare answers `#5580`. Record that table here, under Measured.
+  - An agent read refused this way names the missing privilege in plain words, reusing the existing `AUTH.NOPRIVILEGE` sentence. If no published sentence fits, HALT for a veto addendum.
+  - The purges are unaffected.
+- **The bitmap bookkeeping writes** are confirmed as the vendor's own maintenance records, written by the code `PurgeFrame` contains. They are not an OcuPilot write into another namespace, and not an AD-9 store.
+- **Accepted:** V5 (worst case 0.90 s at 1.5 times, so no cap), both list caps at 2,000, and `PRECONDITIONFIELD = "Namespace"`.
+- **Story 20.9's message reads:** ledgered as DW-2865 (burndown). Not widened here.
 
 ## Design Notes
 
