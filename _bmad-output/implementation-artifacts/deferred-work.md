@@ -14632,3 +14632,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-2.md (Task 0 (b), orchestrator ruling) | severity: medium | fix-risk: low | footprint: cross-story
 - evidence: 24.17 B2 Task 0 (b): the classic Rule Log and BP Instances queries answer #5580 to a principal holding only the resource pair and database READ, while a %ExecDirectNoPriv read returns rows; Story 20.9's message reads use the same read path
 - 2026-11-24T03:28:46Z status=routed owner=burndown by=orchestrator note=measure each Messages read against the classic Message Viewer's prepare as in 24.17 B2 V3; add the vendor SELECT check where the classic refuses
+
+### DW-2867: Baseline.SeedFrom repeats Seed's three-line lookup because Baseline.cls was add-only while Epic 24 edited it
+- source: spec-21-40-the-governance-page-s-render-cost.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: SeedFrom (Baseline.cls) copies Seed's boolean lookup; GovernanceBaseline.TestRowsEqualThePerKeyPath pins the two equal over every listed and registered key (mutation run 1017 red).
+- 2026-11-24T05:09:38Z status=wontfix-accepted owner=21-40-the-governance-page-s-render-cost by=cr note=reopen_if=git log origin/OCU-1-epic24 ^feature -- Baseline.cls is empty: then Seed delegates to SeedFrom
+
+### DW-2868: No automated check counts the governance read's baseline parses, so a per-key parse brought back into Effective would pass every test
+- source: spec-21-40-the-governance-page-s-render-cost.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Effective calls Baseline.Keys once and Rows reads only its list (pinned by GovernanceBaseline); a parse counter needs a seam on add-only Baseline.cls. AC3 is a recorded curl measurement.
+- 2026-11-24T05:09:42Z status=wontfix-accepted owner=21-40-the-governance-page-s-render-cost by=cr note=reopen_if=curl median of GET /api/ocupilot/agent/governance on a throwaway exceeds 1.5 s at the instance's key count
+
+### DW-2869: The governance AC2 settle bound of 3,000 ms was derived from local runs only; CI's slower runner leaves less headroom than 1.5x (inference)
+- source: spec-21-40-the-governance-page-s-render-cost.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Worst local settle 1,818 ms; 1.4 x that is about 2,545 ms against 3,000 ms (inference). The bound follows the plan-gate ruling's derivation.
+- 2026-11-24T05:09:46Z status=by-design owner=21-40-the-governance-page-s-render-cost by=cr note=ruling's derivation is authoritative; a CI red on AC2's settle reopens it via the ruling
+
+### DW-2870: Baseline.SeedFrom and Policy.Cascade would error on a pBaseline object that is not a %DynamicObject
+- source: spec-21-40-the-governance-page-s-render-cost.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Only Baseline.Keys' list (always a %DynamicObject) or {} reaches them; Rows normalises a non-object to {}.
+- 2026-11-24T05:09:48Z status=wontfix-theoretical owner=21-40-the-governance-page-s-render-cost by=cr note=real only if a caller passes a %DynamicArray or another object as the list

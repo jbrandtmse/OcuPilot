@@ -11,7 +11,8 @@
  * doubled inside the test's own browser, the page opened from the shell settles within a bound,
  * draws twice the instance's keys, and runs no single task longer than a bound. The doubling is a
  * `.x2` copy of every row added to the GET answer by the browser's own network layer; the instance
- * never holds those keys and the test saves nothing.
+ * never holds those keys and the test saves nothing. AC2 needs the rebuilt bundle deployed and an
+ * instance answering at least one governance key.
  *
  * **It refuses the live container**: AC1 writes the instance's governance policy, and puts it back
  * to the default in `finally` through the shipped route, so no later spec starts from a disabled
@@ -169,9 +170,9 @@ async function doubleGovernanceAnswer(page) {
 }
 
 test('AC2 (Story 21.40): the page opened under a 4x CPU throttle with its keys doubled settles within its bound and draws every key', async () => {
-  const unmodified = await (
-    await fetch(`${config.origin}${GOVERNANCE_PATH}`, { headers: { Authorization: sharedAuthHeader(config) } })
-  ).json();
+  const read = await fetch(`${config.origin}${GOVERNANCE_PATH}`, { headers: { Authorization: sharedAuthHeader(config) } });
+  assert.equal(read.status, 200, 'the instance answers the governance read');
+  const unmodified = await read.json();
   assert.ok(unmodified.keys.length > 0, 'the instance answers governance keys');
   const { context, page } = await walkSignedInAt(browser, config, '/ocupilot/?ns=HSCUSTOM', VIEWPORTS.wide, [
     { name: 'prefers-reduced-motion', value: 'reduce' },
@@ -196,10 +197,10 @@ test('AC2 (Story 21.40): the page opened under a 4x CPU throttle with its keys d
     const visit = await goInApp(page, requests, GOVERNANCE_URL, config.navigationTimeoutMs);
 
     assert.deepEqual(doubling.failures, [], 'the answer was doubled without an error');
-    const drawn = await page.$$eval('.ocu-governance-key', (cells) => cells.length);
-    assert.equal(drawn, 2 * unmodified.keys.length, 'the page draws twice the instance\'s keys');
     assert.equal(visit.settled, true, `the page settles: ${visit.why}`);
     assert.ok(visit.ms <= SETTLE_BOUND_MS, `the page settled in ${visit.ms} ms, over ${SETTLE_BOUND_MS} ms`);
+    const drawn = await page.$$eval('.ocu-governance-key', (cells) => cells.length);
+    assert.equal(drawn, 2 * unmodified.keys.length, 'the page draws twice the instance\'s keys');
     const durations = await page.evaluate(() => window.__ocuLongTasks.filter((task) => task.start >= window.__ocuLongTaskMark).map((task) => task.duration));
     const longest = Math.round(Math.max(0, ...durations));
     assert.ok(longest <= LONGEST_TASK_BOUND_MS, `the longest task ran ${longest} ms, over ${LONGEST_TASK_BOUND_MS} ms`);

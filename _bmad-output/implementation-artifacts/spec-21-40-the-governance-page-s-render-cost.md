@@ -89,6 +89,30 @@ deferred:
 - Given the Governance page at 1280 px light, CPU throttled 4x, with the read's keys doubled in the browser, when it is opened from the shell with the walk's `goInApp`, then it settles within 3,000 ms, it draws twice the instance's key count, and no long task exceeds 1,000 ms (DW-1822).
 - Given scratch tree C (Baseline and write keys doubled, outside the worktree, never committed) loaded on `ocupilot-ci` with this fix, when the read is timed by `curl` three times, then its median is within 0.3 s of tree B's. The pre-fix gap was 1.9 s (3.5 s against 1.6 s). Recorded under Verification. `ocupilot-ci` is then restored to this story's tree.
 
+### Review Findings
+
+Code review 2026-11-24 of 27de51476 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 0 high, 1 med, 11 low entries from 25 rows.
+
+- [x] [Review][Patch] (med) Byte-identity was pinned only row against row through `SeedFrom`, never against `Seed`, nor under stored overrides: a uniformly wrong lookup passed. Added `GovernanceBaseline.TestRowsEqualThePerKeyPath` (rows byte-identical to the per-key path under five override sets, `Effective` equal over the store as read, `SeedFrom` = `Seed` over every key). [fix-risk low: test-only]
+- [x] [Review][Patch] (low) `Rows` given a non-object list read `absent` but resolved `enabled` through `Seed`, contradicting its doc. `Rows` now treats it as `{}`; pinned in the same test. [fix-risk low: one guard line]
+- [x] [Review][Patch] (low) AC2 asserted the row count before `settled`, hiding `visit.why`; reordered. [fix-risk low]
+- [x] [Review][Patch] (low) AC2's Node GET had no status check; added. [fix-risk low]
+- [x] [Review][Patch] (low) The spec header did not say what AC2 needs; added. [fix-risk low]
+- [x] [Review][Patch] (low) The test class header and `TestOneReadResolvesEveryRowFromOneParse`'s doc omitted what they pin (the empty-list rows, `Rows` not `Effective`); corrected. [fix-risk low]
+- [x] [Review][Patch] (low) AC2's settle bound had no observed red; mutation run and recorded under Verification. [fix-risk low]
+- [x] [Review][Defer] (low) No automated check counts baseline parses per read -- DW-2868 `wontfix-accepted`. [fix-risk med: needs a seam on add-only Baseline.cls]
+- [x] [Review][Defer] (low) The settle bound comes from local runs; CI headroom is thinner than 1.5x (inference) -- DW-2869 `by-design` (the ruling's derivation). [fix-risk low]
+- [x] [Review][Defer] (low) A non-`%DynamicObject` list would error in `SeedFrom` -- DW-2870 `wontfix-theoretical`. [fix-risk low]
+- [x] [Review][Defer] (low) `SeedFrom` repeats `Seed`'s lookup (Rule 2, forced by add-only) -- DW-2867 `wontfix-accepted`, now pinned equal. [fix-risk low]
+- [x] [Review][Dismiss] (low) Auto Run Result prose: a stale trailing `Status: ready-for-dev` block, a 4-vs-5 rejected tally, "below" for the bounds table, unnamed `Baseline.*` callers. Outside the review's sanctioned spec edits; left for the runner.
+
+Rejected:
+
+- `false`: the plan-gate ruling's 2026-11-24 date is wrong -- the ruling's commit bc0d278ee is dated 2026-11-24 03:59 UTC.
+- `false`: the tracker still reads `ready-for-dev` -- the review's sprint-status sync sets it.
+- `low`: `Rows` returns no `%Status` -- the spec fixes its signature; errors reach `Effective`'s `Catch`.
+- `false`: the handler drops `content-encoding` beyond the spec -- required, since `Fetch.getResponseBody` returns the decoded body.
+
 ## Spec Change Log
 
 - 2026-11-24, orchestrator ruling at the plan gate, authoritative over the bounds written elsewhere in this spec:
@@ -210,6 +234,9 @@ Trees:
 - mutation (server): `Rows` reads `Baseline.Seed(tKey, .tListed)` instead of `SeedFrom` -> only `TestOneReadResolvesEveryRowFromOneParse` red (the `.x2` rows differ from their originals). `Cascade` ignoring `pBaseline` -> the same test red, on the `.x2` rows and on the list-only key. Each applied, observed red, reverted and reloaded into `ocupilot-ci`, and the test green again.
 - mutation (server, empty list): `SeedFrom`'s `%GetTypeOf(pKey) '= "boolean"` guard removed -> `TestOneReadResolvesEveryRowFromOneParse` red (an empty list's rows read disabled instead of absent). Reverted and reloaded into `ocupilot-ci`, `git diff` showing only the added method, and the test green again (run 1012).
 - mutation (browser): a 1,500 ms synchronous busy loop at the top of `GovernancePage.rowViews` -> after a rebuild and redeploy, only AC2 red, "the longest task ran 1742 ms, over 1000 ms" (AC1 stayed green). The `.x2` doubling removed from the Fetch handler -> AC2 red on the row count (371 against 742). Each reverted, rebuilt and redeployed, `git status` showing no change to `governance.page.ts`.
+- mutation (review, server): `SeedFrom` answering `1` for every listed key -> only `TestRowsEqualThePerKeyPath` red (run 1017); `TestOneReadResolvesEveryRowFromOneParse` stayed green. `Rows` without its non-object guard -> the same test red on "Rows given no list" (run 1018). Each reverted, `git diff` clean on the mutated lines, reloaded, green (run 1021).
+- mutation (review, browser): a 1,300 ms wait before the Fetch handler fulfils the governance answer -> AC2 red, "the page settled in 3150 ms, over 3000 ms". Reverted, `git status` showing only the review's patches.
+- review evidence on `ocupilot-ci`: a stored policy (read-only preset, then no preset, with 186 keys enabled or disabled) -> `TestRowsEqualThePerKeyPath`'s `Effective` comparison green over each (runs 1019, 1020); the policy cleared and the answer byte-identical to the one read before (372 keys). A baseline line flipped and reloaded -> the next GET answers it (no parse outlives a read); reverted and byte-identical again.
 
 Shared surfaces: none (no roster, menu, schema or count changes; `governance.browser-spec.mjs` gains one test and its time in `ci-timings.json` follows at the next refresh). Every test added or changed passes on a fresh environment, in either order.
 
@@ -227,11 +254,8 @@ Files changed:
 - `src/OcuPilot/Test/GovernanceBaseline.cls`: `TestOneReadResolvesEveryRowFromOneParse`.
 - `ui/browser/governance.browser-spec.mjs`: AC2 and its header.
 
-Review: 6 findings, 1 patched (an empty-list assertion with its mutation line), 4 low and false findings rejected with reasons in the Review Triage Log, nothing deferred by review. Follow-up review recommended: false (0 high, 0 medium patched).
+Review: 6 findings, 1 patched (an empty-list assertion with its mutation line), 5 low and false findings rejected with reasons in the Review Triage Log, nothing deferred by review. Follow-up review recommended: false (0 high, 0 medium patched).
 
 Verification: reload `LOADERRORS=0`; ObjectScript classes green one per call (`GovernanceBaseline` 4, `Governance` 14, `GovernanceWire` 6, `ToolDispatch` 19, `SurfaceCoverage` 4, and the classes that call `Baseline.*`); `check-objectscript.py` 0 problems; `lint-docs.sh` 0 issues; `test:tools` 2415 passed; `test:components` 3940 passed; browser `governance` forward and reversed 2 of 2; `a11y-structural-invariants` 13 of 13; curl medians 1.182 s on this tree and on tree C; five mutations run red and reverted.
 
 Residual risks: the settle includes the unthrottled `Registry.ListTools` rebuild of about 1.2 s per read (deferred); DW-1822 is not resolved and is re-owned by the runner with the measurements.
-
-Status: ready-for-dev
-Blocking condition: none

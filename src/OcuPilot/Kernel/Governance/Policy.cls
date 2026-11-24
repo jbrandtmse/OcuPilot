@@ -170,9 +170,11 @@ ClassMethod Effective(Output pRows As %DynamicArray, Output pPreset As %String, 
 /// <p>One row per key of <var>pKeys</var> (subscripted by key), in key order, as
 /// <var>pRows</var>: the rows <method>Effective</method> answers, resolved over the stored values
 /// <var>pValues</var> and the baseline list <var>pBaseline</var>. It reads no baseline of its own,
-/// so a key <var>pBaseline</var> does not list reads <parameter>BASELINEABSENT</parameter>.</p>
+/// so a key <var>pBaseline</var> does not list reads <parameter>BASELINEABSENT</parameter>, and a
+/// <var>pBaseline</var> that is not an object lists nothing.</p>
 ClassMethod Rows(ByRef pKeys, ByRef pValues, pBaseline As %DynamicObject, Output pRows As %DynamicArray)
 {
+    If '$IsObject($Get(pBaseline)) Set pBaseline = {}
     Set tStore = "OcuPilot.Kernel.State.Policy"
     Set pRows = []
     Set tKey = ""

@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '11-24-2026 03:59'
+last_updated: '11-24-2026 05:16'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -424,7 +424,7 @@ development_status:
   21-37-page-resources: done
   21-38-shared-rules-helpers-the-source-control-follow-up-and-escala: done
   21-39-ci-health-the-governance-renderer-stall-and-the-journal-reve: done
-  21-40-the-governance-page-s-render-cost: ready-for-dev
+  21-40-the-governance-page-s-render-cost: done
   epic-21-retrospective: optional
 
   epic-22: done
