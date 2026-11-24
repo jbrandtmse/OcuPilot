@@ -1114,3 +1114,8 @@
 2026-11-24T05:21:56Z	Story 21.40	stage_complete	stage=code_review agent=aa32e7595 result=done commit=0e6a1b2c0 high=0 med=1(patched:TestRowsEqualThePerKeyPath) low=11 ledger=DW-2867,DW-2868,DW-2869,DW-2870(terminal) breach=two_test_classes_in_one_message(discarded,rerun_alone) lines_ended=verified bashedits=none lead_fix=stale_trailing_Status_block_removed
 2026-11-24T05:21:56Z	Story 21.40	code_head_pushed	sha=0e6a1b2c0 run=45332752358 feature=cd415b0d7(already_ancestor)
 2026-11-24T05:21:56Z	Story 21.40	gate_step	step=fresh_check+full_sweep+smoke head=0e6a1b2c0 started=2026-11-24T05:21:56Z dir=e21-kit/21-40/gate1
+2026-11-24T05:43:16Z	Story 21.40	fresh_check	env=recipe(ci-throwaway_rebuild) tests=8_classes+2_specs result=pass order=forward(15/15),reverse(13+2) head=0e6a1b2c0
+2026-11-24T06:12:08Z	Story 21.40	ci	run=45332752358 head=0e6a1b2c0 result=green_attempt1(browser_1/5_green)
+2026-11-24T07:29:32Z	Epic 21	hold_ordered	reason=owner_quota_hold(via_Planner/orchestrator,<state>/HOLD_since_07:28:51Z) running=21.40_gate1_sweep_on_0e6a1b2c0 next_on_resume=AC2_bound_3000->5000_then_push_alone_then_merge
+2026-11-24T08:31:02Z	Story 21.40	gate_step	step=full_sweep+smoke head=0e6a1b2c0 sweep=20/20 smoke=50/50 result=pass
+2026-11-24T08:31:02Z	Epic 21	hold_complete	shas=code_head=0e6a1b2c0(origin,CI_45332752358_green),branch_tip=pending_this_commit tree=clean patches=none resume=21.40_AC2_bound_3000->5000_then_push_alone_then_merge throwaway=ocupilot-ci_UP(started_by_this_run,gate1_05:22Z)
