@@ -404,6 +404,19 @@ ClassMethod Seed(pKey As %String, Output pListed As %Boolean) As %Boolean
     Quit ''tKeys.%Get(pKey)
 }
 
+/// <p><method>Seed</method>'s lookup over <var>pList</var>, a list <method>Keys</method> already
+/// parsed: the value <var>pList</var> lists for <var>pKey</var>, with <var>pListed</var> 1, or
+/// <code>0</code> with <var>pListed</var> 0 for a key it does not list or a <var>pList</var> that is
+/// not an object. It reads nothing.</p>
+ClassMethod SeedFrom(pList As %DynamicObject, pKey As %String, Output pListed As %Boolean) As %Boolean
+{
+    Set pListed = 0
+    If '$IsObject($Get(pList)) Quit 0
+    If pList.%GetTypeOf(pKey) '= "boolean" Quit 0
+    Set pListed = 1
+    Quit ''pList.%Get(pKey)
+}
+
 /// <p>Every listed key and its value, as the <class>%DynamicObject</class> the XData block
 /// declares, in <var>pList</var>. An unreadable block, or one that is not a JSON object, is an
 /// error with <var>pList</var> <code>""</code>.</p>

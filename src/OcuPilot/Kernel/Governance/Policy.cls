@@ -105,8 +105,10 @@ ClassMethod StoreClass() As %String
 
 /// <p>The cascade over stored values <var>pValues</var> (as
 /// <method>OcuPilot.Kernel.State.Policy.GuardedAll</method> answers them), for
-/// <var>pKey</var> of kind <var>pKind</var>. Pure: it reads nothing but the baseline.</p>
-ClassMethod Cascade(ByRef pValues, pKey As %String, pKind As %String, Output pEnabled As %Boolean, Output pSource As %String)
+/// <var>pKey</var> of kind <var>pKind</var>. Pure: it reads nothing but the baseline. The baseline layer
+/// reads <var>pBaseline</var>, a list <method>OcuPilot.Kernel.Governance.Baseline.Keys</method> already
+/// parsed, when one is given, and parses the baseline itself when not.</p>
+ClassMethod Cascade(ByRef pValues, pKey As %String, pKind As %String, Output pEnabled As %Boolean, Output pSource As %String, pBaseline As %DynamicObject = "")
 {
     Set pEnabled = 0
     Set pSource = ""
@@ -128,7 +130,11 @@ ClassMethod Cascade(ByRef pValues, pKey As %String, pKind As %String, Output pEn
         Set pSource = ..#SOURCEPRESET
         Quit
     }
-    Set pEnabled = ##class(OcuPilot.Kernel.Governance.Baseline).Seed(pKey, .tListed)
+    If $IsObject(pBaseline) {
+        Set pEnabled = ##class(OcuPilot.Kernel.Governance.Baseline).SeedFrom(pBaseline, pKey, .tListed)
+    } Else {
+        Set pEnabled = ##class(OcuPilot.Kernel.Governance.Baseline).Seed(pKey, .tListed)
+    }
     Set pSource = ..#SOURCEBASELINE
 }
 
@@ -151,28 +157,40 @@ ClassMethod Effective(Output pRows As %DynamicArray, Output pPreset As %String, 
         If $$$ISERR(tSC) Quit
         Set tStore = "OcuPilot.Kernel.State.Policy"
         Set pPreset = $Get(tValues($Parameter(tStore, "PRESETNAME")))
-        Set pRows = []
-        Set tKey = ""
-        For {
-            Set tKey = $Order(tKeys(tKey))
-            If tKey = "" Quit
-            Set tSeed = ##class(OcuPilot.Kernel.Governance.Baseline).Seed(tKey, .tListed)
-            Set tStored = $Get(tValues(tKey))
-            If (tStored '= $Parameter(tStore, "VALUEENABLED")) && (tStored '= $Parameter(tStore, "VALUEDISABLED")) Set tStored = $Parameter(tStore, "VALUEINHERIT")
-            Do ..Cascade(.tValues, tKey, ..#WRITEKIND, .tEnabled, .tSource)
-            Set tRow = {}
-            Do tRow.%Set("key", tKey, "string")
-            Do tRow.%Set("baseline", $Select('tListed: ..#BASELINEABSENT, tSeed: ..#BASELINEENABLED, 1: ..#BASELINEDISABLED), "string")
-            Do tRow.%Set("setting", tStored, "string")
-            Do tRow.%Set("enabled", ''tEnabled, "boolean")
-            Do tRow.%Set("source", tSource, "string")
-            Do pRows.%Push(tRow)
-        }
+        Set tBaselineSC = ##class(OcuPilot.Kernel.Governance.Baseline).Keys(.tBaseline)
+        If $$$ISERR(tBaselineSC) || '$IsObject(tBaseline) Set tBaseline = {}
+        Do ..Rows(.tKeys, .tValues, tBaseline, .pRows)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     If $$$ISERR(tSC) Set pRows = ""
     Quit tSC
+}
+
+/// <p>One row per key of <var>pKeys</var> (subscripted by key), in key order, as
+/// <var>pRows</var>: the rows <method>Effective</method> answers, resolved over the stored values
+/// <var>pValues</var> and the baseline list <var>pBaseline</var>. It reads no baseline of its own,
+/// so a key <var>pBaseline</var> does not list reads <parameter>BASELINEABSENT</parameter>.</p>
+ClassMethod Rows(ByRef pKeys, ByRef pValues, pBaseline As %DynamicObject, Output pRows As %DynamicArray)
+{
+    Set tStore = "OcuPilot.Kernel.State.Policy"
+    Set pRows = []
+    Set tKey = ""
+    For {
+        Set tKey = $Order(pKeys(tKey))
+        If tKey = "" Quit
+        Set tSeed = ##class(OcuPilot.Kernel.Governance.Baseline).SeedFrom(pBaseline, tKey, .tListed)
+        Set tStored = $Get(pValues(tKey))
+        If (tStored '= $Parameter(tStore, "VALUEENABLED")) && (tStored '= $Parameter(tStore, "VALUEDISABLED")) Set tStored = $Parameter(tStore, "VALUEINHERIT")
+        Do ..Cascade(.pValues, tKey, ..#WRITEKIND, .tEnabled, .tSource, pBaseline)
+        Set tRow = {}
+        Do tRow.%Set("key", tKey, "string")
+        Do tRow.%Set("baseline", $Select('tListed: ..#BASELINEABSENT, tSeed: ..#BASELINEENABLED, 1: ..#BASELINEDISABLED), "string")
+        Do tRow.%Set("setting", tStored, "string")
+        Do tRow.%Set("enabled", ''tEnabled, "boolean")
+        Do tRow.%Set("source", tSource, "string")
+        Do pRows.%Push(tRow)
+    }
 }
 
 /// <p>Every key a registered write tool yields (<method>KeysOf</method>), as <var>pKeys</var>

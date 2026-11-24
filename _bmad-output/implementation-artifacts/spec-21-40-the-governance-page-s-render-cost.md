@@ -2,7 +2,8 @@
 title: "Story 21.40: The governance page's render cost"
 type: 'bugfix'
 created: '2026-11-23'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '28aa3919626d4f80acb67fe982276cc1f40f1706'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -78,14 +79,14 @@ deferred:
   - On a page CDP session, `Fetch.enable` for the governance path at `requestStage: 'Response'`. A GET answer's `keys` get a `.x2` copy of every row, in name order; the test fulfils with the new body and drops `content-length`. Anything else continues.
   - Then `Emulation.setCPUThrottlingRate` 4, and a `longtask` `PerformanceObserver` from a start mark.
   - `goInApp` to `/ocupilot/agent/governance?ns=HSCUSTOM`.
-  - Assert `settled` true and `ms` ≤ 5000. The `.ocu-governance-key` count equals twice the keys of an unmodified GET from Node, read in the same test. The longest long task after the mark is ≤ 1000 ms.
+  - Assert `settled` true and `ms` ≤ 3000. The `.ocu-governance-key` count equals twice the keys of an unmodified GET from Node, read in the same test. The longest long task after the mark is ≤ 1000 ms.
   - Throttle back to 1 and close the context in `finally`.
   - DW-1822.
 
 **Acceptance Criteria:**
 
 - Given `ocupilot-ci` on this story's tree, when `GET /api/ocupilot/agent/governance` answers, then its body equals the pre-change answer for the same state, and `Effective` parses the Baseline once: `TestOneReadResolvesEveryRowFromOneParse` passes, and `Governance` and `GovernanceWire` stay green.
-- Given the Governance page at 1280 px light, CPU throttled 4x, with the read's keys doubled in the browser, when it is opened from the shell with the walk's `goInApp`, then it settles within 5,000 ms, it draws twice the instance's key count, and no long task exceeds 1,000 ms (DW-1822).
+- Given the Governance page at 1280 px light, CPU throttled 4x, with the read's keys doubled in the browser, when it is opened from the shell with the walk's `goInApp`, then it settles within 3,000 ms, it draws twice the instance's key count, and no long task exceeds 1,000 ms (DW-1822).
 - Given scratch tree C (Baseline and write keys doubled, outside the worktree, never committed) loaded on `ocupilot-ci` with this fix, when the read is timed by `curl` three times, then its median is within 0.3 s of tree B's. The pre-fix gap was 1.9 s (3.5 s against 1.6 s). Recorded under Verification. `ocupilot-ci` is then restored to this story's tree.
 
 ## Spec Change Log
@@ -97,6 +98,17 @@ deferred:
   - **DW-1822 is re-owned at this story's end, not resolved.** The runner routes it to burn-down with the measurements.
 
 ## Review Triage Log
+
+### 2026-11-23 — Review pass
+
+- verdicts: 6 findings — high 0, medium 0, low 4, false 2, maybe-false 0
+- findings:
+  - `[low]` `[reject]` Neither the settle bound nor AC3's read time has a mutation that reddens it by wall-clock — the settle bound sits above the pre-fix settle at the instance's real key count, so the server half is pinned structurally by `TestOneReadResolvesEveryRowFromOneParse`; a time gate on the server read would be flaky, so a fix would add a new flaky check for little gain.
+  - `[low]` `[reject]` The settle bound's margin over the measured worst is 1.65x and includes the unthrottled server read — the bound is the ruling's derivation (1.5x the worst of twelve runs, rounded up); widening it is the owner's call.
+  - `[false]` `[reject]` The `longtask` observer cannot fail on a browser without support — the pinned Chrome supports it, and the busy-loop mutation was observed red.
+  - `[low]` `[patch]` No test covers the matrix row "Baseline unreadable" (every row absent and disabled) — added an assertion that `Rows` over an empty list answers every row absent and disabled, with a `mutation:` line, run red then green (run 1011 red, 1012 green); the `Keys`-error fallback in `Effective` itself is a two-line guard no test provokes.
+  - `[false]` `[reject]` Intent audit: the browser test doubles the answer after the instance has answered, so it does not measure the server parse — as designed by the intent ("extra keys are added only inside the test's browser"); the server parse is pinned by the new ObjectScript test.
+  - `[low]` `[reject]` Intent audit: the ObjectScript test exercises `Rows`, not `Effective`, so an `Effective` that parsed per key before `Rows` is not caught — `Effective` calls `Keys` once and `Rows` is the only loop, so the per-key parse has no place to return without reddening the test; the byte-identical answer was compared whole before and after (371 keys, 42,646 bytes).
 
 ## Design Notes
 
@@ -142,6 +154,17 @@ Trees:
 - The orchestrator's CI reading is about 1.4x slower: client suite 11.8 against 8.5 min in run 45048213834 (inference).
 - 4x covers that with margin (inference). The CI stall line answered governance in 1,626 ms, the same as here.
 
+**Post-fix bounds** (the ruling in the Spec Change Log). Same method and instance as above, with the fix loaded and the rebuilt bundle deployed; every run a cold browser at 4x, 742 keys drawn.
+
+| Configuration | Runs | Settle ms | Longest task ms |
+|---|---|---|---|
+| The test's own: this tree, the answer doubled in the browser | 6 | 1817, 1818, 1716, 1714, 1719, 1814 | 232, 248, 241, 227, 235, 245 |
+| Tree C with the fix: Baseline and write keys doubled on the instance | 6 | 1610, 1712, 1709, 1716, 1716, 1716 | 239, 227, 240, 221, 229, 240 |
+
+- Worst settle is 1,818 ms; 1.5 times it is 2,727 ms, so the bound is 3,000 ms.
+- Worst longest task is 248 ms; 1.5 times it is 372 ms, at or below 1,000 ms, so the bound stays 1,000 ms.
+- The read by `curl`, median of three: 1.18 s on this tree and 1.18 s on tree C (1.205, 1.176, 1.182), against 1.6 s and 3.5 s before the fix. The answer on this tree is byte-identical to the pre-change answer.
+
 **For the orchestrator (evidence, not a halt):** some costs do grow with the key list, so the plan designs the fix the ruling asks for. The magnitudes do not explain the stall, though.
 
 - At the stall, governance had answered, and the renderer then answered no DevTools call for 60 s.
@@ -153,7 +176,7 @@ Trees:
 
 - The fix cuts the read's per-row parse ("less work per row") and leaves the page's markup alone. Collapsed groups would need new grouping and strings for at most 0.2 s at 4x. Virtualisation would take rows out of the DOM that the a11y walk inspects.
 - The doubled count is made in the browser: Fetch fulfils the real GET answer with `.x2` copies. That gives the page's render at twice the keys with no fake key on the instance. The server half is pinned by `TestOneReadResolvesEveryRowFromOneParse`.
-- The bounds are 5,000 ms settle and 1,000 ms longest task. Measured at 4x and double the keys: 4.1 s settle before the fix, with the server doubled too, and a 222 ms task.
+- The bounds are 3,000 ms settle and 1,000 ms longest task, derived from the post-fix measurements below. Before the fix, at 4x and double the keys with the server doubled too, the settle was 4.1 s and the longest task 222 ms.
 
 **Rule 2:**
 
@@ -182,12 +205,33 @@ Trees:
   - then reload the worktree.
 
   Expected: C's median is within 0.3 s of this tree's.
-- mutation (server): `Rows` reads `Baseline.Seed(tKey, .tListed)` instead of `SeedFrom` -> only `TestOneReadResolvesEveryRowFromOneParse` red (the `.x2` rows read `absent`). `Cascade` ignoring `pBaseline` -> the same test red on `enabled`. Each reverted and reloaded, with `git diff` clean.
-- mutation (browser): a 1,500 ms synchronous busy loop at the top of `GovernancePage.rowViews` -> after a rebuild and redeploy, only AC2 red on the long-task bound. The `.x2` doubling removed from the Fetch handler -> AC2 red on the row count. Each reverted, rebuilt and redeployed.
+
+  Result on `ocupilot-ci`: this tree 1.182, 1.192, 1.180 s (median 1.182 s); tree C 1.205, 1.176, 1.182 s (median 1.182 s), a gap of 0 s against 1.9 s before the fix. The answer on this tree is byte-identical to the pre-change answer (371 keys, 42,646 bytes). The worktree was reloaded afterwards.
+- mutation (server): `Rows` reads `Baseline.Seed(tKey, .tListed)` instead of `SeedFrom` -> only `TestOneReadResolvesEveryRowFromOneParse` red (the `.x2` rows differ from their originals). `Cascade` ignoring `pBaseline` -> the same test red, on the `.x2` rows and on the list-only key. Each applied, observed red, reverted and reloaded into `ocupilot-ci`, and the test green again.
+- mutation (server, empty list): `SeedFrom`'s `%GetTypeOf(pKey) '= "boolean"` guard removed -> `TestOneReadResolvesEveryRowFromOneParse` red (an empty list's rows read disabled instead of absent). Reverted and reloaded into `ocupilot-ci`, `git diff` showing only the added method, and the test green again (run 1012).
+- mutation (browser): a 1,500 ms synchronous busy loop at the top of `GovernancePage.rowViews` -> after a rebuild and redeploy, only AC2 red, "the longest task ran 1742 ms, over 1000 ms" (AC1 stayed green). The `.x2` doubling removed from the Fetch handler -> AC2 red on the row count (371 against 742). Each reverted, rebuilt and redeployed, `git status` showing no change to `governance.page.ts`.
 
 Shared surfaces: none (no roster, menu, schema or count changes; `governance.browser-spec.mjs` gains one test and its time in `ci-timings.json` follows at the next refresh). Every test added or changed passes on a fresh environment, in either order.
 
 ## Auto Run Result
+
+Status: done
+Blocking condition: none
+
+Summary: a governance read parses the Baseline once (`Effective` calls `Baseline.Keys` once and hands the list to the new `Policy.Rows`; `Cascade` takes an optional parsed list; `Baseline.SeedFrom` is the lookup over it). The Gate path is unchanged and the read's answer is byte-identical (371 keys, 42,646 bytes). `governance.browser-spec.mjs` gains AC2: 4x CPU throttle, keys doubled in the test's own browser, settle bound 3,000 ms, longest-task bound 1,000 ms, both derived from twelve cold runs (worst settle 1,818 ms, worst task 248 ms).
+
+Files changed:
+
+- `src/OcuPilot/Kernel/Governance/Baseline.cls`: add-only `SeedFrom`.
+- `src/OcuPilot/Kernel/Governance/Policy.cls`: `Cascade`'s optional list, new `Rows`, `Effective` parses once.
+- `src/OcuPilot/Test/GovernanceBaseline.cls`: `TestOneReadResolvesEveryRowFromOneParse`.
+- `ui/browser/governance.browser-spec.mjs`: AC2 and its header.
+
+Review: 6 findings, 1 patched (an empty-list assertion with its mutation line), 4 low and false findings rejected with reasons in the Review Triage Log, nothing deferred by review. Follow-up review recommended: false (0 high, 0 medium patched).
+
+Verification: reload `LOADERRORS=0`; ObjectScript classes green one per call (`GovernanceBaseline` 4, `Governance` 14, `GovernanceWire` 6, `ToolDispatch` 19, `SurfaceCoverage` 4, and the classes that call `Baseline.*`); `check-objectscript.py` 0 problems; `lint-docs.sh` 0 issues; `test:tools` 2415 passed; `test:components` 3940 passed; browser `governance` forward and reversed 2 of 2; `a11y-structural-invariants` 13 of 13; curl medians 1.182 s on this tree and on tree C; five mutations run red and reverted.
+
+Residual risks: the settle includes the unthrottled `Registry.ListTools` rebuild of about 1.2 s per read (deferred); DW-1822 is not resolved and is re-owned by the runner with the measurements.
 
 Status: ready-for-dev
 Blocking condition: none

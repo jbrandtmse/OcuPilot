@@ -4,7 +4,7 @@
 /// operations', Story 18.15's enable of interoperability's, Story 19.2's two document deletes' and
 /// Story 19.13's two document imports' and Story 18.6's license key activation's and license server
 /// delete's and Story 18.25's superserver delete's and Story 18.42's allowed directories update's lines are <code>false</code>, and every other line is
-/// <code>true</code>.</p>
+/// <code>true</code>. It also pins that a governance read resolves every row from one parsed baseline.</p>
 /// <p><b>What it needs from the environment:</b> the compiled tool registry. Live-safe: it reads
 /// the registry and the baseline and writes nothing.</p>
 Class OcuPilot.Test.GovernanceBaseline Extends %UnitTest.TestCase
@@ -70,6 +70,60 @@ Method TestThePurgeIsTheOneDisabledLine()
     }
     Do $$$AssertEquals($ListToString(tDisabled, ", "), ..#DISABLED, "the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the remote database delete, the two document deletes, the two document imports, the license key's activation, the license server delete, the SQL query's run, the data browser's save, the ECP data server status change and delete, the five key file writes, the four encryption key writes, the encryption startup settings' update, the two wallet key replaces, the superserver delete, the mobile phone provider delete, the Doc DB application delete, the privileged routine application delete, the REST service delete, the document database drop, the production item remove and change of class, the two queue aborts, the job abort, the lookup entry remove, the lookup table delete, the lookup table import, the allowed directories update, the cube build, the folder item delete and the two DDL mapping deletes and the locale install and delete and the globals delete and the two node writes and the two source-control answers and the three suspended message writes are the lines listed false")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Governance.Baseline).Seed("probe.not.listed", .tListed) _ "|" _ tListed, "0|0", "an unlisted key reads disabled and unlisted")
+}
+
+/// <p>A governance read resolves every row from one parsed baseline: <method>OcuPilot.Kernel.Governance.Policy.Rows</method>
+/// reads the list it is given and no baseline of its own. Given the baseline's list plus a <code>.x2</code>
+/// copy of each write key at its original's value, it answers twice the rows, each copy resolving as
+/// its original; a key neither the registry nor the list holds reads absent and disabled, and
+/// <method>OcuPilot.Kernel.Governance.Policy.Cascade</method> reads a key only the given list holds from that list.</p>
+/// <p>Mutation (Rule 19): <code>Rows</code> calling <code>Baseline.Seed</code> instead of <code>SeedFrom</code> -> the copies read absent
+/// and this goes red; <code>Cascade</code> ignoring <var>pBaseline</var> -> the copies read disabled and this goes red on
+/// <code>enabled</code>.</p>
+Method TestOneReadResolvesEveryRowFromOneParse()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Governance.Policy).WriteKeys(.tKeys), "the registered write keys are read")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Governance.Baseline).Keys(.tList), "the baseline reads")
+    If '$IsObject($Get(tList)) Quit
+    Set tCount = 0
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tKeys(tKey))
+        If tKey = "" Quit
+        Set tCount = tCount + 1
+        Set tAll(tKey) = ""
+        Set tAll(tKey _ ".x2") = ""
+        If tList.%GetTypeOf(tKey) = "boolean" Do tList.%Set(tKey _ ".x2", tList.%Get(tKey), "boolean")
+    }
+    Do $$$AssertTrue(tCount > 0, "the registry yields write keys (" _ tCount _ ")")
+    Set tAll("probe.render.absent") = ""
+    Do ##class(OcuPilot.Kernel.Governance.Policy).Rows(.tAll, .tValues, tList, .tRows)
+    Do $$$AssertEquals(tRows.%Size(), 2 * tCount + 1, "Rows answers one row per key given")
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        Set tBy(tRow.%Get("key")) = $ListBuild(tRow.%Get("baseline"), tRow.%Get("enabled"), tRow.%Get("source"))
+    }
+    Set tMismatch = ""
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tKeys(tKey))
+        If tKey = "" Quit
+        If $Get(tBy(tKey)) '= $Get(tBy(tKey _ ".x2")) Set tMismatch = tMismatch _ $ListBuild(tKey)
+    }
+    Do $$$AssertEquals($ListLength(tMismatch), 0, "every .x2 row resolves as its original; the first that differs is " _ $ListGet(tMismatch, 1))
+    Do $$$AssertEquals($ListGet($Get(tBy("probe.render.absent")), 1) _ "|" _ $ListGet($Get(tBy("probe.render.absent")), 2), "absent|0", "a key in neither the registry's baseline nor the list reads absent and disabled")
+    Do ##class(OcuPilot.Kernel.Governance.Policy).Rows(.tKeys, .tValues, {}, .tEmptyRows)
+    Set tNotAbsent = 0
+    Set tEmptyIterator = tEmptyRows.%GetIterator()
+    While tEmptyIterator.%GetNext(.tEmptyIndex, .tEmptyRow) {
+        If (tEmptyRow.%Get("baseline") '= "absent") || tEmptyRow.%Get("enabled") Set tNotAbsent = tNotAbsent + 1
+    }
+    Do $$$AssertEquals(tEmptyRows.%Size() _ "|" _ tNotAbsent, tCount _ "|0", "given an empty list, every row reads absent and disabled, as when the baseline cannot be read")
+    Do tList.%Set("probe.render.only", 1, "boolean")
+    Do ##class(OcuPilot.Kernel.Governance.Policy).Cascade(.tValues, "probe.render.only", "write", .tEnabled, .tSource, tList)
+    Do $$$AssertEquals(tEnabled _ "|" _ tSource, "1|baseline", "Cascade resolves a key only the given list holds from that list")
+    Do ##class(OcuPilot.Kernel.Governance.Policy).Cascade(.tValues, "probe.render.only", "write", .tEnabled, .tSource)
+    Do $$$AssertEquals(tEnabled _ "|" _ tSource, "0|baseline", "Cascade without a list reads the baseline itself, which does not list that key")
 }
 
 }
