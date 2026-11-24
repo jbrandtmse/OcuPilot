@@ -125,6 +125,15 @@ Each is the lead's to take to the veto gate; the recommended option is first.
 
 No new dependency; no privilege, role or access grant; nothing is written into another namespace.
 
+**Lead rulings at the spec gate (2026-11-24; filed as an INBOX veto item, binding unless the orchestrator reverses them).** Every veto item is kept as recommended:
+
+- **V1:** kept. If Task 0 (d) measures a consequence sentence untrue, HALT with `## Clarification Needed`; never reword it in-stage. The README count is never typed from this plan: derive it from the merged Baseline on the tree you commit. If Story 21.31 lands on feature first, the lead's integrate re-derives it.
+- **V2:** kept. Both keys ship `false`, behind the typed namespace name.
+- **V3:** kept. If Task 0 (b) shows the classic query needs an SQL privilege the gate does not ask for, HALT; never widen it quietly.
+- **V4:** kept, the narrower values.
+- **V5:** kept, as Story 24.16's AD-7 named limit for a purge. Task 0 (e) records the rate.
+- **V6:** kept for story end; the lead writes the lines. The AD-9 line extends `PurgeFrame`'s containment to these purges and still never lets OcuPilot add a role.
+
 ## Design Notes
 
 **Decided in-stage (plan).**
