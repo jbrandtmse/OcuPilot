@@ -356,6 +356,7 @@ XData Keys [ MimeType = application/json ]
   "interop.suspendedmessages.delete": false,
   "interop.archive.run": false,
   "interop.archivesettings.set": true,
+  "interop.managedalerts.update": true,
   "osmgmt.backuptasks.run": false,
   "osmgmt.backuptasks.freeze": false,
   "osmgmt.backuptasks.thaw": false,

@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:674 */
+  /** EXPERIENCE.md:675 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -9752,6 +9752,64 @@ export const STRINGS = {
   interopArchiveErrorsPrompt1: 'Which messages did the last archive run fail on, and why?',
   /** EXPERIENCE.md:632 */
   interopArchiveSettingsPrompt1: 'Set the days before archiving to 90.',
+  // Story 24.17 Batch 1: the managed alerts screen, the alert history screen, the Update alert dialog, the captions their columns and fields carry, the consequence, the six refusals, the empty states and the prompts.
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertsLabel: 'Managed alerts',
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertHistoryLabel: 'Alert history',
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertUpdateAction: 'Update alert',
+  /** EXPERIENCE.md:633 */
+  interopAlertColumnTime: 'Alert time',
+  /** EXPERIENCE.md:633 */
+  interopAlertColumnText: 'Alert text',
+  /** EXPERIENCE.md:633 */
+  interopAlertColumnOwner: 'Current owner',
+  /** EXPERIENCE.md:633 */
+  interopAlertColumnLevel: 'Escalation level',
+  /** EXPERIENCE.md:633 */
+  interopAlertColumnLastAction: 'Last action time',
+  /** EXPERIENCE.md:633 */
+  interopAlertColumnNextAction: 'Next action time',
+  /** EXPERIENCE.md:633 */
+  interopAlertColumnOldValues: 'Old values',
+  /** EXPERIENCE.md:633 */
+  interopAlertColumnNewValues: 'New values',
+  /** EXPERIENCE.md:633 */
+  interopAlertFieldNextMinutes: 'Next action in (minutes)',
+  /** EXPERIENCE.md:633 */
+  interopAlertOwnerUnassigned: 'Unassigned',
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertUpdateConsequence:
+    'Updating saves each change in the alert\'s history with your username and the reason given. The alert can be updated again, and a closed alert can be opened again.',
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertRefusalNotFound: 'This managed alert no longer exists.',
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertRefusalUnchanged: 'Nothing would change. Choose a new owner, open state, escalation level or next action time.',
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertRefusalOwner: 'The owner must be unassigned, you, or a user who can work on managed alerts in this namespace.',
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertRefusalLevel: 'The escalation level moves one step up or down from its current level, and never below 0.',
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertRefusalNextAction: 'Next action in (minutes) is a whole number from 1 to 20160.',
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertRefusalReason: 'Give a reason of 1 to 500 characters, with no control characters.',
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertsEmpty: 'No managed alerts in this namespace.',
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertsEmptyAgent: 'update a managed alert',
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertHistoryEmpty: 'This alert has no history yet.',
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertsPrompt1: 'Which managed alerts are open and unassigned?',
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertsPrompt2: 'Which open alerts are past their next action time?',
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertsPrompt3: 'Who owns the most open alerts?',
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertsPrompt4: 'Close this alert with the reason that it is resolved.',
+  /** EXPERIENCE.md:633 */
+  interopManagedAlertHistoryPrompt1: 'What has happened to this alert so far?',
 } as const;
 
 /**

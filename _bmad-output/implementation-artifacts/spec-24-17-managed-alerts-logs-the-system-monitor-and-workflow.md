@@ -2,8 +2,8 @@
 title: 'Story 24.17: Managed alerts, logs, the system monitor and workflow (Batch 1: managed alerts)'
 type: 'feature'
 created: '2026-11-23'
-status: 'ready-for-dev'
-baseline_revision: 'eedeed40f8fab548dbc9f01e9a15e85acbf679ef'
+status: 'in-review'
+baseline_revision: '7dc6c95514ced45270e19bec3573c19ef3baba39'
 review_loop_iteration: 0
 followup_review_recommended: false
 owned_ledger: ''
@@ -160,6 +160,34 @@ No new dependency; no privilege, role or access grant; nothing is written into a
 9. Side-bar position 22, after Archive errors; the history takes none.
 10. Story 24.21's harvested `rule_log` and `get_business_process_instance` stay its own; Batch 2's reads are the screens' declared reads.
 
+**Measured (Task 0, `ocupilot-b-ci`, USER and HSCUSTOM, auditing on; no HALT).** The session ran as `irisowner`; the principals ran in a child job after `$System.Security.Login`.
+
+- (a) Six `UpdateManagedAlert` calls (each of the four bits alone, then all four) wrote only `^Ens.Alerting.ManagedAlertD` (the alert and its `Actions` rows) and `^Ens.Alerting.ManagedAlertI`, both in the namespace's own database (journal read by process id), nothing in HSCUSTOM's, and no audit row (a positive control, one `%Ensemble` row, was read). Both globals map to each namespace's own database (`/durable/iris/mgr/user/`, `/durable/iris/mgr/HSCUSTOM/`). The list and history reads write no data; the first preparation of a statement writes the SQL statement cache (`^rINDEXSQL`, `^%SYS`) and a second run writes nothing.
+- (b) A principal holding `%Ens_Portal:U`, `%Ens_Alerts:RW`, `%DB_USER:RW` (and `%DB_HSCUSTOM:R` to run code from the install namespace) reads the list, the history and `LastActionTime` through `%ExecDirectNoPriv`, updates an unassigned alert and its own, and is refused another's (`ERROR #940`); with `%Ens_AlertAdministration:U` it updates another's. With `%DB_USER:R` the vendor fails with `<PROTECT>%SaveData` on `^Ens.Alerting.ManagedAlertI` (status 5002), the alert unchanged; with `%Ens_Alerts:R` or without the resource the vendor answers `#940`, and the reads still succeed, so the port gates its reads itself. No further pair is needed.
+- (c) `%SYS.Ensemble.ListAlertingUsers(.u, "USER")` answers `Admin` for `irisowner` and for a principal holding `%Ens_Alerts:W`, and `ERROR #940` without it; a user holding `%EnsRole_AlertOperator` and WRITE on USER's database is added, and none is listed for HSCUSTOM. `$ROLES`, `$USERNAME` and `$NAMESPACE` read the same before and after, for every principal and for `irisowner`.
+- (d) Each history row names `$USERNAME`, the reason and `GetText` of its bits (`Assign`, `Close`, `Change Escalation Level`, `Change Next Action Time`, joined by ` | `), with the old and new values by name. A reopen is recorded under bit 2 and `GetText` reads `Close` for it too. An assign to the same owner is recorded as an action (so the port refuses it first); a lower-than-0 or unchanged level and an unchanged open state record nothing and answer OK; an empty reason (`#5659`) and 501 characters (`#7201`) fail in the vendor; a tab in the reason and an owner not in the list are accepted by it (so the port's rules are stricter). `DATEADD("mi", 60, <UTC now>)` reads exactly 60 minutes later in the stored `Ens.DataType.UTC` form (trailing zeros of the fraction dropped). `ALERTUPDATE` holds as drafted.
+- (e) The list read (newest first, `LastActionTime` included, one more row than the cap) ends in 0.08 s the first time and 0.02 s after for 1,000 probes with three actions each, and in 0.04 s for 2,000; the history of one alert reads in under 0.03 s. `ALERTSMAX` is 2,000 (the larger, never above 2,000).
+- Residue: every probe alert, user and role, the scratch class and its globals are gone; USER and HSCUSTOM hold no managed alert (SQL count 0); HSCUSTOM's alert globals, absent before, are killed; USER's id counter is 2,040 (it read 12) and its bitmap index nodes are empty.
+
+**Decided in-stage (implement, ObjectScript half).**
+
+1. `ALERTSMAX` is 2,000 (Measured (e)); `ALERTACTIONSMAX` 1,000; `ALERTNEXTMAX` 20,160; the list answers `min(maxRows, cap)` rows, so the caller's cap-plus-one row is its truncation signal (AD-36), and a seam subclass (`InteropAlertCapSeam`) lowers both caps to three.
+2. The fresh read `ALERT` answers `{ID, CurrentOwner, IsOpen, EscalationLevel, NextActionTime, ActionCount, Namespace}` and four more members, `Owner` and `Open` (what the alert holds, so a merge that sets one to that leaves it unchanged), `NextActionMinutes` and `Reason` (empty), because the screen action's merge (`Mint.Merge`) refuses an argument its read does not carry. `FINGERPRINTSUBJECT` and `READANSWERS` name them beside the spec's six, since the stored payload is narrowed to the subject and the port reads the values from it; the read-back compares `Owner`, `Open` and `EscalationLevel`, not the next action time, which is set from the clock at the write.
+3. The three `Prohibited.cls` edits are additive (type parameter, `COVEREDTYPES` last, the uncovered guard extended by suffix, one review arm after the archive's); no `PermittedChangeFields` arm, because the tool's values travel in the port's query and are no field of the type (`Test/Prohibited` pins both).
+4. A review that carries no value (the dry run that opens the dialog) reads the state alone; any value present is judged, `Reason` required. An owner equal to the alert's own is never judged against the owner list.
+5. The owner choices, like the update, require `%Ens_Alerts:WRITE` and WRITE on the namespace's globals database (`Admit` takes `ALERTOWNERS` as a write for its database permission).
+6. List and history times read as the instance's local time, as the other lists show them; the `ALERT` row's next action time is as stored (UTC) for the fingerprint. A bad open state answers `PORT.VALIDATION` through the shared criterion sentence ("Open is not valid."), reachable only from a direct port call.
+7. The vendor-error leg (AC4) runs through the port seam (`InteropAlertSeam`), which both callers' writes reach; a real vendor failure for the HTTP callers has no cheap probe.
+8. The keys the client must publish, none beyond the spec's quoted strings: labels `interopManagedAlertsLabel`, `interopManagedAlertHistoryLabel`; columns `interopAlertColumnTime`, `interopAlertColumnText`, `interopAlertColumnOwner`, `interopAlertColumnLevel`, `interopAlertColumnOpen` (also the `open` criterion), `interopAlertColumnLastAction`, `interopAlertColumnNextAction`, `interopAlertColumnOldValues`, `interopAlertColumnNewValues`; empty states `interopManagedAlertsEmpty`, `interopManagedAlertsEmptyAgent`, `interopManagedAlertHistoryEmpty`; prompts `interopManagedAlertsPrompt1` to `4` and `interopManagedAlertHistoryPrompt1`; `Titles.cls` is edited by hand for the two labels and the mirror must reproduce it.
+
+**Decided in-stage (implement, client half and sweep).**
+
+1. "Open" reuses the existing string `homeSuggestedOpen` (the strings test needs unique values), so the `IsOpen` column and the `open` criterion carry it; the descriptor's `labelKey` was edited to match.
+2. Strings the spec quotes but item 8 above did not key: `interopManagedAlertUpdateAction`, `interopAlertFieldNextMinutes`, `interopAlertOwnerUnassigned`, `interopManagedAlertUpdateConsequence`, `interopManagedAlertRefusalNotFound`, `...Unchanged`, `...Owner`, `...Level`, `...NextAction`, `...Reason`.
+3. The dialog sends only the values that differ from the alert, and `Reason` only when typed, so an empty reason reaches the instance's own `INTEROP.ALERT.REASON` sentence; the caller's name comes from `Session.userName()`.
+4. The history opens from the list's name cell through the shared child-list mechanism; the list descriptor carries no `rowTarget`.
+5. Three rosters outside the Code Map pinned the changed shared surfaces and were updated: `Test/Navigation` (41 Interoperability screens, two order entries), `Test/InteropHostDescriptor` (`ENDPOINTS`) and `Test/InteropMessageDescriptor` (`SEARCHENDPOINTS`); each is green alone.
+
 **Governing ADs (Rule 6):** AD-3, AD-6, AD-7, AD-8, AD-10, AD-11, AD-13, AD-14, AD-15, AD-16, AD-21, AD-22, AD-29, AD-34, AD-36, AD-44, AD-51, AD-52, AD-53, AD-56, AD-58, AD-59, AD-60, AD-62. Not engaged: AD-9 (the vendor's owner list adds `%All` in its own frame; a change after it returns HALTs), AD-23, AD-35, AD-54, AD-63, AD-65, AD-66.
 
 **Integration and linkage (Rules 1, 2).** Integration: AC5 (the kernel's confirm consumes the stored proposal in its own namespace) and AC1's agent leg (the derived read tools). Consumes: the archive family, `InteropAction`, the kernel's proposal, confirm, governance and audit. Consumed-by: no consumer in this story; Story 24.20's undo is the first candidate (inference).
@@ -182,9 +210,28 @@ No new dependency; no privilege, role or access grant; nothing is written into a
 
 **Mutations** (each AC's pinning test shown red on `ocupilot-b-ci`, `src` reloaded with subclasses and reverted byte-identical; client ones on a rebuilt, redeployed bundle or in the component runner), recorded by the implement stage as `mutation: <change> -> <test red>`. Planned: AC1 the list's `open` criterion ignored -> `InteropAlertList` red; AC2 the write sends every field's bit -> `InteropAlertUpdate` red (history leg); AC3 the administration pair skipped -> `InteropAlertRefusals` red, the unchanged refusal removed -> red; AC4 the vendor status ignored -> `InteropAlertRefusals` red; AC5 `FINGERPRINTSUBJECT` without `Namespace` -> `InteropAlertElsewhere` red; AC6 the tool's `DraftRegistry` row removed -> red, a log line inside the switched block -> `InteropAlertRefusals` red, the new `Prohibited` arm placed before an earlier one -> `Prohibited` red; AC7 the dialog sends no reason -> the browser spec red; AC8 the case's `DropProbes` skipped -> `InteropAlertElsewhere`'s after-all check red.
 
+**Mutations run** (`ocupilot-b-ci`, each file copied before, edited, reloaded with every compiled subclass, the pinning class red, reverted by Edit, `cmp` identical to the copy, reloaded, the same class green; a client one on a rebuilt and redeployed bundle):
+
+- mutation: AC1 `ListAlerts` ignores the `open` criterion -> `InteropAlertList.TestTheListAnswersEveryProbeNewestFirstAndTheCriterionNarrowsIt` red.
+- mutation: AC2 `PerformAlertUpdate` sends every field's bit (15) -> `InteropAlertUpdate.TestAnUpdateFromEitherCallerReadsBackAsSentWithOneHistoryRowEach` and `.TestAClosedAlertIsOpenedAgain` red (history leg).
+- mutation: AC3 the administration pair skipped for another's alert -> `InteropAlertRefusals.TestTheGateRefusesEachPrincipalBeforeAnyVendorCall` red.
+- mutation: AC3 the unchanged refusal removed from `AlertJudge` -> `InteropAlertRefusals.TestAnUpdateThatChangesNothingIsRefusedBeforeTheVendor` red.
+- mutation: AC4 the vendor status ignored in `PerformAlertUpdate` -> `InteropAlertRefusals.TestAVendorErrorIsNeverA200AndIsAuditedAsNotCompleted` red.
+- mutation: AC5 `Namespace` dropped from `InteropManagedAlertUpdate.FINGERPRINTSUBJECT` -> `InteropAlertElsewhere.TestTheUpdateIsConfirmedInTheNamespaceItWasReadIn` and `.TestAnOwnerIsJudgedInTheProposalsNamespace` red; the same edit reddens `ConfirmNamespaceRoster.TestEveryWriteToolAsksItsPortInTheNamespaceItsProposalRead`, naming the tool.
+- mutation: AC6 `DraftRegistry` row `interop-managed-alert=2417` removed from `TYPEDTARGETIDS` -> `DraftRegistry.TestNoSecretReachesAnyRenderedScript` red.
+- mutation: AC6 a log line in the switched `Catch` of `PerformAlertUpdate`, before the restore -> `InteropAlertRefusals.TestNothingIsLoggedWhileTheNamespaceIsSwitched` red.
+- mutation: AC6 the reason's shape check removed from `AlertSnippet` -> `InteropAlertUpdate.TestTheScriptFormRendersTheGuardedUpdateAndRunsNothing` red.
+- mutation: AC6 the managed alert arm placed ahead of the table arm and widened to `sql-table` -> `Prohibited.TestTheManagedAlertArmLeavesEarlierTypesTheirOwnVerdicts` red (and two more); `interop-managed-alert` removed from `COVEREDTYPES` -> `Prohibited.TestTheManagedAlertArmLeavesEarlierTypesTheirOwnVerdicts`, `.TestAnUncoveredEntityTypeIsRefusedWholesale` and `.TestNoRegisteredWriteToolHasAnUncoveredEntityType` red.
+- mutation: AC7 the dialog sends no reason (bundle rebuilt and redeployed) -> `interop-managed-alerts.browser-spec.mjs` red at the dialog-close wait; green again on a bundle rebuilt from the reverted source.
+- mutation: AC8 `DropProbes` skips the delete -> `InteropAlertElsewhere` red in all three tests at the case's `OnAfterOneTest` assertion; the reverted class's first run removed the leftovers.
+
+Unproven row: `ConfirmNamespaceRoster.CHECKEDFLOOR` raised to 129 stays green because the walk asks 147 write tools, so the floor (128) is a loose lower bound, not a pin; the tool's classification is pinned by the `FINGERPRINTSUBJECT` mutation above. One run of `InteropAlertRefusals.TestAVendorErrorIsNeverA200AndIsAuditedAsNotCompleted` (the first after a reload, byte-identical code) failed its `OcuPilot records one ConfigChange` assertion (the row count did not read 1 within the 5 s wait; the count itself was not recorded); the next run was green.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: in-review
 Blocking condition: none
+
+**Implement (Batch 1).** Built to the spec on `ocupilot-b-ci`; Task 0 under Design Notes, "Measured" (no HALT; `ALERTSMAX` 2,000). Verified: all 17 ObjectScript shards, 893 classes and 6,747 tests, green after three stale rosters outside the Code Map were updated (Decided in-stage, client half and sweep, item 5); new browser spec 1 of 1 and `interop-archive.browser-spec.mjs` 2 of 2 on a rebuilt bundle; `smoke.sh` 50 of 50; `npm run build`, `npm test` (2,413 tool tests; 335 component files, 3,948 tests) and `tools/ci.test.mjs` (109) green; `check-objectscript.py` 0 problems; `lint-docs.sh` 0 issues. Mutations: one or more per AC, under Verification. Residue: no managed alert in USER or HSCUSTOM, no production in USER; the role `OcuPilotProbeProhibitedRouteRole` belongs to `Test.ProhibitedRoute`, not this batch. One `InteropAlertRefusals` ConfigChange assertion did not read 1 once on the first run after a reload and was green in the sweep (Verification, last paragraph).
 
 **Plan.** Batch 1 of five: Managed alerts and Alert history through `InteropPort`, with Update alert reached by the screen and the agent; the proposal keeps its namespace and every confirm judges there. Veto items 1 to 6; the batch split and decided-in-stage list under Design Notes. Read-only check on `ocupilot-b-ci` (52777, image `irishealth-community:2026.2`): USER and HSCUSTOM hold no managed alert, rule log, business process or workflow row. Nothing was written to the instance.

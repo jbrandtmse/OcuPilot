@@ -158,6 +158,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 24.16 Batch 4: Archive manager, whose Run archive its own page's dialog sends, and Archive settings, whose Set value the settings page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropArchiveList',
   'OcuPilot.Screen.Descriptor.InteropArchiveSettingList',
+  // Story 24.17 Batch 1: Managed alerts, whose Update alert its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropManagedAlertList',
   // Story 20.23: Queues, whose Abort all types the queue's name; Queue messages and an item's Queue tab, whose Abort types the
   // message id; and Jobs and an item's Jobs tab, whose Abort message types the job's process id and whose Suspend message and
   // Stop job warn first.
@@ -554,6 +556,8 @@ const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropPurgeList': ['purge'],
   // Story 24.16 Batch 4: Archive manager's Run archive reads the target, the days, the class and the count before its dialog opens.
   'OcuPilot.Screen.Descriptor.InteropArchiveList': ['archive'],
+  // Story 24.17 Batch 1: Managed alerts' Update alert reads the alert's owner, state and level and the owners it may be given to before its dialog opens.
+  'OcuPilot.Screen.Descriptor.InteropManagedAlertList': ['update'],
   // Story 24.16: Suspended messages' four actions list what each message would do before the dialog opens, and Edit and resubmit answers its form.
   [INTEROP_SUSPENDED_LIST]: [SUSPENDED_RESUBMIT, SUSPENDED_EDIT_RESUBMIT, SUSPENDED_DISCARD, SUSPENDED_DELETE],
 };
@@ -708,6 +712,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // Archive manager's page registers Run archive itself, whose dialog types the namespace, and Archive settings' page registers Set value itself (Story 24.16 Batch 4).
   'OcuPilot.Screen.Descriptor.InteropArchiveList': ['archive'],
   'OcuPilot.Screen.Descriptor.InteropArchiveSettingList': ['set'],
+  // Managed alerts' page registers Update alert itself, whose dialog takes the owner, state, level, next action time and reason (Story 24.17 Batch 1).
+  'OcuPilot.Screen.Descriptor.InteropManagedAlertList': ['update'],
   // Suspended messages' page registers Edit and resubmit itself, whose form takes the fields and is reviewed before it is sent (Story 24.16).
   [INTEROP_SUSPENDED_LIST]: [SUSPENDED_EDIT_RESUBMIT],
   // An item's Test tab's page registers Send test itself, whose dialog sends the request class and its fields (Story 20.6).

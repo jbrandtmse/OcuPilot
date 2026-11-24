@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting' | 'statement-index-entry' | 'cached-query' | 'sql-table' | 'sql-index' | 'sql-schema' | 'interop-archive' | 'interop-archive-setting';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting' | 'statement-index-entry' | 'cached-query' | 'sql-table' | 'sql-index' | 'sql-schema' | 'interop-archive' | 'interop-archive-setting' | 'interop-managed-alert';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -603,7 +603,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "sql-index",
   "sql-schema",
   "interop-archive",
-  "interop-archive-setting"
+  "interop-archive-setting",
+  "interop-managed-alert"
 ];
 
 /**
@@ -22013,6 +22014,383 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "interopLookupTablesEmptyAgent"
     },
     "toolIdentifier": "interop.lookuptables",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropManagedAlertHistory",
+    "route": "interoperability/managed-alerts/history",
+    "area": "interoperability",
+    "labelKey": "interopManagedAlertHistoryLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Alerts",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_Alerts",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "interoperability/managed-alerts",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "ActionTime",
+        "Username",
+        "Action",
+        "Reason",
+        "OldValues",
+        "NewValues"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopManagedAlertHistoryEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopManagedAlertHistoryPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopManagedAlertsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopManagedAlertsPrompt4"
+      }
+    ],
+    "classicPage": "EnsPortal.ManagedAlertViewer",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "managed alert action",
+      "source": {
+        "port": "interop",
+        "endpoint": "ManagedAlertActions",
+        "type": "LIST"
+      },
+      "fields": [
+        "ActionTime",
+        "Username",
+        "Action",
+        "Reason",
+        "OldValues",
+        "NewValues"
+      ],
+      "filter": [
+        "Username",
+        "Action",
+        "Reason"
+      ],
+      "sort": {
+        "fields": [
+          "ActionTime",
+          "Username",
+          "Action"
+        ],
+        "default": "ActionTime",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "alert",
+            "labelKey": "interopColumnId",
+            "kind": "text",
+            "maxLength": 18,
+            "hint": "One managed alert's ID, spelled as interop.managedalerts.read answers its ID."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ActionTime",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "Username",
+          "labelKey": "processColumnUser",
+          "kind": "text"
+        },
+        {
+          "field": "Action",
+          "labelKey": "sqlPrivilegeColumnAction",
+          "kind": "text"
+        },
+        {
+          "field": "Reason",
+          "labelKey": "agentSwitchesFieldReason",
+          "kind": "text"
+        },
+        {
+          "field": "OldValues",
+          "labelKey": "interopAlertColumnOldValues",
+          "kind": "text"
+        },
+        {
+          "field": "NewValues",
+          "labelKey": "interopAlertColumnNewValues",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "interop.managedalerthistory",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropManagedAlertList",
+    "route": "interoperability/managed-alerts",
+    "area": "interoperability",
+    "labelKey": "interopManagedAlertsLabel",
+    "sideBarPosition": 22,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Alerts",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_Alerts",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "interop-managed-alert",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "update",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "ID",
+        "AlertTime",
+        "AlertText",
+        "SourceConfigName",
+        "Production",
+        "CurrentOwner",
+        "EscalationLevel",
+        "IsOpen",
+        "NextActionTime"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopManagedAlertsEmpty",
+    "commandAliases": [
+      "managed alerts",
+      "alerts"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopManagedAlertsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopManagedAlertsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopManagedAlertsPrompt3"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopManagedAlertsPrompt4"
+      }
+    ],
+    "classicPage": "EnsPortal.ManagedAlertViewer",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "managed alert",
+      "source": {
+        "port": "interop",
+        "endpoint": "ManagedAlerts",
+        "type": "LIST"
+      },
+      "fields": [
+        "ID",
+        "AlertTime",
+        "AlertText",
+        "SourceConfigName",
+        "Production",
+        "SessionId",
+        "CurrentOwner",
+        "EscalationLevel",
+        "IsOpen",
+        "LastActionTime",
+        "NextActionTime"
+      ],
+      "filter": [
+        "AlertText",
+        "SourceConfigName",
+        "Production",
+        "CurrentOwner"
+      ],
+      "sort": {
+        "fields": [
+          "ID",
+          "AlertTime",
+          "SourceConfigName",
+          "Production",
+          "CurrentOwner",
+          "EscalationLevel",
+          "IsOpen",
+          "LastActionTime",
+          "NextActionTime"
+        ],
+        "default": "AlertTime",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "open",
+            "labelKey": "homeSuggestedOpen",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ]
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ID",
+          "labelKey": "interopColumnId",
+          "kind": "name"
+        },
+        {
+          "field": "AlertTime",
+          "labelKey": "interopAlertColumnTime",
+          "kind": "text"
+        },
+        {
+          "field": "AlertText",
+          "labelKey": "interopAlertColumnText",
+          "kind": "text"
+        },
+        {
+          "field": "SourceConfigName",
+          "labelKey": "auditEventFieldSource",
+          "kind": "text"
+        },
+        {
+          "field": "Production",
+          "labelKey": "systemInfoProduction",
+          "kind": "text"
+        },
+        {
+          "field": "SessionId",
+          "labelKey": "webSessionColumnSession",
+          "kind": "identifier"
+        },
+        {
+          "field": "CurrentOwner",
+          "labelKey": "interopAlertColumnOwner",
+          "kind": "text"
+        },
+        {
+          "field": "EscalationLevel",
+          "labelKey": "interopAlertColumnLevel",
+          "kind": "number"
+        },
+        {
+          "field": "IsOpen",
+          "labelKey": "homeSuggestedOpen",
+          "kind": "status"
+        },
+        {
+          "field": "LastActionTime",
+          "labelKey": "interopAlertColumnLastAction",
+          "kind": "text"
+        },
+        {
+          "field": "NextActionTime",
+          "labelKey": "interopAlertColumnNextAction",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopManagedAlertsEmptyAgent"
+    },
+    "toolIdentifier": "interop.managedalerts",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
