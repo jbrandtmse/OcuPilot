@@ -8496,6 +8496,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-22T18:09:44Z status=routed owner=burndown by=orchestrator note=(inference) the stall's red in run 45048213834 came on a uniformly slow runner (about 1.4x: client suite 11.8 against 8.5 min, gates timed out at 20 min), which fits the reading of a condition lasting minutes on the runner
 - 2026-11-23T14:32:21Z routed
 - 2026-11-23T20:27:49Z routed
+- 2026-11-24T02:54:59Z routed
+- 2026-11-24T03:39:25Z routed
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs

@@ -9831,6 +9831,26 @@ So that a red CI run means a real defect again.
 - **When** the plan or build reaches that point
 - **Then** the evidence goes to the orchestrator before any mitigation, and no retry stands in for a cause.
 
+### Story 21.40: The governance page's render cost
+
+[ADDED 2026-11-24, Story 21.31 CI, orchestrator ruling: burn-down first, Rule 27] Inserted after Story 21.39 because browser shard 1/5 failed its first attempt on three of Story 21.31's four code heads (9cb5ce5b9, 79ad64ee2, 592784b70) and on one of the 26 other runs before them. Each failure was the governance page's renderer going unresponsive at the 1280px light settle. It takes DW-1822 and runs right after Story 21.31 merges, before Story 21.26.
+
+As the builder,
+I want the governance page's render cost measured and bounded at its cause,
+So that the page settles on a slow runner as its key list grows.
+
+**Acceptance Criteria:**
+
+- **Given** `ocupilot-ci` and three trees (feature before Story 21.31 at 626172470, Story 21.31's merge, and that merge with the Baseline doubled in a scratch build that is never committed)
+- **When** /ocupilot/agent/governance renders at 1280px light, with the CPU throttled 4x by `Emulation.setCPUThrottlingRate` and without
+- **Then** the settle time, the main-thread long tasks (count and longest), the DOM node count and the JS heap are recorded for each tree, and the profile names the dominant cost: which component, and whether it grows per key or per group.
+- **Given** that measurement
+- **When** the fix is built
+- **Then** it is in the page (collapsed groups, virtualisation or less work per row), never in a spec's timeout or a retry, and a browser test bounds the settle under 4x throttle at the doubled key count.
+- **Given** a measurement that finds no cost growing with the key list
+- **When** the plan reaches that point
+- **Then** the evidence goes to the orchestrator before any mitigation.
+
 ---
 
 ## Epic 22: Stage 6 - the long tail, on demand
