@@ -1103,3 +1103,4 @@
 2026-11-24T03:37:46Z	Story 21.31	ci	run=45309694750 head=592784b70 result=green_on_rerun(attempt2;attempt1_browser_1/5_DW-1822)
 2026-11-24T03:39:25Z	Story 21.31	merged	feature=90e0b706d by=orchestrator (ff_626172470->e6df5458d+record+timings_45309694750)
 2026-11-24T03:39:25Z	Epic 21	burndown_inserted	story=21.40 key=21-40-the-governance-page-s-render-cost owns=DW-1822 by=orchestrator_ruling(Rule_27) runs_before=21.26
+2026-11-24T03:39:57Z	Story 21.40	stage_spawned	stage=plan spawn_at=2026-11-24T03:39:57Z model=opus agent_name=21-40-plan prior_lines_ended=verified(a1601ff2d)
