@@ -840,3 +840,5 @@
 2026-11-24T02:51:30Z	Story 24.17	stage_completed	stage=rework scope=batch1 commit=15d3cb353(time=commit_time) U-158="Is open"(interopAlertColumnOpen;EXPERIENCE:633;pinned_list+dialog,2_mutations) M7=READBACKFIELDS_4th_field_NextActionMinutes(test+mutation) classes=13_green browser=1/1 tools=2413 ci.test=109
 2026-11-24T02:58:51Z	Story 24.17	fresh_check_passed	scope=batch1 sha=15d3cb353 throwaway_up=02:56:44Z classes=19_runs_green(alerts_forward+reverse,rosters) browser=3/3(managed-alerts,archive) smoke=50/50 USER_production=stopped feature=626172470_ancestor(no_merge_needed)
 2026-11-24T02:59:00Z	Story 24.17	code_head_pushed	scope=batch1 sha=15d3cb353 run=45316256420
+2026-11-24T03:03:31Z	Story 24.17	note	source=orchestrator scope=batch1 pre-CI=pass expect_second_integrator=21.31(M_592784b70;sql-field_at_115;3_false_keys) plan_if_21.31_first=integrate-only_M(interop-managed-alert_after_sql-field;README_99_kept_with_21.31_clause;README_test+ci.test+rosters)
+2026-11-24T03:03:31Z	Story 24.17	stage_spawned	stage=plan spawn_at=2026-11-24T03:03:31Z model=opus agent_name=24-17-plan-batch2 cycle_iteration=2 scope=batch2_rule_and_bp_logs
