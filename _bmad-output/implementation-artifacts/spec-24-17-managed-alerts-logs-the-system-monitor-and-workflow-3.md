@@ -3,6 +3,7 @@ title: 'Story 24.17: Managed alerts, logs, the system monitor and workflow (Batc
 type: 'feature'
 created: '2026-11-25'
 status: 'ready-for-dev'
+baseline_revision: '9afe46a34a1e60590ab0f15e8daca9c4c351ec36'
 review_loop_iteration: 0
 followup_review_recommended: false
 owned_ledger: ''
@@ -139,6 +140,14 @@ No new dependency; nothing is written into another namespace. A workflow user is
 - **V5:** kept. Remove ships `false`, destructive, typed name; add and update ship `true`.
 - **V6:** kept for story end; the lead writes the lines.
 
+**Lead rulings after Task 0's halt at (c) (2026-11-25; filed as an INBOX veto item).** Task 0 is done; its results stand under Design Notes, Measured.
+
+- **The choices read (c): the vendor's answer, as the caller.** The choices read calls `Ens.ContextSearch.ListEnsembleUsers` as the caller, behind the gate's write pairs (V3), and answers exactly what it answers: every user for a holder of `%Admin_Secure:USE`, otherwise the caller's own name. OcuPilot adds no pair, takes no escalation and reads no other user source, so the add dialog offers what the classic page's selector offers the same person. A name the choices read does not answer is refused with `USERNAME` as specified. A test pins both audiences (a principal with `%Admin_Secure:USE` sees the probe users; one without sees only its own name and is refused adding another).
+- **(b): no SQL check.** The classic query answers without `#5580`, so V2's condition does not hold and no list takes Batch 2's SQL check.
+- **(d): `WORKFLOWUSERINACTIVE` reworded to what is measured.** "An inactive workflow user is sent no new tasks through their workflow roles; their worklist is deleted and each task they hold is left unassigned." (`Engine.SendTask` to a named user still reaches an inactive one.) `WORKFLOWUSERREMOVE` stands as written.
+- **(e):** `WORKFLOWUSERSMAX` and `WORKFLOWUSERCHOICESMAX` are 10,000, with boundary tests.
+- **(a):** the SQL statement index writes in the manager database on a namespace's first use are the vendor's own, as Batch 2 recorded; not an OcuPilot write and not a HALT.
+
 ## Design Notes
 
 **Batch split.** Batch 1's item 3 (four pages' worth, eight writes) is split at this plan: **3a, workflow users** (this spec, `-3.md`: one list, three writes) and **3b, workflow roles and membership** (`-4.md`: a list and a members sub-screen, five writes), each its own spec and commit series. Users go first because a member is a workflow user: 3b's Add member offers 3a's list. Batch 1's items 4 and 5 keep their numbers and take `-5.md` and `-6.md`.
@@ -155,6 +164,14 @@ No new dependency; nothing is written into another namespace. A workflow user is
 8. `Prohibited.cls`: the plan prompt says existing guards are extended "by prefix only"; this batch adds new arms and touches one existing guard, the uncovered chain, by appended terms at its end (Batches 1 and 2's form), and a test pins that no earlier type reaches a different arm.
 9. Side-bar position 25 (3b's roles take 26).
 10. Siblings (Rule 31): the schedule family (port, tools, `ScheduleSave`, page, dialog, store, tests, browser spec); the partner family (no rename, the `%OpenId(…, 4)` edit, 503, removal rows); `AlertCap` (caps); `InteropAlertFixture` (principals); Batch 2's `LogSelectGate` (only if veto item 2's condition holds).
+
+**Measured (Task 0, `ocupilot-b-ci`, 2026-11-25, USER and HSCUSTOM, auditing on, probes `OcuP2417w*`; every probe row, instance user, role, class and the vendor's `^Ens.Configuration("sdd")` timestamps removed after; HALT at (c)).** Principals ran in a child job after `$System.Security.Login`. Raw evidence: `.worktrees/.coordination/e24-kit/24-17/b3a/impl/task0-evidence.md`.
+
+- (a) Add, `FullName` edit, `IsActive` both ways and remove, each as `irisowner`, `_SYSTEM` and a principal without `%All`, in USER and (`irisowner`, `_SYSTEM`) HSCUSTOM, wrote by process id only the namespace's own database: `^EnsLib.W.UserDefinitionD`, `^Ens.Configuration("sdd",...)`; plus, for a deactivation or remove, `^EnsLib.W.WorklistD/I`, `^Ens.MessageBodyD` (the task) and, for a remove, `^EnsLib.W.RoleMembershipD`. Cold only (first use per namespace): the SQL statement index `^%SYS("sql",...)` in the manager database and `^rINDEXSQL`, as Batch 2 recorded. No vendor audit row (positive control, a resource create and delete: two `ResourceChange` rows). `$ROLES`, `$USERNAME` and `$NAMESPACE` the same before and after for each.
+- (b) A principal with `%Ens_Portal:U`, `%Ens_WorkflowConfig:R`, `%DB_USER:R` reads the list through `%ExecDirectNoPriv`, and the classic query (`Engine:ListUsers` through `%ResultSet`) answers rows (no `#5580`) while `CheckPrivilege` reads 0 and a dynamic `SELECT` answers `SQLCODE -99`: V2's condition does not hold, the list needs no SQL check. Writes: every write succeeds with `%DB_USER:RW` and refuses with `%DB_USER:R`, `<PROTECT>` on `^Ens.Configuration("sdd",...)` (status 5002), nothing saved, a remove rolled back whole. The vendor asks for no `%Ens_*` pair: `%DB_USER:RW` alone writes, so `%Ens_Portal`, `%Ens_WorkflowConfig:W` are the gate's own (stricter), no further pair.
+- (c) `Ens.ContextSearch.ListEnsembleUsers` answers the caller's own name only to a principal holding the gate's pairs (and to `%Admin_Manage:U`, `%Admin_Operate:U`); it answers every user to `%Admin_Secure:U` and to `_SYSTEM`: names spelled as the user list holds them (`Admin`, `irisowner`, `SuperUser`), `_SYSTEM` absent. `$ROLES` the same after. It needs `%Admin_Secure:USE`, a pair the gate does not ask: HALT (`## Clarification Needed`).
+- (d) `EnsLib.Workflow.TaskResponse` (with a `TaskRequest`) and `EnsLib.Workflow.Worklist` save without a production in USER and HSCUSTOM. A deactivation or a remove deleted the user's worklist item and unassigned the task they owned; a remove deleted both memberships through the cascade (the roles stay). `WORKFLOWUSERREMOVE`: true. `WORKFLOWUSERINACTIVE`: true for the engine's distribution (`SendTaskToAll` and a membership added while inactive send nothing); an explicit `Engine.SendTask(task, user)` still sends to an inactive user, and a task saved with `AssignedTo` but no worklist item stays assigned after a remove (the vendor's assign always writes the item).
+- (e) List read, 2,000 / 5,000 / 10,000 workflow users with three memberships each: 0.010 / 0.024 / 0.048 s (`%ExecDirectNoPriv`, rows built), the classic query 0.009 / 0.021 / 0.042 s: `WORKFLOWUSERSMAX` 10,000. Choices read, with 2,000 / 5,000 / 10,000 probe instance users added: 0.007 / 0.016 / 0.032 s: `WORKFLOWUSERCHOICESMAX` 10,000.
 
 **Governing ADs (Rule 6):** AD-3, AD-6, AD-7, AD-8, AD-9 (a HALT, not a containment), AD-10, AD-13, AD-14, AD-15, AD-16, AD-22, AD-29, AD-34, AD-36, AD-44, AD-51, AD-52, AD-53, AD-54, AD-55, AD-56, AD-58, AD-59, AD-62.
 
@@ -180,7 +197,9 @@ No new dependency; nothing is written into another namespace. A workflow user is
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: Task 0 (c) HALT, `## Clarification Needed`: `Ens.ContextSearch.ListEnsembleUsers` answers only the caller's own name to a holder of the gate's pairs and every user only with `%Admin_Secure:USE` or `_SYSTEM`; the choices read needs a pair the gate does not ask (see Design Notes, Measured). No product code written.
+
+**Implement pass 1.** Task 0 ran on `ocupilot-b-ci`; (a), (b), (d), (e) recorded under Design Notes, Measured (no HALT there; V2's condition does not hold; both consequence sentences read true; caps 10,000 each). (c) halted as above. Probes removed; the tree differs from baseline in this spec only.
 
 **Plan.** Batch 3a of the story: Workflow users through `InteropPort`, with New workflow user, Edit and Remove reached by the screen and the agent, on Story 24.15's schedule family; Batch 3b (`-4.md`) carries roles and membership. Veto items 1 to 6; the split and the decided-in-stage list under Design Notes. Read-only check on `ocupilot-b-ci` (52777): USER and HSCUSTOM hold no workflow row; the workflow globals and `^Ens.Configuration` map to each namespace's own database; neither is source-controlled. Nothing was written to the instance.
