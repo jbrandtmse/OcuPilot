@@ -410,6 +410,12 @@ Parameter RUNTIMESTATSNOROWS = "SQL.RUNTIMESTATS.NOROWS";
 
 Parameter REASONRUNTIMESTATSNOROWS = "This namespace holds no runtime statistics.";
 
+/// <p>Envelope code: Plan with statistics sent a statement that is not a query (Story 21.26). Rendered on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422, before anything runs.</p>
+Parameter SQLPLANSTATS = "EXPLORER.SQL.PLANSTATS";
+
+Parameter REASONSQLPLANSTATS = "Plan with statistics runs the statement, so it takes a query only.";
+
 /// <p>The consequence codes the proposal card and the dialog of the runtime statistics purge and of a set of the collection setting carry.</p>
 Parameter RUNTIMESTATSPURGE = "SQL.RUNTIMESTATS.PURGE";
 

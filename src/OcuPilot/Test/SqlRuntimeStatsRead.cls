@@ -330,6 +330,68 @@ ClassMethod DirectCount(pNamespace As %String) As %Integer
     Quit tCount
 }
 
+/// <p>The first column of the first row of <var>pText</var> run in <code>USER</code> as the caller, <code>""</code> when it answers none.</p>
+ClassMethod ScalarIn(pText As %String) As %String
+{
+    Set tValue = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tResult = ##class(%SQL.Statement).%ExecDirect(, pText)
+        If tResult.%Next() Set tValue = tResult.%GetData(1)
+        Set tResult = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tValue
+}
+
+/// <p>AC4. Plan with statistics on a query answers the plan with each module's statistics, which the plan without them does not, and the run's rows
+/// reach the list as the instance's own view counts them. The plan without statistics records no row.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.Explained</code> ignores <var>pStats</var> -> the statistics and the recorded-rows assertions go red.</p>
+Method TestPlanWithStatisticsCarriesModuleStatisticsAndRecordsItsRows()
+{
+    Set tPort = ..#PORT
+    Set tStatement = $Parameter(..#PROBE, "QUERYSTATS")
+    Set tSC = $ClassMethod(tPort, "Plan", ..#NAMESPACE, tStatement, .tPlain, .tHttp, .tFault)
+    Do $$$AssertEquals($Select($$$ISOK(tSC) && $IsObject(tPlain): tPlain.%Get("outcome") _ "|" _ (tPlain.%Get("plan") [ "Stats:"), 1: ""), "plan|0", "the plan without statistics carries none")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "StatsRowCount", ..#NAMESPACE), 0, "and records no row")
+    Set tSC = $ClassMethod(tPort, "Plan", ..#NAMESPACE, tStatement, .tAnswer, .tHttp, .tFault, 1, [])
+    Do $$$AssertStatusOK(tSC, "Plan with statistics answers")
+    If $$$ISERR(tSC) || '$IsObject(tAnswer) Quit
+    Do $$$AssertEquals(tAnswer.%Get("outcome") _ "|" _ tAnswer.%Get("kind"), "plan|query", "it keeps the plan outcome")
+    Set tPlan = tAnswer.%Get("plan")
+    Do $$$AssertTrue((tPlan [ "Module:") && (tPlan [ "Performance:") && (tPlan [ "Global Refs:") && (tPlan [ "Commands Exec:"), "the plan carries each module's statistics")
+    Do $$$AssertTrue(tPlan [ "Rows Returned:  1", "and the one row the probe table holds as returned")
+    Set tRecorded = $ClassMethod(..#PROBE, "StatsRowCount", ..#NAMESPACE)
+    Do $$$AssertTrue(tRecorded > 1, "the run's rows are recorded: " _ tRecorded)
+    Do ##class(OcuPilot.Kernel.Scope).Set(..#NAMESPACE)
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute(..#LIST, 1000, .tScreen, .tListHttp, .tListFault)
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Do $$$AssertEquals(..ProbeRows(tScreen).%Size(), tRecorded, "and the list shows every one")
+}
+
+/// <p>AC4. Plan with statistics runs the statement, so a statement that is not a query is refused 422 <code>EXPLORER.SQL.PLANSTATS</code> with the
+/// published sentence before anything runs: an UPDATE changes no row, a CREATE TABLE creates no table and no statistics row is recorded. The same
+/// statements still answer their plan without statistics.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.Plan</code> skips its query-only check -> the refusal and the nothing-ran assertions go red.</p>
+Method TestPlanWithStatisticsTakesAQueryOnly()
+{
+    Set tPort = ..#PORT
+    Set tFirst = $Parameter(..#PROBE, "FIRST")
+    For tText = "UPDATE " _ tFirst _ " SET B = 'y'", "CREATE TABLE OcuProbe226.Never (A INTEGER)" {
+        Set tSC = $ClassMethod(tPort, "Plan", ..#NAMESPACE, tText, .tAnswer, .tHttp, .tFault, 1, [])
+        Do $$$AssertEquals($Select($$$ISERR(tSC): 1, 1: 0) _ "|" _ $Get(tHttp) _ "|" _ $Select($IsObject($Get(tFault)): tFault.code _ "|" _ tFault.reason, 1: ""), "1|422|EXPLORER.SQL.PLANSTATS|" _ ##class(OcuPilot.Api.AtelierError).#REASONSQLPLANSTATS, tText _ ": refused with the published sentence")
+        Do $$$AssertEquals($IsObject($Get(tAnswer)), 0, "no answer is built")
+    }
+    Do $$$AssertEquals(..ScalarIn("SELECT COUNT(*) FROM " _ tFirst _ " WHERE B = 'x'"), 1, "the UPDATE changed no row")
+    Do $$$AssertEquals(..ScalarIn("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'OcuProbe226'"), 0, "the CREATE TABLE created nothing")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "StatsRowCount", ..#NAMESPACE), 0, "and nothing was recorded")
+    Set tSC = $ClassMethod(tPort, "Plan", ..#NAMESPACE, "UPDATE " _ tFirst _ " SET B = 'y'", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertEquals($Select($$$ISOK(tSC) && $IsObject(tAnswer): tAnswer.%Get("outcome") _ "|" _ tAnswer.%Get("kind"), 1: ""), "plan|dml", "without statistics the UPDATE's plan is still answered")
+}
+
 /// <p>The gates and the id shapes. A caller without <code>%Development:USE</code> is refused 403 naming the pair on the count and the purge, and one without
 /// WRITE on the namespace's routines database reads and is refused the purge, the instance asked for no call; a count and a purge name <code>*</code>
 /// alone, any other id is 400 <code>PORT.VALIDATION</code> and any other type 501. The collection setting's own pairs replace the settings port's:

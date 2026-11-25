@@ -258,6 +258,9 @@ Parameter PARAMETERSKEY = "parameters";
 
 Parameter MAXROWSKEY = "maxRows";
 
+/// <p>The plan route's body key that asks for Plan with statistics: a boolean.</p>
+Parameter STATSKEY = "stats";
+
 /// <p>The save's query keys: the table's schema and name, and its staged changes as JSON array
 /// text.</p>
 Parameter SCHEMAKEY = "schema";
@@ -785,7 +788,13 @@ ClassMethod Run(pNamespace As %String, pText As %String, pValues As %DynamicArra
 /// plan, kind, plan, truncated}</code>, the plan's text cut at <parameter>MAXANSWER</parameter>
 /// characters; <code>{outcome: noplan, kind}</code> for every other kind; or <code>{outcome: error,
 /// kind, sqlcode, message}</code>. Every refusal is <method>Classify</method>'s.</p>
-ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+/// <p>With <var>pStats</var> 1 the plan carries each module's run statistics, which the instance
+/// gathers by running the statement, so only a <parameter>KINDQUERY</parameter> is taken: any other kind is
+/// refused (422 <code>EXPLORER.SQL.PLANSTATS</code>) before anything runs. The run is bounded at
+/// <method>BoundSeconds</method>, and an overrun answers <code>{outcome: stopped, kind, seconds}</code>
+/// as <method>Run</method> does. <var>pValues</var> is handed to the instance as the statement's dynamic
+/// arguments.</p>
+ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pStats As %Boolean = 0, pValues As %DynamicArray = "") As %Status
 {
     Set pAnswer = ""
     Set pHttpStatus = 0
@@ -799,16 +808,26 @@ ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %Dyn
             Quit
         }
         Set tKind = tGuard.%Get("Kind")
+        If pStats && (tKind '= ..#KINDQUERY) {
+            Set tSC = ..RefuseFor("planstats", .pHttpStatus, .pFault)
+            Quit
+        }
         Set pAnswer = {}
         Do pAnswer.%Set("kind", tKind, "string")
         If (tKind '= ..#KINDQUERY) && (tKind '= ..#KINDDML) {
             Do pAnswer.%Set("outcome", ..#OUTCOMENOPLAN, "string")
             Quit
         }
-        Set tSC = ..Explained(pNamespace, pText, .tPlan, .tCode, .tMessage)
+        Set tBound = $Select(pStats: ..BoundSeconds(), 1: 0)
+        Set tSC = ..Explained(pNamespace, pText, .tPlan, .tCode, .tMessage, pStats, pValues, tBound, .tStopped)
         If $$$ISERR(tSC) {
             Set pAnswer = ""
             Set tSC = ..Fail("the statement's plan could not be read", tSC, .pHttpStatus, .pFault)
+            Quit
+        }
+        If tStopped {
+            Do pAnswer.%Set("outcome", ..#OUTCOMESTOPPED, "string")
+            Do pAnswer.%Set("seconds", tBound, "number")
             Quit
         }
         If tCode '= "" {
@@ -2408,32 +2427,66 @@ ClassMethod Executed(pNamespace As %String, pText As %String, pType As %Integer,
 
 /// <p>The plan of <var>pText</var> in <var>pNamespace</var>, from <code>$SYSTEM.SQL.Explain</code>
 /// with its output silenced, in <var>pPlan</var>; when the instance refuses it, <var>pCode</var> and
-/// <var>pMessage</var> carry its SQLCODE and message and <var>pPlan</var> is empty. Explain executes
-/// nothing (measured). The switched region calls vendor classes only.</p>
-ClassMethod Explained(pNamespace As %String, pText As %String, Output pPlan As %String, Output pCode As %String, Output pMessage As %String) As %Status [ Private ]
+/// <var>pMessage</var> carry its SQLCODE and message and <var>pPlan</var> is empty. Without <var>pStats</var>
+/// Explain executes nothing (measured). With it the instance runs the statement to gather each
+/// module's statistics, under an alarm of <var>pBound</var> seconds when that is above 0, and
+/// <var>pStopped</var> is 1 when the alarm stopped the run: the instance reports that inside the plan
+/// text or as an <code>&lt;ALARM&gt;</code> exception. <var>pValues</var> becomes the instance's dynamic
+/// arguments. The switched region calls vendor classes only.</p>
+ClassMethod Explained(pNamespace As %String, pText As %String, Output pPlan As %String, Output pCode As %String, Output pMessage As %String, pStats As %Boolean = 0, pValues As %DynamicArray = "", pBound As %Integer = 0, Output pStopped As %Boolean) As %Status [ Private ]
 {
     Set pPlan = ""
     Set pCode = ""
     Set pMessage = ""
+    Set pStopped = 0
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
+    Set tAlarmed = 0
     Try {
         Set $NAMESPACE = pNamespace
         Set tText = pText
         Set tPlan = ""
-        Set tExplainSC = $SYSTEM.SQL.Explain(.tText, {"silent": 1}, , .tPlan)
+        Kill tArgs
+        Set tArgs = 0
+        If pStats && $IsObject(pValues) {
+            Set tIterator = pValues.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tValue) {
+                Set tArgs = tArgs + 1
+                Set tArgs(tArgs) = tValue
+            }
+        }
+        Set tQualifiers = {"silent": 1}
+        If pStats {
+            Do tQualifiers.%Set("stats", 1, "number")
+            If pBound > 0 {
+                Do $System.Alarm.Set(pBound)
+                Set tAlarmed = 1
+            }
+        }
+        Set tExplainSC = $SYSTEM.SQL.Explain(.tText, tQualifiers, .tArgs, .tPlan)
+        If tAlarmed {
+            Do $System.Alarm.Clear()
+            Set tAlarmed = 0
+        }
         If $$$ISERR(tExplainSC) {
             Set tMessage = ""
             Set pCode = $System.Status.StatusToSQLCODE(tExplainSC, .tMessage)
             Set pMessage = tMessage
+            If pStats && (pCode = ..#ALARMSQLCODE) Set pStopped = 1
         } Else {
             Set pPlan = $Get(tPlan)
+            If pStats && (pPlan [ ("SQLCODE=" _ ..#ALARMSQLCODE)) Set pStopped = 1
         }
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
+        If tAlarmed Do $System.Alarm.Clear()
         Set pPlan = ""
-        Set tSC = $$$ERROR($$$GeneralError, "the plan read raised " _ ex.Name)
+        If ex.Name = "<ALARM>" {
+            Set pStopped = 1
+        } Else {
+            Set tSC = $$$ERROR($$$GeneralError, "the plan read raised " _ ex.Name)
+        }
     }
     Quit tSC
 }
@@ -2503,6 +2556,7 @@ ClassMethod RefuseFor(pWhich As %String, Output pHttpStatus As %Integer, Output 
     If pWhich = "agentcode" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLAGENTCODE"), $Parameter(tError, "REASONSQLAGENTCODE"), .pHttpStatus, .pFault, pDetail)
     If pWhich = "notprepared" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLNOTPREPARED"), $Parameter(tError, "REASONSQLNOTPREPARED"), .pHttpStatus, .pFault, pDetail)
     If pWhich = "parameters" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLPARAMETERS"), $Parameter(tError, "REASONSQLPARAMETERS"), .pHttpStatus, .pFault, pDetail)
+    If pWhich = "planstats" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLPLANSTATS"), $Parameter(tError, "REASONSQLPLANSTATS"), .pHttpStatus, .pFault, pDetail)
     Quit ..Fail("an agent tool asked for a refusal the port does not publish", $$$ERROR($$$GeneralError, pWhich), .pHttpStatus, .pFault)
 }
 

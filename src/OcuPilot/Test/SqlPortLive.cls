@@ -147,6 +147,15 @@ Method TestAStatementPastTheBoundIsStopped()
     Do $$$AssertEquals($TLevel, 0, "with no transaction left open")
 }
 
+/// <p>AC4: a plan with statistics past the bound is stopped and reported as a run is, with no plan, and leaves no transaction open.</p>
+/// <p>Mutation (Rule 19): never set the alarm in <method>OcuPilot.Port.SqlPort.Explained</method> -- the statement runs to completion and the leg goes red.</p>
+Method TestAPlanWithStatisticsPastTheBoundIsStopped()
+{
+    Set tSC = $ClassMethod(..#FIXTURE, "Plan", ..#NAMESPACE, "SELECT COUNT(*) FROM OcuProbe196.Granted a, OcuProbe196.Granted b, OcuProbe196.Granted c, OcuProbe196.Granted d, OcuProbe196.Granted e", .tAnswer, .tHttp, .tFault, 1, [])
+    Do $$$AssertEquals(..Said(tSC, .tAnswer, .tHttp, .tFault), "{""kind"":""query"",""outcome"":""stopped"",""seconds"":2}", "a long query's plan with statistics is stopped at the bound")
+    Do $$$AssertEquals($TLevel, 0, "with no transaction left open")
+}
+
 /// <p>A run that leaves a transaction open is rolled back to where it started and answers
 /// <code>error</code> with <code>rolledBack</code>.</p>
 Method TestARunThatLeavesATransactionOpenIsRolledBack()
