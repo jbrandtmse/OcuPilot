@@ -1,0 +1,309 @@
+---
+title: 'Story 21.26: Runtime statistics'
+type: 'feature'
+created: '2026-11-25'
+status: 'ready-for-dev'
+review_loop_iteration: 0
+followup_review_recommended: false
+context:
+  - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
+  - '{project-root}/_bmad-output/implementation-artifacts/spec-21-6-the-sql-tuning-track.md'
+  - '{project-root}/_bmad-output/implementation-artifacts/spec-21-31-fixed-table-statistics.md'
+warnings: ['oversized']
+deferred: []
+---
+
+<intent-contract>
+
+## Intent
+
+**Problem:** The classic SQL Runtime Statistics page is the only place to turn runtime statistics collection on or off, see what it collected for each statement and module, purge it, or see a query's plan with its run statistics. The `slowquery` workflow cannot read any of it.
+
+**Approach:** Add two System Explorer lists: SQL runtime statistics, over the namespace's collected rows, with a Purge statistics page action through `SqlPort`; and Runtime statistics collection, the system-wide setting as settings rows through `ConfigPort`, set one row at a time like the SQL Shell settings. SQL query gains Plan with statistics, a run of a query the console already types as a query. `slowquery` gains the two reads and stays read-only.
+
+## Boundaries & Constraints
+
+**Always:**
+
+- Each write is one operation with two callers, the screen action and the agent's confirmed proposal (AD-53), run in the confirm or action request (AD-7). The vendor gets port-built arguments only: the namespace for the purge, and for the setting the level, a whole number of minutes and the level after the stop, built into the vendor's `M:<minutes>:<level>` text by the port. No caller text reaches SQL text, code or a file (AD-21).
+- The list reads one bound catalog statement over `%SYS_PTools.StatsSQLView` and never selects `UserName`, `ExeName`, `MachineName`, `IPAddress`, `Pid` or `Parameters` (AD-35, AD-36).
+- A test that changes the collection setting runs in an armed class on the throwaway, reads the flag before, restores it in its own cleanup and reads it back. A test that records statistics records them in its own process only (`SetSQLStatsFlagJob`) for its own probe statements, and removes them by routine (`clearStatsSQL(ns, rtn, , 1, , 1)`). No test asserts that a store is empty.
+
+**Never:**
+
+- No query history, no export, no per-process or per-namespace collection flag, no metric subset (`collectFlag` stays `""`), no timestamp form of the stop (`T:`), and no agent tool for Plan with statistics.
+- No collection at level 2 or 3 without a stop: a set to either always carries a stop in minutes.
+- No edit to `Api/Error.cls`; new codes go in `Api/AtelierError.cls` and `Api/ConfigError.cls`. The spine stays add-only. No test or write runs on `ocupilot` or a slot instance. No probe schema whose name holds `"` (DW-2851).
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+|----------|--------------|---------------------------|----------------|
+| List | The probe's own statement run with statistics on in the fixture's process | The list and `explorer.sqlruntimestats.read` answer the same rows: one summary row and one row per module, each with routine, cursor, module, runs, average rows, global references, commands, disk wait, time, module runs and the masked statement text | Truncation reported (AD-36) |
+| Settings read | Any instance | Rows `CollectionLevel`, `StopAfterMinutes`, `LevelAfterStop`, `StopsAt`, each `{Name, Value, Accepts, ReadOnly}`; `StopsAt` is read only, ISO-8601 UTC, empty while no stop is set | none |
+| Turn collection on | `CollectionLevel` set to "On for all modules", no stop held | The flag's action level reads 3, `StopAfterMinutes` 50 and `LevelAfterStop` "Off" (the classic page's defaults), `StopsAt` about 50 minutes after the confirm | none |
+| Change the stop | Level 2 or 3, `StopAfterMinutes` set to 120 | The level is unchanged, `StopAfterMinutes` reads 120 and `StopsAt` moves to 120 minutes after the confirm | At level 0 or 1: refused with the ruled sentence before any call |
+| Turn collection off | `CollectionLevel` set to "Off" | The level reads 0, the stop rows read empty | none |
+| Bad value | A level outside the four names; minutes 0, 100000, fractional or text; a level after stop other than the two names | 400 with the settings' published sentence before any call, from both callers | none |
+| Purge | The namespace holds the probe's rows | Every row of the namespace is gone after confirm; another namespace's rows stay (armed) | Nothing to purge: precondition refusal before any call |
+| Plan with statistics | A query over the probe table, with values | The plan text with each module's statistics; the run's rows appear in the list | Not a query kind: refused before anything runs; over the console's bound: `stopped` |
+| Own tables | A Plan with statistics over `OcuPilot_Kernel_State.Turn` | Refused by the console's existing self-protection check before anything runs | none |
+| Changed target | Rows recorded, or the level changed, after the mint | Confirm refuses `PROPOSAL.TARGETCHANGED` and writes nothing | none |
+| Gate | Missing a pair Design Notes names for the read or the write | 403 naming the pair, before any read or write | none |
+| Vendor refusal | The seam answers an error status | Purge: 409 `SQL.RUNTIMESTATS.VENDOR`, the message in `detail` only; set: the settings' existing vendor refusal | none |
+| Workflow | A `slowquery` turn | Its steps name `explorer.sqlruntimestats.read` and `explorer.sqlruntimestatssettings.read` and no write | none |
+
+</intent-contract>
+
+## Code Map
+
+- **Classic sources (read-only):**
+  - `irislib/%CSP/UI/Portal/SQL/QButtons/RuntimeStatsSettings.cls`: `SaveSQLStats` :318 calls `SetSQLStats(level, 1, "", terminate)`, with `terminate` `M:<minutes>:<reset>` for level 2 or 3 and `""` otherwise. Hours and minutes of 0 are refused for level 2 or 3 (:265), and the reset level is 0 or 1 (:145).
+  - `QButtons/Utils.cls`: `GetSettingsData` :33 reads `GetSQLStatsFlag(0, "", .ptInfo)`. The default stop is 50 minutes (:43) and the default reset 0. The option texts are at :207-210 and the change notes at :219-231.
+  - `QButtons/RuntimeStats.cls`: View Stats reads `ViewStatsSQL(ns)` :217 and `ViewStatsSQLDetails(curs, rtn)` :254. Purge Stats calls `clearStatsSQL(ns, , , 1, , 1)` :742. Show Plan with SQL Stats is `%SQL.Manager.ShowPlan.cls?stats=1` :465, or a background `JobShowPlan` :385.
+  - `irislib/%SYS/PTools/StatsSQL.cls`: `SetSQLStats` :657, `GetSQLStatsFlag` :1309 (flag format :1250), `ViewStatsSQL` :2825 (no SQL procedure on the instance), `ViewStatsSQLDetails` :2875, and `clearStatsSQL` :3210.
+  - `irislib/%SYSTEM/SQL.cls`: `Explain(.sql, qualifiers, .dynArgs, .plan)` :4312, with `{"stats":1}`.
+- `src/OcuPilot/Port/ConfigPort.cls`, the settings shape to extend:
+  - `PAIRS`/`WRITEPAIRS` :65-70, the per-endpoint `COMPATIBILITYPAIRS` :74 precedent, and `ENDPOINTS` :85.
+  - The class-less rosters `SHELLROSTER` :150 and `TASKMAILROSTER`, plus `RosterOf` :943, `EntryLimits` :966 (kinds `boolean`, `choice`, `integer` `min:max`, `text`), `CollectRoster` :1014 (Task Mail's vendor-read branch), and `SendNode` :1107 (the write seam, whose Task Mail branch calls a vendor setter).
+  - `Api/ConfigError.cls` `ACCEPTSRANGE` :70.
+- `src/OcuPilot/Port/SqlPort.cls`:
+  - `COMPOSEDTYPES` :66, `Invoke` :824, and `TuningInvoke` :905 (served types, gate, id shape, read or write).
+  - `StatementCall`, the seam to widen; `Applied`, `SnippetForm` and `Snippet` (AD-59).
+  - `Plan` :769 and `Explained` :2332 (`$SYSTEM.SQL.Explain(.tText, {"silent": 1}, , .tPlan)`), `Run` :713 (the bound through `BoundSeconds` and `Executed`), and `Classify`.
+- `src/OcuPilot/Port/AtelierPort.cls` -- `CATALOGTABS`, `CatalogRows` and `CatalogQuery`, where 21.6's `Catalog.Statements` (`CATALOGSTATEMENTINDEXQUERY`, the `sqltext` kind and credential masking) is the sibling.
+- `src/OcuPilot/Area/Explorer/SqlConsole.cls` -- `HandlePlan` :78 and `Prepare` :105 (the screen gate, body, bounds, then `Check`, the self-protection set).
+- **Tool siblings:**
+  - `Screen/Tool/SqlStatementAction.cls` and `ExplorerSqlStatementClean.cls` (id `*` only, `Holds`, `IdProblem`, `STATEFIELD`/`STATEAFTER`, `REFUSALCODE`).
+  - `ConfigSettingSet.cls` and `SqlShellSettingSet.cls` (`TOOLNAME`, `DESCRIPTORCLASS`, `ENDPOINTNAME`, `CLASSICPAGES`, `CONSEQUENCECODE`, `Consequence` :146).
+  - `Area/OsMgmt/ConfigSettingRules.cls` -- `WriteProblem` :148.
+- **Descriptors:** `Screen/Descriptor/ExplorerSqlStatementList.cls` (list, position 20, page action `clean`), and `SqlShellSettingList.cls` / `SqlSettingList.cls` (settings rows, `config` source, row action `set`).
+- **Kernel:**
+  - `Kernel/EntityType.cls` `TYPES` :180 and `Kernel/Proposal/Prohibited.cls` `COVEREDTYPES` :342, each appended at the end. `sql-shell-setting` and `cached-query` are the arms' siblings.
+  - `Kernel/Governance/Baseline.cls` :245-259 (SQL track) and :370-376 (settings).
+  - `Kernel/Agent/Workflow.cls` `slowquery` :261-268.
+- **Client:**
+  - `ui/src/app/areas/system-explorer/sql-statement-list.page.ts` (the page-registered `*` action) and `sql-query.store.ts` (`SQL_PLAN_PATH` :36, plan :254) with `sql-query.page.ts`.
+  - `shell/screen-action-handler.ts` (`SCREEN_ACTION_DESCRIPTORS`, `UNDRAWN_ACTIONS`, `WARNING_CONSEQUENCES`), `shell/screen-outlet.ts` `DESCRIPTOR_PAGES`, `core/screen-actions.ts`, `core/proposal-view.ts` and `core/strings.ts`.
+- **Fixtures and tests to follow:** `Test/SqlTuningProbe.cls`, `SqlTuningPortFixture.cls` / `SqlTuningGateSeam.cls`, `ConfigGateSeam.cls`, `TaskMailSettingRead/Rules/Write.cls` (a vendor-setter roster), `SqlStatementRead.cls`, `SqlTuningWrite.cls` (armed), `SqlConsoleProbe.cls` (`Plan` legs :436), and `ui/browser/system-explorer-sql-statements.browser-spec.mjs`.
+
+## Tasks & Acceptance
+
+**Execution:** Task 0 first, then three batches, each committed on its own. A handoff builds one batch. Strings are only the ruled set (Design Notes, "Strings, escalated"); any other sentence a person reads is `## Clarification Needed`.
+
+**Task 0, measured on `ocupilot-ci` before code** (record in Design Notes; restore the flag and read it back; remove every probe row by routine and read back 0 for the probe's routines):
+
+- (a) **Least-privileged pairs.** Use a principal holding `%Development:USE` plus `AtelierPort.PAIRS(ns)`. Can it read `StatsSQLView` through the catalog route, or is it refused SQLCODE -99? A refusal is a HALT `intent gap`. With `AtelierPort.WritePairs(ns)`, can it purge, and which database holds `^%sqlcq(ns,"PTools")`? Can a principal with `%Development:USE` and `%DB_IRISSYS:READ` read the flag, and does a set need `%DB_IRISSYS:WRITE`? Record `<PROTECT>`, a status, or a silent no-op.
+- (b) Durations of a purge over 1,000 rows, a set, and Plan with statistics. Whether the console's alarm stops an `Explain` with statistics over the bound, and what that leaves.
+- (c) A cached query prepared at level 0: does it record rows after a set to 2, before and after a purge of cached queries? A query prepared at level 2: does it stop after a set to 0?
+- (d) Whether a set of the stop restarts `startHDate` at the set, and what the flag reads at expiry with `M:1:1` (one minute's wait). If not measured, `(inference)`.
+- (e) Whether `SetSQLStats`, `GetSQLStatsFlag`, `clearStatsSQL` or `Explain` with `silent` writes to the current device.
+- (f) Whether `Explain` with statistics runs an `INSERT`, measured on a probe table that is then dropped (the reason Plan with statistics takes a query only).
+
+**Batch 1, server: the list, the purge and the setting.**
+
+- `src/OcuPilot/Port/AtelierPort.cls` -- add `Catalog.RuntimeStats`. It is one `CATALOGTABS` statement over `%SYS_PTools.StatsSQLView`, `NameSpace = ?` bound, capped by `maxRows`, with one row per statement and module. Its columns are `Routine`, `Cursor`, `Module` (`%External(ModuleName)`), `Runs`, `AverageRows`, `AverageGlobalRefs`, `AverageCommands`, `AverageDiskWait`, `AverageTime` and `ModuleRuns`, averaged as `ViewStatsSQLDetails` averages (the summary row per run, a module row as stored), then `Statement:sqltext` cut and masked as `Catalog.Statements`. It never selects the user, client, process or parameter columns.
+- `src/OcuPilot/Port/SqlPort.cls`:
+  - Add the endpoint `RuntimeStats`, served in `Invoke` and `TuningInvoke`, with `RuntimeStats/PURGESTATS` in `COMPOSEDTYPES`.
+  - Its read `STATS`, id `*` only, answers `{Namespace, Rows}`, the namespace's row count. Its write `PURGESTATS` calls `clearStatsSQL(ns, "", 0, 1, 0, 1)` through the widened `StatementCall`, in the namespace.
+  - The gate is `Gate`, and the write adds `AtelierPort.WritePairs(ns)` plus any pair Task 0 (a) measures. An error status is 409 `SQL.RUNTIMESTATS.VENDOR`. Add a `SnippetForm` for the purge.
+- `src/OcuPilot/Port/ConfigPort.cls` -- add the roster endpoint `SQLStats` at the end of `ENDPOINTS`, with `SQLSTATSROSTER` holding the four rows of the matrix:
+  - `CollectionLevel` is a `choice` of the four ruled names stored 0 to 3. `StopAfterMinutes` is an `integer` `1:99999`. `LevelAfterStop` is a `choice` of the two ruled names stored 0 or 1. `StopsAt` is `text`, shown only.
+  - `CollectRoster` reads them from `GetSQLStatsFlag(0, 0, .ptInfo)`, with the stop rows empty below level 2.
+  - The endpoint's own pairs replace `PAIRS`/`WRITEPAIRS` for it (Design Notes).
+  - `SendNode` gains the `SQLStats` branch: one `SetSQLStats(level, 1, "", terminate)` built from the named row's new value and the other rows' fresh values. A stop row set below level 2 is refused with the ruled sentence before the call.
+- `src/OcuPilot/Api/AtelierError.cls` and `Api/ConfigError.cls` (add-only) -- `SQL.RUNTIMESTATS.VENDOR`, `SQL.RUNTIMESTATS.NOROWS`, the consequence codes `SQL.RUNTIMESTATS.PURGE` and `SQL.RUNTIMESTATS.SET`, the stop-row refusal, and their ruled sentences.
+- New `Screen/Tool/ExplorerSqlRuntimeStatsPurge.cls` (`explorer.sqlruntimestats.purge`, extends `SqlStatementAction`, as `ExplorerSqlStatementClean`):
+  - It reads `STATS`, with subject, state and precondition `Rows`, state after `0`, and id `*` only.
+- New `Screen/Tool/ExplorerSqlRuntimeStatsSettingSet.cls` (`explorer.sqlruntimestatssettings.set`, extends `ConfigSettingSet`, as `SqlShellSettingSet`):
+  - `ENDPOINTNAME` `SQLStats`, `CLASSICPAGES` `%CSP.UI.Portal.SQL.QButtons.RuntimeStatsSettings`, and `Consequence` answering `SQL.RUNTIMESTATS.SET` for every row.
+- New `Screen/Descriptor/ExplorerSqlRuntimeStats.cls`:
+  - List, the next free side-bar position at implement time (21 on HEAD today), namespace scope, entity `sql-runtime-stat`, id composite `["Routine", "Cursor", "Module"]`.
+  - Source `{port: "atelier", endpoint: "Catalog.RuntimeStats", type: "LIST"}`, sorted by `AverageTime` descending, with page action `purge`.
+  - Classic page `%CSP.UI.Portal.SQL.QButtons.RuntimeStats`, `%Development:USE`, `toolIdentifier` `explorer.sqlruntimestats`, and the ruled note.
+- New `Screen/Descriptor/ExplorerSqlRuntimeStatsSettings.cls`:
+  - Modeled on `SqlShellSettingList`: route `system-explorer/sql-runtime-stats-settings`, the next position after the list, instance scope, entity `sql-runtime-stats-setting`, id composite `["Name"]`.
+  - Source `{port: "config", endpoint: "SQLStats", type: "LIST"}`, row action `set`, classic page `...RuntimeStatsSettings`, its pairs as Design Notes says, and `toolIdentifier` `explorer.sqlruntimestatssettings`.
+- `Kernel/EntityType.cls` and `Kernel/Proposal/Prohibited.cls` (add-only, appended at the end, `tType` guards extended by prefix) -- add `sql-runtime-stat` and `sql-runtime-stats-setting`, covered as their siblings `cached-query` and `sql-shell-setting` are, with no predicate (AD-10, Design Notes).
+- `Kernel/Governance/Baseline.cls` (add-only) -- `explorer.sqlruntimestats.purge` `false` and `explorer.sqlruntimestatssettings.set` `true`.
+- `Kernel/Agent/Workflow.cls` -- `slowquery` gains, after the statement-index step, the ruled step reading both new reads.
+- `Test/SqlTuningProbe.cls` -- `RecordStats(ns)` runs the probe's statement with `SetSQLStatsFlagJob(3)` in its own process, then restores the job flag. `RemoveStats(ns)` clears the probe's routines by name. The seam fixtures (`SqlTuningPortFixture`, `ConfigGateSeam`) take the new branches.
+- New `Test/SqlRuntimeStatsRead.cls` (live-safe) covers:
+  - the list against a direct bound `SELECT`, and the agent read equal to the screen read;
+  - the selected columns pinned, with none of the excluded ones;
+  - the settings rows' shape, and the `STATS` read;
+  - the gates and every id shape.
+- New `Test/SqlRuntimeStatsWrite.cls` (armed, `OCUPILOT_ALLOW_CONFIG_SETTINGS`, add-only `# classes:` entry in `scripts/ci-throwaway.sh`) covers:
+  - each setting row on both callers, the defaults and the stop-row refusal;
+  - the purge on both callers, nothing to purge, another namespace surviving, a changed target and the vendor refusal (seams);
+  - restoring the flag read before, and reading it back.
+- Update every shared-surface test under Verification, with names read from the instance: `ConfirmNamespaceRoster`, `CompositeMintSweep` and `MappingDescriptor`'s `CLASSICROSTER`.
+
+**Batch 2, server: Plan with statistics.**
+
+- `src/OcuPilot/Port/SqlPort.cls` -- `Plan` gains `pStats` (default 0) and `pValues`. With `pStats` 1, a kind other than `query` is refused with the ruled sentence before anything runs. `Explained` passes `{"silent":1,"stats":1}` and the values as `dynArgs`, under the console's alarm bound. The answer keeps the `plan` outcome, and a bound overrun answers `stopped` as `Run` does.
+- `src/OcuPilot/Area/Explorer/SqlConsole.cls` -- `HandlePlan` reads a boolean `stats` and the values from the body and passes them on. `Check` still runs first.
+- `Test/SqlConsoleProbe.cls` / new legs in `Test/SqlRuntimeStatsRead.cls`: a query's plan carries statistics, and its rows reach the list (removed by routine). A DML statement is refused with nothing run (Task 0 (f) probe table). An OcuPilot table is refused by `Check`.
+
+**Batch 3, client.**
+
+- New `areas/system-explorer/sql-runtime-stats.page.ts` with a spec (the `sql-statement-list.page.ts` shape), which registers Purge statistics on `*`. Add a `screen-outlet.ts` row. The settings list uses the generic list page and the `set` row action as `SqlShellSettingList` does.
+- `sql-query.page.ts`, `sql-query.store.ts` and their spec -- a Plan with statistics button beside Explain plan, posting `{stats: true}` and the values, and showing the answer in the plan pane.
+- `shell/screen-action-handler.ts`, `core/screen-actions.ts`, `core/proposal-view.ts` and `core/strings.ts` (add-only) -- the descriptors, the page action, the warnings, the consequence codes and the ruled strings. Regenerate the mirror and `Titles.cls` (`node tools/screen-mirror.mjs`).
+- `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md` -- one add-only Fixed strings row for 21.26.
+- New `ui/browser/system-explorer-sql-runtime-stats.browser-spec.mjs`, which refuses the live container. Each step waits for the answered signal:
+  - the probe's rows show on the list;
+  - the settings list shows the level;
+  - Plan with statistics on SQL query shows module statistics;
+  - Purge statistics asks, confirms and empties the list.
+
+  The `after` hook removes the probe's rows and table.
+
+**Acceptance Criteria:**
+
+- AC1. Given the probe's recorded statement, when the person opens SQL runtime statistics and the agent calls `explorer.sqlruntimestats.read`, then both answer the same rows, one summary and one per module, with the matrix's columns and no user, client or parameter column.
+- AC2. Given the throwaway, when either caller sets the collection level, the stop or the level after the stop and confirms, then the setting reads back as sent and Runtime statistics collection shows it. A level of 2 or 3 always carries a stop, and the test restores the prior flag.
+- AC3. Given rows in the namespace, when either caller purges and confirms, then the namespace's rows are gone and another namespace's stay. A second purge is refused before any call.
+- AC4. Given a query on SQL query, when the person chooses Plan with statistics, then the plan shows each module's statistics and the run's rows appear in SQL runtime statistics. A statement that is not a query is refused before anything runs.
+- AC5. Given the `slowquery` workflow, when a turn follows it, then its steps name both new reads and no write tool.
+- AC6. Given the throwaway, when the browser spec runs forward and in reverse with `system-explorer-sql-statements.browser-spec.mjs`, then it passes and leaves no probe table or probe statistics.
+
+## Spec Change Log
+
+## Review Triage Log
+
+## Design Notes
+
+**Governing ADs (spine line ranges):**
+
+- AD-7 :211-253: the writes run in the request; Plan with statistics' rows are a new shape (record 3).
+- AD-10 :389-456: no new arm (below), and the console's own-table check :430 covers Plan with statistics.
+- AD-6, AD-34, AD-14, AD-15, AD-16, AD-21 :611, AD-22 (keys), and AD-29 :792 (gates by the classic page plus a least-privileged probe).
+- AD-35 and AD-36 :872 (one read for the list and the tool; excluded columns), AD-39, and AD-44 (classic pages).
+- AD-51 :1212-1285 (record 2), AD-52, AD-53, AD-56 (the screen's set sends one row's value), AD-58, AD-59, and AD-66 :1529 (read-only workflow).
+
+**Records for the orchestrator** (proposed, add-only; the runner writes each if allowed):
+
+1. **The collection level takes the settings shape, so no AD-51 named entry.** Recommendation: allow.
+   - It is a `ConfigPort` class-less roster endpoint, `SQLStats`, set one named row at a time. That is the precedent of Story 21.4's SQL Shell rows and Story 21.36's Task Manager mail rows, which call a vendor setter and carry no named entry.
+   - It fits the one-value warning dialog (21.31's limit) and gives the list and the agent one read for free.
+   - The port builds the vendor's `terminate` text from two whole numbers it has checked.
+   - The alternative is a `SqlPort` action write with three declared values and an AD-51 entry, plus a new screen to show the setting. It is larger and needs a new `Screen/Read` source.
+   - **Its gate:** the endpoint's pairs are the classic page's `%Development:USE` with `%DB_IRISSYS:READ` (`ConfigPort` reads in `%SYS`), and `%DB_IRISSYS:WRITE` for a set (inference: the vendor writes `^%SYS("sql","sys","SQLStats")`, measured as the node). They replace `ConfigPort`'s `%Admin_Manage` pairs for this endpoint only. If Task 0 (a) shows the vendor needs no IRISSYS pair the classic audience lacks, any extra pair is a stricter posture and a veto item.
+2. **AD-51, Story 21.26's purge** (append after :1285): "Story 21.26's case: `SqlPort` answers the runtime statistics purge's fresh read through a port-composed `STATS` type, the target namespace's runtime statistics row count, and calls `%SYS.PTools.StatsSQL.clearStatsSQL` with the namespace alone, every row and no error rows." Recommendation: allow. No caller value reaches it beyond the target `*`.
+3. **AD-7, Plan with statistics** (append after :252): "**Plan with statistics (Story 21.26)** is a person's read on SQL query. It runs one statement the console's classification types a query, in the request, under the console's bound, through `$SYSTEM.SQL.Explain` with statistics. Any other kind is refused before it runs. The vendor records the run in the namespace's runtime statistics (measured: one summary row and one row per module), which a purge removes. The SQL statement index row is the fifth shape's." Recommendation: allow. A confirmed run would add a proposal to what the console already runs unconfirmed.
+4. **AD-10: no new arm.** Neither write reaches OcuPilot's self-protection. A purge removes diagnostic rows, as 21.6's cached-query purge is not refused. The collection setting changes what every namespace's new queries record, OcuPilot's included, at a cost the person chose with a stop.
+
+**Decided in-stage:**
+
+- **Placement.** Two System Explorer lists after SQL statements, at the next free positions at implement time. Purge statistics is the runtime statistics page's own action on `*`, and `set` is the settings list's row action. Plan with statistics is a button on SQL query. It has no agent tool, since Explain plan has none.
+- **One list read covers View Stats and its details.** The read returns summary rows (module `INFO`) and module rows together, so `ViewStatsSQLDetails` needs no second screen.
+- **Entity types (two, new):** `sql-runtime-stat` (`*` for the purge) and `sql-runtime-stats-setting`. A tool's target type is its descriptor's primary type (`Operation.TargetRefOf`).
+- **Defaults follow the classic page.** A level set to 2 or 3 with no stop held takes 50 minutes and level after stop 0. A stop row set below level 2 is refused, so a level of 2 or 3 never runs without a stop.
+- **Keys.** The purge is `false`: purged statistics do not come back, as 21.6's clear statistics. The set is `true`: it is reversible and always stops, as every settings list's set is. Neither is destructive.
+- **Plan with statistics takes a query only.** Explain with statistics runs the statement (Task 0 (f) confirms for DML). The console runs a query unconfirmed today and confirms everything else.
+- **Tests.** The armed class (whole namespace and system-wide) joins `OCUPILOT_ALLOW_CONFIG_SETTINGS` beside `SqlTuningWrite`. The list test records statistics in its own process only.
+
+**Measured at plan, `ocupilot-ci`, USER, 2026-11-25** (restored and read back):
+
+- `SetSQLStats(2, 1, "", "M:50:1")` answered `0`. The flag read `2:15:0::97775566:0`, where the fifth piece is the stop in minutes since `$H` day 0. `ptInfo("terminate")` held `mins` 50, `resetActionFlag` 1 and `start`/`stopHDate` 50 minutes apart. The SQL function `StatsSQL_GetSQLStatsFlag` answers the flag string only, so the stop rows need the method.
+- A dynamic query run while the level was 2 recorded three rows at once (module `-1` and two modules).
+- `Explain` with `{"silent":1,"stats":1}` ran in 0.46 s. Its plan text carries a `Stats:` block per module, it recorded six rows under `%sqlcq.USER.u<hash>.1`, and it left the job flag unchanged.
+- `clearStatsSQL("USER", <routine>, , 1, , 1)` answered 3 and 6 and left 0 rows.
+- `SetSQLStats(0, 1, "", 0)` answered 2 and the flag read `0:0:0::0:0` again. `ptInfo("terminate")` then read `resetActionFlag` 0 and `terminateCond` 0 where it first read empty, a stored-node residue no API clears.
+- `%SYS_PTools.StatsSQL_ViewStatsSQL` is not a SQL procedure. `StatsSQL_ViewStatsSQLDetails` is. `StatsSQLView` holds the user, client, process and parameter columns.
+- On `ocupilot` (read only): the flag is `0`, and `StatsSQL` and `StatsSQLView` hold 0 rows.
+
+**Strings, escalated as one batch** (none is in EXPERIENCE.md yet). *Measure-first* clauses ship only as measured, and any correction is reported verbatim.
+
+1. **Titles:** "SQL runtime statistics" (the classic page's name) · "Runtime statistics collection".
+2. **List columns:**
+   - New: "Routine" · "Cursor" · "Module" · "Runs" · "Module runs" · "Average rows" · "Average global references" · "Average commands" · "Average disk wait" · "Average time".
+   - Reused: "Statement".
+   - Siblings: 21.6's columns, and the classic headers "Run Count", "Avg Rows".
+3. **Empty states:** "No runtime statistics are recorded in this namespace." (sibling: "No SQL statements are recorded in this namespace.").
+   - Agent invitations: "purge runtime statistics" · "change runtime statistics collection" (siblings: "purge cached queries").
+4. **Note on the list:** "Statistics are recorded only while collection is on, and by Plan with statistics on SQL query." *Measure-first:* Task 0 (c); the second clause was measured at plan.
+5. **Setting names and choices** (the settings list's Name and Value, sent by the agent):
+   - Names: "CollectionLevel" · "StopAfterMinutes" · "LevelAfterStop" · "StopsAt".
+   - `CollectionLevel` choices: "Off" (0) · "Off with collection code" (1) · "On for open and close" (2) · "On for all modules" (3), from the classic option texts.
+   - `LevelAfterStop` choices: "Off" · "Off with collection code".
+6. **Actions:**
+   - "Purge statistics" (classic "Purge Stats"; sibling: "Clean stale statements").
+   - "Plan with statistics" (sibling: "Explain plan").
+   - The settings list's `set` keeps its published label.
+7. **Consequences:**
+   - Purge: "This namespace's runtime statistics are removed. New statistics are recorded only while collection is on." (sibling: Clear statistics').
+   - Set: "This applies to every namespace on the instance. Queries prepared before the change keep recording as they did until they are purged or compiled again." *Measure-first:* Task 0 (c). If (c) shows prepared queries follow the new level, the second sentence goes.
+8. **Refusals:**
+   - "This namespace holds no runtime statistics." (sibling: "This namespace's statement index holds no stale statements.")
+   - "Collection must be on before its stop can be set." (the stop rows below level 2)
+   - "Plan with statistics runs the statement, so it takes a query only." (sibling: `REASONSQLCHANGES`)
+   - The vendor refusal: "The instance did not purge this namespace's runtime statistics." (sibling: "The instance did not apply this change to the statement.")
+   - Value shapes reuse the settings' published sentences (`ConfigError.ACCEPTSRANGE`, "A whole number from 1 to 99999.", and its choice sentence).
+9. **Suggested prompts:**
+   - List: "Which statements take the longest on average?" (reused) · "Which module of a slow statement takes the most time?" · "Are runtime statistics being collected?"
+   - Settings: "Is runtime statistics collection on, and when does it stop?"
+10. **Command aliases:** "runtime statistics" · "sql stats" (list) and "runtime statistics settings" (settings).
+11. **The `slowquery` step:** "Read the namespace's runtime statistics for the statements and modules with the highest average time, and the collection setting; when collection is off, say so and that turning it on records new runs only."
+
+**Extend, don't copy (Rule 2/31):**
+
+- The purge extends `SqlStatementAction`, as `ExplorerSqlStatementClean` does, through 21.6's widened seam `StatementCall`.
+- The setting extends `ConfigSettingSet` and `ConfigPort`'s roster (`SendNode`, `CollectRoster`, `EntryLimits`'s `integer` kind), as `SqlShellSettingSet` and Task Mail do.
+- The list is one more `CATALOGTABS` statement beside `Catalog.Statements`.
+- Plan with statistics extends `SqlPort.Plan` and `Explained`.
+- The fixture extends `SqlTuningProbe`.
+
+**Integration ACs:** the two write tools consume `SqlPort` and `ConfigPort` through both callers (AC2, AC3). `slowquery` consumes both reads (AC5), and the list consumes Plan with statistics' rows (AC4).
+
+- **Consumed-by:** 21.27 and 21.28 add their own `slowquery` reads after this step. 21.28's comparison may reuse Plan with statistics' `Explained` (inference).
+- **Consumes:** Story 21.6's `SqlPort` endpoints, `SqlStatementAction`, seam and `SqlTuningProbe`; Story 21.4's `ConfigPort` roster and `ConfigSettingSet`; Story 19.6's console `Plan`, `Classify` and `Check`; and Story 20.12's workflow catalog.
+
+**Ledger inbox:** none (`LEDGER slice 21-26-runtime-statistics` is empty). DW-2851 is a constraint, not owned.
+
+**Contended paths (Epic 24), checked 2026-11-25** with `git log origin/OCU-1-epic24 ^origin/feature/OCU-1_ocupilot-mvp`: 0 commits on every path in the Code Map, `ci-throwaway.sh` and EXPERIENCE.md. Edits to the shared rosters stay add-only.
+
+**Size:** 2 write tools, 2 derived read tools, 1 console action and about 30 files, planned as three batches.
+
+## Verification
+
+**Shared surfaces** (all `(loop)`):
+
+- System Explorer's side bar and routes: `ExplorerDescriptor`, `Navigation`, `navigation.test.mjs`, and `screen-mirror.test.mjs`'s route rows and catalog roster.
+- The tool registry: `ReadTool`, `ReadDescriptions`, `ToolEmit`, `ToolRoundTrip`, `ToolWrite`, `StageTwoTools`, `DeveloperFloor`, `SurfaceCoverage` and `DraftRegistry`.
+- Entity types: `Descriptor`'s count, `EntityRef`, and `Prohibited`'s covered types.
+- Governance: `Governance` and `GovernanceBaseline`.
+- Gates and catalog: `PortGate`, `ClassicPageGate`, `ConfigGate`, `AtelierPortCatalogTabs`, `AtelierPortCatalogTabsLive`, `SqlCredentialMask` and `EndpointCoverage`.
+- The settings shape: `ConfigSettingRead`, `ConfigSettingRules`, `SqlSettingRules` and `TaskMailSettingRules`.
+- The console: `SqlConsoleRoutes`, `SqlConsoleWrite` and `sql-query.page.spec.ts`.
+- The workflow: `WorkflowCatalog` and `suggested-prompts.test.mjs`.
+- Rosters: `ConfirmNamespaceRoster`, `CompositeMintSweep`, `MappingDescriptor`, and `ci.test.mjs` (armed rosters).
+
+Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for each surface; each test changed joins `(loop)`.
+
+*Every test added or changed passes on a fresh environment, in either order.*
+
+**Commands.** Each runs in its own foreground call with `timeout: 600000`, against `ocupilot-ci` only, one test call per message.
+
+- `(loop)` `sh /Users/jbrandt/git/OcuPilot/.worktrees/.coordination/e21-kit/lead/reload.sh /Users/jbrandt/git/OcuPilot/.worktrees/epic-21 ocupilot-ci` -- expected: `LOADERRORS=0`.
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.SqlRuntimeStatsRead` -- expected: green. Then, one class per call: `SqlRuntimeStatsWrite` (armed), `SqlConsoleProbe`, `WorkflowCatalog`, `SqlStatementRead`, `SqlTuningWrite`, `Prohibited`, and every shared-surface class above.
+- `(loop)` `uv run scripts/check-objectscript.py` and `bash scripts/lint-docs.sh` -- expected: clean.
+- `(loop)` `cd ui && node --test tools/screen-mirror.test.mjs tools/navigation.test.mjs tools/suggested-prompts.test.mjs tools/self-protection.test.mjs tools/proposal-view.test.mjs tools/ci.test.mjs` -- expected: green.
+- `(loop)` `cd ui && npm run build`, then `npm run test:components`, then `docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, then `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node --test --test-concurrency=1 browser/system-explorer-sql-runtime-stats.browser-spec.mjs browser/system-explorer-sql-statements.browser-spec.mjs` -- expected: green, and green in reverse order.
+- `(once)` `cd ui && npm run test:tools` -- expected: green (EXPERIENCE.md changes).
+- `(once)`, runner-owned: the full ObjectScript sweep one class per call, `smoke.sh --container ocupilot-ci`, and Rule 30's fresh check. The full browser suite is left to CI.
+
+**Mutations (Rule 19).** One per AC. Each is applied, observed red and reverted, the tree is confirmed identical, and the source is reloaded.
+
+- AC1: `Catalog.RuntimeStats` drops the module rows' averaging, or selects `UserName` -> `SqlRuntimeStatsRead` red.
+- AC2: `SendNode`'s `SQLStats` branch drops the stop for level 2 -> `SqlRuntimeStatsWrite` red on the defaults leg.
+- AC3: `PURGESTATS` passes `""` for the namespace -> `SqlRuntimeStatsWrite` red on the other namespace's surviving rows.
+- AC4: `Plan` ignores `pStats` -> the statistics leg red. The query-only check is skipped -> the DML leg red.
+- AC5: `slowquery` loses the step -> `WorkflowCatalog` red.
+- AC6: `ExplorerSqlRuntimeStats` loses its page action, after rebuild and redeploy -> the browser spec red.
+
+## Auto Run Result
+
+Status: ready-for-dev
+Blocking condition: none
