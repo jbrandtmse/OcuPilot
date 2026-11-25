@@ -14658,3 +14658,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-40-the-governance-page-s-render-cost.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Only Baseline.Keys' list (always a %DynamicObject) or {} reaches them; Rows normalises a non-object to {}.
 - 2026-11-24T05:09:48Z status=wontfix-theoretical owner=21-40-the-governance-page-s-render-cost by=cr note=real only if a caller passes a %DynamicArray or another object as the list
+
+### DW-2872: flake: ssl.browser-spec.mjs AC2 filtering on OcuPilotDemoTLS found the list holding that one row only (expected a proper subset), 34.7 s; unrelated to the change under test
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-2.md | severity: low | fix-risk: low | footprint: out
+- evidence: CI run 45661016373 browser shard 5/5 on 76959926c (24.17 Batch 2, no SSL change); rerun pending on the next push
+- 2026-11-25T17:54:15Z status=routed owner=burndown by=ci note=flake candidate; confirm on rerun
