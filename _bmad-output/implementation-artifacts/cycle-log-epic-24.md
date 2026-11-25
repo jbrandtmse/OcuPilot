@@ -888,3 +888,4 @@
 2026-11-25T23:50:19Z	Story 24.17	integrate_merge	scope=batch2 head=07a3771f0(M_over_feature_5eb22bfff:21.26) counts=TYPES130,COVERED120,production628(350),OWNPAIRS188,other191,README_102 citations=moved double_count=taskCreate
 2026-11-25T23:50:19Z	Story 24.17	code_head_pushed	scope=batch2 sha=07a3771f0 runs=45724102429 ci=pending missing=none worktree=e24-b2fix(removed)
 2026-11-25T23:50:19Z	Story 24.17	integrate_merge	scope=batch3a theirs=07a3771f0 counts=TYPES131,COVERED121,production632(353),OWNPAIRS191,other194,README_103 double_count_scan=README(102_both_sides->103),taskCreate(679) test:tools=2416_green
+2026-11-25T23:52:15Z	Story 24.17	stage_spawned	stage=qa+code-review spawn_at=2026-11-25T23:52:15Z model=opus agent_name=24-17-review-batch3a cycle_iteration=3 diff=757c13965..e46da42b2 head=43be2822a rebuild_once_permitted=yes ruling=U-168(cascade)
