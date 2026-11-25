@@ -2,7 +2,7 @@
 title: 'Story 21.26: Runtime statistics'
 type: 'feature'
 created: '2026-11-25'
-status: 'blocked'
+status: 'in-progress'
 baseline_revision: '747dd2a457ecb50371cf50291b0e01880f072d61'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -54,7 +54,7 @@ deferred:
 | Turn collection off | `CollectionLevel` set to "Off" | The level reads 0, the stop rows read empty | none |
 | Bad value | A level outside the four names; minutes 0, 100000, fractional or text; a level after stop other than the two names | 400 with the settings' published sentence before any call, from both callers | none |
 | Purge | The namespace holds the probe's rows | Every row of the namespace is gone after confirm; another namespace's rows stay (armed) | Nothing to purge: precondition refusal before any call |
-| Plan with statistics | A query over the probe table, with values | The plan text with each module's statistics; the run's rows appear in the list | Not a query kind: refused before anything runs; over the console's bound: `stopped` |
+| Plan with statistics | A query over the probe table, run without its values | The plan text with each module's statistics and the note "Plan with statistics runs the statement without its values, so a filtered query can show zero rows."; the run's rows appear in the list | Not a query kind: refused before anything runs; over the console's bound: `stopped` |
 | Own tables | A Plan with statistics over `OcuPilot_Kernel_State.Turn` | Refused by the console's existing self-protection check before anything runs | none |
 | Changed target | Rows recorded, or the level changed, after the mint | Confirm refuses `PROPOSAL.TARGETCHANGED` and writes nothing | none |
 | Gate | Missing a pair Design Notes names for the read or the write | 403 naming the pair, before any read or write | none |
@@ -167,12 +167,23 @@ deferred:
 
   The `after` hook removes the probe's rows and table.
 
+**Rework 1** (orchestrator ruling 2026-11-25, veto U-164; Spec Change Log):
+
+- [ ] [Review] AC4 "with values": Plan with statistics keeps the query-only guard, runs without values, and EVERY result shows the note "Plan with statistics runs the statement without its values, so a filtered query can show zero rows." (no literal detection) -- client result pane, plus the same sentence in the model-facing tool result or description, and the `slowquery` step text where it uses the read. A test pins the client note and one pins the model-facing sentence (each with a `mutation:` line). The client posts no values.
+- [ ] [Review] Set consequence: ship "This applies to every namespace on the instance. A query prepared while collection was set to Off records nothing once collection is turned on, until its cached query is purged." -- measured in that direction at Task 0 (c) (prepared at level 0, set to 2: 0 rows on two runs; purged and prepared at level 2: 3 rows). Re-measure once on `ocupilot-ci` and record the line under Verification; if it measures false, ship the first sentence alone.
+- [ ] [Review] Security note in Design Notes: Task 0 measured the vendor needs no `%DB_IRISSYS` pair for read, set or purge; the shipped gate keeps it (stricter than the classic page, U-161).
+- [ ] [Review] AD-36 truncation test for the SQL runtime statistics list.
+- [ ] [Review] `SqlRuntimeStatsWrite`'s always-true first assertion made able to fail.
+- [ ] [Review] The AC6 mutation comment in the browser spec names a mutation that can run.
+- [ ] [Review] A changed-target test for the collection level (the level read back after a set, restored in cleanup).
+- [ ] [Review] A `mutation:` line for `ConfigPort.SqlStatsState`'s `pLevel >= 2` guard.
+
 **Acceptance Criteria:**
 
 - AC1. Given the probe's recorded statement, when the person opens SQL runtime statistics and the agent calls `explorer.sqlruntimestats.read`, then both answer the same rows, one summary and one per module, with the matrix's columns and no user, client or parameter column.
 - AC2. Given the throwaway, when either caller sets the collection level, the stop or the level after the stop and confirms, then the setting reads back as sent and Runtime statistics collection shows it. A level of 2 or 3 always carries a stop, and the test restores the prior flag.
 - AC3. Given rows in the namespace, when either caller purges and confirms, then the namespace's rows are gone and another namespace's stay. A second purge is refused before any call.
-- AC4. Given a query on SQL query, when the person chooses Plan with statistics, then the plan shows each module's statistics and the run's rows appear in SQL runtime statistics. A statement that is not a query is refused before anything runs.
+- AC4. Given a query on SQL query, when the person chooses Plan with statistics, then the statement runs without its values, the plan shows each module's statistics with the note "Plan with statistics runs the statement without its values, so a filtered query can show zero rows." (the model-facing result says the same), and the run's rows appear in SQL runtime statistics. A statement that is not a query is refused before anything runs.
 - AC5. Given the `slowquery` workflow, when a turn follows it, then its steps name both new reads and no write tool.
 - AC6. Given the throwaway, when the browser spec runs forward and in reverse with `system-explorer-sql-statements.browser-spec.mjs`, then it passes and leaves no probe table or probe statistics.
 
@@ -186,6 +197,8 @@ deferred:
   5. **AD-10:** decided, no new arm; the purge is not in the prohibited set.
   6. **Governance defaults:** decided. `explorer.sqlruntimestats.purge` ships `false`; `explorer.sqlruntimestatssettings.set` ships `true`.
   7. **Strings** (veto U-161): accepted as written. The list note and the set consequence ship only if measured true on `ocupilot-ci`; otherwise they are reworded to what was measured and the measurement recorded under Verification. The four level names are checked against the vendor's level semantics (0-3) in its source.
+
+- 2026-11-25, orchestrator ruling on the implement-stage intent gap (veto U-164), rework 1: AC4 becomes "a query" run without its values, with the note "Plan with statistics runs the statement without its values, so a filtered query can show zero rows." on every result and in the model-facing result; the matrix row and AC4 read so (lead edit to the I/O matrix, the intent's wording only). Evidence: Task 0 (b) and the Batch 2 re-measurement, two runs with a literal, zero rows and zero global references. The set consequence's reworded second clause ships as measured (Task 0 (c)); the IRISSYS pair stays. epics.md's 21.26 block names no values, so it is unchanged.
 
 ## Review Triage Log
 
