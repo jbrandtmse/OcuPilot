@@ -7,17 +7,6 @@
 Class OcuPilot.Test.InteropLogPurgeControl Extends OcuPilot.Test.InteropLogPurgeCase
 {
 
-/// <p>Mint the agent's purge of the log <var>pKind</var> for <var>pDays</var>, confirm it over the wire and answer the confirm's status; the proposal is in <var>pProposal</var>, its turn in
-/// <var>pTurn</var> (the caller removes it) and the confirmed answer in <var>pConfirmed</var>. The governance keys must be on.</p>
-ClassMethod AgentPurge(pKind As %String, pDays As %String, Output pProposal, Output pTurn, Output pConfirmed, Output pReason As %String) As %Integer
-{
-    Set pConfirmed = ""
-    Set tVerdict = ..Mint(pKind, pDays, .pReason, .pProposal, .pTurn)
-    If tVerdict '= "minted" Quit -1
-    Set tSC = ..Confirm(pProposal.proposalId, .tStatus, .tRaw, .pConfirmed)
-    Quit tStatus
-}
-
 /// <p>Both tools are declared as the plan says: destructive, behind a governance key that ships off, fingerprinting the days and the namespace, performing the classic page's purge, and the
 /// governance baseline lists each key.</p>
 /// <p>Mutation (Rule 19): make <class>OcuPilot.Screen.Tool.InteropRuleLogPurge</class>'s <code>FINGERPRINTSUBJECT</code> name <code>Count</code> too -- this goes red.</p>
@@ -110,6 +99,7 @@ Method TestABusinessProcessPurgeFromEitherCallerKeepsTheRunningOneAndTheCurrentO
     Set tOldDone = ..Probe("process", ..#SOURCE, 7300, 1)
     Set tOldRunning = ..Probe("process", ..#SOURCE, 7300, 0)
     Set tNewDone = ..Probe("process", ..#SOURCE, 0, 1)
+    Do $$$AssertTrue((tOldDone > 0) && (tOldRunning > 0) && (tNewDone > 0), "the probes are stored again, from nothing, for the agent's purge")
     Set tSC = ..EnableKeys(.tPolicy)
     Do $$$AssertStatusOK(tSC, "the purges' governance keys are turned on")
     Try {
@@ -121,9 +111,11 @@ Method TestABusinessProcessPurgeFromEitherCallerKeepsTheRunningOneAndTheCurrentO
         Do $$$AssertEquals(..Exists("process", ..#SOURCE, tOldDone), 1, "nothing is deleted by the mint")
         Set tSC = ..Confirm(tProposal.proposalId, .tStatus, .tRaw, .tConfirmed)
         Do $$$AssertEquals(tStatus, 200, "the proposal confirms over HTTP: " _ $Extract($Get(tRaw), 1, 300))
+        Do $$$AssertEquals($Select($IsObject(tConfirmed): tConfirmed.%Get("auditMarked") _ "|" _ tConfirmed.action, 1: ""), "1|updated", "marked (AD-15)")
         Do $$$AssertEquals($ClassMethod(..#CONTROL, "LedgerCount", tTurn, "interop.processlog.purge"), 1, "the confirmed write is in the ledger once")
         Do $$$AssertEquals(..Exists("process", ..#SOURCE, tOldDone) _ ..Exists("process", ..#SOURCE, tOldRunning) _ ..Exists("process", ..#SOURCE, tNewDone), "011", "only the old completed one is gone")
         Do $$$AssertEquals(..OwnRows("process", tSince, .tAgentData), 1, "OcuPilot records one ConfigChange for the agent's purge")
+        Do $$$AssertTrue((tAgentData [ """daysToKeep"":3650") && (tAgentData [ """deleted"":1") && (tAgentData [ """completed"":true"), "naming the days, the count and that it completed: " _ tAgentData)
         Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
     } Catch ex {
         Do $$$AssertStatusOK(ex.AsStatus(), "the agent leg raised")

@@ -1,7 +1,7 @@
 /// <p>The child process Story 24.17 Batch 2's principal legs run: <method>ProbeAs</method> starts <method>Probe</method> as a real user in a job of its own and answers what it signalled, so
 /// the gate, the process's roles and the classic page's own query are tried as that user and not as the test account. A probe is <code>legs</code> (the six calls of the two logs through the port,
 /// each answered as <code>{http, code, failedPair}</code>), <code>roles</code> (one purge of a log through the port or a seam, with the process's roles, user and namespace before and after) or
-/// <code>equality</code> (for each log, whether its list is admitted and whether the classic page's own query prepares).</p>
+/// <code>equality</code> (for each log in <code>USER</code> and in <code>HSCUSTOM</code>, whether its list is admitted and whether the classic page's own query prepares there).</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests. It runs only on a throwaway instance, which sets the arming variable <class>OcuPilot.Test.InteropLogPurgeCase</class> names.</p>
 Class OcuPilot.Test.InteropLogPurgeChild Extends %RegisteredObject
 {
@@ -16,11 +16,11 @@ Parameter RULEQUERY = "SELECT TOP 1 ID, SessionId, RuleName, IsError, ReturnValu
 
 Parameter PROCESSQUERY = "SELECT %ID, %IsCompleted, %ConfigName, %SessionId, %PrimaryRequestHeader, %EXTERNAL(%TimeCreated) As TimeCreatedFull FROM Ens.BusinessProcess";
 
-/// <p>The answer of the port's call of <var>pType</var> of the log <var>pKind</var> in <code>USER</code> as <code>{http, code, failedPair}</code>; a purge keeps 3,650 days.</p>
-ClassMethod Leg(pKind As %String, pType As %String, pClass As %String = "OcuPilot.Port.InteropPort") As %DynamicObject
+/// <p>The answer of the port's call of <var>pType</var> of the log <var>pKind</var> in <var>pNamespace</var> as <code>{http, code, failedPair}</code>; a purge keeps 3,650 days.</p>
+ClassMethod Leg(pKind As %String, pType As %String, pClass As %String = "OcuPilot.Port.InteropPort", pNamespace As %String = "USER") As %DynamicObject
 {
     Kill tQuery
-    Set tQuery("namespace") = "USER"
+    Set tQuery("namespace") = pNamespace
     Set tQuery("days") = 3650
     Set tType = $Case(pType, "state": $ClassMethod(..#CASE, "Spec", pKind, "state"), "write": $ClassMethod(..#CASE, "Spec", pKind, "write"), : pType)
     Set tHttp = 0
@@ -64,18 +64,20 @@ ClassMethod Probe(pParent As %Integer, pUsername As %String, pMode As %String, p
             Do tOut.%Set("sameNamespace", (tNamespace = $NAMESPACE), "boolean")
         } ElseIf pMode = "equality" {
             Set tOrigNS = $NAMESPACE
-            For tKind = "rule", "process" {
-                Set tListed = ..Leg(tKind, "LIST")
-                Set $NAMESPACE = "USER"
-                Set tResultSet = ##class(%Library.ResultSet).%New()
-                Set tSC = tResultSet.Prepare($Select(tKind = "rule": ..#RULEQUERY, 1: ..#PROCESSQUERY))
-                Set $NAMESPACE = tOrigNS
-                Set tEntry = {}
-                Do tEntry.%Set("http", tListed.http, "number")
-                Do tEntry.%Set("failedPair", tListed.%Get("failedPair"))
-                Do tEntry.%Set("prepared", $$$ISOK(tSC), "boolean")
-                Do tEntry.%Set("refused5580", ($$$ISERR(tSC) && ($System.Status.GetErrorText(tSC) [ "#5580")), "boolean")
-                Do tOut.%Set(tKind, tEntry)
+            For tNamespace = "USER", "HSCUSTOM" {
+                For tKind = "rule", "process" {
+                    Set tListed = ..Leg(tKind, "LIST", , tNamespace)
+                    Set $NAMESPACE = tNamespace
+                    Set tResultSet = ##class(%Library.ResultSet).%New()
+                    Set tSC = tResultSet.Prepare($Select(tKind = "rule": ..#RULEQUERY, 1: ..#PROCESSQUERY))
+                    Set $NAMESPACE = tOrigNS
+                    Set tEntry = {}
+                    Do tEntry.%Set("http", tListed.http, "number")
+                    Do tEntry.%Set("failedPair", tListed.%Get("failedPair"))
+                    Do tEntry.%Set("prepared", $$$ISOK(tSC), "boolean")
+                    Do tEntry.%Set("refused5580", ($$$ISERR(tSC) && ($System.Status.GetErrorText(tSC) [ "#5580")), "boolean")
+                    Do tOut.%Set(tNamespace _ "|" _ tKind, tEntry)
+                }
             }
         }
     } Catch ex {

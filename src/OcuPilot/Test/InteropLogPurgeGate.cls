@@ -16,9 +16,9 @@ Parameter BASE = "%Ens_Portal:U,%Ens_RuleLog:U,%Ens_Jobs:R,%Ens_Purge:U,%DB_USER
 
 Parameter PRINCIPALS = "OcuP2417gAll:%Ens_Portal:U,%Ens_RuleLog:U,%Ens_Jobs:R,%Ens_Purge:U,%DB_USER:RW,%DB_HSCUSTOM:RW;OcuP2417gNoPurge:%Ens_Portal:U,%Ens_RuleLog:U,%Ens_Jobs:R,%DB_USER:RW,%DB_HSCUSTOM:RW;OcuP2417gDbRead:%Ens_Portal:U,%Ens_RuleLog:U,%Ens_Jobs:R,%Ens_Purge:U,%DB_USER:R,%DB_HSCUSTOM:RW;OcuP2417gNoRule:%Ens_Portal:U,%Ens_Jobs:R,%Ens_Purge:U,%DB_USER:RW,%DB_HSCUSTOM:RW;OcuP2417gNoJobs:%Ens_Portal:U,%Ens_RuleLog:U,%Ens_Purge:U,%DB_USER:RW,%DB_HSCUSTOM:RW;OcuP2417gNoSelect:%Ens_Portal:U,%Ens_RuleLog:U,%Ens_Jobs:R,%Ens_Purge:U,%DB_USER:RW,%DB_HSCUSTOM:RW";
 
-/// <p>The principals of the equality legs: the same pairs and the SQL privilege through the Ensemble operator role, on the rule log's table alone, and none at all; <code>_SYSTEM</code> holds
-/// <code>%All</code> and is the sixth.</p>
-Parameter EQUALITYPRINCIPALS = "OcuP2417gOp:%Ens_Portal:U,%Ens_RuleLog:U,%Ens_Jobs:R,%Ens_Purge:U,%DB_USER:RW,%DB_HSCUSTOM:RW;OcuP2417gOne:%Ens_Portal:U,%Ens_RuleLog:U,%Ens_Jobs:R,%Ens_Purge:U,%DB_USER:RW,%DB_HSCUSTOM:RW";
+/// <p>The principals of the equality legs: the same pairs and the SQL privilege through the Ensemble operator role, on the rule log's table alone, and none at all; one holding only READ on the
+/// two databases; <code>_SYSTEM</code> holds <code>%All</code>.</p>
+Parameter EQUALITYPRINCIPALS = "OcuP2417gOp:%Ens_Portal:U,%Ens_RuleLog:U,%Ens_Jobs:R,%Ens_Purge:U,%DB_USER:RW,%DB_HSCUSTOM:RW;OcuP2417gOne:%Ens_Portal:U,%Ens_RuleLog:U,%Ens_Jobs:R,%Ens_Purge:U,%DB_USER:RW,%DB_HSCUSTOM:RW;OcuP2417gDb:%DB_USER:R,%DB_HSCUSTOM:R";
 
 Property PreparedPassword As %String;
 
@@ -63,7 +63,10 @@ Method CreateGated() As %Status
     Set tSC = $ClassMethod(..#GENERATOR, "CreatePrincipals", ..#PRINCIPALS, ..PreparedPassword)
     If $$$ISERR(tSC) Quit tSC
     For tUser = "OcuP2417gAll", "OcuP2417gNoPurge", "OcuP2417gDbRead", "OcuP2417gNoRule", "OcuP2417gNoJobs" {
-        If '$ClassMethod(..#FIXTURE, "GrantSelect", tUser _ "Role") Quit
+        If '$ClassMethod(..#FIXTURE, "GrantSelect", tUser _ "Role") {
+            Set tSC = $$$ERROR($$$GeneralError, "the SQL SELECT grant to " _ tUser _ "Role failed")
+            Quit
+        }
     }
     Quit tSC
 }
@@ -127,11 +130,13 @@ Method TestTheGateRefusesEachPrincipalBeforeAnyVendorCall()
     Do $ClassMethod(..#FIXTURE, "DropProbes")
 }
 
-/// <p>AC3: the SQL SELECT check is the classic page's own: for each principal and each log, in <code>USER</code>, the list is admitted exactly when the classic page's own query prepares as that principal
-/// through <class>%Library.ResultSet</class>, and refused exactly when that answers <code>#5580</code> -- a principal with a direct grant, one with the grant through the Ensemble operator role, one with the
-/// grant on the rule log's table alone, one with none, and <code>_SYSTEM</code> (<code>%All</code>). The grant is read the vendor's way, so roles and <code>%All</code> resolve as the classic page resolves
-/// them.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.LogSelectGate</method> check the other log's table -- the rule-table-only principal's legs go red.</p>
+/// <p>AC3: the SQL SELECT check is the classic page's own: for each principal and each log, in <code>USER</code> and in <code>HSCUSTOM</code>, the list is admitted exactly when the classic page's own
+/// query prepares there as that principal through <class>%Library.ResultSet</class>, and refused exactly when that answers <code>#5580</code> -- a principal with a direct grant, one with the grant
+/// through the Ensemble operator role, one with the grant on the rule log's table alone, one with none, one holding only READ on the databases, and <code>_SYSTEM</code> (<code>%All</code>). The grants
+/// are made in <code>USER</code>, so <code>HSCUSTOM</code> admits only <code>%All</code>. The grant is read the vendor's way, in the namespace the list names, so roles and <code>%All</code> resolve as
+/// the classic page resolves them.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.LogSelectGate</method> check the other log's table -- the rule-table-only principal's legs go red; make it ask in <code>USER</code>
+/// whatever the namespace -- the <code>HSCUSTOM</code> legs go red.</p>
 Method TestTheSqlSelectCheckIsTheClassicPagesOwn()
 {
     Set tSC = ..CreateGated()
@@ -142,11 +147,13 @@ Method TestTheSqlSelectCheckIsTheClassicPagesOwn()
     If $$$ISERR(tSC) Quit
     Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "AddRole", "OcuP2417gOp", "%EnsRole_Operator"), "one holds the Ensemble operator role, which carries the grant")
     Do $$$AssertTrue($ClassMethod(..#FIXTURE, "Sql", ..#SOURCE, "GRANT SELECT ON Ens_Rule.Log TO OcuP2417gOneRole"), "one is granted the rule log's table alone")
-    Set tExpected("OcuP2417gNoSelect") = "00"
-    Set tExpected("OcuP2417gAll") = "11"
-    Set tExpected("OcuP2417gOp") = "11"
-    Set tExpected("OcuP2417gOne") = "10"
-    Set tExpected("_SYSTEM") = "11"
+    ; USER's two verdicts, then HSCUSTOM's: the grants are made in USER alone, so only %All is admitted in HSCUSTOM.
+    Set tExpected("OcuP2417gNoSelect") = "00|00"
+    Set tExpected("OcuP2417gAll") = "11|00"
+    Set tExpected("OcuP2417gOp") = "11|00"
+    Set tExpected("OcuP2417gOne") = "10|00"
+    Set tExpected("OcuP2417gDb") = "00|00"
+    Set tExpected("_SYSTEM") = "11|11"
     Set tUser = ""
     For {
         Set tUser = $Order(tExpected(tUser))
@@ -154,16 +161,21 @@ Method TestTheSqlSelectCheckIsTheClassicPagesOwn()
         Set tOut = $ClassMethod(..#CHILD, "ProbeAs", tUser, "equality")
         Do $$$AssertTrue('$IsObject(tOut) || (tOut.%Get("error") = ""), tUser _ ": the probe ran: " _ $Select($IsObject(tOut): tOut.%Get("error"), 1: tOut))
         If '$IsObject(tOut) || (tOut.%Get("error") '= "") Continue
+        Do $$$AssertTrue(tOut.loggedIn, tUser _ ": the principal logged in")
         Set tHeld = ""
-        For tKind = "rule", "process" {
-            Set tEntry = tOut.%Get(tKind)
-            Set tListed = $Select($IsObject(tEntry): (tEntry.http = 200), 1: -1)
-            Do $$$AssertTrue($IsObject(tEntry) && (tEntry.prepared = tListed), tUser _ ", " _ tKind _ ": the list is admitted exactly when the classic page's query prepares: " _ $Select($IsObject(tEntry): tEntry.%ToJSON(), 1: tEntry))
-            Do $$$AssertTrue($IsObject(tEntry) && (tEntry.refused5580 = 'tEntry.prepared), tUser _ ", " _ tKind _ ": and it is refused exactly when the classic page's answers #5580")
-            If $IsObject(tEntry) && 'tListed Do $$$AssertEquals(tEntry.failedPair, $Select(tKind = "rule": "Ens_Rule.Log:SELECT", 1: "Ens.BusinessProcess:SELECT"), tUser _ ", " _ tKind _ ": a refusal names the table and SELECT")
-            Set tHeld = tHeld _ $Select(tListed = 1: 1, 1: 0)
+        For tNamespace = "USER", "HSCUSTOM" {
+            Set tHeld = tHeld _ $Select(tNamespace = "USER": "", 1: "|")
+            For tKind = "rule", "process" {
+                Set tLabel = tUser _ ", " _ tNamespace _ ", " _ tKind
+                Set tEntry = tOut.%Get(tNamespace _ "|" _ tKind)
+                Set tListed = $Select($IsObject(tEntry): (tEntry.http = 200), 1: -1)
+                Do $$$AssertTrue($IsObject(tEntry) && (tEntry.prepared = tListed), tLabel _ ": the list is admitted exactly when the classic page's query prepares: " _ $Select($IsObject(tEntry): tEntry.%ToJSON(), 1: tEntry))
+                Do $$$AssertTrue($IsObject(tEntry) && (tEntry.refused5580 = 'tEntry.prepared), tLabel _ ": and it is refused exactly when the classic page's answers #5580")
+                If $IsObject(tEntry) && 'tListed Do $$$AssertEquals(tEntry.failedPair, $Select(tUser = "OcuP2417gDb": "%Ens_Portal:USE", tKind = "rule": "Ens_Rule.Log:SELECT", 1: "Ens.BusinessProcess:SELECT"), tLabel _ ": a refusal names the table and SELECT, or the portal's pair the database-only principal lacks")
+                Set tHeld = tHeld _ $Select(tListed = 1: 1, 1: 0)
+            }
         }
-        Do $$$AssertEquals(tHeld, tExpected(tUser), tUser _ ": the two logs' verdicts, rule log then business process: 1 admitted, 0 refused")
+        Do $$$AssertEquals(tHeld, tExpected(tUser), tUser _ ": the verdicts, rule log then business process, in USER then HSCUSTOM: 1 admitted, 0 refused")
     }
     Do ..RevokeAll()
 }

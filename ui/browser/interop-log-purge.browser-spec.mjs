@@ -8,8 +8,8 @@
  *
  * It arranges what it needs through the fixture and removes it when it ends, so every test passes alone and in any order.
  *
- * **It writes and deletes probe rows in `USER`** through `OcuPilot.Test.InteropLogPurgeFixture`, so it runs on a throwaway only, and refuses to start while `USER` holds a rule log entry or
- * a completed business process older than 3,650 days that is not a probe, which the purge would delete; the `after` hook removes every probe, whatever the tests answered. It starts no
+ * **It writes and deletes probe rows in `USER`** through `OcuPilot.Test.InteropLogPurgeFixture`, so it runs on a throwaway only, and refuses to start while `USER` holds a rule log entry
+ * older than 3,650 days or a completed business process that is not a probe, which the purge would delete; the `after` hook removes every probe, whatever the tests answered. It starts no
  * production. The structural walk of the two screens is left to the suite's walk over every screen.
  *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
@@ -65,7 +65,7 @@ before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec runs commands inside the container, so it never runs against the live one');
   await assertThrowaway(config);
   assert.match(config.container, /-ci$/, `this spec writes probe rows, so it runs only in a throwaway; ${config.container} is not one`);
-  assert.equal(probe('LFOREIGN', `##class(${FIXTURE}).Foreign("USER")`).value, '0', 'USER holds no rule log entry or completed business process a 3650-day purge would delete that is not a probe');
+  assert.equal(probe('LFOREIGN', `##class(${FIXTURE}).Foreign("USER")`).value, '0', 'USER holds no rule log entry or business process a 3650-day purge could delete that is not a probe');
   drop();
   created = true;
   browser = await puppeteer.launch(launchOptions(config));

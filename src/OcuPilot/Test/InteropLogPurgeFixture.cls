@@ -133,13 +133,14 @@ ClassMethod ProcessCount(pNamespace As %String, pMarked As %Boolean = 0) As %Int
     Quit $Select(pMarked: ..One(pNamespace, "SELECT COUNT(*) FROM Ens.BusinessProcess WHERE %ConfigName = ?", ..#MARKER), 1: ..One(pNamespace, "SELECT COUNT(*) FROM Ens.BusinessProcess"))
 }
 
-/// <p>How many rows <var>pNamespace</var> holds that a purge keeping <parameter>KEEPDAYS</parameter> days would delete and that are not probes: rule log entries and completed
-/// business processes older than that. A class that purges at that age refuses to start beside any; -1 when they cannot be read.</p>
+/// <p>How many rows <var>pNamespace</var> holds that a purge keeping <parameter>KEEPDAYS</parameter> days could delete beside the probes and that are not probes: rule log entries older
+/// than that, and every completed business process or one with no creation time, whatever its age, because the vendor's purge with integrity kept deletes each such record whose id is
+/// below the newest old one's, and a probe, saved last, has the highest id. A class that purges at that age refuses to start beside any; -1 when they cannot be read.</p>
 ClassMethod Foreign(pNamespace As %String) As %Integer
 {
     Set tCutoff = ..UtcAgo(..#KEEPDAYS)
-    Set tRules = ..Two(pNamespace, "SELECT COUNT(*) FROM Ens_Rule.Log WHERE TimeExecuted < ? AND RuleName <> ?", tCutoff, ..#MARKER)
-    Set tProcesses = ..Two(pNamespace, "SELECT COUNT(*) FROM Ens.BusinessProcess WHERE %IsCompleted = 1 AND %TimeCreated < ? AND %ConfigName <> ?", tCutoff, ..#MARKER)
+    Set tRules = ..Two(pNamespace, "SELECT COUNT(*) FROM Ens_Rule.Log WHERE TimeExecuted < ? AND (RuleName IS NULL OR RuleName <> ?)", tCutoff, ..#MARKER)
+    Set tProcesses = ..One(pNamespace, "SELECT COUNT(*) FROM Ens.BusinessProcess WHERE (%IsCompleted = 1 OR %TimeCreated IS NULL) AND (%ConfigName IS NULL OR %ConfigName <> ?)", ..#MARKER)
     If (tRules < 0) || (tProcesses < 0) Quit -1
     Quit tRules + tProcesses
 }
@@ -226,39 +227,6 @@ ClassMethod AddRole(pUser As %String, pRole As %String) As %Status
     Try {
         Set $NAMESPACE = "%SYS"
         Set tSC = ##class(Security.Users).AddRoles(pUser, pRole)
-        Set $NAMESPACE = tOrigNS
-    } Catch ex {
-        Set $NAMESPACE = tOrigNS
-        Set tSC = ex.AsStatus()
-    }
-    Quit tSC
-}
-
-/// <p>Create <var>pUser</var> with the role <code>%All</code> and the password <var>pPassword</var>.</p>
-ClassMethod CreateAll(pUser As %String, pPassword As %String) As %Status
-{
-    Set tOrigNS = $NAMESPACE
-    Set tSC = $$$OK
-    Try {
-        Set $NAMESPACE = "%SYS"
-        If ##class(Security.Users).Exists(pUser) Do ##class(Security.Users).Delete(pUser)
-        Set tSC = ##class(Security.Users).Create(pUser, "%All", pPassword, "OcuPilot test principal (throwaway)", "", "", "", 0, 1, "Created by an OcuPilot gate test; deleted when it ends")
-        Set $NAMESPACE = tOrigNS
-    } Catch ex {
-        Set $NAMESPACE = tOrigNS
-        Set tSC = ex.AsStatus()
-    }
-    Quit tSC
-}
-
-/// <p>Remove <var>pUser</var>.</p>
-ClassMethod DropUser(pUser As %String) As %Status
-{
-    Set tOrigNS = $NAMESPACE
-    Set tSC = $$$OK
-    Try {
-        Set $NAMESPACE = "%SYS"
-        If ##class(Security.Users).Exists(pUser) Set tSC = ##class(Security.Users).Delete(pUser)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS

@@ -45,7 +45,7 @@ Method OnBeforeAllTests() As %Status
             Quit
         }
     }
-    If tForeign '= 0 Quit $$$ERROR($$$GeneralError, ..%ClassName(1) _ " purges rule log entries and completed business processes older than 3,650 days, and " _ tWhere _ " holds " _ tForeign _ " that are not its probes (-1 is a failed read), so nothing was run. A class that ran before it left them, or the instance holds real ones.")
+    If tForeign '= 0 Quit $$$ERROR($$$GeneralError, ..%ClassName(1) _ " purges rule log entries older than 3,650 days and completed business processes, and " _ tWhere _ " holds " _ tForeign _ " that are not its probes (-1 is a failed read), so nothing was run. A class that ran before it left them, or the instance holds real ones.")
     Quit $$$OK
 }
 

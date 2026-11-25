@@ -7,8 +7,7 @@ Class OcuPilot.Test.InteropLogPurgeElsewhere Extends OcuPilot.Test.InteropLogPur
 
 /// <p>AC6: the agent's purge of each log, minted in USER and confirmed from HSCUSTOM, deletes USER's old probes and leaves HSCUSTOM's as they were, records its audit row for USER, and its read-back, taken
 /// in USER, matches.</p>
-/// <p>Mutation (Rule 19): drop <code>Namespace</code> from <parameter>OcuPilot.Screen.Tool.InteropRuleLogPurge.FINGERPRINTSUBJECT</parameter> -- the confirm reaches HSCUSTOM's probes and this goes
-/// red.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.InteropPurgeRun.PortQuery</method> drop the namespace key -- the confirm reaches HSCUSTOM's probes and this goes red.</p>
 Method TestThePurgeIsConfirmedInTheNamespaceItWasReadIn()
 {
     Set tSC = ..EnableKeys(.tPolicy)

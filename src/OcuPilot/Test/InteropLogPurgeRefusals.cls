@@ -100,8 +100,9 @@ Method TestAVendorErrorIsNeverA200AndIsAuditedAsNotCompleted()
 }
 
 /// <p>AC7: no OcuPilot call and no log line runs while the namespace is switched: a fault raised inside the purge's switched block, the state read's and the privilege check's is logged after the
-/// namespace is restored, in the namespace the call was made from.</p>
-/// <p>Mutation (Rule 19): log a line inside the switched <code>Catch</code> of <method>OcuPilot.Port.InteropPort.PerformLogPurge</method> -- the purge leg goes red.</p>
+/// namespace is restored, in the namespace the call was made from, and its line names no vendor text.</p>
+/// <p>Mutation (Rule 19): log a line inside the switched <code>Catch</code> of <method>OcuPilot.Port.InteropPort.PerformLogPurge</method> -- the purge leg goes red; likewise in
+/// <method>OcuPilot.Port.InteropPort.ReadLogState</method>'s -- the state leg goes red; map the privilege check's fault through <method>OcuPilot.Port.InteropPort.Mapped</method> -- the list leg goes red.</p>
 Method TestNothingIsLoggedWhileTheNamespaceIsSwitched()
 {
     Set tSeam = ..#SEAM
@@ -112,17 +113,21 @@ Method TestNothingIsLoggedWhileTheNamespaceIsSwitched()
         Do $$$AssertEquals(..Purge(tKind, 3650, ..#SOURCE, tSeam), "500 INTERNAL", tKind _ ": a fault inside the purge's switched block is a 500")
         Do $$$AssertEquals($Get(^IRIS.Temp.OcuProbe2417LogMode("ranIn")), ..#SOURCE, tKind _ ": the vendor call ran in the log's namespace")
         Do $$$AssertEquals($ClassMethod(tSeam, "LoggedIn"), $NAMESPACE, tKind _ ": and the one line it caused was written in the namespace the call came from")
-        Set ^IRIS.Temp.OcuProbe2417LogMode = "here"
+        Kill ^IRIS.Temp.OcuProbe2417LogMode
+        Set ^IRIS.Temp.OcuProbe2417LogMode = "herestate"
         Do $ClassMethod(tSeam, "ClearLog")
         Kill tQuery
-        Do $$$AssertEquals(..Verdict(tKind, "state", .tRow, .tFault, .tQuery, ..#SOURCE, tSeam), "500 INTERNAL", tKind _ ": a fault inside the state read's switched block is a 500")
-        Do $$$AssertEquals($Get(^IRIS.Temp.OcuProbe2417LogMode("hereIn")), ..#SOURCE, tKind _ ": the hook ran in the log's namespace")
+        Do $$$AssertEquals(..Verdict(tKind, "state", .tRow, .tFault, .tQuery, ..#SOURCE, tSeam), "500 INTERNAL", tKind _ ": a fault inside the state read's own switched block, past its privilege check, is a 500")
+        Do $$$AssertEquals($Get(^IRIS.Temp.OcuProbe2417LogMode("hereCalls")) _ "|" _ $Get(^IRIS.Temp.OcuProbe2417LogMode("hereIn")), "2|" _ ..#SOURCE, tKind _ ": the state read's own hook raised, in the log's namespace")
         Do $$$AssertEquals($ClassMethod(tSeam, "LoggedIn"), $NAMESPACE, tKind _ ": and its line was written after the namespace was restored")
+        Do $$$AssertTrue($ClassMethod(tSeam, "LoggedText") '[ $Parameter(tSeam, "MARKER"), tKind _ ": and names no vendor text: " _ $ClassMethod(tSeam, "LoggedText"))
+        Set ^IRIS.Temp.OcuProbe2417LogMode = "here"
         Do $ClassMethod(tSeam, "ClearLog")
         Kill ^IRIS.Temp.OcuProbe2417LogMode("hereIn")
         Kill tQuery
         Do $$$AssertEquals(..Verdict(tKind, "LIST", .tRows, .tFault, .tQuery, ..#SOURCE, tSeam), "500 INTERNAL", tKind _ ": and one inside the list's privilege check is a 500")
         Do $$$AssertEquals($Get(^IRIS.Temp.OcuProbe2417LogMode("hereIn")) _ "|" _ $ClassMethod(tSeam, "LoggedIn"), ..#SOURCE _ "|" _ $NAMESPACE, tKind _ ": whose line, too, was written after the namespace was restored")
+        Do $$$AssertTrue($ClassMethod(tSeam, "LoggedText") '[ $Parameter(tSeam, "MARKER"), tKind _ ": and names no vendor text: " _ $ClassMethod(tSeam, "LoggedText"))
         Kill ^IRIS.Temp.OcuProbe2417LogMode
         Do $$$AssertEquals(..Exists(tKind, ..#SOURCE, tOld), 1, tKind _ ": the probe is as it was")
         Do $ClassMethod(..#FIXTURE, "DropProbes")
@@ -136,7 +141,7 @@ ClassMethod ProbeFailure(pOut) As %String
 }
 
 /// <p>AC5: the process's roles, user and namespace read the same after the purge returns, whichever way it ends. The legs, each in a child process, for each log: (a) a principal holding no
-/// administrative role purges through the vendor; (b) <code>_SYSTEM</code> purges through a seam that runs the vendor's purge and then changes the process's roles inside the call; (c) the same
+/// administrative role purges through the vendor, and through a seam that answers an error status and one that raises; (b) <code>_SYSTEM</code> purges through a seam that runs the vendor's purge and then changes the process's roles inside the call; (c) the same
 /// seam changes them and raises. A principal cannot change its own roles, so (a) holds whether or not the frame gives them back, and (b) and (c) are the legs the frame's removal reddens.</p>
 /// <p>Mutation (Rule 19): call <method>OcuPilot.Port.InteropPort.VendorLogPurge</method> in <method>OcuPilot.Port.InteropPort.PerformLogPurge</method> in place of <method>OcuPilot.Port.InteropPort.PurgeFrame</method>
 /// -- legs (b) and (c) go red.</p>
@@ -159,6 +164,18 @@ Method TestTheProcessRolesAreGivenBackOnSuccessAndOnAnError()
         }
         Do $$$AssertEquals(..Exists(tKind, ..#SOURCE, tOld), 0, tKind _ " (a): the purge deleted the probe")
         Do $ClassMethod(..#FIXTURE, "DropProbes")
+        For tMode = "status", "fault" {
+            Do ..Probe(tKind, ..#SOURCE, 7300, 1)
+            Set ^IRIS.Temp.OcuProbe2417LogMode = tMode
+            Set tOut = $ClassMethod(..#CHILD, "ProbeAs", "OcuP2417rRoles", "roles", tKind, ..#SEAM)
+            Do $$$AssertTrue($IsObject(tOut) && (tOut.%Get("error") = "") && tOut.loggedIn, tKind _ " (a), " _ tMode _ ": the principal's probe ran: " _ ..ProbeFailure(tOut))
+            If $IsObject(tOut) && (tOut.%Get("error") = "") {
+                Do $$$AssertEquals(tOut.http, 500, tKind _ " (a), " _ tMode _ ": the purge answered 500: " _ tOut.%ToJSON())
+                Do $$$AssertTrue((tOut.after = tOut.before) && tOut.sameUser && tOut.sameNamespace, tKind _ " (a), " _ tMode _ ": the process's roles, user and namespace are as they were: " _ tOut.%ToJSON())
+            }
+            Kill ^IRIS.Temp.OcuProbe2417LogMode
+            Do $ClassMethod(..#FIXTURE, "DropProbes")
+        }
         Do ..Probe(tKind, ..#SOURCE, 7300, 1)
         Set ^IRIS.Temp.OcuProbe2417LogMode = "rolesok"
         Set tOut = $ClassMethod(..#CHILD, "ProbeAs", "_SYSTEM", "roles", tKind, ..#SEAM)

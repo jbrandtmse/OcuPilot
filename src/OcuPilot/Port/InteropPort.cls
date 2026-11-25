@@ -115,7 +115,7 @@
 /// <method>StopSeconds</method>, <method>RoutineResource</method>, <method>SourceControlled</method>,
 /// <method>VendorAbortItem</method>, <method>VendorJob</method>, <method>LockTable</method>, <method>VendorSendTest</method>,
 /// <method>TestWait</method>, <method>AllNamespacesReadable</method>, <method>DefaultReadOnly</method>,
-/// <method>VendorSetAutoStart</method>, <method>VendorSetShutdownGroup</method> and <method>VendorLogPurge</method>, and the parameters <parameter>ABORTMAX</parameter>, <parameter>RULELOGMAX</parameter> and <parameter>PROCESSLOGMAX</parameter>. Production overrides none.</p>
+/// <method>VendorSetAutoStart</method>, <method>VendorSetShutdownGroup</method>, <method>VendorLogPurge</method> and <method>LogHere</method>, and the parameters <parameter>ABORTMAX</parameter>, <parameter>RULELOGMAX</parameter> and <parameter>PROCESSLOGMAX</parameter>. Production overrides none.</p>
 Class OcuPilot.Port.InteropPort Extends %RegisteredObject
 {
 
@@ -14061,6 +14061,12 @@ ClassMethod LogHere() [ Private ]
 {
 }
 
+/// <p>A vendor exception <var>pException</var> of a log call in this port's own words, as <method>AlertMapped</method> answers one: the status it logs carries the vendor's error codes alone.</p>
+ClassMethod LogMapped(pException As %Exception.AbstractException, pMessage As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Statused(..VendorCodesStatus(pException.AsStatus(), "the log call"), pMessage, .pHttpStatus, .pFault)
+}
+
 /// <p>The vendor's purge of the log of kind <var>pKind</var> in the current namespace, which the caller has already switched, with <var>pDays</var> as <code>Ens.Purge</code> takes them:
 /// the business rule log's <code>PurgeRuleLogsByDate</code> or the business process purge <code>PurgeBusinessProcessesByDate</code> with integrity kept. <var>pDeleted</var> is the vendor's
 /// count. Overridable so a fixture can answer a fault; production never overrides it. Reached only through <method>PurgeFrame</method>.</p>
@@ -14090,7 +14096,7 @@ ClassMethod LogSelectGate(pNamespace As %String, pKind As %String, Output pHttpS
         Set $NAMESPACE = tOrigNS
         Set tCaught = ex
     }
-    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the log table privilege check failed", .pHttpStatus, .pFault)
+    If $IsObject(tCaught) Quit ..LogMapped(tCaught, "the log table privilege check failed", .pHttpStatus, .pFault)
     If 'tHeld Quit ..Deny(tTable _ ":SELECT", .pHttpStatus, .pFault)
     Quit $$$OK
 }
@@ -14149,7 +14155,7 @@ ClassMethod ListLog(pNamespace As %String, pKind As %String, ByRef pQuery, pMax 
     }
     Set tSql = tSql _ " ORDER BY ID DESC"
     Set tSC = ..SqlRows(pNamespace, tSql, .tFound, .tCaught, tArgs...)
-    If $IsObject(tCaught) Quit ..Mapped(tCaught, $Select(tRule: "the business rule log list failed", 1: "the business process log list failed"), .pHttpStatus, .pFault)
+    If $IsObject(tCaught) Quit ..LogMapped(tCaught, $Select(tRule: "the business rule log list failed", 1: "the business process log list failed"), .pHttpStatus, .pFault)
     Set pRows = []
     For tI = 1:1:tFound {
         Do pRows.%Push($Select(tRule: ..RuleLogRow(tFound(tI), pNamespace), 1: ..ProcessLogRow(tFound(tI), pNamespace)))
@@ -14160,7 +14166,7 @@ ClassMethod ListLog(pNamespace As %String, pKind As %String, ByRef pQuery, pMax 
 
 /// <p>The state row of the log of kind <var>pKind</var> (Story 24.17 Batch 2): <code>{Count, DaysToKeep, Namespace}</code>, <code>Count</code> the vendor's own count of the log's records
 /// (<code>Ens.Purge.RuleLogCount</code> or <code>BusinessProcessCount</code>) and <code>DaysToKeep</code> empty, since the days belong to the call that asks for the purge. The caller's SQL SELECT
-/// privilege is judged first, as the list's is (<method>LogSelectGate</method>), because the vendor's count reads the table with the caller's own privileges.</p>
+/// privilege is judged first, as the list's is (<method>LogSelectGate</method>); the vendor's count is embedded SQL, which checks no SQL privilege of its own.</p>
 ClassMethod ReadLogState(pNamespace As %String, pKind As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pRow = ""
@@ -14178,7 +14184,7 @@ ClassMethod ReadLogState(pNamespace As %String, pKind As %String, Output pRow As
         Set $NAMESPACE = tOrigNS
         Set tCaught = ex
     }
-    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the log state read failed", .pHttpStatus, .pFault)
+    If $IsObject(tCaught) Quit ..LogMapped(tCaught, "the log state read failed", .pHttpStatus, .pFault)
     Set pRow = {}
     Do pRow.%Set("Count", +tCount, "number")
     Do pRow.%Set("DaysToKeep", "", "string")
@@ -14263,7 +14269,7 @@ ClassMethod InvokeLog(pNamespace As %String, pEndpoint As %String, pType As %Str
         }
     } Catch ex {
         Set pResult = ""
-        Set tSC = ..Fail("the log call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+        Set tSC = ..LogMapped(ex, "the log call failed inside the port", .pHttpStatus, .pFault)
     }
     Quit tSC
 }
