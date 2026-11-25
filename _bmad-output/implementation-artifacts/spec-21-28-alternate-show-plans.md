@@ -177,6 +177,13 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-11-25, orchestrator rulings at the plan gate (veto U-166 for items 1, 3 and 5), authoritative over the Design Notes records and Tasks where they differ:
+  1. **AD-7** (veto U-166): allowed, add-only, written by the runner, the safer form. Listing and showing plans are reads that run nothing, on both callers. Comparing is a person's read on SQL query only: `explorer.sqlalternateplans.read` takes NO compare argument. Comparing stays query-only, at most five plans, under the console's time limit, without values; plan ids are checked against a fresh list before anything runs, pinned by a test.
+  2. **AD-51:** decided, no named entry. The statement goes whole as a bound value and the port builds the id list (AD-21's console clause); concatenating the statement into SQL text fails review.
+  3. **Gate** (veto U-166): the actions and the agent read also honour any custom resource an operator puts on `%CSP.UI.Portal.SQL.QButtons.ShowPlanAlt`. 21.26's and 21.27's console actions stay as they are; the question whether they should is a LOW ledger entry owned by burn-down, with this story's measurement as evidence.
+  4. **Compare limit:** decided, five, a named constant with boundary tests at 5 and 6.
+  5. **Strings** (veto U-166): accepted with these changes. The agent read's description says it lists and shows plans and runs nothing (no compare note). The `slowquery` step reads: "Read the alternate plans for the slowest query and, when another plan costs less than the one the optimizer chose, suggest the person compare the two from SQL query; a comparison runs the query once for each plan without its values." "Only the first 100 possible plans are listed." uses a named constant with an AD-36 boundary test. The empty-state sentence and the compare note ship as measured, otherwise the fallback.
+
 ## Review Triage Log
 
 ## Design Notes

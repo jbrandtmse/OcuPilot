@@ -255,6 +255,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A gathering of SQL statements, an index analyzer report and an analysis purge (Story 21.27)** [AMENDED 2026-11-25, Story 21.27 spec gate, orchestrator ruling, veto item U-165, Rule 20] are confirmed writes; the classic page's `job` is not used. Each runs in its confirm or action request only when its measured worst case on the largest reachable namespace, times 1.5, is under the Web Gateway's response timeout (the measurement is cited in the story's spec); otherwise it runs in Story 24.16's background-run form. **The advice (Story 21.27)** is a read: one `$SYSTEM.SQL.Explain` of a statement the console types a query, which runs nothing, plus two bound dictionary reads; its only side effect is the statement-index row (measured at the story's Task 0).
 
+  **Alternate plans (Story 21.28)** [AMENDED 2026-11-25, Story 21.28 spec gate, orchestrator ruling, veto item U-166, Rule 20]: listing a statement's possible plans and showing one are reads that run nothing, on SQL query and through `explorer.sqlalternateplans.read`. Comparing plans is a person's read on SQL query only, never the agent's: it runs one statement the console types a query once for each of at most five plans checked against a fresh list, in the request, under the console's time limit, without its values; its side effects are the rows the vendor records for those runs (measured at the story's Task 0).
+
 ### AD-8 — Privilege is the process's, checked at call time, never cached
 
 - **Binds:** FR-4, FR-18, FR-19; every screen and every tool

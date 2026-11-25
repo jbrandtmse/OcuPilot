@@ -14660,3 +14660,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-26-runtime-statistics.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: ConfigPort.SqlStatsState reads only ptInfo(terminate,mins); the classic page saves T:<YYYYMMDD HHMM>:<raf> (RuntimeStatsSettings.cls:328, Utils.cls:42-60); mins empty for a T: stop is (inference), unmeasured; a level-after-stop of 2 or 3 set through the API reads as Off
 - 2026-11-25T19:49:55Z status=decision-pending owner=burndown by=cr note=owner call: refuse a set while a time stop is held (new sentence), or show the time stop; the spec rules out sending T:
+
+### DW-2874: Do 21.26's and 21.27's SQL query console actions honour a custom resource an operator puts on their classic pages, as Story 21.28's alternate plans do for ShowPlanAlt?
+- source: spec-21-28-alternate-show-plans.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Story 21.28 honours a custom resource on QButtons.ShowPlanAlt (orchestrator ruling U-166); 21.26's Plan with statistics and 21.27's Advise do not check their pages' custom resources (21.28 Task 0 measurement to be appended)
+- 2026-11-25T20:32:14Z status=routed owner=burndown by=runner note=orchestrator ruling 2026-11-25 (21.28 plan gate)
