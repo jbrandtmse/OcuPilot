@@ -567,6 +567,9 @@ export const CONSEQUENCE_INTEROPCREDENTIALCHANGE = 'INTEROP.CREDENTIAL.CHANGE';
 /** Story 24.15: a schedule spec's removal, and a changed schedule spec's reach into a running production. */
 export const CONSEQUENCE_INTEROPSCHEDULEREMOVE = 'INTEROP.SCHEDULE.REMOVE';
 export const CONSEQUENCE_INTEROPSCHEDULECHANGE = 'INTEROP.SCHEDULE.CHANGE';
+/** Story 24.17 Batch 3a: a workflow user's removal, and a workflow user made inactive. */
+export const CONSEQUENCE_INTEROPWORKFLOWUSERREMOVE = 'INTEROP.WORKFLOW.USERREMOVE';
+export const CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE = 'INTEROP.WORKFLOW.USERINACTIVE';
 /** Story 24.16: a purge of management data, and one whose bitmap cleanup is on. */
 export const CONSEQUENCE_INTEROPPURGERUN = 'INTEROP.PURGE.RUN';
 export const CONSEQUENCE_INTEROPPURGEBITMAP = 'INTEROP.PURGE.BITMAP';
@@ -835,6 +838,9 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 24.15: a schedule spec's removal and its change, each published once.
   if (code === CONSEQUENCE_INTEROPSCHEDULEREMOVE) return STRINGS.interopScheduleRemoveConsequence;
   if (code === CONSEQUENCE_INTEROPSCHEDULECHANGE) return STRINGS.interopScheduleChangeConsequence;
+  // Story 24.17 Batch 3a: a workflow user's removal and its deactivation, each published once.
+  if (code === CONSEQUENCE_INTEROPWORKFLOWUSERREMOVE) return STRINGS.interopWorkflowUserRemoveConsequence;
+  if (code === CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE) return STRINGS.interopWorkflowUserInactiveConsequence;
   // Story 24.16: a purge's sentence, the one its own dialog shows, and the bitmap cleanup's.
   if (code === CONSEQUENCE_INTEROPPURGERUN) return STRINGS.interopPurgeRunConsequence;
   if (code === CONSEQUENCE_INTEROPPURGEBITMAP) return STRINGS.interopPurgeBitmapConsequence;

@@ -272,6 +272,7 @@ XData Coverage
 <screen name="InteropDefaultSettingDiff" class="OcuPilot.Test.InteropDefaultSettingDiff" method="TestTheDiffListsEachDifferenceAndNotTheSameSetting"/>
 <screen name="InteropCredentialList" class="OcuPilot.Test.InteropCredentialControl" method="TestTheDeclarationRegisters"/>
 <screen name="InteropScheduleList" class="OcuPilot.Test.InteropScheduleControl" method="TestTheDeclarationRegisters"/>
+<screen name="InteropWorkflowUserList" class="OcuPilot.Test.InteropWorkflowUserList" method="TestTheDeclarationRegisters"/>
 <screen name="InteropPurgeList" class="OcuPilot.Test.InteropPurgeControl" method="TestTheDeclarationRegisters"/>
 <screen name="InteropPurgeSettingList" class="OcuPilot.Test.InteropPurgeSettingControl" method="TestTheDeclarationRegisters"/>
 <screen name="InteropArchiveList" class="OcuPilot.Test.InteropArchiveControl" method="TestTheRunIsDeclaredAsTheRowActionOfTheArchiveManager"/>
@@ -627,6 +628,9 @@ XData Coverage
 <tool name="interop.schedules.add" class="OcuPilot.Test.InteropScheduleControl" method="TestTheAgentsAddConfirmsOverHttp"/>
 <tool name="interop.schedules.update" class="OcuPilot.Test.InteropScheduleControl" method="TestTheAgentsUpdateAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update and the remove in turn"/>
 <tool name="interop.schedules.remove" class="OcuPilot.Test.InteropScheduleControl" method="TestTheAgentsUpdateAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update and the remove in turn"/>
+<tool name="interop.workflowusers.add" class="OcuPilot.Test.InteropWorkflowUserControl" method="TestTheAgentsAddConfirmsOverHttp"/>
+<tool name="interop.workflowusers.update" class="OcuPilot.Test.InteropWorkflowUserControl" method="TestTheAgentsUpdateAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update and the remove in turn"/>
+<tool name="interop.workflowusers.remove" class="OcuPilot.Test.InteropWorkflowUserControl" method="TestTheAgentsUpdateAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update and the remove in turn"/>
 <tool name="interop.purgesettings.set" class="OcuPilot.Test.InteropPurgeSettingControl" method="TestASettingSetFromEitherCallerReadsBackAsSent"/>
 <tool name="interop.purge.run" class="OcuPilot.Test.InteropPurgeControl" method="TestAPurgeFromEitherCallerDeletesTheOldRecordsAndKeepsTheCurrentOne"/>
 <tool name="interop.archivesettings.set" class="OcuPilot.Test.InteropArchiveSettingControl" method="TestASettingSetFromEitherCallerReadsBackAsSent"/>

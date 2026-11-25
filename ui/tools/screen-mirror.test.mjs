@@ -2884,6 +2884,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.InteropSuspendedMessageList',
       'OcuPilot.Screen.Descriptor.InteropTransformEditor',
       'OcuPilot.Screen.Descriptor.InteropTransformList',
+      // Story 24.17 Batch 3a: Workflow users own %Ens_WorkflowConfig:READ.
+      'OcuPilot.Screen.Descriptor.InteropWorkflowUserList',
       'OcuPilot.Screen.Descriptor.JournalSettings',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
       'OcuPilot.Screen.Descriptor.LanguageServerForm',

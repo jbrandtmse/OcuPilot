@@ -299,6 +299,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/interop/default-settings" Method="POST" Call="InteropDefaultSettingCreate"/>
   <Route Url="/interop/credentials" Method="POST" Call="InteropCredentialCreate"/>
   <Route Url="/interop/schedules" Method="POST" Call="InteropScheduleCreate"/>
+  <Route Url="/interop/workflow-users/choices" Method="GET" Call="InteropWorkflowUserChoices"/>
+  <Route Url="/interop/workflow-users" Method="POST" Call="InteropWorkflowUserCreate"/>
   <Route Url="/config/ddl-mappings" Method="POST" Call="DdlMappingCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
   <Route Url="/allowed-directories" Method="POST" Call="AllowedDirectorySave"/>
@@ -2133,6 +2135,19 @@ ClassMethod InteropCredentialCreate() As %Status
 ClassMethod InteropScheduleCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Interop.ScheduleSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/workflow-users</code> (Story 24.17 Batch 3a): Workflow users' New workflow user, resolved through the one tool the agent's
+/// confirm uses (AD-55).</p>
+ClassMethod InteropWorkflowUserCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.WorkflowUserSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /interop/workflow-users/choices</code> (Story 24.17 Batch 3a): the users of the instance the New workflow user dialog offers its Name from.</p>
+ClassMethod InteropWorkflowUserChoices() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.WorkflowUserSave).HandleChoices()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /config/ddl-mappings</code> (Story 21.13): User DDL mappings' New mapping, resolved

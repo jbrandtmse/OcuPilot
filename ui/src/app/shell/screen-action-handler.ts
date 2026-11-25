@@ -152,6 +152,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropCredentialList',
   // Story 24.15: Schedule specs, whose Remove types the schedule spec's name and whose New schedule spec and Edit its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropScheduleList',
+  // Story 24.17 Batch 3a: Workflow users, whose Remove types the workflow user's name and whose New workflow user and Edit its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowUserList',
   // Story 24.16: Purge management data, whose Purge its own page's dialog sends, and Purge data settings, whose Set value the settings page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropPurgeList',
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList',
@@ -723,6 +725,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropCredentialList': ['edit', 'password'],
   // Schedule specs' page registers Edit itself, whose dialog sends the schedule, the description and the flag (Story 24.15).
   'OcuPilot.Screen.Descriptor.InteropScheduleList': ['edit'],
+  // Workflow users' page registers Edit itself, whose dialog sends the full name and the flag (Story 24.17 Batch 3a).
+  'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': ['edit'],
   // Purge management data's page registers Purge itself, whose dialog takes the days, and Purge data settings' page registers Set value itself (Story 24.16).
   'OcuPilot.Screen.Descriptor.InteropPurgeList': ['purge'],
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': ['set'],
@@ -942,6 +946,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.InteropCredentialList': { remove: STRINGS.x509DeleteConsequence },
   // Story 24.15: a schedule spec's Remove leaves the items that name it running until the production is next updated.
   'OcuPilot.Screen.Descriptor.InteropScheduleList': { remove: STRINGS.interopScheduleRemoveConsequence },
+  // Story 24.17 Batch 3a: a workflow user's Remove takes them out of every workflow role, deletes their worklist and leaves their tasks unassigned.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': { remove: STRINGS.interopWorkflowUserRemoveConsequence },
   // Story 20.23: an abort never delivers the messages it takes: all of a queue's, one waiting message, or the message a job keeps retrying.
   [INTEROP_QUEUE_LIST]: { abort: STRINGS.interopQueueAbortConsequence },
   [INTEROP_QUEUE_MESSAGE_LIST]: { abort: STRINGS.interopMessageAbortConsequence },
@@ -1070,6 +1076,8 @@ const TYPED_NAME_ROWS: Readonly<
   'OcuPilot.Screen.Descriptor.InteropCredentialList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 24.15: a schedule spec is keyed by its name, which its Remove types.
   'OcuPilot.Screen.Descriptor.InteropScheduleList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.17 Batch 3a: a workflow user is keyed by its name, which its Remove types.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 20.23: an abort types the queue's name, the message's id or the job's process id, which each list's name column shows.
   [INTEROP_QUEUE_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   [INTEROP_QUEUE_MESSAGE_LIST]: { name: 'MessageId', field: '', equals: '', advisory: '' },

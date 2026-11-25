@@ -525,6 +525,33 @@ Parameter SCHEDULECHANGE = "INTEROP.SCHEDULE.CHANGE";
 
 Parameter REASONSCHEDULECHANGE = "A running production that uses this schedule spec follows a changed spec at once.";
 
+/// <p>The workflow users' refusals, violations and consequences (Story 24.17 Batch 3a). <code>USERTAKEN</code> and <code>SOURCECONTROL</code> are 409 on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, and <code>USERNAME</code> and <code>FULLNAME</code> are 422. <code>SOURCECONTROL</code> is shared with the
+/// workflow roles' writes.</p>
+Parameter WORKFLOWSOURCECONTROL = "INTEROP.WORKFLOW.SOURCECONTROL";
+
+Parameter REASONWORKFLOWSOURCECONTROL = "This namespace uses source control, so change workflow users and roles in the classic Workflow Users and Workflow Roles pages.";
+
+Parameter WORKFLOWUSERNAME = "INTEROP.WORKFLOW.USERNAME";
+
+Parameter REASONWORKFLOWUSERNAME = "A new workflow user must be a user of this instance, named exactly as the user list spells it.";
+
+Parameter WORKFLOWUSERTAKEN = "INTEROP.WORKFLOW.USERTAKEN";
+
+Parameter REASONWORKFLOWUSERTAKEN = "This namespace already has a workflow user with that name, in some letter case.";
+
+Parameter WORKFLOWFULLNAME = "INTEROP.WORKFLOW.FULLNAME";
+
+Parameter REASONWORKFLOWFULLNAME = "A full name is at most 128 characters and holds no control characters.";
+
+Parameter WORKFLOWUSERREMOVE = "INTEROP.WORKFLOW.USERREMOVE";
+
+Parameter REASONWORKFLOWUSERREMOVE = "Removing this workflow user takes them out of every workflow role, deletes their worklist and leaves each task they hold unassigned. It cannot be restored from OcuPilot.";
+
+Parameter WORKFLOWUSERINACTIVE = "INTEROP.WORKFLOW.USERINACTIVE";
+
+Parameter REASONWORKFLOWUSERINACTIVE = "An inactive workflow user is sent no new tasks through their workflow roles; their worklist is deleted and each task they hold is left unassigned.";
+
 /// <p>The purge's refusals and consequences (Story 24.16). <code>DAYS</code> is 422 on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug and
 /// <code>RUNNING</code> is 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug.</p>
 Parameter PURGEDAYS = "INTEROP.PURGE.DAYS";
@@ -864,13 +891,13 @@ Parameter OUTCOMENOTEXPORTED = "not exported";
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..ScheduleCodes() _ ..PurgeCodes() _ ..ArchiveCodes() _ ..AlertCodes() _ ..SuspendedCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..ExportCodes() _ ..StartupCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..ScheduleCodes() _ ..WorkflowCodes() _ ..PurgeCodes() _ ..ArchiveCodes() _ ..AlertCodes() _ ..SuspendedCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..ExportCodes() _ ..StartupCodes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP, ..#ARCHIVERUN, ..#SUSPENDEDRESUBMIT, ..#SUSPENDEDEDIT, ..#SUSPENDEDDISCARD, ..#SUSPENDEDDELETE, ..#MESSAGEEXPORT, ..#ALERTUPDATE, ..#RULELOGPURGE, ..#PROCESSLOGPURGE)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP, ..#ARCHIVERUN, ..#SUSPENDEDRESUBMIT, ..#SUSPENDEDEDIT, ..#SUSPENDEDDISCARD, ..#SUSPENDEDDELETE, ..#MESSAGEEXPORT, ..#ALERTUPDATE, ..#RULELOGPURGE, ..#PROCESSLOGPURGE, ..#WORKFLOWUSERREMOVE, ..#WORKFLOWUSERINACTIVE)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -984,6 +1011,21 @@ ClassMethod ScheduleCodes() As %List
 ClassMethod SchedulePreconditionCodes() As %List
 {
     Quit $ListBuild(..#SCHEDULETAKEN, ..#SCHEDULESOURCECONTROL)
+}
+
+/// <p>The workflow codes (Story 24.17 Batch 3a), as a <class>%List</class>: the refusals of a name the namespace holds in some letter case and of a
+/// namespace under source control, and the two violations of a new user's name and a full name. The two consequence codes are
+/// <method>ConsequenceCodes</method>'s.</p>
+ClassMethod WorkflowCodes() As %List
+{
+    Quit $ListBuild(..#WORKFLOWUSERTAKEN, ..#WORKFLOWUSERNAME, ..#WORKFLOWFULLNAME, ..#WORKFLOWSOURCECONTROL)
+}
+
+/// <p>The workflow refusals a workflow user tool's fresh read answers when the action does not fit the namespace or the user, as a
+/// <class>%List</class>; the two violations, which the write alone judges, are not among them.</p>
+ClassMethod WorkflowPreconditionCodes() As %List
+{
+    Quit $ListBuild(..#WORKFLOWUSERTAKEN, ..#WORKFLOWSOURCECONTROL)
 }
 
 /// <p>The purge codes (Story 24.16), as a <class>%List</class>: the refusal of days that are not a whole number from 0 to 99999 and of a purge
@@ -1224,6 +1266,12 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#SCHEDULESOURCECONTROL Quit ..#REASONSCHEDULESOURCECONTROL
     If pCode = ..#SCHEDULEREMOVE Quit ..#REASONSCHEDULEREMOVE
     If pCode = ..#SCHEDULECHANGE Quit ..#REASONSCHEDULECHANGE
+    If pCode = ..#WORKFLOWSOURCECONTROL Quit ..#REASONWORKFLOWSOURCECONTROL
+    If pCode = ..#WORKFLOWUSERNAME Quit ..#REASONWORKFLOWUSERNAME
+    If pCode = ..#WORKFLOWUSERTAKEN Quit ..#REASONWORKFLOWUSERTAKEN
+    If pCode = ..#WORKFLOWFULLNAME Quit ..#REASONWORKFLOWFULLNAME
+    If pCode = ..#WORKFLOWUSERREMOVE Quit ..#REASONWORKFLOWUSERREMOVE
+    If pCode = ..#WORKFLOWUSERINACTIVE Quit ..#REASONWORKFLOWUSERINACTIVE
     If pCode = ..#PURGEDAYS Quit ..#REASONPURGEDAYS
     If pCode = ..#PURGERUNNING Quit ..#REASONPURGERUNNING
     If pCode = ..#PURGERUN Quit ..#REASONPURGERUN

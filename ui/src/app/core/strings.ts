@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:677 */
+  /** EXPERIENCE.md:678 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -9859,6 +9859,39 @@ export const STRINGS = {
   interopProcessLogPrompt2: 'Which business process has the most records?',
   /** EXPERIENCE.md:635 */
   interopProcessLogPrompt3: 'Purge completed business process records older than 30 days.',
+
+  // Story 24.17 Batch 3a: the workflow users screen, its dialog's help line, the two consequences, the four refusals, the empty state and the prompts.
+  /** EXPERIENCE.md:636 */
+  interopWorkflowUsersLabel: 'Workflow users',
+  /** EXPERIENCE.md:636 */
+  interopWorkflowUserAddAction: 'New workflow user',
+  /** EXPERIENCE.md:636 */
+  interopWorkflowUserHelp: 'A workflow user is a user of this instance who can be sent workflow tasks through the workflow roles they belong to.',
+  /** EXPERIENCE.md:636 */
+  interopWorkflowUserRemoveConsequence:
+    'Removing this workflow user takes them out of every workflow role, deletes their worklist and leaves each task they hold unassigned. It cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:636 */
+  interopWorkflowUserInactiveConsequence:
+    'An inactive workflow user is sent no new tasks through their workflow roles; their worklist is deleted and each task they hold is left unassigned.',
+  /** EXPERIENCE.md:636 */
+  interopWorkflowUserRefusalSourceControl:
+    'This namespace uses source control, so change workflow users and roles in the classic Workflow Users and Workflow Roles pages.',
+  /** EXPERIENCE.md:636 */
+  interopWorkflowUserRefusalName: 'A new workflow user must be a user of this instance, named exactly as the user list spells it.',
+  /** EXPERIENCE.md:636 */
+  interopWorkflowUserRefusalTaken: 'This namespace already has a workflow user with that name, in some letter case.',
+  /** EXPERIENCE.md:636 */
+  interopWorkflowUserRefusalFullName: 'A full name is at most 128 characters and holds no control characters.',
+  /** EXPERIENCE.md:636 */
+  interopWorkflowUsersEmpty: 'This namespace has no workflow users.',
+  /** EXPERIENCE.md:636 */
+  interopWorkflowUsersEmptyAgent: 'add a workflow user',
+  /** EXPERIENCE.md:636 */
+  interopWorkflowUsersPrompt1: 'Which workflow users are inactive?',
+  /** EXPERIENCE.md:636 */
+  interopWorkflowUsersPrompt2: 'Which workflow users belong to no workflow role?',
+  /** EXPERIENCE.md:636 */
+  interopWorkflowUsersPrompt3: 'Add a workflow user for a user of this instance.',
 } as const;
 
 /**

@@ -608,6 +608,11 @@ services:
       # refusal, the gate class signs in as probe principals each missing one pair or the SQL grant, and the elsewhere class confirms the agent's purge from another namespace. The five extend one
       # case class, which declares the variable they all refuse on.
       # classes: InteropLogPurgeCase
+      # The workflow user classes store probe workflow users, roles, memberships, worklist items and tasks in USER and HSCUSTOM, create instance users and principals, and change and remove them
+      # (Story 24.17 Batch 3a), and start no production: the list class reads the users through the port, the screen's route and the agent's tool, the control class adds, edits and removes from both
+      # callers, the refusals class meets every refusal and failure, the gate class signs in as probe principals each missing one pair, and the elsewhere class confirms the agent's writes from another
+      # namespace. The five extend one case class, which declares the variable they all refuse on.
+      # classes: InteropWorkflowCase
       # The host test classes compile and run the same probe production in USER, with a request class of their own and an
       # operation that echoes it (Story 20.6): the test class reads an item's Test tab and sends a request from both callers,
       # the refusals class meets every refusal and violation, a production started without testing and a disabled item, and
