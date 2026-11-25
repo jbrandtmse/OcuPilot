@@ -58,6 +58,7 @@ Method OnAfterOneTest() As %Status
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Do $ClassMethod(..#SEAM, "Reset")
     Do $ClassMethod(..#CONFIGSEAM, "Reset")
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", ..#NAMESPACE), "every probe object is removed")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "StatsRowCount", ..#NAMESPACE), 0, "and none of the probe's statistics rows is left")
     Quit $$$OK
@@ -236,8 +237,7 @@ Method TestTheListSelectsNoIdentifyingColumn()
 /// <code>StopsAt</code> as <code>{Name, Value, Accepts, ReadOnly}</code>, equal to what the instance's flag reports, only <code>StopsAt</code> read only, and
 /// the agent's <code>explorer.sqlruntimestatssettings.read</code> the screen's rows. <code>OcuPilot.Port.SqlPort</code>'s <code>STATS</code> read answers
 /// the namespace's row count as the instance's own table counts it.</p>
-/// <p>Mutation (Rule 19): <code>OcuPilot.Port.ConfigPort.SqlStatsState</code> reads the stop whatever the level -> the stop rows assertion goes red where
-/// collection is off; <code>STATSCOUNTQUERY</code> counts every namespace -> the count assertion goes red.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.ConfigPort.CollectRoster</code> shows the level as its stored code -> the level row assertion goes red.</p>
 Method TestTheSettingsRowsAndTheStatsCountAreTheInstancesOwn()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RecordStats", ..#NAMESPACE), "the probe's statement is run with statistics on")
@@ -268,6 +268,7 @@ Method TestTheSettingsRowsAndTheStatsCountAreTheInstancesOwn()
         Do $$$AssertTrue($Match(tRows("StopsAt").Value, "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$") || (tRows("StopsAt").Value = ""), "and the stop's time reads as ISO-8601 UTC")
     }
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a completed turn is seeded")
     Set tUse = {"type": "tool_use", "id": "toolu_sqlruntimestatssettings"}
     Do tUse.%Set("name", ##class(OcuPilot.Screen.Tool.Registry).WireName("explorer.sqlruntimestatssettings.read"), "string")
     Do tUse.%Set("input", {"maxRows": 100})
@@ -288,8 +289,7 @@ Method TestTheSettingsRowsAndTheStatsCountAreTheInstancesOwn()
 }
 
 /// <p>The copy-out scripts (AD-59): the purge is its one <code>clearStatsSQL</code> call in the namespace the query names, and a collection set is its
-/// one <code>SetSQLStats</code> call with the level and the stop the port would send, each value a string literal; a stop row set while collection is
-/// off, or a name the roster does not settle, renders none.</p>
+/// one <code>SetSQLStats</code> call with the level and the stop the port would send, each value a string literal; the read-only row renders none.</p>
 /// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.TuningSnippet</code> names <code>clearStatsSQLAllNS</code> -> the purge's script goes red.</p>
 Method TestTheCopyOutScriptsAreTheirOneVendorCall()
 {
@@ -389,7 +389,7 @@ Method TestPlanWithStatisticsCarriesModuleStatisticsAndRecordsItsRows()
     Set tSC = $ClassMethod(tPort, "Plan", ..#NAMESPACE, tStatement, .tPlain, .tHttp, .tFault)
     Do $$$AssertEquals($Select($$$ISOK(tSC) && $IsObject(tPlain): tPlain.%Get("outcome") _ "|" _ (tPlain.%Get("plan") [ "Stats:"), 1: ""), "plan|0", "the plan without statistics carries none")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "StatsRowCount", ..#NAMESPACE), 0, "and records no row")
-    Set tSC = $ClassMethod(tPort, "Plan", ..#NAMESPACE, tStatement, .tAnswer, .tHttp, .tFault, 1, [])
+    Set tSC = $ClassMethod(tPort, "Plan", ..#NAMESPACE, tStatement, .tAnswer, .tHttp, .tFault, 1)
     Do $$$AssertStatusOK(tSC, "Plan with statistics answers")
     If $$$ISERR(tSC) || '$IsObject(tAnswer) Quit
     Do $$$AssertEquals(tAnswer.%Get("outcome") _ "|" _ tAnswer.%Get("kind"), "plan|query", "it keeps the plan outcome")
@@ -407,13 +407,14 @@ Method TestPlanWithStatisticsCarriesModuleStatisticsAndRecordsItsRows()
 /// <p>AC4. Plan with statistics runs the statement, so a statement that is not a query is refused 422 <code>EXPLORER.SQL.PLANSTATS</code> with the
 /// published sentence before anything runs: an UPDATE changes no row, a CREATE TABLE creates no table and no statistics row is recorded. The same
 /// statements still answer their plan without statistics.</p>
-/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.Plan</code> skips its query-only check -> the refusal and the nothing-ran assertions go red.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.Plan</code> skips its query-only check -> the refusal assertions go red. (The instance's Explain
+/// itself applies no UPDATE and refuses a CREATE TABLE, so the nothing-ran assertions stay green under it.)</p>
 Method TestPlanWithStatisticsTakesAQueryOnly()
 {
     Set tPort = ..#PORT
     Set tFirst = $Parameter(..#PROBE, "FIRST")
     For tText = "UPDATE " _ tFirst _ " SET B = 'y'", "CREATE TABLE OcuProbe226.Never (A INTEGER)" {
-        Set tSC = $ClassMethod(tPort, "Plan", ..#NAMESPACE, tText, .tAnswer, .tHttp, .tFault, 1, [])
+        Set tSC = $ClassMethod(tPort, "Plan", ..#NAMESPACE, tText, .tAnswer, .tHttp, .tFault, 1)
         Do $$$AssertEquals($Select($$$ISERR(tSC): 1, 1: 0) _ "|" _ $Get(tHttp) _ "|" _ $Select($IsObject($Get(tFault)): tFault.code _ "|" _ tFault.reason, 1: ""), "1|422|EXPLORER.SQL.PLANSTATS|" _ ##class(OcuPilot.Api.AtelierError).#REASONSQLPLANSTATS, tText _ ": refused with the published sentence")
         Do $$$AssertEquals($IsObject($Get(tAnswer)), 0, "no answer is built")
     }

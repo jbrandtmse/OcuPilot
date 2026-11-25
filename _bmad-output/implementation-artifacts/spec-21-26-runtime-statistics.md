@@ -180,6 +180,41 @@ warnings: ['oversized']
 - AC5. Given the `slowquery` workflow, when a turn follows it, then its steps name both new reads and no write tool.
 - AC6. Given the throwaway, when the browser spec runs forward and in reverse with `system-explorer-sql-statements.browser-spec.mjs`, then it passes and leaves no probe table or probe statistics.
 
+### Review Findings
+
+Code review 2026-11-25 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). No HIGH.
+
+- [x] [Review][Patch] MED: nothing pinned that the purge never runs at mint [Test/SqlRuntimeStatsWrite.cls TestAChangedTarget...] — count before and after the mint.
+- [x] [Review][Patch] MED: the changed-target (`Was`) refusal was pinned for the level row only [Test/SqlRuntimeStatsWrite.cls] — new `TestAStopMovedSinceTheMintRefusesTheConfirm` (stop and level after stop).
+- [x] [Review][Patch] MED: Plan with statistics left a transaction open when the query's function opened one (measured: `$TLevel` 1 after Explain) [Port/SqlPort.cls Explained] — rolled back as `Executed` does; new `SqlPortLive.TestAPlanWithStatisticsLeavesNoTransactionOpen`.
+- [x] [Review][Patch] MED (Rule 2/31): `MergeUpdate` with `Was` was a copy of `AnalyticsSettingSet`'s [Screen/Tool/ExplorerSqlRuntimeStatsSettingSet.cls] — hoisted into `ConfigSettingSet` behind `GUARDMOVED`, both subclasses set it.
+- [x] [Review][Patch] MED (Rule 2): `SqlConsoleProbe.StatsRoutines`/`RemoveStats` copied `SqlTuningProbe`'s [Test/SqlConsoleProbe.cls] — delegate with a token argument.
+- [x] [Review][Defer] MED: a time-of-day stop set on the classic page reads as no stop, and the next level set replaces it with 50 minutes [Port/ConfigPort.cls SqlStatsState] — deferred: DW-2873, decision-pending (a new sentence or a time-stop row is an owner call).
+- [x] [Review][Patch] LOW: Plan with statistics still forwarded the body's values and changed the plain Explain call's shape [Port/SqlPort.cls Plan, Explained; Area/Explorer/SqlConsole.cls] — values dropped, original call restored.
+- [x] [Review][Patch] LOW: `SqlStatsTarget`'s internal error said "while collection is on" [Port/ConfigPort.cls].
+- [x] [Review][Patch] LOW: a held stop above 99999 minutes blocked every set, Off included [Port/ConfigPort.cls SqlStatsTarget] — ranges checked only when a stop is sent.
+- [x] [Review][Patch] LOW: the settings read called `GetSQLStatsFlag` once per row [Port/ConfigPort.cls CollectRoster] — once per read.
+- [x] [Review][Patch] LOW: an `<ALARM>` reported in the status message was not read as stopped [Port/SqlPort.cls Explained] — as `Executed` reads it.
+- [x] [Review][Patch] LOW: four test doc comments claimed mutations that stay green, and the copy-out header a leg it does not run [Test/SqlRuntimeStatsRead.cls, Test/SqlRuntimeStatsWrite.cls].
+- [x] [Review][Patch] LOW: a seeded turn was not removed and one `SeedTurn` status unasserted [Test/SqlRuntimeStatsRead.cls].
+- [x] [Review][Patch] LOW: browser AC4 counted the `before` hook's rows, so it depended on order [ui/browser/system-explorer-sql-runtime-stats.browser-spec.mjs] — waits on `Probe226Plan` rows.
+- [x] [Review][Patch] LOW: `tType` guards appended rather than prefixed [Kernel/Proposal/Prohibited.cls]; `DeveloperFloor`'s message count read sixteen.
+
+Rejected:
+
+- Every set restarts the stop's countdown: the classic page's save sends `M:<minutes>` the same way, and `StopsAt` shows the new time; a note would be a new sentence.
+- The 50-minute default is not said on screen: `StopsAt` shows it after the set; a note would be a new sentence.
+- The list's id repeats for a statement run twice: the vendor's details repeat the same way, the table keys repeated rows (DW-2328), and no row action addresses one.
+- The purge tests assert the namespace empty: AC3 is that every row of the namespace goes, on an armed throwaway class.
+- Gate tests use the seam: probed with real principals at review (Verification); the seam is the project's port-gate convention.
+- The set dialog is not driven in a browser: the shared settings page is browser-covered and the set is pinned on both callers.
+- The level falling between the rule and the call answers 400, not 409: fail-closed race.
+- `SQLCODE=-450` inside a statement's own text, or another runtime error inside the plan text: theoretical, and the plan text shows the error.
+- A lower-case namespace purges nothing (measured): the router upper-cases `?ns=` (`Router.cls:1392`), so no route reaches it.
+- The write class's restore does not keep a non-default collect flag or a time stop: the throwaway starts at `0:0:0::0:0`.
+- `strings.ts`'s citation line moved, and the README count and clause: forced by the citation pin, and the README's per-story practice.
+- The spec's narration and frontmatter `deferred:` key: the fix edits the spec under review.
+
 ## Spec Change Log
 
 - 2026-11-25, orchestrator rulings at the plan gate (veto U-161 for items 2, 3, 4 and 7), authoritative over the Design Notes records:
@@ -390,6 +425,12 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
   - The write class's first assertion: `CollectRoster` answers a level of 3 -> it goes red, with three others of the class.
   - Changed target: `ExplorerSqlRuntimeStatsSettingSet.MergeUpdate` adds no `Was` -> `SqlRuntimeStatsWrite.TestALevelMovedSinceTheMintRefusesTheConfirm` red (the confirm answered 200). The set tool carried no such guard before this test, so a level moved after the mint was not refused.
   - `ConfigPort.SqlStatsState`'s `pLevel >= 2` guard dropped -> `SqlRuntimeStatsWrite` stays green (7 of 7): after a set to 2 and then 0, and at expiry, the vendor reads the stop empty, so the guard is defensive on this build and no test can pin it.
+- Code review, each applied on `ocupilot-ci`, observed red, reverted (tree identical) and reloaded, 2026-11-25:
+  - mutation: the purge tool's `Holds` calls `clearStatsSQL` for the fresh read's namespace -> `SqlRuntimeStatsWrite.TestAChangedTargetAndTheInstancesRefusalLeaveTheRowsBehind` red on "the mint removed none of the probe's rows" (run 1056).
+  - mutation: `ConfigSettingSet.MergeUpdate` adds `Was` for `CollectionLevel` alone -> `SqlRuntimeStatsWrite.TestAStopMovedSinceTheMintRefusesTheConfirm` red on both legs, each confirm answering 200 (run 1055).
+  - mutation: `SqlPort.Explained` drops its rollback after the instance's call -> `SqlPortLive.TestAPlanWithStatisticsLeavesNoTransactionOpen` red (run 1054).
+  - mutation: `AnalyticsSettingSet.GUARDMOVED` 0 -> `AnalyticsSettingsWriteEdge.TestAProposalMintedBeforeTheSettingChangedIsClosedAsMoved` red (run 1063).
+- Gate probe at review (`ocupilot-ci`, HSCUSTOM, principals made and removed, read back absent): a principal holding `%Development:USE` and the code databases' pairs without `%DB_IRISSYS` was refused the settings read and set 403 naming `%DB_IRISSYS:READ`; one adding `%DB_IRISSYS:READ` read the four rows and was refused the set 403 naming `%DB_IRISSYS:WRITE`; the flag read `0:0:0::0:0` after.
 
 ## Auto Run Result
 

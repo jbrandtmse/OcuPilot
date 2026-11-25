@@ -149,37 +149,14 @@ ClassMethod Remove() As %Status
 /// with statistics records them).</p>
 ClassMethod StatsRoutines() As %String
 {
-    Set tList = ""
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set $NAMESPACE = ..#NAMESPACE
-        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT DISTINCT RoutineName FROM %SYS_PTools.StatsSQLView WHERE NameSpace = ? AND QueryText [ ?", $ZConvert(..#NAMESPACE, "U"), ..#SCHEMA)
-        While tResult.%Next() {
-            Set tList = tList _ $Select(tList = "": "", 1: ",") _ tResult.%GetData(1)
-        }
-        Set tResult = ""
-        Set $NAMESPACE = tOrigNS
-    } Catch {
-        Set $NAMESPACE = tOrigNS
-    }
-    Quit tList
+    Quit ##class(OcuPilot.Test.SqlTuningProbe).StatsRoutines(..#NAMESPACE, ..#SCHEMA)
 }
 
 /// <p>Remove those routines' runtime statistics by routine, never the namespace's other rows, and answer how many rows went, <code>-1</code> when a
 /// removal failed.</p>
 ClassMethod RemoveStats() As %Integer
 {
-    Set tRemoved = 0
-    Set tList = ..StatsRoutines()
-    For tI = 1:1:$Length(tList, ",") {
-        Set tRoutine = $Piece(tList, ",", tI)
-        If tRoutine = "" Continue
-        Set tCleared = ##class(%SYS.PTools.StatsSQL).clearStatsSQL(..#NAMESPACE, tRoutine, , 1, , 1)
-        If '$Match(tCleared, "^[0-9]+$") Quit
-        Set tRemoved = tRemoved + tCleared
-    }
-    If $Get(tCleared) '= "" && '$Match(tCleared, "^[0-9]+$") Quit -1
-    Quit tRemoved
+    Quit ##class(OcuPilot.Test.SqlTuningProbe).RemoveStats(..#NAMESPACE, ..#SCHEMA)
 }
 
 /// <p>The rows <parameter>GRANTED</parameter> holds and the sum of their <code>Num</code>, as

@@ -792,9 +792,8 @@ ClassMethod Run(pNamespace As %String, pText As %String, pValues As %DynamicArra
 /// gathers by running the statement, so only a <parameter>KINDQUERY</parameter> is taken: any other kind is
 /// refused (422 <code>EXPLORER.SQL.PLANSTATS</code>) before anything runs. The run is bounded at
 /// <method>BoundSeconds</method>, and an overrun answers <code>{outcome: stopped, kind, seconds}</code>
-/// as <method>Run</method> does. <var>pValues</var> is handed to the instance as the statement's dynamic
-/// arguments, which the instance's statistics run does not bind.</p>
-ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pStats As %Boolean = 0, pValues As %DynamicArray = "") As %Status
+/// as <method>Run</method> does. The statement runs without values.</p>
+ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pStats As %Boolean = 0) As %Status
 {
     Set pAnswer = ""
     Set pHttpStatus = 0
@@ -819,7 +818,7 @@ ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %Dyn
             Quit
         }
         Set tBound = $Select(pStats: ..BoundSeconds(), 1: 0)
-        Set tSC = ..Explained(pNamespace, pText, .tPlan, .tCode, .tMessage, pStats, pValues, tBound, .tStopped)
+        Set tSC = ..Explained(pNamespace, pText, .tPlan, .tCode, .tMessage, pStats, tBound, .tStopped)
         If $$$ISERR(tSC) {
             Set pAnswer = ""
             Set tSC = ..Fail("the statement's plan could not be read", tSC, .pHttpStatus, .pFault)
@@ -2431,9 +2430,10 @@ ClassMethod Executed(pNamespace As %String, pText As %String, pType As %Integer,
 /// Explain executes nothing (measured). With it the instance runs the statement to gather each
 /// module's statistics, under an alarm of <var>pBound</var> seconds when that is above 0, and
 /// <var>pStopped</var> is 1 when the alarm stopped the run: the instance reports that inside the plan
-/// text or as an <code>&lt;ALARM&gt;</code> exception. <var>pValues</var> becomes the instance's dynamic
-/// arguments. The switched region calls vendor classes only.</p>
-ClassMethod Explained(pNamespace As %String, pText As %String, Output pPlan As %String, Output pCode As %String, Output pMessage As %String, pStats As %Boolean = 0, pValues As %DynamicArray = "", pBound As %Integer = 0, Output pStopped As %Boolean) As %Status [ Private ]
+/// text, in its error status or as an <code>&lt;ALARM&gt;</code> exception. The run takes no values, and a
+/// transaction it leaves open is rolled back to the level it started at, as <method>Executed</method> does. The
+/// switched region calls vendor classes only.</p>
+ClassMethod Explained(pNamespace As %String, pText As %String, Output pPlan As %String, Output pCode As %String, Output pMessage As %String, pStats As %Boolean = 0, pBound As %Integer = 0, Output pStopped As %Boolean) As %Status [ Private ]
 {
     Set pPlan = ""
     Set pCode = ""
@@ -2441,20 +2441,12 @@ ClassMethod Explained(pNamespace As %String, pText As %String, Output pPlan As %
     Set pStopped = 0
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
+    Set tLevel = $TLevel
     Set tAlarmed = 0
     Try {
         Set $NAMESPACE = pNamespace
         Set tText = pText
         Set tPlan = ""
-        Kill tArgs
-        Set tArgs = 0
-        If pStats && $IsObject(pValues) {
-            Set tIterator = pValues.%GetIterator()
-            While tIterator.%GetNext(.tIndex, .tValue) {
-                Set tArgs = tArgs + 1
-                Set tArgs(tArgs) = tValue
-            }
-        }
         Set tQualifiers = {"silent": 1}
         If pStats {
             Do tQualifiers.%Set("stats", 1, "number")
@@ -2463,16 +2455,19 @@ ClassMethod Explained(pNamespace As %String, pText As %String, Output pPlan As %
                 Set tAlarmed = 1
             }
         }
-        Set tExplainSC = $SYSTEM.SQL.Explain(.tText, tQualifiers, .tArgs, .tPlan)
+        Set tExplainSC = $SYSTEM.SQL.Explain(.tText, tQualifiers, , .tPlan)
         If tAlarmed {
             Do $System.Alarm.Clear()
             Set tAlarmed = 0
+        }
+        While $TLevel > tLevel {
+            TRollback 1
         }
         If $$$ISERR(tExplainSC) {
             Set tMessage = ""
             Set pCode = $System.Status.StatusToSQLCODE(tExplainSC, .tMessage)
             Set pMessage = tMessage
-            If pStats && (pCode = ..#ALARMSQLCODE) Set pStopped = 1
+            If pStats && ((pCode = ..#ALARMSQLCODE) || ((pCode < 0) && (pMessage [ "<ALARM>"))) Set pStopped = 1
         } Else {
             Set pPlan = $Get(tPlan)
             If pStats && (pPlan [ ("SQLCODE=" _ ..#ALARMSQLCODE)) Set pStopped = 1
@@ -2481,6 +2476,9 @@ ClassMethod Explained(pNamespace As %String, pText As %String, Output pPlan As %
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         If tAlarmed Do $System.Alarm.Clear()
+        While $TLevel > tLevel {
+            TRollback 1
+        }
         Set pPlan = ""
         If ex.Name = "<ALARM>" {
             Set pStopped = 1

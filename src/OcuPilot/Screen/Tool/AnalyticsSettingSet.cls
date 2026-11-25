@@ -63,14 +63,8 @@ ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0,
     Quit $Select(##class(OcuPilot.Port.AnalyticsPort).UnstoredGeneral($Select(pPayload.%GetTypeOf("Namespace") = "string": pPayload.%Get("Namespace"), 1: "")): ..#CONSEQUENCECODE, 1: "")
 }
 
-/// <p>The merge over the fresh read, with <code>Was</code>, the value the setting held, added to the payload: the digest a confirm recomputes then covers it, so a setting changed since the review closes
-/// the proposal as moved even though the new value overwrites the old one in the body. The port reads only <code>Value</code> of the body.</p>
-ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
-{
-    Set tSC = ##super(pFresh, pArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
-    If $$$ISOK(tSC) && (pProblem = "") && $IsObject(pPayload) && $IsObject(pFresh) && (pFresh.%GetTypeOf("Value") = "string") Do pPayload.%Set("Was", pFresh.%Get("Value"), "string")
-    Quit tSC
-}
+/// <p>A setting changed since the review closes the proposal as moved (<method>OcuPilot.Screen.Tool.ConfigSettingSet.MergeUpdate</method>).</p>
+Parameter GUARDMOVED As BOOLEAN = 1;
 
 /// <p>Nothing follows the write: the page's own call is the whole of it.</p>
 ClassMethod AfterWrite(pPort As %String, pEndpoint As %String, pIdParam As %String, pIdValue As %String, pFresh As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status

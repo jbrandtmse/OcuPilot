@@ -182,6 +182,20 @@ ClassMethod SnippetAfter(pEndpoint As %String, pIdParam As %String, pIdValue As 
     Quit $ClassMethod(..PortClass(), "PurgeSteps", pEndpoint, pIdValue)
 }
 
+/// <p>1 when the payload carries <code>Was</code>, the value the row held at the mint (<method>MergeUpdate</method>), so a row changed since
+/// the review closes the proposal as moved.</p>
+Parameter GUARDMOVED As BOOLEAN = 0;
+
+/// <p>The merge over the fresh read. With <parameter>GUARDMOVED</parameter> 1, <code>Was</code>, the value the row held, is added to the
+/// payload: the digest a confirm recomputes then covers it, so a row changed since the review closes the proposal as moved even though the
+/// new value overwrites the old one in the body. The port reads only <code>Value</code> of the body.</p>
+ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
+{
+    Set tSC = ##super(pFresh, pArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
+    If ..#GUARDMOVED && $$$ISOK(tSC) && (pProblem = "") && $IsObject(pPayload) && $IsObject(pFresh) && (pFresh.%GetTypeOf("Value") = "string") Do pPayload.%Set("Was", pFresh.%Get("Value"), "string")
+    Quit tSC
+}
+
 /// <p>What the caller must hold: the screen's own pairs, then
 /// <parameter>WRITERESOURCE</parameter>:<parameter>WRITEPERMISSION</parameter> where the set lacks it, then the custom
 /// resource of each <parameter>CLASSICPAGES</parameter> page (AD-8, AD-44).</p>

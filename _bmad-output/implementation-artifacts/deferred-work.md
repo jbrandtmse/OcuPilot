@@ -14655,3 +14655,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-40-the-governance-page-s-render-cost.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Only Baseline.Keys' list (always a %DynamicObject) or {} reaches them; Rows normalises a non-object to {}.
 - 2026-11-24T05:09:48Z status=wontfix-theoretical owner=21-40-the-governance-page-s-render-cost by=cr note=real only if a caller passes a %DynamicArray or another object as the list
+
+### DW-2873: A time-of-day stop set on the classic Runtime Stats Settings page reads as no stop in Runtime statistics collection, and the next level set replaces it with a 50-minute stop
+- source: spec-21-26-runtime-statistics.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: ConfigPort.SqlStatsState reads only ptInfo(terminate,mins); the classic page saves T:<YYYYMMDD HHMM>:<raf> (RuntimeStatsSettings.cls:328, Utils.cls:42-60); mins empty for a T: stop is (inference), unmeasured; a level-after-stop of 2 or 3 set through the API reads as Off
+- 2026-11-25T19:49:55Z status=decision-pending owner=burndown by=cr note=owner call: refuse a set while a time stop is held (new sentence), or show the time stop; the spec rules out sending T:

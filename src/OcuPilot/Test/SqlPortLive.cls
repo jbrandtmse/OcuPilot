@@ -151,9 +151,33 @@ Method TestAStatementPastTheBoundIsStopped()
 /// <p>Mutation (Rule 19): never set the alarm in <method>OcuPilot.Port.SqlPort.Explained</method> -- the statement runs to completion and the leg goes red.</p>
 Method TestAPlanWithStatisticsPastTheBoundIsStopped()
 {
-    Set tSC = $ClassMethod(..#FIXTURE, "Plan", ..#NAMESPACE, "SELECT COUNT(*) FROM OcuProbe196.Granted a, OcuProbe196.Granted b, OcuProbe196.Granted c, OcuProbe196.Granted d, OcuProbe196.Granted e", .tAnswer, .tHttp, .tFault, 1, [])
+    Set tSC = $ClassMethod(..#FIXTURE, "Plan", ..#NAMESPACE, "SELECT COUNT(*) FROM OcuProbe196.Granted a, OcuProbe196.Granted b, OcuProbe196.Granted c, OcuProbe196.Granted d, OcuProbe196.Granted e", .tAnswer, .tHttp, .tFault, 1)
     Do $$$AssertEquals(..Said(tSC, .tAnswer, .tHttp, .tFault), "{""kind"":""query"",""outcome"":""stopped"",""seconds"":2}", "a long query's plan with statistics is stopped at the bound")
     Do $$$AssertEquals($TLevel, 0, "with no transaction left open")
+}
+
+/// <p>AC4: a plan with statistics whose query calls a function that opens a transaction rolls it back to where it started, as a run does. The test
+/// makes the function and drops it, and the probe's cleanup removes the statistics the plan recorded.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.SqlPort.Explained</method> drops its rollback after the instance's call -- the level leg goes red.</p>
+Method TestAPlanWithStatisticsLeavesNoTransactionOpen()
+{
+    Set tFunction = "OcuProbe196.OpenTx"
+    Set tOrigNS = $NAMESPACE
+    Set $NAMESPACE = ..#NAMESPACE
+    Set tMade = ##class(%SQL.Statement).%ExecDirect(, "CREATE FUNCTION " _ tFunction _ "() RETURNS INT LANGUAGE OBJECTSCRIPT { TSTART  Quit 1 }").%SQLCODE
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertEquals(tMade, 0, "the probe function is created")
+    Set tLevel = $TLevel
+    Set tSC = $ClassMethod(..#PORT, "Plan", ..#NAMESPACE, "SELECT " _ tFunction _ "() AS Opened FROM OcuProbe196.Granted WHERE Num = 1", .tAnswer, .tHttp, .tFault, 1)
+    Set tLeft = $TLevel
+    While $TLevel > tLevel {
+        TRollback 1
+    }
+    Set $NAMESPACE = ..#NAMESPACE
+    Do ##class(%SQL.Statement).%ExecDirect(, "DROP FUNCTION " _ tFunction)
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertEquals($Select($$$ISOK(tSC) && $IsObject($Get(tAnswer)): tAnswer.%Get("outcome"), 1: ""), "plan", "the plan with statistics answers its plan")
+    Do $$$AssertEquals(tLeft, tLevel, "and $TLevel is where it started")
 }
 
 /// <p>A run that leaves a transaction open is rolled back to where it started and answers

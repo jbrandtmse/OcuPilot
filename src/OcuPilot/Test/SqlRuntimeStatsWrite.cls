@@ -257,7 +257,8 @@ Method TestARefusedSetChangesNothingOnEitherCaller()
 
 /// <p>AC2. The call the port builds, seen through the seam that records it and sends nothing: a level of 3 with no stop held sends <code>M:50:0</code>, a level
 /// of 0 sends no stop, and the instance's own refusal of the call is answered as the settings' existing vendor refusal with the flag unchanged.</p>
-/// <p>Mutation (Rule 19): <code>OcuPilot.Port.ConfigPort.SqlStatsTarget</code> sends the level alone for a stop row -> the recorded call assertion goes red.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.ConfigPort.SqlStatsTarget</code> builds an empty stop for a level of 2 or 3 -> the recorded call assertion goes
+/// red.</p>
 Method TestThePortBuildsTheVendorsStopTextFromWholeNumbers()
 {
     Set tSeam = ..#CONFIGSEAM
@@ -291,8 +292,8 @@ Method MakeProbes()
 
 /// <p>AC3. The list's Purge statistics and the agent's confirmed proposal each remove every runtime statistics row of <code>USER</code> and leave the rows of
 /// <code>HSCUSTOM</code>; a second purge of a namespace that holds none is refused with its sentence before any call, on both callers.</p>
-/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.StatementCall</code> passes <code>""</code> for the namespace -> the other namespace's rows are purged
-/// instead and the surviving-rows assertion goes red.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.StatementCall</code> calls <code>clearStatsSQLAllNS</code> -> the other namespace's rows are purged
+/// too and the surviving-rows assertion goes red.</p>
 Method TestThePurgeRemovesTheNamespacesRowsOnBothCallers()
 {
     Do ..MakeProbes()
@@ -314,11 +315,13 @@ Method TestThePurgeRemovesTheNamespacesRowsOnBothCallers()
     Do $$$AssertEquals(##class(OcuPilot.Test.EcpDataServerWrite).Verdict($Get(tResult)), "nothingSent", "and its read-back reads nothing sent")
 }
 
-/// <p>AC3. A proposal whose namespace recorded a statement after it was minted is closed <code>PROPOSAL.TARGETCHANGED</code> at its confirm, and the rows are
-/// still there; the instance's own refusal of the purge is 409 <code>SQL.RUNTIMESTATS.VENDOR</code>, its ruled sentence on the wire and the instance's
-/// message in <code>detail</code> alone, with one call made and every row left.</p>
+/// <p>AC3. The mint of a purge removes nothing; a proposal whose namespace recorded a statement after it was minted is closed
+/// <code>PROPOSAL.TARGETCHANGED</code> at its confirm, and the rows are still there; the instance's own refusal of the purge is 409
+/// <code>SQL.RUNTIMESTATS.VENDOR</code>, its ruled sentence on the wire and the instance's message in <code>detail</code> alone, with one call made and
+/// every row left.</p>
 /// <p>Mutation (Rule 19): the purge tool's <code>FINGERPRINTSUBJECT</code> drops <code>Rows</code> -> the confirm is not refused and goes red;
-/// <code>OcuPilot.Port.SqlPort.StatementWrite</code> puts the message in the reason -> the reason assertion goes red.</p>
+/// <code>OcuPilot.Port.SqlPort.StatementWrite</code> puts the message in the reason -> the reason assertion goes red; the purge tool's <code>Holds</code>
+/// calls <code>clearStatsSQL</code> for the fresh read's namespace -> the mint-removes-nothing assertion goes red.</p>
 Method TestAChangedTargetAndTheInstancesRefusalLeaveTheRowsBehind()
 {
     Do ..MakeProbes()
@@ -327,9 +330,11 @@ Method TestAChangedTargetAndTheInstancesRefusalLeaveTheRowsBehind()
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings), "the purge is enabled through its stored setting")
     Do ##class(OcuPilot.Kernel.Scope).Set(..#NAMESPACE)
     Set ^||OcuPilotDatabaseWritePort = $Parameter(..#PURGETOOL, "PORTCLASS")
+    Set tBeforeMint = $ClassMethod(..#PROBE, "StatsRowCount", ..#NAMESPACE)
     Set tSC = $ClassMethod(..#AGENT, "Mint", ..#PURGETOOL, "*", {"Target": "*"}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertStatusOK(tSC, "the proposal is minted: " _ $Get(tProblem))
     If '$IsObject($Get(tProposal)) Quit
+    Do $$$AssertTrue((tBeforeMint > 0) && ($ClassMethod(..#PROBE, "StatsRowCount", ..#NAMESPACE) = tBeforeMint), "the mint removed none of the probe's rows")
     Set tBefore = ##class(OcuPilot.Test.SqlRuntimeStatsRead).DirectCount(..#NAMESPACE)
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RecordStats", ..#NAMESPACE), "a statement is recorded after the mint")
     Set tConfirm = $ClassMethod(..#AGENT, "Confirm", tProposal, .tResult)
@@ -349,8 +354,8 @@ Method TestAChangedTargetAndTheInstancesRefusalLeaveTheRowsBehind()
 
 /// <p>AC2. A proposal to turn collection on whose level moved after it was minted is closed <code>PROPOSAL.TARGETCHANGED</code> at its confirm, and the
 /// instance keeps the level it was moved to; the cleanup puts the flag read before the test back and reads it again.</p>
-/// <p>Mutation (Rule 19): <code>OcuPilot.Screen.Tool.ExplorerSqlRuntimeStatsSettingSet.MergeUpdate</code> adds no <code>Was</code> -> the confirm is not
-/// refused and the assertion goes red.</p>
+/// <p>Mutation (Rule 19): <parameter>OcuPilot.Screen.Tool.ExplorerSqlRuntimeStatsSettingSet.GUARDMOVED</parameter> 0, so no <code>Was</code> is added -> the
+/// confirm is not refused and the assertion goes red.</p>
 Method TestALevelMovedSinceTheMintRefusesTheConfirm()
 {
     Set ^||OcuPilotDatabaseWritePort = ..#CONFIGPORT
@@ -365,6 +370,31 @@ Method TestALevelMovedSinceTheMintRefusesTheConfirm()
     Do $$$AssertEquals(..State(), "2|5|0", "the level is moved out of band")
     Set tConfirm = $ClassMethod(..#AGENT, "Confirm", tProposal, .tResult)
     Do $$$AssertEquals(tConfirm _ "|" _ ..State(), "409 PROPOSAL.TARGETCHANGED|2|5|0", "the confirm is refused target-changed and the level stays where it was moved: " _ tConfirm)
+}
+
+/// <p>AC2. A proposal for the stop in minutes, or for the level after the stop, whose row moved after it was minted is closed
+/// <code>PROPOSAL.TARGETCHANGED</code> at its confirm, and the instance keeps the stop it was moved to; the cleanup puts the flag read before the test
+/// back and reads it again.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Screen.Tool.ConfigSettingSet.MergeUpdate</code> adds <code>Was</code> for <code>CollectionLevel</code> alone -> both
+/// confirms are not refused and the assertions go red.</p>
+Method TestAStopMovedSinceTheMintRefusesTheConfirm()
+{
+    Set ^||OcuPilotDatabaseWritePort = ..#CONFIGPORT
+    Set tOn = ##class(%SYS.PTools.StatsSQL).SetSQLStats(2, 1, "", "M:5:0")
+    Do $$$AssertEquals(..State(), "2|5|0", "collection is on with a stop, out of band")
+    For tCase = $ListBuild("StopAfterMinutes", "20", "M:7:0", "2|7|0"), $ListBuild("LevelAfterStop", "Off with collection code", "M:7:1", "2|7|1") {
+        Set tArgs = {}
+        Do tArgs.%Set("Name", $List(tCase, 1), "string")
+        Do tArgs.%Set("Value", $List(tCase, 2), "string")
+        Set tProposal = ""
+        Set tSC = $ClassMethod(..#AGENT, "Mint", ..#SETTINGTOOL, $List(tCase, 1), tArgs, .tProposal, .tHttp, .tProblem)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 1) _ ": the proposal is minted: " _ $Get(tProblem))
+        If '$IsObject($Get(tProposal)) Continue
+        Set tMoved = ##class(%SYS.PTools.StatsSQL).SetSQLStats(2, 1, "", $List(tCase, 3))
+        Do $$$AssertEquals(..State(), $List(tCase, 4), $List(tCase, 1) _ ": the stop is moved out of band")
+        Set tConfirm = $ClassMethod(..#AGENT, "Confirm", tProposal, .tResult)
+        Do $$$AssertEquals(tConfirm _ "|" _ ..State(), "409 PROPOSAL.TARGETCHANGED|" _ $List(tCase, 4), $List(tCase, 1) _ ": the confirm is refused target-changed and the stop stays where it was moved: " _ tConfirm)
+    }
 }
 
 }

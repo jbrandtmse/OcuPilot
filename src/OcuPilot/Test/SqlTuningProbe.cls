@@ -590,9 +590,9 @@ ClassMethod RecordStats(pNamespace As %String) As %Status
     Quit tSC
 }
 
-/// <p>The routines of <var>pNamespace</var>'s runtime statistics whose statement carries <parameter>STATSTOKEN</parameter>, comma-joined, read with
-/// the caller's own privileges.</p>
-ClassMethod StatsRoutines(pNamespace As %String) As %String
+/// <p>The routines of <var>pNamespace</var>'s runtime statistics whose statement carries <var>pToken</var>, comma-joined, read with the caller's own
+/// privileges.</p>
+ClassMethod StatsRoutines(pNamespace As %String, pToken As %String = {..#STATSTOKEN}) As %String
 {
     Set tList = ""
     Set tOrigNS = $NAMESPACE
@@ -601,7 +601,7 @@ ClassMethod StatsRoutines(pNamespace As %String) As %String
         Set tStatement = ##class(%SQL.Statement).%New()
         Set tSC = tStatement.%Prepare("SELECT DISTINCT RoutineName FROM %SYS_PTools.StatsSQLView WHERE NameSpace = ? AND QueryText [ ?")
         If $$$ISOK(tSC) {
-            Set tResult = tStatement.%Execute($ZConvert(pNamespace, "U"), ..#STATSTOKEN)
+            Set tResult = tStatement.%Execute($ZConvert(pNamespace, "U"), pToken)
             While tResult.%Next() {
                 Set tList = tList _ $Select(tList = "": "", 1: ",") _ tResult.%GetData(1)
             }
@@ -635,13 +635,13 @@ ClassMethod StatsRowCount(pNamespace As %String) As %Integer
     Quit tCount
 }
 
-/// <p>Remove the runtime statistics of the probe's statement from <var>pNamespace</var> by routine, never the namespace's other rows, and answer how
-/// many rows it removed, or <code>-1</code> when a removal failed (Story 21.26).</p>
-ClassMethod RemoveStats(pNamespace As %String) As %Integer
+/// <p>Remove the runtime statistics of the statements carrying <var>pToken</var> from <var>pNamespace</var> by routine, never the namespace's other
+/// rows, and answer how many rows it removed, or <code>-1</code> when a removal failed (Story 21.26).</p>
+ClassMethod RemoveStats(pNamespace As %String, pToken As %String = {..#STATSTOKEN}) As %Integer
 {
     Set tRemoved = 0
     Set tOrigNS = $NAMESPACE
-    Set tList = ..StatsRoutines(pNamespace)
+    Set tList = ..StatsRoutines(pNamespace, pToken)
     Try {
         For tI = 1:1:$Length(tList, ",") {
             Set tRoutine = $Piece(tList, ",", tI)

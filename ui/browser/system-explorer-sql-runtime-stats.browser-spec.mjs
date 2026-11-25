@@ -115,14 +115,14 @@ async function probeRows(page) {
   return (await rows(page)).filter((cells) => (cells[COLUMN.statement] ?? '').includes(TOKEN));
 }
 
-/** Wait until at least `count` rows carry the probe's token. */
-async function waitForProbeRows(page, count) {
+/** Wait until at least `count` rows carry `token`, the probe's token unless named. */
+async function waitForProbeRows(page, count, token = TOKEN) {
   await page.waitForFunction(
     (selector, token, column, wanted) =>
       Array.from(document.querySelectorAll(selector)).filter((row) => (row.querySelectorAll('[role="gridcell"]')[column]?.textContent ?? '').includes(token)).length >= wanted,
     { timeout: config.navigationTimeoutMs },
     ROW_SELECTOR,
-    TOKEN,
+    token,
     COLUMN.statement,
     count
   );
@@ -209,7 +209,7 @@ test('AC4: Plan with statistics on SQL query shows module statistics, and the ru
   const listed = await signedInAt(browser, config, STATS_ROUTE, VIEWPORTS.wide);
   try {
     await answered(listed.page);
-    await waitForProbeRows(listed.page, 4);
+    await waitForProbeRows(listed.page, 2, 'Probe226Plan');
     const shown = await probeRows(listed.page);
     assert.ok(
       shown.some((cells) => cells[COLUMN.statement].includes('Probe226Plan')),

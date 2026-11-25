@@ -1040,6 +1040,10 @@ ClassMethod CollectRoster(pEndpoint As %String, pName As %String, ByRef pData) A
 {
     Set tSC = $$$OK
     Set tRoster = ..RosterOf(pEndpoint)
+    If pEndpoint = ..#SQLSTATSENDPOINT {
+        Set tSC = ..SqlStatsState(.tLevel, .tMinutes, .tReset, .tStopsAt)
+        If $$$ISERR(tSC) Quit tSC
+    }
     For tI = 1:1:$ListLength(tRoster) {
         Set tEntry = $List(tRoster, tI)
         Set tKey = $List(tEntry, 1)
@@ -1051,8 +1055,6 @@ ClassMethod CollectRoster(pEndpoint As %String, pName As %String, ByRef pData) A
             Continue
         }
         If pEndpoint = ..#SQLSTATSENDPOINT {
-            Set tSC = ..SqlStatsState(.tLevel, .tMinutes, .tReset, .tStopsAt)
-            If $$$ISERR(tSC) Quit
             Set tShown = $Case(tKey, "CollectionLevel": ..ShownFor(tEntry, tLevel), "StopAfterMinutes": tMinutes, "LevelAfterStop": $Select(tMinutes = "": "", 1: ..ShownFor(tEntry, tReset)), : tStopsAt)
             Set pData(tKey) = $ListBuild(tShown, ..EntryLimits(tEntry), '$List(tEntry, 5), 0, 0)
             Continue
@@ -1190,7 +1192,7 @@ ClassMethod SqlStatsTarget(pName As %String, pStored As %String, Output pLevel A
     Set tSC = ..SqlStatsRead(.tLevel, .tMinutes, .tReset, .tStopsAt)
     If $$$ISERR(tSC) Quit tSC
     If (pName '= "CollectionLevel") && (pName '= "StopAfterMinutes") && (pName '= "LevelAfterStop") Quit $$$ERROR($$$GeneralError, "no runtime statistics call is built for " _ pName)
-    If (pName '= "CollectionLevel") && (tLevel < 2) Quit $$$ERROR($$$GeneralError, "the stop of runtime statistics collection is set while collection is on")
+    If (pName '= "CollectionLevel") && (tLevel < 2) Quit $$$ERROR($$$GeneralError, "the stop of runtime statistics collection is set while collection is off")
     If tMinutes = "" {
         Set tMinutes = ..#SQLSTATSDEFAULTMINUTES
         Set tReset = ..#SQLSTATSDEFAULTRESET
@@ -1198,7 +1200,8 @@ ClassMethod SqlStatsTarget(pName As %String, pStored As %String, Output pLevel A
     If pName = "CollectionLevel" Set tLevel = pStored
     If pName = "StopAfterMinutes" Set tMinutes = pStored
     If pName = "LevelAfterStop" Set tReset = pStored
-    If '$Match(tLevel, "^[0-3]$") || '$Match(tMinutes, "^[1-9][0-9]{0,4}$") || '$Match(tReset, "^[01]$") Quit $$$ERROR($$$GeneralError, "the runtime statistics call would carry a value outside its range")
+    If '$Match(tLevel, "^[0-3]$") Quit $$$ERROR($$$GeneralError, "the runtime statistics call would carry a value outside its range")
+    If (tLevel >= 2) && ('$Match(tMinutes, "^[1-9][0-9]{0,4}$") || '$Match(tReset, "^[01]$")) Quit $$$ERROR($$$GeneralError, "the runtime statistics call would carry a value outside its range")
     Set pLevel = +tLevel
     Set pTerminate = $Select(pLevel < 2: "", 1: "M:" _ +tMinutes _ ":" _ +tReset)
     Quit $$$OK

@@ -502,7 +502,7 @@ Method TestTheToolsTheDeveloperHoldsAreTheDeclaredRoster()
         If tTool.kind = "write" Set tHeldWrites = tHeldWrites _ $Select(tHeldWrites = "": "", 1: ",") _ tTool.name
     }
     Do $$$AssertEquals(..Sorted(tHeld), ..Sorted(..#TOOLS), "the tools the developer holds are the declared one hundred and six")
-    Do $$$AssertEquals(..Sorted(tHeldWrites), ..Sorted(..#HELDWRITES), "and the writes it holds are exactly the three exports, the SQL run, the data browser save, Screen permissions' three writes, the SQL tuning track's sixteen and the saves, creates, compiles, deletes, imports and the global replace")
+    Do $$$AssertEquals(..Sorted(tHeldWrites), ..Sorted(..#HELDWRITES), "and the writes it holds are exactly the three exports, the SQL run, the data browser save, Screen permissions' three writes, the SQL tuning track's seventeen and the saves, creates, compiles, deletes, imports and the global replace")
 }
 
 /// <p>Whether the class dictionary holds a compiled class named exactly <var>pClass</var>, Hidden
