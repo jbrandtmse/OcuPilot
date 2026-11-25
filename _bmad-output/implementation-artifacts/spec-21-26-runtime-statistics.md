@@ -2,7 +2,7 @@
 title: 'Story 21.26: Runtime statistics'
 type: 'feature'
 created: '2026-11-25'
-status: 'in-progress'
+status: 'blocked'
 baseline_revision: '747dd2a457ecb50371cf50291b0e01880f072d61'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -11,7 +11,14 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-6-the-sql-tuning-track.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-31-fixed-table-statistics.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The pLevel >= 2 guard in ConfigPort.SqlStatsState has no recorded mutation.
+    evidence: |-
+      It reddens a test only if the vendor leaves a stale stop at level 0; settle by applying the mutation on ocupilot-ci after setting level 2 then 0.
+    location: >-
+      src/OcuPilot/Port/ConfigPort.cls SqlStatsState
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -182,6 +189,20 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-11-25 — Review pass
+
+- verdicts: 9 findings — high 0, medium 2, low 6, false 0, maybe-false 1
+- findings:
+  - `[medium]` `[intent_gap]` Values never reach the Plan with statistics run on this build (Task 0 (b) and the Batch 2 re-measurement), so AC4's "a query over the probe table, with values" and Batch 3's "posting the values" cannot hold; the client posts no values and nothing exercises the server's `pValues` path — verified at `SqlPort.Explained`, `SqlQueryState.body` and the page spec. Resolving it needs either a refusal sentence for a statement with a literal or placeholder or a note beside the result, and neither string is in the ruled set.
+  - `[medium]` `[intent_gap]` A statement carrying a literal or placeholder answers zero rows and zero global references in its statistics, and no test pins either a refusal or a note — same root cause as row 1 (grouped).
+  - `[low]` `[patch]` `SqlRuntimeStatsRead` pins no AD-36 truncation leg for `Catalog.RuntimeStats` (sibling `SqlStatementRead` pins one row as `200|1|1`) — not applied: the intent_gap cascade makes it moot this pass; open item for the re-dispatch.
+  - `[low]` `[patch]` `SqlRuntimeStatsWrite.TestTheScreenSetsTheLevelTheStopAndTheLevelAfterIt` first assertion is always true after `OnBeforeOneTest` — not applied (cascade); open item.
+  - `[low]` `[patch]` The browser spec's AC6 mutation comment names removing the `purge` row action, which `screen-mirror.mjs` refuses before a build; the spec records the `actions.register` mutation instead — not applied (cascade); open item.
+  - `[maybe-false]` `[defer]` The `pLevel >= 2` guard in `ConfigPort.SqlStatsState` has no recorded mutation; it reddens only if the vendor leaves a stale stop at level 0 — settle by applying the mutation on the throwaway after setting 2 then 0.
+  - `[low]` `[patch]` Matrix row "Changed target" has a named test for the purge's rows-recorded leg and none for the setting's level changing after the mint (inherits `ConfigSettingSet` confirm behavior) — not applied (cascade); open item.
+  - `[low]` `[reject]` Plan with statistics route tests use the web process rather than `SetSQLStatsFlagJob` — the Explain call records its own rows and the test removes them by routine, so no collection flag is touched; no harm named.
+  - `[low]` `[reject]` Governance defaults and the setting call's overridable seam are not stated in the intent — both are Spec Change Log rulings 5 and 6 and the AD-59 seam pattern.
+
 ## Design Notes
 
 **Governing ADs (spine line ranges):**
@@ -347,5 +368,15 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap. AC4 and the matrix row "Plan with statistics" say a query "with values", but on this build the values never bind in `$SYSTEM.SQL.Explain` with statistics (Task 0 (b), Batch 2 re-measurement), so a statement with a literal or placeholder is planned unbound and shows zero rows and zero global references. Recommended amendment: Plan with statistics takes a query with no literal and no placeholder and refuses any other with one ruled sentence (more honest than the alternative), or keeps today's behavior with one ruled note beside the result. Either needs a new user-facing string; neither is decided here. The three batch commits stay on the branch (no revert) so the re-dispatch builds on them.
+
+**Summary.** Task 0 measured on `ocupilot-ci`; Batch 1 added the SQL runtime statistics list (`Catalog.RuntimeStats`), the Purge statistics write (`SqlPort` `RuntimeStats`, `PURGESTATS`), the Runtime statistics collection settings rows (`ConfigPort` `SQLStats`), both write tools, descriptors, entity types, governance keys and the `slowquery` read step; Batch 2 added `Plan` with statistics (query only, under the console's bound); Batch 3 added the client page, the Plan with statistics button (no values sent), the strings and the browser spec.
+
+**Commits.** `46ac9c479` Batch 1, `82a8c0e08` Batch 2, `e993a6f7f` Batch 3.
+
+**Verification.** `SqlRuntimeStatsRead` 8/8, `SqlRuntimeStatsWrite` 6/6 (armed), `SqlConsoleRoutes` 8/8, `SqlPortLive` 15/15, the shared-surface classes each green when run one per call, `npm run test:tools` 2415/2415, `npm run test:components` 3965/3965 (337 files), `npm run build` green (initial bundle 2.30 MB), the new browser spec 4/4 and `system-explorer-sql-statements` 5/5 in both file orders, `check-objectscript` and `lint-docs` clean. Mutations are recorded under Verification for AC1 to AC6.
+
+**Review.** Verification-gap and intent-alignment layers reported; triage log above: 2 medium grouped as the intent gap, 4 low patches not applied because of the cascade (open items for the re-dispatch: AD-36 truncation leg for the new list, the always-true first assertion in `SqlRuntimeStatsWrite`, the AC6 mutation comment in the browser spec, a setting-level changed-target leg), 1 maybe-false deferred, 2 low rejected.
+
+**Residual risks.** Statistics for a statement with a literal or placeholder read as real zeros until the gap is ruled. Epic 24 has commits on `EXPERIENCE.md` and `strings.ts`; this story's edits there are add-only and may need a token union at merge.
