@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-11-23'
+updated: '2026-11-25'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -250,6 +250,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **A PMML model's Export to cube (Story 24.14)** [AMENDED 2026-11-21, Story 24.14 Batch 4, veto items U-132/U-133, orchestrator-accepted, Rule 20] runs its own test in its confirm or action request through `AnalyticsPort.PmmlRun`, under the test's bound and never in a background run, and copies the test id's rows into its new result class before the run's drop, so every ending still drops them. It kills no extent before the run. An export that outlasts the Web Gateway's response timeout runs to its end in that request's process, and its answer is lost (named limit). Its copy-out script runs the same steps in the person's own session with no bound (named limit).
 
   **A purge, a message export and a local archive run (Story 24.16)** [AMENDED 2026-11-23, Story 24.16, veto items U-147/U-150/U-154/U-155/U-156 and the Batch 1 orchestrator rulings, orchestrator-accepted, Rule 20] run in their confirm or action request, as a cube build does; the classic pages' `%RunBackgroundMethod` jobs are not used. An export writes no file on the instance. An archive run is refused above `ARCHIVEMAXMESSAGES` messages in the namespace, because the vendor's run reads every one. A purge or archive run that outlasts the Web Gateway's response timeout runs to its end in that request's process, and its answer is lost (named limit); its outcome is in the audit log under Logs, Audit database, written when the vendor call returns whether or not the client is still connected.
+
+  **Plan with statistics (Story 21.26)** [AMENDED 2026-11-25, Story 21.26 spec gate, orchestrator ruling, veto item U-161, Rule 20] is a person's read on SQL query, not a confirmed run. It runs one statement the console's own query guard types a query, in the request, under the console's time limit, through `$SYSTEM.SQL.Explain` with statistics; any other kind is refused before anything runs. Its only side effect is the runtime statistics rows the vendor records for the run in the namespace (a summary row and one row per module), which a purge removes.
 
 ### AD-8 — Privilege is the process's, checked at call time, never cached
 
@@ -1283,6 +1285,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 21.31's case** [AMENDED 2026-11-23, Story 21.31 spec gate, orchestrator ruling U-151, Rule 20]: `INDEX` answers the map's `SizeMB` and `FIELDSTATS` answers one field's row, each the value in use. A selectivity's outlier selectivity, outlier value and average size are optional; an omitted one is the field's fixed value read just before the call. Any preparatory vendor call runs only inside the confirmed write, after the prohibited check and the value-shape check, never at mint or preview.
 
   **Story 21.31's preparatory call** [AMENDED 2026-11-23, Story 21.31 Task 0, orchestrator ruling U-151, Rule 20]: before a setter, when the table's statistics are collected, `SqlPort` calls `$SYSTEM.SQL.Stats.Table.FixTableStats` for the table, as the classic page does (measured: without it a set leaves every other field's fixed value blank). The vendor evaluates an outlier value as an ObjectScript expression (measured), so the caller sends the outlier value as plain data (at most 128 characters, no control characters) and the port builds the vendor's expression itself: a canonical number as is, anything else as a quoted string literal with its quotes doubled; the caller's text never runs. A map size is sent in the vendor's 2 KB blocks (`SizeMB` × 512) and is 1 or more, since the vendor silently replaces 0 with the measured size.
+
+  **Story 21.26's case** [AMENDED 2026-11-25, Story 21.26 spec gate, orchestrator ruling, veto item U-161, Rule 20]: `SqlPort` answers the runtime statistics purge's fresh read through a port-composed `STATS` type, the target namespace's runtime statistics row count, and calls `%SYS.PTools.StatsSQL.clearStatsSQL` with the namespace alone. The call runs only inside the confirmed write, after the prohibited check and the shape check; its namespace is the request's validated namespace, never model text; a namespace holding no runtime statistics is refused before any write.
 
 ### AD-52 — A write tool declares the port it reaches its target through
 

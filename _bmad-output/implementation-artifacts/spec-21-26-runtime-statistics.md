@@ -170,6 +170,15 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-11-25, orchestrator rulings at the plan gate (veto U-161 for items 2, 3, 4 and 7), authoritative over the Design Notes records:
+  1. **Settings shape** (record 1): decided. `ConfigPort` endpoint `SQLStats`, setting rows, no AD-51 named entry.
+  2. **Setting gate** (veto U-161): read `%Development:USE` + `%DB_IRISSYS:READ`, set also `%DB_IRISSYS:WRITE`; the IRISSYS pair stays whatever Task 0 finds. Task 0 measures the classic portal's gate for `RuntimeStats` and `RuntimeStatsSettings` and their actions (resource:permission, read from the instance) and records it here; any part where this gate is looser gets the classic requirement added. A looser gate never ships.
+  3. **AD-51 purge entry** (veto U-161): allowed, add-only, written by the runner. `clearStatsSQL` runs only inside the confirmed write, after the prohibited and shape checks; its namespace is the request's validated namespace, never model text; "This namespace holds no runtime statistics." refuses before any write. A test pins each.
+  4. **AD-7 Plan with statistics** (veto U-161): allowed, add-only, written by the runner; a read, not a confirmed run. Query-only through the same guard SQL query uses, with a test that a non-query statement is refused before anything runs; the console's time limit applies; the AD-7 line names the recorded statistics rows as the read's only side effect.
+  5. **AD-10:** decided, no new arm; the purge is not in the prohibited set.
+  6. **Governance defaults:** decided. `explorer.sqlruntimestats.purge` ships `false`; `explorer.sqlruntimestatssettings.set` ships `true`.
+  7. **Strings** (veto U-161): accepted as written. The list note and the set consequence ship only if measured true on `ocupilot-ci`; otherwise they are reworded to what was measured and the measurement recorded under Verification. The four level names are checked against the vendor's level semantics (0-3) in its source.
+
 ## Review Triage Log
 
 ## Design Notes
