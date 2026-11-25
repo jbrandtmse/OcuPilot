@@ -208,6 +208,16 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-11-25, orchestrator rulings at the plan gate (veto U-165 for items 1, 2, 5, 6 and 7), authoritative over the Design Notes records:
+  1. **AD-51 case** (veto U-165): allowed, add-only, written by the runner. The `UtilSQLAnalysis` calls run only inside the confirmed write, after the prohibited and shape checks; the namespace is the request's; `Report` comes from the declared five-value choice, validated before any call; the flags are coerced to 0 or 1. The null device is restored on every exit, the error and catch paths included, pinned by a test that a raised call leaves the device as it was.
+  2. **AD-7** (veto U-165): allowed, add-only, written by the runner. Task 0 measures gather's and each report's worst case on the largest namespace reachable on `ocupilot-ci` (HSCUSTOM with its library). An operation runs in the request only if its worst case times 1.5 is under the named gateway limit, and the spec cites the measurement; otherwise it uses Story 24.16's background-run form. Advice is a read whose only side effect is the statement-index row, measure-first; if it measures any other write, the implement stage stops and reports.
+  3. **AD-10:** decided, no new arm; Advise keeps the console's own-table `Check`.
+  4. **Governance:** decided. `explorer.sqlindexanalysis.gather` `true`, `.run` `true`, `.purge` `false`.
+  5. **Gate** (veto U-165): reads `%Development:USE`; writes `AtelierPort.WritePairs(ns)` plus any pair Task 0 (a) measures from the instance; never looser than the classic page, whose measured gate is recorded here.
+  6. **In-stage decisions** (veto U-165): one Purge analysis removes both statements and results, and its consequence says so; no suggested DDL (no AC of this story or its epics.md block requires DDL or CREATE INDEX text, checked 2026-11-25); Advise on SQL query, query-only on both callers.
+  7. **Strings** (veto U-165): accepted. The match values, the report-staleness note, the run consequence (fallback as written) and "Gather this namespace's statements before running this report." ship only as measured, otherwise reworded to what was measured; "An index analysis is already running in this namespace." ships only if Task 0 (f) shows concurrent runs collide. In the advice sentences `%1`-style values are filled only with names read from the plan or the dictionary, never with model text.
+  8. **Null-device helper:** hoisted from `AdvisorPort.SetFlag` into `Kernel/Utils` as a behavior-keeping refactor, add-only (new helper, call site switched); `AdvisorPort`'s own tests rerun green before the push, in the same code head.
+
 ## Review Triage Log
 
 ## Design Notes
