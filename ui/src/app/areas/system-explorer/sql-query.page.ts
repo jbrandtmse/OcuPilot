@@ -118,6 +118,9 @@ interface ValueField {
         <button type="button" class="ocu-button-text" data-ocu-sql="explain" [attr.aria-disabled]="blocked" (click)="onPlan()">
           {{ STRINGS.explorerSqlExplainPlan }}
         </button>
+        <button type="button" class="ocu-button-text" data-ocu-sql="explain-stats" [attr.aria-disabled]="blocked" (click)="onPlanWithStatistics()">
+          {{ STRINGS.explorerSqlPlanWithStatistics }}
+        </button>
         <button type="button" class="ocu-button-text" data-ocu-sql="background" [attr.aria-disabled]="backgroundBlocked" (click)="onBackground()">
           {{ STRINGS.explorerSqlRunInBackground }}
         </button>
@@ -366,6 +369,11 @@ export class SqlQueryPage {
   protected onPlan(): void {
     if (this.blocked) return;
     void this.state.plan(this.deps);
+  }
+
+  protected onPlanWithStatistics(): void {
+    if (this.blocked) return;
+    void this.state.planWithStatistics(this.deps);
   }
 
   protected onBackground(): void {

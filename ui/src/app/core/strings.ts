@@ -5554,6 +5554,13 @@ export const STRINGS = {
   explorerSqlRuntimeStatsPrompt3: 'Are runtime statistics being collected?',
   runtimeStatsSettingsPrompt1: 'Is runtime statistics collection on, and when does it stop?',
   configRefusalSqlStatsNoStop: 'Collection must be on before its stop can be set.',
+  sqlRuntimeStatsPurgeAction: 'Purge statistics',
+  explorerSqlPlanWithStatistics: 'Plan with statistics',
+  sqlRuntimeStatsPurgeConsequence: 'This namespace\'s runtime statistics are removed. New statistics are recorded only while collection is on.',
+  sqlRuntimeStatsSetConsequence: 'This applies to every namespace on the instance. A query prepared while collection was set to Off records nothing once collection is turned on, until its cached query is purged.',
+  sqlRuntimeStatsRefusalNoRows: 'This namespace holds no runtime statistics.',
+  sqlRuntimeStatsRefusalVendor: 'The instance did not purge this namespace\'s runtime statistics.',
+  sqlPlanStatisticsRefusal: 'Plan with statistics runs the statement, so it takes a query only.',
   // Story 21.6: the statement and cached-query actions, the sentences their dialogs and cards state, and the refusals the instance answers.
   // Purge on one query reuses auditDatabasePurgeConfirm.
   sqlStatementFreezeAction: 'Freeze plan',

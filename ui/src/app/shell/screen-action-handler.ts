@@ -176,6 +176,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 21.6: the SQL statements list, whose four plan and statistics actions warn first, and a table's Cached queries tab, whose Purge warns first.
   'OcuPilot.Screen.Descriptor.ExplorerSqlStatementList',
   'OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries',
+  // Story 21.26: SQL runtime statistics, whose Purge statistics warns first, and Runtime statistics collection, whose Set value its settings page's dialog sends.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStats',
+  'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStatsSettings',
   'OcuPilot.Screen.Descriptor.ExplorerSqlTable',
   'OcuPilot.Screen.Descriptor.ExplorerSqlIndices',
   'OcuPilot.Screen.Descriptor.ExplorerSqlSchema',
@@ -352,7 +355,10 @@ export const BACKUP_ADD_DATABASE = 'add';
  */
 export const EXPLORER_SQL_STATEMENT_LIST = 'OcuPilot.Screen.Descriptor.ExplorerSqlStatementList';
 export const EXPLORER_SQL_CACHED_QUERIES = 'OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries';
+export const EXPLORER_SQL_RUNTIME_STATS = 'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStats';
 export const SQL_STATEMENT_CLEAN = 'clean';
+/** Story 21.26: SQL runtime statistics' Purge statistics, the page's own action on `SQL_TUNING_ALL_TARGET`. */
+export const SQL_RUNTIME_STATS_PURGE = 'purge';
 export const SQL_CACHED_QUERY_PURGE_TABLE = 'purge-table';
 export const SQL_CACHED_QUERY_PURGE_NAMESPACE = 'purge-namespace';
 export const SQL_TUNING_ALL_TARGET = '*';
@@ -644,6 +650,9 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // no row names (Story 21.6).
   [EXPLORER_SQL_STATEMENT_LIST]: [SQL_STATEMENT_CLEAN],
   [EXPLORER_SQL_CACHED_QUERIES]: [SQL_CACHED_QUERY_PURGE_TABLE, SQL_CACHED_QUERY_PURGE_NAMESPACE],
+  // SQL runtime statistics' page registers Purge statistics itself, on the namespace's whole store, and the Runtime statistics collection page Set value (Story 21.26).
+  [EXPLORER_SQL_RUNTIME_STATS]: [SQL_RUNTIME_STATS_PURGE],
+  'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStatsSettings': ['set'],
   // The Table info tab's page registers Rebuild all indices, Collect statistics and Clear fixed statistics itself, on the table the route names, and
   // the schema's Tables tab Tune all tables on the schema the route names (Story 21.25).
   [EXPLORER_SQL_TABLE]: [SQL_TABLE_REBUILD_INDICES, SQL_TABLE_TUNE, SQL_TABLE_CLEAR_STATISTICS, SQL_TABLE_SET_EXTENT_SIZE],
@@ -1152,6 +1161,8 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
     [SQL_CACHED_QUERY_PURGE_TABLE]: STRINGS.sqlCachedQueryPurgeConsequence,
     [SQL_CACHED_QUERY_PURGE_NAMESPACE]: STRINGS.sqlCachedQueryPurgeConsequence,
   },
+  // Story 21.26: a purge removes the namespace's collected statistics, so it warns first.
+  [EXPLORER_SQL_RUNTIME_STATS]: { [SQL_RUNTIME_STATS_PURGE]: STRINGS.sqlRuntimeStatsPurgeConsequence },
   // Story 21.25: a rebuild locks the table against changes while it runs, so each rebuild warns.
   [EXPLORER_SQL_TABLE]: {
     [SQL_TABLE_REBUILD_INDICES]: STRINGS.sqlTableRebuildAllConsequence,

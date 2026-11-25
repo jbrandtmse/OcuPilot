@@ -371,6 +371,33 @@ describe('SQL query', () => {
     expect(el(mounted.host, 'plan')).toBeNull();
   });
 
+  // Mutation (Rule 19): post the plan with statistics without `stats: true` -> the posted body assertion goes red.
+  it('plans with statistics: the statement and the stats flag posted to the plan route in scope, no values, and the plan shown in the plan pane', async () => {
+    const mounted = await mount();
+    expect(el(mounted.host, 'explain-stats').getAttribute('aria-disabled')).toBe('true');
+    expect(el(mounted.host, 'explain-stats').textContent?.trim()).toBe(STRINGS.explorerSqlPlanWithStatistics);
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: 'Stats:\n    Module: 1\n', truncated: false } };
+    await type(mounted, 'SELECT Name FROM OcuProbe2126.Stats');
+    expect(el(mounted.host, 'explain-stats').getAttribute('aria-disabled')).toBe('false');
+    el<HTMLButtonElement>(mounted.host, 'explain-stats').click();
+    await settle(mounted.fixture);
+    expect(mounted.posts).toEqual([{ path: SQL_PLAN_PATH, body: { statement: 'SELECT Name FROM OcuProbe2126.Stats', stats: true }, scope: 'USER' }]);
+    expect(el(mounted.host, 'plan').textContent).toBe('Stats:\n    Module: 1\n');
+    expect(dialog()).toBeNull();
+  });
+
+  // Mutation (Rule 19): drop the refusal's `adopt` path in `post` -> no refusal is drawn and this goes red.
+  it('shows the refusal of a statement that is not a query as the envelope sent it, and draws no plan', async () => {
+    const mounted = await mount();
+    mounted.answer = { status: 422, code: 'EXPLORER.SQL.PLANSTATS', reason: STRINGS.sqlPlanStatisticsRefusal };
+    await type(mounted, 'UPDATE OcuProbe2126.Stats SET Num = 3');
+    el<HTMLButtonElement>(mounted.host, 'explain-stats').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'refusal').getAttribute('role')).toBe('alert');
+    expect(el(mounted.host, 'refusal').textContent?.trim()).toBe(STRINGS.sqlPlanStatisticsRefusal);
+    expect(el(mounted.host, 'plan')).toBeNull();
+  });
+
   it("shows a refusal as an alert: the envelope's sentence, a missing pair named, and a refused confirmed run's own", async () => {
     const mounted = await mount();
     mounted.answer = { status: 422, code: 'EXPLORER.SQL.SESSION', reason: STRINGS.explorerSqlSessionReason };
