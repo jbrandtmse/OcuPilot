@@ -167,9 +167,9 @@ deferred:
 
   Its `after` hook calls `RemoveReport`.
 
-**Batch 3 (owner-gated B), client only:** the mail action as ruled, on the generate result. Nothing on the server. It gets one leg in `sql-reports.page.spec.ts`.
+**Batch 3 is empty** (B1, Spec Change Log): no mail action; `sql-reports.page.spec.ts` asserts its absence (AC4).
 
-**Batch 4 (owner-gated A), import.**
+**Batch 4, import (A2: screen only, built only if Task 0 (f) measures every Import write inside the target namespace; Spec Change Log).**
 
 - `SqlPort`:
   - `Reports/IMPORT` and the fresh read `REPORTFILE`, on the `ResourceTransferPort` model.
@@ -194,11 +194,23 @@ deferred:
 - AC1. Given the probe's query on the throwaway, when either caller saves it for a support case number and confirms, then the vendor's `SavedQueries`, the list and `explorer.sqlreports.read` answer the same new row. A statement that is not a query, a statement over OcuPilot's tables and a malformed case number are each refused before any vendor call.
 - AC2. Given a saved row, when either caller deletes it and confirms, then `SavedQueries` no longer answers it and every other row stays. A row gone after the mint refuses the confirm.
 - AC3. Given rows saved for a case number, when either caller generates the report to an allowed server file, or the person to this browser, then the file holds every row of that case in the namespace and parses back into the vendor's class. A refused root or name, a missing directory and a case with no row call nothing.
-- AC4 (owner-gated B). Given a generated report, when the person chooses the mail action the owner rules, then the browser opens a mail message about that case, and the server sends nothing.
-- AC5 (owner-gated A). Given a report Generate wrote for the probe, when it is imported into a namespace by the callers the owner rules (option A1: the screen and the agent's proposal; A2: the screen only) and confirmed, then the probe class reads back compiled there. A report holding an `OcuPilot` document, a file changed after review and a file that is not a report are refused before any vendor call.
+- AC4. Given a generated report, the page offers no mail action, and the server sends nothing.
+- AC5. Given a report Generate wrote for the probe, when a person imports it into a namespace on the screen (no agent path) and confirms, then the probe class reads back compiled there. A report holding an `OcuPilot` document, a file changed after review and a file that is not a report are refused before any vendor call.
 - AC6. Given the throwaway, when the browser spec runs forward and in reverse with `system-explorer-sql-runtime-stats.browser-spec.mjs`, then it passes and leaves no saved row, report file, probe table or cached query.
 
 ## Spec Change Log
+
+- 2026-11-25, orchestrator rulings at the plan gate (veto U-167), authoritative over the Design Notes records and Tasks where they differ. Neither A nor B is an `owner_only` match (epics.md asks only that the reports round-trip); both are veto.
+  - **B, mail: B1.** No mail action; OcuPilot names no vendor address and starts no message to a vendor. AC4 restated (no mail action; the server sends nothing), its leg asserts the absence. Batch 3 is empty; no mail string ships.
+  - **A, Import: A2.** A person's action on the screen only: governance key `false`, no agent proposal or agent path. Routines-database write permission required; a report holding an OcuPilot document refused. AC5 restated for the screen alone. **Batch 4 is built only if Task 0 (f) measures every write Import makes inside the target namespace.** If any routine or global lands outside it, IRISSYS included, Batch 4 is not built: the implement stage reports the measurement (`blocked`, intent gap) and Batches 1-2 stand.
+  1. **AD-7** (veto U-167): allowed, add-only, written by the runner, conditional on each write's worst case x1.5 under the 60 s gateway limit, otherwise implement stops and reports. Save is query-only, without values, under the console time limit, leaves no row if stopped (measure-first); its consequence says it runs without values.
+  2. **AD-51** (veto U-167): allowed, add-only: statement whole as a value; case number a validated whole number of at most 9 digits; OcuPilot-named temp files; Import refused if the file changed after review. A test pins each.
+  3. **AD-10:** decided, no new arm; Save takes the console's own-table check; Import refuses OcuPilot's own code.
+  4. **AD-21** (veto U-167): allowed, add-only. Generate writes only inside an allowed directory and refuses a missing one; the overwrite is stated in the Generate consequence the person confirms; the vendor receives only temp files.
+  5. **Governance:** decided. save `true`, delete `false`, generate `true`, import `false`.
+  6. **Gate** (veto U-167): `%Development:USE`; writes add `AtelierPort.WritePairs(ns)`; server-file Generate and Import add `%Admin_FileSystemAccess:USE` and `%DB_IRISSYS:READ`; every action honours a custom resource on the classic pages.
+  7. **Strings** (veto U-167): accepted without any mail string. The list note on who sees a saved query ships only as measured, with role names read from the instance. The Import consequence is kept verbatim if measured; "without asking" must be true of the vendor call.
+  8. The fifth copy of the file-transfer code is ledgered LOW at harvest; the other four are not refactored here.
 
 ## Review Triage Log
 
@@ -353,8 +365,8 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
 - AC1: `SAVEQUERY` skips the query-only check -> `SqlReportWrite`'s DML leg red (the seam counts a call). The catalog drops `WRCNumber` -> `SqlReportRead`'s columns leg red.
 - AC2: `DELETEQUERY` calls `ClearRow` with another id -> `SqlReportWrite`'s other-rows-stay leg red.
 - AC3: `GENERATE` skips the no-row precondition -> the no-row leg red (the seam counts a call). The store drops the browser branch -> `sql-reports.page.spec.ts` red.
-- AC4 (gated B): the page drops the mail action -> its spec leg red.
-- AC5 (gated A): the write skips the `OCUPILOTCODE` check -> `SqlReportImport`'s own-code leg red, with the seam counting a call.
+- AC4: the page offers a mail action -> its spec leg (asserting the absence) red.
+- AC5: the write skips the `OCUPILOTCODE` check -> `SqlReportImport`'s own-code leg red, with the seam counting a call.
 - AC6: the page drops Save query's post -> after rebuild and redeploy, the browser spec red.
 
 ## Auto Run Result

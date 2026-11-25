@@ -257,6 +257,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Alternate plans (Story 21.28)** [AMENDED 2026-11-25, Story 21.28 spec gate, orchestrator ruling, veto item U-166, Rule 20]: listing a statement's possible plans and showing one are reads that run nothing, on SQL query and through `explorer.sqlalternateplans.read`. Comparing plans is a person's read on SQL query only, never the agent's: it runs one statement the console types a query once for each of at most five plans checked against a fresh list, in the request, under the console's time limit, without its values; its side effects are the rows the vendor records for those runs (measured at the story's Task 0).
 
+  **A troubleshooting report's save, delete, generate and import (Story 21.29)** [AMENDED 2026-11-25, Story 21.29 spec gate, orchestrator ruling, veto item U-167, Rule 20] are confirmed writes run in their confirm or action request, the classic page's background job unused, only while each one's measured worst case times 1.5 is under the Web Gateway's response timeout. Save runs a statement the console types a query once, without its values, under the console's time limit, and leaves no row when stopped. Import is a person's action on the screen only; no agent proposal reaches it.
+
 ### AD-8 — Privilege is the process's, checked at call time, never cached
 
 - **Binds:** FR-4, FR-18, FR-19; every screen and every tool
@@ -664,6 +666,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   Story 21.15's consumers of the sixth case: the locale export is an overwriting `file` consumer whose overwrite is a constant, and it refuses a name whose directory does not exist; the locale import's file is a `source`; local text is a screen value. The vendor receives only a temporary file OcuPilot names. [AMENDED 2026-11-15, Story 21.15, owner answer U-58]
 
   Story 21.19's consumers: the resource export is an overwriting `file` consumer whose overwrite is a constant; the resource import's file is a `source`; local text is a screen value. A task's output file is read only when its stored `OutputDirectory` normalizes to `<ManagerDirectory>`, computed at call time, and its `OutputFilename` matches the third case's pattern; it is read through `LogSourcePort` under the task screens' pairs, bounded, and any other location is shown, never read. [AMENDED 2026-11-16, Story 21.19, owner answer U-70] [AMENDED 2026-11-20, Story 21.36 plan, Rule 20] The file read is the vendor's own join `OutputDirectory_OutputFilename`, which IRIS concatenates without a separator (measured 2026-11-20), so a stored directory that lacks its trailing separator names a file outside the manager directory and is shown, never read.
+
+  **Story 21.29** [AMENDED 2026-11-25, Story 21.29 spec gate, orchestrator ruling, veto item U-167, Rule 20] consumes the allowed-directory case: a generated report is written only inside an allowed directory, a missing directory is refused, and the overwrite of an existing file is stated in the consequence the person confirms; the vendor reads and writes only OcuPilot's temporary files.
 
 ### AD-22 — Governance is polish-week work, and its shape is fixed now so Release 1 does not preclude it
 
@@ -1293,6 +1297,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 21.26's case** [AMENDED 2026-11-25, Story 21.26 spec gate, orchestrator ruling, veto item U-161, Rule 20]: `SqlPort` answers the runtime statistics purge's fresh read through a port-composed `STATS` type, the target namespace's runtime statistics row count, and calls `%SYS.PTools.StatsSQL.clearStatsSQL` with the namespace alone. The call runs only inside the confirmed write, after the prohibited check and the shape check; its namespace is the request's validated namespace, never model text; a namespace holding no runtime statistics is refused before any write.
 
   **Story 21.27's case** [AMENDED 2026-11-25, Story 21.27 spec gate, orchestrator ruling, veto item U-165, Rule 20]: `SqlPort` answers the index analyzer tools' fresh read through a port-composed `ANALYSIS` type, the target namespace's gathered statement count and each report's row count. It calls `%SYS.PTools.UtilSQLAnalysis` `clearSQLStatements` and `clearSQLAnalysisDB` with the namespace alone, `getAllSQLStmts`, and the one report the declared five-value `Report` names (validated before any call), with `SkipSystem`, `SkipInserts` and `SkipIdKeys` coerced to 0 or 1 and display off, under the null device, which is restored on every exit. Each call runs only inside the confirmed write, after the prohibited and shape checks; its namespace is the request's validated namespace, never model text. No value reaches SQL text, code or a file.
+
+  **Story 21.29's case** [AMENDED 2026-11-25, Story 21.29 spec gate, orchestrator ruling, veto item U-167, Rule 20]: `SqlPort` calls `%SQL.Manager.QButtons.Base` `InsertQuery`, `ClearRow`, `WriteAllToFile` and `ConsumeReport` with port-built arguments only: the statement whole as a value, the support case number a validated whole number of at most nine digits, and files OcuPilot names as temporary files; an import is refused when its file changed after the person reviewed it, and when the report holds an OcuPilot document.
 
 ### AD-52 — A write tool declares the port it reaches its target through
 
