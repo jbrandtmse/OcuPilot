@@ -14625,3 +14625,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-2.md (Task 0 (b), orchestrator ruling) | severity: medium | fix-risk: low | footprint: cross-story
 - evidence: 24.17 B2 Task 0 (b): the classic Rule Log and BP Instances queries answer #5580 to a principal holding only the resource pair and database READ, while a %ExecDirectNoPriv read returns rows; Story 20.9's message reads use the same read path
 - 2026-11-24T03:28:46Z status=routed owner=burndown by=orchestrator note=measure each Messages read against the classic Message Viewer's prepare as in 24.17 B2 V3; add the vendor SELECT check where the classic refuses
+
+### DW-2871: Story 24.16's full interoperability purge (InteropPort.PerformPurge) writes no ConfigChange when the vendor purge raises: it quits before AuditRuntime, so a raised purge that already deleted rows leaves no audit row (AD-15)
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-2.md | severity: med | fix-risk: low | footprint: out
+- evidence: 24.17 Batch 2 review (2885132ed) R-candidate: PerformPurge quits on the raise before AuditRuntime; the Batch 2 log purges audit a raise as completed false
+- 2026-11-25T16:35:40Z status=routed owner=burndown by=cr note=sibling of Batch 2's raised-purge audit; fix in the Epic 24 burn-down
