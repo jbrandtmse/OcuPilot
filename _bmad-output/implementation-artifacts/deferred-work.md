@@ -8494,8 +8494,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-22T17:48:26Z status=routed owner=burndown by=lead note=first red with 21.39's capture: run 45048213834 job 137287353426 (M ffa2a92e7, browser shard 1/5, a11y whole-file, 1280 light settle of /ocupilot/agent/governance): governance answered 200 in 1626 ms, then the visit's renderer answered NO CDP call: Performance.enable, Debugger.pause, the governance body read and Profiler.stop each timed out at 5000 ms; no profile saved, so the artifact step found no files; log scratchpad/dw1822-45048213834.log. A renderer deaf to Debugger.pause points at the renderer process or its main thread blocked outside interruptible JS (inference)
 - 2026-11-22T17:48:57Z status=routed owner=burndown by=orchestrator note=the capture worked: the renderer answers no DevTools call at all, which is itself the finding. Next capture (burndown story's to rule, not 21.39): use the browser-level session, not the page's: SystemInfo.getProcessInfo for per-process CPU time before and after the stall, Target.getTargets for whether the renderer target is still attached, and a browser-level Tracing.start at visit setup flushed on an abandoned call to show main-thread layout, style, GC or IPC
 - 2026-11-22T18:09:44Z status=routed owner=burndown by=orchestrator note=(inference) the stall's red in run 45048213834 came on a uniformly slow runner (about 1.4x: client suite 11.8 against 8.5 min, gates timed out at 20 min), which fits the reading of a condition lasting minutes on the runner
-- 2026-11-23T14:32:21Z routed
-- 2026-11-23T20:27:49Z routed
+- 2026-11-23T14:32:21Z status=routed owner=burndown by=runner note=occurrence: run 45185680811 (21.31 M 9cb5ce5b9), browser shard 1/5, a11y AC5 settle /agent/governance 1280 light, renderer and main thread unresponsive, 13 of 13 hookFailed, no profile; 21.31 touches no governance file
+- 2026-11-23T20:27:49Z status=routed owner=burndown by=runner note=occurrence: run 45249712294 (21.31 M 79ad64ee2), browser 1/5, a11y 0/13 at the 1280 light settle of /agent/governance, retry light+dark failed; orchestrator reran once (green). (inference) render cost scales with key count; first measurement: settle, long tasks, DOM nodes at current and doubled keys
+- 2026-11-24T02:54:59Z status=routed owner=burndown by=runner note=occurrence: run 45309694750 (21.31 integrate-only M 592784b70 over 626172470), browser 1/5 only, same settle, renderer and main thread unresponsive; third consecutive 21.31 head
+- 2026-11-24T03:39:25Z status=routed owner=21-40-the-governance-page-s-render-cost by=orchestrator note=fix-forward Story 21.40 (Rule 27): browser 1/5 attempt 1 red on 3 of 4 21.31 heads vs 1 of 26 others; measure render cost at 3 trees and 4x CPU throttle, fix in the page
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -14611,6 +14613,11 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-23T20:16:16Z status=decision-pending owner=burndown by=epic-24-runner note=posture ruling: refuse an archive setting change while a run holds the lock (stricter than classic), or accept as the classic does
 - 2026-11-23T20:25:37Z status=routed owner=burndown by=orchestrator note=correction: the target is read once at start (Manager.cls:12); the days are re-read per header (:79-80), so a mid-run days change can move ids the start-time taken check never covered. Ruling (b): refuse an archive settings change while the vendor's archive lock is held, with the existing RUNNING-style sentence (no new string); test holds the lock, shows the set refused while the settings read still answers
 
+### DW-2866: Every governance read rebuilds the tool registry: Registry.ListTools costs about 1.2 s per REST request because its cache does not outlive the request
+- source: spec-21-40-the-governance-page-s-render-cost.md (plan measurement) | severity: low | fix-risk: med | footprint: cross-story
+- evidence: ocupilot-ci 2026-11-23 tree 90e0b706d: ListTools first call 1.169 s, second 0.005 s; GET /agent/governance about 1.65 s by curl; grows per registered tool
+- 2026-11-24T03:59:44Z status=routed owner=burndown by=orchestrator note=cross-request cache needs invalidation on compile and upgrade; a story of its own
+
 ### DW-2863: The agent has no read of the managed-alert owner choices: ALERTOWNERS is reachable only through the screen's dry-run review
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow.md (review 527b2b87b) | severity: low | fix-risk: low | footprint: in-footprint
 - evidence: ALERTOWNERS only via DryRunReview (InteropManagedAlertUpdate.cls)
@@ -14630,3 +14637,24 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-2.md | severity: med | fix-risk: low | footprint: out
 - evidence: 24.17 Batch 2 review (2885132ed) R-candidate: PerformPurge quits on the raise before AuditRuntime; the Batch 2 log purges audit a raise as completed false
 - 2026-11-25T16:35:40Z status=routed owner=burndown by=cr note=sibling of Batch 2's raised-purge audit; fix in the Epic 24 burn-down
+### DW-2867: Baseline.SeedFrom repeats Seed's three-line lookup because Baseline.cls was add-only while Epic 24 edited it
+- source: spec-21-40-the-governance-page-s-render-cost.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: SeedFrom (Baseline.cls) copies Seed's boolean lookup; GovernanceBaseline.TestRowsEqualThePerKeyPath pins the two equal over every listed and registered key (mutation run 1017 red).
+- 2026-11-24T05:09:38Z status=wontfix-accepted owner=21-40-the-governance-page-s-render-cost by=cr note=reopen_if=git log origin/OCU-1-epic24 ^feature -- Baseline.cls is empty: then Seed delegates to SeedFrom
+
+### DW-2868: No automated check counts the governance read's baseline parses, so a per-key parse brought back into Effective would pass every test
+- source: spec-21-40-the-governance-page-s-render-cost.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Effective calls Baseline.Keys once and Rows reads only its list (pinned by GovernanceBaseline); a parse counter needs a seam on add-only Baseline.cls. AC3 is a recorded curl measurement.
+- 2026-11-24T05:09:42Z status=wontfix-accepted owner=21-40-the-governance-page-s-render-cost by=cr note=reopen_if=curl median of GET /api/ocupilot/agent/governance on a throwaway exceeds 1.5 s at the instance's key count
+
+### DW-2869: The governance AC2 settle bound of 3,000 ms was derived from local runs only; CI's slower runner leaves less headroom than 1.5x (inference)
+- source: spec-21-40-the-governance-page-s-render-cost.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Worst local settle 1,818 ms; 1.4 x that is about 2,545 ms against 3,000 ms (inference). The bound follows the plan-gate ruling's derivation.
+- 2026-11-24T05:09:46Z status=by-design owner=21-40-the-governance-page-s-render-cost by=cr note=ruling's derivation is authoritative; a CI red on AC2's settle reopens it via the ruling
+- 2026-11-25T15:43:29Z status=routed owner=21-40-the-governance-page-s-render-cost by=adjudication note=reopened by the orchestrator ruling of 2026-11-24/25: the settle bound must cover the CI runner's measured slowdown (1.6)
+- 2026-11-25T15:43:29Z status=resolved-by:21-40-the-governance-page-s-render-cost by=adjudication note=SETTLE_BOUND_MS 3000->5000 (1818 x 1.6 x 1.5 = 4363, rounded up); local 4x on ocupilot-ci 2/2 settled 1730 ms; mutation 3500 ms Fetch delay -> AC2 red at 5265 ms
+
+### DW-2870: Baseline.SeedFrom and Policy.Cascade would error on a pBaseline object that is not a %DynamicObject
+- source: spec-21-40-the-governance-page-s-render-cost.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Only Baseline.Keys' list (always a %DynamicObject) or {} reaches them; Rows normalises a non-object to {}.
+- 2026-11-24T05:09:48Z status=wontfix-theoretical owner=21-40-the-governance-page-s-render-cost by=cr note=real only if a caller passes a %DynamicArray or another object as the list
