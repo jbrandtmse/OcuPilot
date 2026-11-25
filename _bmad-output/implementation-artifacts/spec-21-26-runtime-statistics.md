@@ -2,7 +2,8 @@
 title: 'Story 21.26: Runtime statistics'
 type: 'feature'
 created: '2026-11-25'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '747dd2a457ecb50371cf50291b0e01880f072d61'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -212,6 +213,15 @@ deferred: []
 - **Keys.** The purge is `false`: purged statistics do not come back, as 21.6's clear statistics. The set is `true`: it is reversible and always stops, as every settings list's set is. Neither is destructive.
 - **Plan with statistics takes a query only.** Explain with statistics runs the statement (Task 0 (f) confirms for DML). The console runs a query unconfirmed today and confirms everything else.
 - **Tests.** The armed class (whole namespace and system-wide) joins `OCUPILOT_ALLOW_CONFIG_SETTINGS` beside `SqlTuningWrite`. The list test records statistics in its own process only.
+- **The set consequence, reworded to what Task 0 (c) measured.** The measure-first second clause ("Queries prepared before the change keep recording as they did until they are purged or compiled again") measured false for a set to Off: a query prepared at level 2 stopped recording at once. New sentence, verbatim: "This applies to every namespace on the instance. A query prepared while collection was set to Off records nothing once collection is turned on, until its cached query is purged." It is `SQL.RUNTIMESTATS.SET` in `AtelierError`. The list note and the purge consequence ship as ruled.
+- **Batch 1 decisions.**
+  - The settings descriptor declares its `%DB_IRISSYS:READ` as an `ownPrivileges` pair, since System Explorer's area declares `%Development:USE` alone; the port's own pairs (ruling 2) gate every read and write.
+  - The settings descriptor declares three suggested prompts, since the validator refuses fewer: the ruled one, and two of the list's ruled prompts ("Are runtime statistics being collected?", "Which module of a slow statement takes the most time?"). No new sentence.
+  - Two of the ten column strings ruled new already exist with the same text, so the list reuses `processColumnRoutine` ("Routine") and `explorerSqlColumnAverageTime` ("Average time"); `strings.ts` holds one key for each value.
+  - The purge tool names its target argument `Target`. The stop-row refusal is `CONFIG.SQLSTATS.NOSTOP`, 409, in `ConfigError`; the four `SQL.RUNTIMESTATS.*` codes are in `AtelierError`.
+  - The `STATS` count reads `%SYS_PTools.StatsSQL`, the base table, in the target namespace, with one fixed statement prepared unchecked (Task 0 (a)).
+  - The strings the descriptors reference are in `strings.ts` and EXPERIENCE.md's Fixed strings in Batch 1, since the Titles, string-source and `ConfigError` pins read them; Batch 3 appends the actions, consequences and refusals to that row.
+  - The README's count of agent actions that ship switched off is one higher.
 
 **Measured at plan, `ocupilot-ci`, USER, 2026-11-25** (restored and read back):
 
@@ -303,14 +313,32 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
 - `(once)` `cd ui && npm run test:tools` -- expected: green (EXPERIENCE.md changes).
 - `(once)`, runner-owned: the full ObjectScript sweep one class per call, `smoke.sh --container ocupilot-ci`, and Rule 30's fresh check. The full browser suite is left to CI.
 
+**Task 0 measurements** (Batch 1, `ocupilot-ci`, `USER`, 2026-11-25; the flag was restored to `0:0:0::0:0` and read back, and every probe row, table, class and principal was removed):
+
+- (a) **Pairs.** Principals: PA holds `%Development:USE` and `AtelierPort.WritePairs("USER")` (`%DB_USER` READ and WRITE, `%DB_ENSLIB` and `%DB_IRISLIB` READ); PB adds `%DB_IRISSYS:READ`; PC adds `%DB_IRISSYS` READ and WRITE; PD holds `%Development:USE` with `%DB_USER:READ` and `%DB_IRISSYS:READ`.
+  - `^%sqlcq("USER","PTools")` lives in the system database: `GetGlobalDest("USER","^%sqlcq")` answers the manager directory.
+  - `StatsSQLView` read through `%Prepare(text, 0)`, which is how the source code API's query route prepares it (`v1.cls:691`, `v6.cls:236`): PA, PB and PD each read the probe's five rows. The same SELECT prepared with privilege checks on is refused SQLCODE -99 for all three, so the catalog read has no -99, and a read through the console's checked prepare would. The `STATS` count therefore prepares its one fixed statement unchecked.
+  - `GetSQLStatsFlag` answered the flag for PA, PB, PC and PD. A purge of the probe's rows by `clearStatsSQL` removed them for PA (13 rows), PB (8) and PC (8) and read back 0 each: no `<PROTECT>`, no status, no silent no-op, and no `%DB_IRISSYS` pair needed.
+  - `SetSQLStats(2, 1, "", "M:50:0")` by PA, PB, PC and PD answered 0 and the flag read `2:15:0::97775603:0` each, so a set needs neither `%DB_IRISSYS:WRITE` nor any WRITE. A principal holding only `%DB_USER:READ` was refused at sign-in ("Access Denied"), so the vendor's own lower bound is not asserted.
+  - **The classic gate, read from the instance:** `RuntimeStats` and `RuntimeStatsSettings` each have `RESOURCE` `%Development:USE` and no `EDITRESOURCE`, and `PurgeStats` (`:737`) and `SaveSQLStats` (`:318`) check no resource of their own. The shipped gate asks `%Development:USE` for every read and write, `%DB_IRISSYS:READ` for the setting's read and also `%DB_IRISSYS:WRITE` for its set (ruling 2), and for the purge `WritePairs(ns)`. Each is the classic gate or stricter; none is looser. The vendor needs no `%DB_IRISSYS` pair, so those two are the ruled stricter posture.
+- (b) **Durations and the alarm.** A purge of 1,234 rows ran in 0.0027 s and answered 1234; a set ran in 0.000018 s.
+  - Explain with statistics took 0.02 to 0.03 s on the probe's statements. It took 0.017 s on a 4,000,000-row self join whose normal run takes 0.30 s, and 0.016 s on `SELECT Scr2126.Slow(?)...` whose normal run takes 2.03 s: its stats block read `Rows Returned: 0` and a few hundred commands. Passing `dynArgs(1)=1, dynArgs(2)=1`, or `"preparse":1` with them, left both unchanged, so on this build the values did not reach the run (inference: the run's placeholders stay unbound). Batch 2's plan with values must be re-measured before AC4 is written against it.
+  - A three-way self join of 2,000 rows with no placeholder ran 21.0 s inside Explain with statistics under a 1 s `$System.Alarm`, answered status OK with its plan, and the same statement run normally under the same alarm also ran 21.0 s and returned no row. The alarm did not stop either. It left the process's job flag unchanged, the alarm cleared (`Clear` answered 1) and the next Explain working (0.02 s).
+- (c) **Prepared before a set.** A cached query prepared at level 0 recorded nothing after a set to 2 (0 rows on two runs); after a purge of its table's cached queries and a prepare at level 2 it recorded 3 rows. A query prepared at level 2 recorded (3 rows, then 5 after a second run) and, after a set to 0, recorded nothing more (the run count stayed 2). **The set consequence's second clause measured differently, and is reworded (Design Notes, Decided in-stage).** The list note, "Statistics are recorded only while collection is on, and by Plan with statistics on SQL query", measured true: no row at level 0, and Explain with statistics recorded rows at level 0 (at plan time).
+- (d) **The stop.** A second set of the same stop (`M:5:1`) 65 s later moved `startHDate` from `67899,59602` to `67899,59667` and `stopHDate` from `59880` to `59940`: a set restarts the start. A stop is kept to the minute: 5 minute stops fell 278 s and 273 s after the set, a 1 minute stop 86 s after. At expiry (`M:1:1`, read 130 s after the set, 44 s after the stop) the flag read `1:0:0::0:0`, the level after the stop, `ptInfo("expired")` held the old flag with `expiredHDate`, and `ptInfo("terminate")` was empty (`mins` empty, `resetActionFlag` 0, `terminateCond` 0). Whether the flip happens at the stop or at the first read after it was not separated.
+- (e) **Device output.** None of `GetSQLStatsFlag`, `SetSQLStats` (levels 0 and 3), `clearStatsSQL` and `Explain` with `{"silent":1,"stats":1}` wrote a byte to the current device: a file device made current held 0 bytes after each.
+- (f) **DML.** Explain refuses an `INSERT` (SQLCODE -481a, "does not support the following SQL statement type: INSERT", with and without statistics), and an `UPDATE` and a `DELETE` answered OK and changed no row (the probe table kept its five rows, none updated). No DML ran, and Plan with statistics still takes a query only, as ruled.
+- **Vendor answers.** `SetSQLStats` answers the level it replaced, 0 to 3, or an error status (a string beginning `0 `): it refuses a level of 5, `x` or -1 and a stop of `Q:1:1`, `M:0:1`, `M:abc:1`, `M:-3:0` and `T:...`, accepts `M:1:7`, and accepts level 2 with a stop of 0 and no stop held. `clearStatsSQL(ns, "", 0, 1, 0, 1)` answers the rows removed (0 when none) or an error status for an unknown namespace. Called with `""` for the namespace inside the target namespace it cleared that namespace only, so `""` is not a mutation that reddens; the AC3 mutation uses `clearStatsSQLAllNS`.
+- **Rows.** `%SYS_PTools.StatsSQL` holds the current namespace's rows only, so every read runs in the target namespace. Each recorded run adds one group: a statement run twice holds one summary row and each module twice, so the list's id `[Routine, Cursor, Module]` repeats for such a statement (reported to the orchestrator for Batch 3).
+
 **Mutations (Rule 19).** One per AC. Each is applied, observed red and reverted, the tree is confirmed identical, and the source is reloaded.
 
-- AC1: `Catalog.RuntimeStats` drops the module rows' averaging, or selects `UserName` -> `SqlRuntimeStatsRead` red.
-- AC2: `SendNode`'s `SQLStats` branch drops the stop for level 2 -> `SqlRuntimeStatsWrite` red on the defaults leg.
-- AC3: `PURGESTATS` passes `""` for the namespace -> `SqlRuntimeStatsWrite` red on the other namespace's surviving rows.
-- AC4: `Plan` ignores `pStats` -> the statistics leg red. The query-only check is skipped -> the DML leg red.
-- AC5: `slowquery` loses the step -> `WorkflowCatalog` red.
-- AC6: `ExplorerSqlRuntimeStats` loses its page action, after rebuild and redeploy -> the browser spec red.
+- AC1: `Catalog.RuntimeStats` drops the summary row's averaging (`RowCount` not divided by `RunCount`) -> `SqlRuntimeStatsRead.TestTheListAndTheAgentsReadAnswerTheSameRows` red, 3 assertions. It selects `UserName` -> `TestTheListSelectsNoIdentifyingColumn` red. Observed red 2026-11-25.
+- AC2: `SqlStatsTarget` builds an empty stop for a level of 2 or 3 -> `SqlRuntimeStatsWrite` red, 4 of 6 tests (the defaults leg, the agent's and the refusals' among them). `ConfigSettingRules.StopRefused` answers 0 -> `TestARefusedSetChangesNothingOnEitherCaller` red. `ConfigPort.Admit` drops its `SQLStats` branch -> `SqlRuntimeStatsRead.TestTheGatesAndIdShapesRefuseBeforeAnyCall` red. Observed red 2026-11-25. (The spec named `SendNode`'s branch; the branch lives in `SqlStatsTarget` and `SendSqlStats`.)
+- AC3: `PURGESTATS` passing `""` for the namespace stays green (measured, Task 0). `StatementCall` calling `clearStatsSQLAllNS` -> `SqlRuntimeStatsWrite.TestThePurgeRemovesTheNamespacesRowsOnBothCallers` red on the other namespace's surviving rows. `TuningSnippet` naming `clearStatsSQLAllNS` -> `SqlRuntimeStatsRead.TestTheCopyOutScriptsAreTheirOneVendorCall` red. Observed red 2026-11-25.
+- AC4: `Plan` ignores `pStats` -> the statistics leg red. The query-only check is skipped -> the DML leg red. (Batch 2.)
+- AC5: `slowquery` loses the step -> `WorkflowCatalog.TestTheSlowQueryWorkflowReadsTheStatementIndexAndWritesNothing` red. Observed red 2026-11-25.
+- AC6: `ExplorerSqlRuntimeStats` loses its page action, after rebuild and redeploy -> the browser spec red. (Batch 3.)
 
 ## Auto Run Result
 

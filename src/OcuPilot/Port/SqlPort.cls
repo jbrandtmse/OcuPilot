@@ -45,6 +45,9 @@ Include %msql
 /// index named by the instance's own row, in the request's process. It answers a schema (<code>SCHEMA</code>), collects a table's statistics
 /// (<code>TUNE</code>), removes its fixed statistics (<code>CLEARSTATS</code>) and collects every table's of a schema (<code>TUNESCHEMA</code>), each as one
 /// vendor call with display off and no log file, taking the tune's two declared booleans alone.</p>
+/// <p><b>Runtime statistics are counted and purged here too</b> (AD-51's Story 21.26 case): <method>TuningInvoke</method> answers a namespace's
+/// runtime statistics row count (<code>STATS</code>) and, as <code>PURGESTATS</code>, removes every row with <code>clearStatsSQL</code> called
+/// with the namespace alone (<method>StatementCall</method>).</p>
 /// <p>Seams a fixture subclass overrides: <method>GateClass</method>, <method>BoundSeconds</method>, <method>StatementCall</method> and
 /// <method>TableCall</method>. Production overrides none.</p>
 Class OcuPilot.Port.SqlPort Extends (%RegisteredObject, OcuPilot.Kernel.RowFetch)
@@ -63,7 +66,23 @@ Parameter TYPERUN = "RUN";
 /// <p>The writes this port composes from the caller's declared values, as <code>endpoint/type</code>
 /// (AD-51): the run, from its statement, values and Max rows; and the data browser's save, from its
 /// schema, table and staged changes.</p>
-Parameter COMPOSEDTYPES = "Sql/RUN,SqlData/RUN,Statements/FREEZE,Statements/UNFREEZE,Statements/CLEARSTATISTICS,Statements/CLEARERROR,Statements/CLEAN,CachedQueries/PURGEQUERIES,Tables/REBUILD,Tables/REBUILDALL,Tables/TUNE,Tables/CLEARSTATS,Tables/TUNESCHEMA,Tables/SETEXTENT,Tables/SETSELECTIVITY,Tables/SETMAPSIZE";
+Parameter COMPOSEDTYPES = "Sql/RUN,SqlData/RUN,Statements/FREEZE,Statements/UNFREEZE,Statements/CLEARSTATISTICS,Statements/CLEARERROR,Statements/CLEAN,CachedQueries/PURGEQUERIES,Tables/REBUILD,Tables/REBUILDALL,Tables/TUNE,Tables/CLEARSTATS,Tables/TUNESCHEMA,Tables/SETEXTENT,Tables/SETSELECTIVITY,Tables/SETMAPSIZE,RuntimeStats/PURGESTATS";
+
+/// <p>The runtime statistics endpoint (Story 21.26, AD-51): <parameter>TYPESTATS</parameter> answers how many runtime statistics rows the namespace holds
+/// for the target <parameter>ALLID</parameter>, and <parameter>TYPEPURGESTATS</parameter> removes every one of them with
+/// <code>clearStatsSQL</code>, called with the namespace alone.</p>
+Parameter ENDPOINTRUNTIMESTATS = "RuntimeStats";
+
+Parameter TYPESTATS = "STATS";
+
+Parameter TYPEPURGESTATS = "PURGESTATS";
+
+/// <p>The count <parameter>TYPESTATS</parameter> reads: the runtime statistics rows of one namespace, a fixed statement with the namespace bound, prepared
+/// without SQL privilege checks as the source code API's query route prepares the statistics list's read, which the gate has already admitted.</p>
+Parameter STATSCOUNTQUERY = "SELECT COUNT(*) FROM %SYS_PTools.StatsSQL WHERE NameSpace = ?";
+
+/// <p>The vendor class whose <code>clearStatsSQL</code> the purge calls.</p>
+Parameter STATSCLASS = "%SYS.PTools.StatsSQL";
 
 /// <p>The tuning track's two endpoints (Story 21.6, AD-51): the namespace's statement index, whose
 /// <parameter>TYPESTATEMENT</parameter> read answers one statement by its hash, or the index itself for
@@ -828,7 +847,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Set pFault = ""
     Set tSC = $$$OK
     Try {
-        If (pEndpoint = ..#ENDPOINTSTATEMENTS) || (pEndpoint = ..#ENDPOINTCACHEDQUERIES) {
+        If (pEndpoint = ..#ENDPOINTSTATEMENTS) || (pEndpoint = ..#ENDPOINTCACHEDQUERIES) || (pEndpoint = ..#ENDPOINTRUNTIMESTATS) {
             Set tSC = ..TuningInvoke(pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             If $$$ISOK(tSC) Set pHttpStatus = 200
             Quit
@@ -908,9 +927,11 @@ ClassMethod TuningInvoke(pEndpoint As %String, pType As %String, ByRef pQuery, O
     Set pHttpStatus = 0
     Set pFault = ""
     Set tStatementWrite = ''$ListFind($ListFromString(..#STATEMENTWRITES), pType)
-    Set tWrite = tStatementWrite || (pType = ..#TYPEPURGEQUERIES)
+    Set tWrite = tStatementWrite || (pType = ..#TYPEPURGEQUERIES) || (pType = ..#TYPEPURGESTATS)
     If pEndpoint = ..#ENDPOINTSTATEMENTS {
         Set tServed = (pType = ..#TYPESTATEMENT) || tStatementWrite
+    } ElseIf pEndpoint = ..#ENDPOINTRUNTIMESTATS {
+        Set tServed = (pType = ..#TYPESTATS) || (pType = ..#TYPEPURGESTATS)
     } Else {
         Set tServed = (pType = ..#TYPEPURGE) || (pType = ..#TYPEPURGEQUERIES)
     }
@@ -922,6 +943,13 @@ ClassMethod TuningInvoke(pEndpoint As %String, pType As %String, ByRef pQuery, O
     Set tSC = ..Gate(tNamespace, .pHttpStatus, .pFault, tWrite)
     If $$$ISERR(tSC) Quit tSC
     Set tId = $Get(pQuery(..#IDKEY))
+    If pEndpoint = ..#ENDPOINTRUNTIMESTATS {
+        If tId '= ..#ALLID {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Api.Error).#REASONPORTFIELDSHAPE, .pHttpStatus, .pFault)
+        }
+        If pType = ..#TYPESTATS Quit ..RuntimeStatsRead(tNamespace, .pResult, .pHttpStatus, .pFault)
+        Quit ..StatementWrite(tNamespace, pType, tId, .pResult, .pHttpStatus, .pFault)
+    }
     If pEndpoint = ..#ENDPOINTSTATEMENTS {
         Set tAll = (tId = ..#ALLID)
         Set tHash = ..HashValid(tId)
@@ -1046,6 +1074,7 @@ ClassMethod StatementWrite(pNamespace As %String, pType As %String, pId As %Stri
     If $$$ISERR(tStatus) {
         Set tDetail = {}
         Do tDetail.%Set("message", $System.Status.GetErrorText(tStatus), "string")
+        If pType = ..#TYPEPURGESTATS Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#RUNTIMESTATSVENDOR, ##class(OcuPilot.Api.AtelierError).#REASONRUNTIMESTATSVENDOR, .pHttpStatus, .pFault, tDetail)
         Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#STATEMENTVENDOR, ##class(OcuPilot.Api.AtelierError).#REASONSTATEMENTVENDOR, .pHttpStatus, .pFault, tDetail)
     }
     Set pAnswer = {}
@@ -1055,10 +1084,56 @@ ClassMethod StatementWrite(pNamespace As %String, pType As %String, pId As %Stri
     Quit $$$OK
 }
 
+/// <p>The runtime statistics read (<parameter>TYPESTATS</parameter>): <code>{Namespace, Rows}</code>, the number of runtime statistics rows
+/// <var>pNamespace</var> holds (<method>StatsCount</method>).</p>
+ClassMethod RuntimeStatsRead(pNamespace As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pAnswer = ""
+    Set tSC = ..StatsCount(pNamespace, .tRows, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pAnswer = {}
+    Do pAnswer.%Set("Namespace", pNamespace, "string")
+    Do pAnswer.%Set("Rows", tRows, "number")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>How many runtime statistics rows <var>pNamespace</var> holds, as <var>pCount</var>, from <parameter>STATSCOUNTQUERY</parameter> with the
+/// namespace bound, prepared without SQL privilege checks and run in <var>pNamespace</var>. A statement the instance refuses or a failed read is
+/// the internal fault. The switched region calls vendor classes only.</p>
+ClassMethod StatsCount(pNamespace As %String, Output pCount As %Integer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pCount = 0
+    Set tText = ..#STATSCOUNTQUERY
+    Set tBound = $ZConvert(pNamespace, "U")
+    Set tCode = 0
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare(tText, 0)
+        If $$$ISOK(tSC) {
+            Set tResult = tStatement.%Execute(tBound)
+            Set tCode = tResult.%SQLCODE
+            If (tCode >= 0) && tResult.%Next() Set pCount = +tResult.%GetData(1)
+        }
+        Set (tResult, tStatement) = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = $$$ERROR($$$GeneralError, "the runtime statistics count raised " _ ex.Name)
+    }
+    If $$$ISOK(tSC) && (tCode < 0) Set tSC = $$$ERROR($$$GeneralError, "the runtime statistics count answered SQLCODE " _ tCode)
+    If $$$ISERR(tSC) Quit ..Fail("the runtime statistics count failed", tSC, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
 /// <p>The one vendor call of statement write <var>pType</var> on <var>pHash</var>, in <var>pNamespace</var>, as its status:
 /// <code>FreezeStatement</code>, <code>UnfreezeStatement</code> and <code>ClearStatement</code> with the hash alone, the plan
-/// error update with the hash and an empty error, and <code>Clean</code>, which takes no argument and cleans the namespace's stale
-/// entries. A call that answers no status is <code>$$$OK</code>. The namespace is switched by save and restore around the vendor
+/// error update with the hash and an empty error, <code>Clean</code>, which takes no argument and cleans the namespace's stale
+/// entries, and the runtime statistics purge (<code>clearStatsSQL</code> with the namespace alone, which answers the rows it removed or an error
+/// status). A call that answers no status is <code>$$$OK</code>. The namespace is switched by save and restore around the vendor
 /// call alone, restored first when it throws, and the throw is passed on. Overridable so a fixture can feed an error status;
 /// production overrides none.</p>
 ClassMethod StatementCall(pType As %String, pHash As %String, pNamespace As %String) As %Status
@@ -1079,6 +1154,9 @@ ClassMethod StatementCall(pType As %String, pHash As %String, pNamespace As %Str
         } ElseIf pType = ..#TYPECLEAN {
             Do $SYSTEM.SQL.Statement.Clean()
             Set tStatus = $$$OK
+        } ElseIf pType = ..#TYPEPURGESTATS {
+            Set tCleared = ##class(%SYS.PTools.StatsSQL).clearStatsSQL(pNamespace, "", 0, 1, 0, 1)
+            Set tStatus = $Select($Match(tCleared, "^[0-9]+$"): $$$OK, $System.Status.IsError(tCleared): tCleared, 1: $$$ERROR($$$GeneralError, "the runtime statistics purge answered no count"))
         }
         Set $NAMESPACE = tOrigNS
     } Catch ex {
@@ -1922,6 +2000,8 @@ ClassMethod TuningSnippet(pType As %String, ByRef pQuery) As %DynamicArray [ Pri
         Set tCall = " Set tSC = $SYSTEM.SQL.Statement.ClearStatement(" _ ..Literal(tId) _ ")"
     } ElseIf pType = ..#TYPECLEARERROR {
         Set tCall = " Do UpdateSQLIndex^%SYS.SQLSRV(" _ ..Literal(tId) _ ", """")"
+    } ElseIf pType = ..#TYPEPURGESTATS {
+        Set tCall = " Set tRemoved = ##class(" _ ..#STATSCLASS _ ").clearStatsSQL(" _ ..Literal($Get(pQuery(..#NAMESPACEKEY))) _ ", """", 0, 1, 0, 1)" _ $Char(10) _ " If '$Match(tRemoved, ""^[0-9]+$"") Do $System.Status.DisplayError(tRemoved)"
     } Else {
         Set tCall = " Do $SYSTEM.SQL.Statement.Clean()"
     }
@@ -1958,6 +2038,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If ((pEndpoint = ..#ENDPOINTSQL) || (pEndpoint = ..#ENDPOINTDATA)) && (pType = ..#TYPERUN) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTSTATEMENTS) && $ListFind($ListFromString(..#STATEMENTWRITES), pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTCACHEDQUERIES) && (pType = ..#TYPEPURGEQUERIES) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTRUNTIMESTATS) && (pType = ..#TYPEPURGESTATS) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTTABLES) && $ListFind($ListFromString(..#TABLEWRITES), pType) Quit "objectscript"
     Quit ""
 }
@@ -1972,7 +2053,7 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     If pEndpoint = ..#ENDPOINTDATA Quit ..SaveSnippet(.pQuery)
-    If (pEndpoint = ..#ENDPOINTSTATEMENTS) || (pEndpoint = ..#ENDPOINTCACHEDQUERIES) Quit ..TuningSnippet(pType, .pQuery)
+    If (pEndpoint = ..#ENDPOINTSTATEMENTS) || (pEndpoint = ..#ENDPOINTCACHEDQUERIES) || (pEndpoint = ..#ENDPOINTRUNTIMESTATS) Quit ..TuningSnippet(pType, .pQuery)
     If pEndpoint = ..#ENDPOINTTABLES Quit ..TableSnippet(pType, .pQuery)
     Set tValues = ..ValuesFrom($Get(pQuery(..#PARAMETERSKEY)), .tReadable)
     Set tList = ""

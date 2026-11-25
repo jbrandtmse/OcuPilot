@@ -82,7 +82,7 @@ Parameter SECURITYPAIRS = "%Admin_Secure:USE";
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
 /// <p>The endpoints a screen's read lists, in <code>LIST</code>.</p>
-Parameter ENDPOINTS = "Startup,Memory,Compatibility,SQL,SQLShell,TSQL,ISQL,SystemDDL,UserDDL,NLSDefaults,Security,TaskMail";
+Parameter ENDPOINTS = "Startup,Memory,Compatibility,SQL,SQLShell,TSQL,ISQL,SystemDDL,UserDDL,NLSDefaults,Security,TaskMail,SQLStats";
 
 Parameter STARTUPENDPOINT = "Startup";
 
@@ -107,6 +107,29 @@ Parameter NLSENDPOINT = "NLSDefaults";
 Parameter SECURITYENDPOINT = "Security";
 
 Parameter TASKMAILENDPOINT = "TaskMail";
+
+/// <p>The SQL runtime statistics collection endpoint (Story 21.26): the system-wide collection level, the stop that ends it and the level after the
+/// stop, and when the stop falls, as four roster rows read from <code>%SYS.PTools.StatsSQL.GetSQLStatsFlag</code>. A set is one
+/// <code>SetSQLStats</code> call built by <method>SqlStatsTarget</method>. Its pairs replace <parameter>PAIRS</parameter> and
+/// <parameter>WRITEPAIRS</parameter>: the classic page's <code>%Development:USE</code> and the reads and writes of the system database
+/// its settings live in.</p>
+Parameter SQLSTATSENDPOINT = "SQLStats";
+
+Parameter SQLSTATSPAIRS = "%Development:USE,%DB_IRISSYS:READ";
+
+Parameter SQLSTATSWRITEPAIRS = "%Development:USE,%DB_IRISSYS:READ,%DB_IRISSYS:WRITE";
+
+/// <p>The four rows, in <parameter>SHELLROSTER</parameter>'s grammar: the level as the classic page's four options (stored 0 to 3), the stop in
+/// whole minutes, the level after the stop (stored 0 or 1), and when the stop falls, which is shown and never changed.</p>
+Parameter SQLSTATSROSTER = "CollectionLevel|choice|Off=0,Off with collection code=1,On for open and close=2,On for all modules=3|0|1;StopAfterMinutes|integer|1:99999||1;LevelAfterStop|choice|Off=0,Off with collection code=1|0|1;StopsAt|text|||0";
+
+/// <p>The vendor class whose <code>GetSQLStatsFlag</code> and <code>SetSQLStats</code> the endpoint calls.</p>
+Parameter SQLSTATSCLASS = "%SYS.PTools.StatsSQL";
+
+/// <p>The stop in minutes, and the level after it, a level of 2 or 3 takes while no stop is held, as the classic page's defaults.</p>
+Parameter SQLSTATSDEFAULTMINUTES As INTEGER = 50;
+
+Parameter SQLSTATSDEFAULTRESET As INTEGER = 0;
 
 /// <p>The vendor class each endpoint lists and sets.</p>
 Parameter STARTUPCLASS = "Config.Startup";
@@ -341,7 +364,7 @@ ClassMethod IsNamed(pEndpoint As %String) As %Boolean
 /// email settings.</p>
 ClassMethod IsRoster(pEndpoint As %String) As %Boolean
 {
-    Quit (pEndpoint = ..#SHELLENDPOINT) || (pEndpoint = ..#TSQLENDPOINT) || (pEndpoint = ..#ISQLENDPOINT) || (pEndpoint = ..#TASKMAILENDPOINT)
+    Quit (pEndpoint = ..#SHELLENDPOINT) || (pEndpoint = ..#TSQLENDPOINT) || (pEndpoint = ..#ISQLENDPOINT) || (pEndpoint = ..#TASKMAILENDPOINT) || (pEndpoint = ..#SQLSTATSENDPOINT)
 }
 
 /// <p>Whether <var>pEndpoint</var> lists the NLS configured defaults and the locale-format switch.</p>
@@ -458,6 +481,7 @@ ClassMethod Admit(pEndpoint As %String, pType As %String, Output pHttpStatus As 
 {
     Set tFailedPair = ""
     Set tSpec = $Select(..IsWrite(pType): ..#WRITEPAIRS, 1: ..#PAIRS)
+    If pEndpoint = ..#SQLSTATSENDPOINT Set tSpec = $Select(..IsWrite(pType): ..#SQLSTATSWRITEPAIRS, 1: ..#SQLSTATSPAIRS)
     If pEndpoint = ..#COMPATIBILITYENDPOINT Set tSpec = tSpec _ "," _ ..#COMPATIBILITYPAIRS
     If pEndpoint = ..#SECURITYENDPOINT Set tSpec = tSpec _ "," _ ..#SECURITYPAIRS
     ; EvaluateRequired, not EvaluatePairs: a pair parameter mis-edited to empty fails closed.
@@ -931,6 +955,7 @@ ClassMethod Apply(pEndpoint As %String, pName As %String, pValue As %String) As 
         Set tDialect = ..StoredDialect()
         Quit ..SendTsql(pName, $Select(tDialect = "": ..#TSQLDEFAULTDIALECT, 1: tDialect), pValue)
     }
+    If pEndpoint = ..#SQLSTATSENDPOINT Quit ..SendSqlStats(pName, ..StoredFor(..RosterEntry(pEndpoint, pName), pValue))
     If ..IsRoster(pEndpoint) Quit ..SendNode(pEndpoint, pName, ..StoredFor(..RosterEntry(pEndpoint, pName), pValue))
     If ..IsNls(pEndpoint) Quit ..SendNlsNode(pValue)
     If ..IsSecurity(pEndpoint) Quit ..ModifySecurity(pName, pValue)
@@ -942,7 +967,7 @@ ClassMethod Apply(pEndpoint As %String, pName As %String, pValue As %String) As 
 /// <code>""</code> for an endpoint that has none.</p>
 ClassMethod RosterOf(pEndpoint As %String) As %List
 {
-    Set tSpec = $Case(pEndpoint, ..#SHELLENDPOINT: ..#SHELLROSTER, ..#ISQLENDPOINT: ..#ISQLROSTER, ..#TSQLENDPOINT: ..#TSQLROSTER, ..#SECURITYENDPOINT: ..#SECURITYROSTER, ..#TASKMAILENDPOINT: ..#TASKMAILROSTER, : "")
+    Set tSpec = $Case(pEndpoint, ..#SHELLENDPOINT: ..#SHELLROSTER, ..#ISQLENDPOINT: ..#ISQLROSTER, ..#TSQLENDPOINT: ..#TSQLROSTER, ..#SECURITYENDPOINT: ..#SECURITYROSTER, ..#TASKMAILENDPOINT: ..#TASKMAILROSTER, ..#SQLSTATSENDPOINT: ..#SQLSTATSROSTER, : "")
     Set tRoster = ""
     For tI = 1:1:$Length(tSpec, ";") {
         Set tEntry = $Piece(tSpec, ";", tI)
@@ -1025,6 +1050,13 @@ ClassMethod CollectRoster(pEndpoint As %String, pName As %String, ByRef pData) A
             Set pData(tKey) = $ListBuild(tMail, ..EntryLimits(tEntry), '$List(tEntry, 5), 0, 0)
             Continue
         }
+        If pEndpoint = ..#SQLSTATSENDPOINT {
+            Set tSC = ..SqlStatsState(.tLevel, .tMinutes, .tReset, .tStopsAt)
+            If $$$ISERR(tSC) Quit
+            Set tShown = $Case(tKey, "CollectionLevel": ..ShownFor(tEntry, tLevel), "StopAfterMinutes": tMinutes, "LevelAfterStop": $Select(tMinutes = "": "", 1: ..ShownFor(tEntry, tReset)), : tStopsAt)
+            Set pData(tKey) = $ListBuild(tShown, ..EntryLimits(tEntry), '$List(tEntry, 5), 0, 0)
+            Continue
+        }
         Set pData(tKey) = $ListBuild(..RosterValue(pEndpoint, tEntry), ..EntryLimits(tEntry), '$List(tEntry, 5), 0, 0)
     }
     Quit tSC
@@ -1097,6 +1129,106 @@ ClassMethod StoredDialect() As %String
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
     Quit tDialect
+}
+
+/// <p>The collection state <code>GetSQLStatsFlag</code> reports, in <code>%SYS</code> or any namespace: <var>pLevel</var>, the action level 0 to 3;
+/// and, while a level of 2 or 3 holds a stop, <var>pMinutes</var> (the stop in whole minutes), <var>pReset</var> (the level after the stop, 0 or 1)
+/// and <var>pStopsAt</var> (when the stop falls, ISO-8601 UTC). Each of the three is <code>""</code> while no stop is held. A flag the vendor
+/// reports in another shape is an error status.</p>
+ClassMethod SqlStatsState(Output pLevel As %String, Output pMinutes As %String, Output pReset As %String, Output pStopsAt As %String) As %Status [ Private ]
+{
+    Set pLevel = ""
+    Set pMinutes = ""
+    Set pReset = ""
+    Set pStopsAt = ""
+    Set tSC = $$$OK
+    Try {
+        Kill tInfo
+        Set tFlag = $ClassMethod(..#SQLSTATSCLASS, "GetSQLStatsFlag", 0, 0, .tInfo)
+        Set pLevel = $Piece(tFlag, ":", 1)
+        If '$Match(pLevel, "^[0-3]$") {
+            Set pLevel = ""
+            Set tSC = $$$ERROR($$$GeneralError, "the runtime statistics flag is not in the shape the vendor documents")
+            Quit
+        }
+        Set tMinutes = $Get(tInfo("terminate", "mins"))
+        If (pLevel >= 2) && $Match(tMinutes, "^[1-9][0-9]*$") {
+            Set pMinutes = tMinutes
+            Set pReset = $Select($Get(tInfo("terminate", "resetActionFlag")) = 1: 1, 1: 0)
+            Set tStop = $Get(tInfo("terminate", "stopHDate"))
+            If tStop '= "" Set pStopsAt = $Translate($ZDateTime($System.Util.LocalWithZTIMEZONEtoUTC(tStop), 3, 1), " ", "T") _ "Z"
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p><method>SqlStatsState</method> read in <code>%SYS</code> by save and restore.</p>
+ClassMethod SqlStatsRead(Output pLevel As %String, Output pMinutes As %String, Output pReset As %String, Output pStopsAt As %String) As %Status [ Private ]
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ..SqlStatsState(.pLevel, .pMinutes, .pReset, .pStopsAt)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The level <var>pLevel</var> and the stop text <var>pTerminate</var> a set of the row <var>pName</var> to the stored code
+/// <var>pStored</var> sends: the other rows keep the values the instance holds now, a level of 2 or 3 takes
+/// <parameter>SQLSTATSDEFAULTMINUTES</parameter> and <parameter>SQLSTATSDEFAULTRESET</parameter> while no stop is held, and a level below 2
+/// sends no stop. The text is built from whole numbers alone as <code>M:&lt;minutes&gt;:&lt;level after the stop&gt;</code>. A stop row set
+/// while the level is below 2, and any name outside the three settable rows, is an error status.</p>
+ClassMethod SqlStatsTarget(pName As %String, pStored As %String, Output pLevel As %Integer, Output pTerminate As %String) As %Status
+{
+    Set pLevel = ""
+    Set pTerminate = ""
+    Set tSC = ..SqlStatsRead(.tLevel, .tMinutes, .tReset, .tStopsAt)
+    If $$$ISERR(tSC) Quit tSC
+    If (pName '= "CollectionLevel") && (pName '= "StopAfterMinutes") && (pName '= "LevelAfterStop") Quit $$$ERROR($$$GeneralError, "no runtime statistics call is built for " _ pName)
+    If (pName '= "CollectionLevel") && (tLevel < 2) Quit $$$ERROR($$$GeneralError, "the stop of runtime statistics collection is set while collection is on")
+    If tMinutes = "" {
+        Set tMinutes = ..#SQLSTATSDEFAULTMINUTES
+        Set tReset = ..#SQLSTATSDEFAULTRESET
+    }
+    If pName = "CollectionLevel" Set tLevel = pStored
+    If pName = "StopAfterMinutes" Set tMinutes = pStored
+    If pName = "LevelAfterStop" Set tReset = pStored
+    If '$Match(tLevel, "^[0-3]$") || '$Match(tMinutes, "^[1-9][0-9]{0,4}$") || '$Match(tReset, "^[01]$") Quit $$$ERROR($$$GeneralError, "the runtime statistics call would carry a value outside its range")
+    Set pLevel = +tLevel
+    Set pTerminate = $Select(pLevel < 2: "", 1: "M:" _ +tMinutes _ ":" _ +tReset)
+    Quit $$$OK
+}
+
+/// <p>The set of the row <var>pName</var> to the stored code <var>pStored</var>: the call <method>SqlStatsTarget</method> builds, made by
+/// <method>SqlStatsCall</method>.</p>
+ClassMethod SendSqlStats(pName As %String, pStored As %String) As %Status [ Private ]
+{
+    Set tSC = ..SqlStatsTarget(pName, pStored, .tLevel, .tTerminate)
+    If $$$ISERR(tSC) Quit tSC
+    Quit ..SqlStatsCall(tLevel, tTerminate)
+}
+
+/// <p>The one call that changes the collection: <code>SetSQLStats(</code><var>pLevel</var><code>, 1, "", </code><var>pTerminate</var><code>)</code>
+/// in <code>%SYS</code> by save and restore. The vendor answers the level it replaced, 0 to 3, and an error status when it refuses an argument;
+/// anything else is an error status here. Overridable so a fixture can record the call; production never overrides it.</p>
+ClassMethod SqlStatsCall(pLevel As %Integer, pTerminate As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tResult = $ClassMethod(..#SQLSTATSCLASS, "SetSQLStats", pLevel, 1, "", pTerminate)
+        If '$Match(tResult, "^[0-3]$") Set tSC = $Select($System.Status.IsError(tResult): tResult, 1: $$$ERROR($$$GeneralError, "the runtime statistics call answered no level"))
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
 }
 
 /// <p>The one call that changes a SQL Shell or ISQL node, or a Task Manager email setting: <var>pName</var>'s node of <var>pEndpoint</var>
@@ -1514,6 +1646,13 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     If ..IsNls(pEndpoint) {
         If tName '= ..#NLSFORMATNAME Quit []
         Quit [($ClassMethod(tAdmin, "ObjectScriptStep", $ListBuild("Set ^SYS(""NLS"", ""Config"", ""LocaleFormat"") = " _ $ClassMethod(tAdmin, "Literal", tValue))))]
+    }
+    If pEndpoint = ..#SQLSTATSENDPOINT {
+        Set tEntry = ..RosterEntry(pEndpoint, tName)
+        If (tEntry = "") || '$List(tEntry, 5) Quit []
+        Set tTargetSC = ..SqlStatsTarget(tName, ..StoredFor(tEntry, tValue), .tLevel, .tTerminate)
+        If $$$ISERR(tTargetSC) Quit []
+        Quit [($ClassMethod(tAdmin, "ObjectScriptStep", $ListBuild("Set tPrevious = ##class(" _ ..#SQLSTATSCLASS _ ").SetSQLStats(" _ tLevel _ ", 1, """", " _ $ClassMethod(tAdmin, "Literal", tTerminate) _ ")")))]
     }
     If ..IsRoster(pEndpoint) {
         Set tEntry = ..RosterEntry(pEndpoint, tName)

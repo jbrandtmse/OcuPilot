@@ -258,6 +258,8 @@ XData Keys [ MimeType = application/json ]
   "explorer.sqltable.setextentsize": false,
   "explorer.sqlindices.setmapsize": false,
   "explorer.sqlfieldstatistics.setselectivity": false,
+  "explorer.sqlruntimestats.purge": false,
+  "explorer.sqlruntimestatssettings.set": true,
   "interop.productions.start": true,
   "interop.productions.stop": true,
   "interop.productions.restart": true,

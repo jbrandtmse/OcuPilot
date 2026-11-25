@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:676 */
+  /** EXPERIENCE.md:677 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5535,6 +5535,25 @@ export const STRINGS = {
   explorerSqlStatementListPrompt1: 'Which statements take the longest on average?',
   explorerSqlStatementListPrompt2: 'Is any plan frozen, and does a newer plan exist?',
   explorerSqlStatementListPrompt3: 'Which statements have a plan error?',
+  // Story 21.26: the SQL runtime statistics list and the Runtime statistics collection list, their columns, empty states, note and prompts.
+  explorerSqlTabRuntimeStats: 'SQL runtime statistics',
+  runtimeStatsSettingsLabel: 'Runtime statistics collection',
+  runtimeStatsColumnCursor: 'Cursor',
+  runtimeStatsColumnModule: 'Module',
+  runtimeStatsColumnRuns: 'Runs',
+  runtimeStatsColumnModuleRuns: 'Module runs',
+  runtimeStatsColumnAverageRows: 'Average rows',
+  runtimeStatsColumnAverageGlobalRefs: 'Average global references',
+  runtimeStatsColumnAverageCommands: 'Average commands',
+  runtimeStatsColumnAverageDiskWait: 'Average disk wait',
+  explorerSqlRuntimeStatsEmpty: 'No runtime statistics are recorded in this namespace.',
+  explorerSqlRuntimeStatsEmptyAgent: 'purge runtime statistics',
+  runtimeStatsSettingsEmptyAgent: 'change runtime statistics collection',
+  explorerSqlRuntimeStatsNote: 'Statistics are recorded only while collection is on, and by Plan with statistics on SQL query.',
+  explorerSqlRuntimeStatsPrompt2: 'Which module of a slow statement takes the most time?',
+  explorerSqlRuntimeStatsPrompt3: 'Are runtime statistics being collected?',
+  runtimeStatsSettingsPrompt1: 'Is runtime statistics collection on, and when does it stop?',
+  configRefusalSqlStatsNoStop: 'Collection must be on before its stop can be set.',
   // Story 21.6: the statement and cached-query actions, the sentences their dialogs and cards state, and the refusals the instance answers.
   // Purge on one query reuses auditDatabasePurgeConfirm.
   sqlStatementFreezeAction: 'Freeze plan',

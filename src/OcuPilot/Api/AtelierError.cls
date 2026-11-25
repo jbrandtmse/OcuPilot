@@ -398,6 +398,27 @@ Parameter CACHEDQUERYPURGE = "SQL.CACHEDQUERY.PURGE";
 
 Parameter REASONCACHEDQUERYPURGE = "The purged queries are prepared again the next time each one runs.";
 
+/// <p>Envelope code: the instance answered an error status for the purge of a namespace's runtime statistics (Story 21.26). Rendered on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, the instance's message in <code>detail</code> alone and never logged
+/// (AD-39).</p>
+Parameter RUNTIMESTATSVENDOR = "SQL.RUNTIMESTATS.VENDOR";
+
+Parameter REASONRUNTIMESTATSVENDOR = "The instance did not purge this namespace's runtime statistics.";
+
+/// <p>The precondition refusal of a purge of a namespace that holds no runtime statistics.</p>
+Parameter RUNTIMESTATSNOROWS = "SQL.RUNTIMESTATS.NOROWS";
+
+Parameter REASONRUNTIMESTATSNOROWS = "This namespace holds no runtime statistics.";
+
+/// <p>The consequence codes the proposal card and the dialog of the runtime statistics purge and of a set of the collection setting carry.</p>
+Parameter RUNTIMESTATSPURGE = "SQL.RUNTIMESTATS.PURGE";
+
+Parameter REASONRUNTIMESTATSPURGE = "This namespace's runtime statistics are removed. New statistics are recorded only while collection is on.";
+
+Parameter RUNTIMESTATSSET = "SQL.RUNTIMESTATS.SET";
+
+Parameter REASONRUNTIMESTATSSET = "This applies to every namespace on the instance. A query prepared while collection was set to Off records nothing once collection is turned on, until its cached query is purged.";
+
 /// <p>Envelope code: the instance answered an error status for a table write -- an index rebuild (Story 21.25). Rendered on the
 /// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, the instance's message in <code>detail</code> alone and never logged
 /// (AD-39).</p>
@@ -503,6 +524,10 @@ ClassMethod SqlReasonFor(pCode As %String) As %String
     If pCode = ..#STATEMENTCLEARERROR Quit ..#REASONSTATEMENTCLEARERROR
     If pCode = ..#STATEMENTCLEAN Quit ..#REASONSTATEMENTCLEAN
     If pCode = ..#CACHEDQUERYPURGE Quit ..#REASONCACHEDQUERYPURGE
+    If pCode = ..#RUNTIMESTATSVENDOR Quit ..#REASONRUNTIMESTATSVENDOR
+    If pCode = ..#RUNTIMESTATSNOROWS Quit ..#REASONRUNTIMESTATSNOROWS
+    If pCode = ..#RUNTIMESTATSPURGE Quit ..#REASONRUNTIMESTATSPURGE
+    If pCode = ..#RUNTIMESTATSSET Quit ..#REASONRUNTIMESTATSSET
     Quit ""
 }
 

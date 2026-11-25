@@ -98,6 +98,7 @@ ClassMethod Remove(pNamespace As %String) As %Status
                 Do $SYSTEM.SQL.Statement.ClearStatement(tHash)
             }
         }
+        Do ..RemoveStats(pNamespace)
         Do $SYSTEM.SQL.PurgeQueries({"table": [(..#FIRST), (..#SECOND)]})
         Do ..Run("DROP TABLE " _ ..#FIRST)
         Do ..Run("DROP TABLE " _ ..#SECOND)
@@ -559,6 +560,101 @@ ClassMethod SetPlanFlag(pHash As %String, pNamespace As %String, pFlag As %Integ
     } Catch {
         Set $NAMESPACE = tOrigNS
     }
+}
+
+/// <p>The statement <method>RecordStats</method> runs, and the token its statistics rows carry in their text (Story 21.26). The alias keeps it
+/// apart from every statement the product or another test runs.</p>
+Parameter QUERYSTATS = "SELECT A AS Probe226 FROM OcuProbe216.T1";
+
+Parameter STATSTOKEN = "Probe226";
+
+/// <p>Run <parameter>QUERYSTATS</parameter> in <var>pNamespace</var> with runtime statistics collection on for this process alone
+/// (<code>SetSQLStatsFlagJob(3)</code>), so the instance's collection setting is never touched, and put the process's own flag back (Story 21.26).
+/// The probe's tables exist (<method>Make</method>).</p>
+ClassMethod RecordStats(pNamespace As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Set tPrevious = ""
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tPrevious = $SYSTEM.SQL.SetSQLStatsFlagJob(3)
+        Set tSC = ..Run(..#QUERYSTATS)
+        Do $SYSTEM.SQL.SetSQLStatsFlagJob(tPrevious)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        If tPrevious '= "" Do $SYSTEM.SQL.SetSQLStatsFlagJob(tPrevious)
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The routines of <var>pNamespace</var>'s runtime statistics whose statement carries <parameter>STATSTOKEN</parameter>, comma-joined, read with
+/// the caller's own privileges.</p>
+ClassMethod StatsRoutines(pNamespace As %String) As %String
+{
+    Set tList = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT DISTINCT RoutineName FROM %SYS_PTools.StatsSQLView WHERE NameSpace = ? AND QueryText [ ?")
+        If $$$ISOK(tSC) {
+            Set tResult = tStatement.%Execute($ZConvert(pNamespace, "U"), ..#STATSTOKEN)
+            While tResult.%Next() {
+                Set tList = tList _ $Select(tList = "": "", 1: ",") _ tResult.%GetData(1)
+            }
+        }
+        Set (tResult, tStatement) = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tList
+}
+
+/// <p>How many runtime statistics rows <var>pNamespace</var> holds for the probe's statement, <code>-1</code> when they cannot be read.</p>
+ClassMethod StatsRowCount(pNamespace As %String) As %Integer
+{
+    Set tCount = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT COUNT(*) FROM %SYS_PTools.StatsSQLView WHERE NameSpace = ? AND QueryText [ ?")
+        If $$$ISOK(tSC) {
+            Set tResult = tStatement.%Execute($ZConvert(pNamespace, "U"), ..#STATSTOKEN)
+            If tResult.%Next() Set tCount = tResult.%GetData(1)
+        }
+        Set (tResult, tStatement) = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tCount
+}
+
+/// <p>Remove the runtime statistics of the probe's statement from <var>pNamespace</var> by routine, never the namespace's other rows, and answer how
+/// many rows it removed, or <code>-1</code> when a removal failed (Story 21.26).</p>
+ClassMethod RemoveStats(pNamespace As %String) As %Integer
+{
+    Set tRemoved = 0
+    Set tOrigNS = $NAMESPACE
+    Set tList = ..StatsRoutines(pNamespace)
+    Try {
+        For tI = 1:1:$Length(tList, ",") {
+            Set tRoutine = $Piece(tList, ",", tI)
+            If tRoutine = "" Continue
+            Set tCleared = ##class(%SYS.PTools.StatsSQL).clearStatsSQL(pNamespace, tRoutine, , 1, , 1)
+            If '$Match(tCleared, "^[0-9]+$") Set tRemoved = -1 Quit
+            Set tRemoved = tRemoved + tCleared
+        }
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tRemoved = -1
+    }
+    Quit tRemoved
 }
 
 /// <p>Run the statement over OcuPilot's own table in <var>pNamespace</var>, the install namespace, and answer its hash.</p>

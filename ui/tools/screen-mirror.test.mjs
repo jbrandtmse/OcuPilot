@@ -252,6 +252,8 @@ test('every read note\'s text is the string its key names, and the four SQL stat
       // Story 18.21: ECP application servers' Connections tab states when its statuses were read.
       'OcuPilot.Screen.Descriptor.EcpAppServerTab',
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
+      // Story 21.26: SQL runtime statistics states when a statistic is recorded.
+      'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStats',
       // Story 21.6: the namespace's SQL statements list states the same statistics note.
       'OcuPilot.Screen.Descriptor.ExplorerSqlStatementList',
       'OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements',
@@ -2828,6 +2830,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList',
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm',
       'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
+      // Story 21.26: Runtime statistics collection owns %DB_IRISSYS:READ, the system database its setting lives in, beside System Explorer's %Development.
+      'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStatsSettings',
       // Story 24.16 Batch 4: the three archive screens own %Ens_ArchiveManager:READ.
       'OcuPilot.Screen.Descriptor.InteropArchiveErrorList',
       'OcuPilot.Screen.Descriptor.InteropArchiveList',
@@ -3678,7 +3682,7 @@ test('Story 21.19: the config source admits the Task Manager email endpoint the 
   assert.deepEqual(screen.declaration.ownPrivileges, [{ resource: '%Admin_Manage', permission: 'USE' }], "the port's own pair is its own, which keeps the other Tasks screens open to the area's two");
   const other = structuredClone(screen.declaration);
   other.read.source.endpoint = 'Mail';
-  assert.match(readProblem(other), /is not one of the config port's endpoints \(.*'TaskMail'\)/, 'an endpoint the port does not declare is refused');
+  assert.match(readProblem(other), /is not one of the config port's endpoints \(.*'TaskMail'.*\)/, 'an endpoint the port does not declare is refused');
 });
 
 // Story 21.36: Task output reads a log source keyed by its parent task, so a logsource read takes criteria only as its
