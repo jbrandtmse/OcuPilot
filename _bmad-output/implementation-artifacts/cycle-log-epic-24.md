@@ -869,3 +869,4 @@
 2026-11-25T17:06:05Z	Story 24.17	fresh_check_passed	scope=batch2 sha=76959926c throwaway_up=16:49:16Z(fresh) classes=43_runs_green(b2_fwd+rev,rosters,governance,21.31_sql) browser=log-purge2/2,purge2/2,governance2/2,a11y-structural-invariants13/13 smoke=49/49(skip_agentswitches:tests_wrote_switches) order=forward,reverse
 2026-11-25T17:06:05Z	Story 24.17	code_head_pushed	scope=batch2 sha=76959926c runs=45661016373 ci=pending missing=none
 2026-11-25T17:06:05Z	Story 24.17	hold_restored	story=24-17 note=committed_locally(b20dd9c24_on_origin_via_76959926c;hold_patch_deleted)
+2026-11-25T17:06:17Z	Story 24.17	stage_spawned	stage=plan spawn_at=2026-11-25T17:06:17Z model=opus agent_name=24-17-plan-batch3 cycle_iteration=3 scope=batch3_workflow_roles_users_membership
