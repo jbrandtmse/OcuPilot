@@ -112,6 +112,7 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `26cc156bf`).
 No HIGH. Runs are on `ocupilot-b-ci`.
 
 - **R1 MED, escalated (Clarification Needed).** Gating the state read with the SQL check also gates both purge callers for a principal who holds the purge pairs but no grant: the screen's review and the agent's mint and confirm read the state first. The classic page counts and purges without SQL privilege (`RuleLog.cls:682-700`). Measured: `RuleLogCount` and `BusinessProcessCount` answered for a principal whose `CheckPrivilege` read 0. Kept as built.
+  - Ruled (a) by the lead; patched in the rework.
 - **R2 MED, patched.** The log reads' faults logged vendor text (`Mapped`), against the Never list. Now `LogMapped`. Mutation run 994.
 - **R3 MED, patched.** `Foreign` missed the vendor's id-based business process selection. Probe: a completed non-probe process created today in `USER`. Patched, the class refused to start (run 998). The old predicate let it start, and its purge deleted that process (run 999).
 - **R4 MED, patched.** The state leg of the "nothing logged while switched" test raised in the privilege check, never in `ReadLogState`'s own block. The seam now has a `herestate` mode. Mutation run 993.
@@ -198,7 +199,7 @@ No new dependency; no privilege, role or access grant; nothing is written into a
 **Decided in-stage (implement).**
 
 1. `PRECONDITIONFIELD` is `Namespace` (the orchestrator's ruling), and `PRECONDITIONCODES` is `INTEROP.NAMESPACE`, not empty: the fresh read's one refusal, a namespace that runs no interoperability, is answered with that code as every sibling write tool lists it.
-2. The SQL SELECT check also gates the state read (`RULELOGSTATE`, `PROCESSLOGSTATE`), not only the lists. The vendor's `RuleLogCount` and `BusinessProcessCount` are embedded SQL and check no privilege themselves (measured at review). The port's purge write is unaffected, as ruled; its answer is the state read again, which falls back to `{Namespace}` for a caller without the grant. The screen's review and the agent's mint and confirm read the state first (open: review triage R1).
+2. The SQL SELECT check gates the two lists only; the state reads, which are the purges' fresh read, take no SQL check, as the classic page and the V3 ruling say.
 3. No `LogPurgeCodes` list: the log purges answer no code beyond `INTEROP.PURGE.DAYS`, which `PurgeCodes` already lists, so a list would only repeat it. The two consequence codes join `ConsequenceCodes`.
 4. `InteropProcessLogPurge` extends `InteropRuleLogPurge`, which extends `InteropPurgeRun`; it overrides only what differs (name, description, descriptor, types, page, consequence, endpoint).
 5. A purge that raises is audited as `completed` false with the count the vendor had reached, as a purge the vendor answers an error status is; the sibling full purge writes no audit row for a raised error.
@@ -211,7 +212,7 @@ No new dependency; no privilege, role or access grant; nothing is written into a
 
 1. The log reads' faults go through a new `LogMapped` (the `AlertMapped` shape), so no vendor text reaches the log.
 2. `Foreign` counts every non-probe completed business process, or one with no creation time, whatever its age, because the vendor's integrity-kept purge selects by id below the newest old record.
-3. The SQL check on the state read is kept as built and escalated (R1), the safe side, until the lead rules.
+3. The SQL check gates the lists only (R1, ruled (a)).
 
 **Measured at plan (`ocupilot-b-ci`, read-only global and dictionary reads).** USER and HSCUSTOM hold no `^Ens.Rule.LogD` or `^Ens.BusinessProcessD` data; `OcuPilot.Test.InteropAlertCase` is compiled in HSCUSTOM and not in USER; `Ens.BusinessProcess` is not abstract.
 
@@ -273,7 +274,14 @@ The check reads `Ens_Rule.Log` and `Ens.BusinessProcess` as the vendor names the
 ## Auto Run Result
 
 Status: in-review
-Blocking condition: none; R1 escalated to the lead.
+Blocking condition: none.
+
+**Rework pass (2026-11-25).**
+
+- **Changed:** R1 ruled (a): the two state reads take no SQL check and `LogSelectGate` gates the lists only. `InteropLogPurgeGate` pins the principal with the purge pairs and no grant: its state reads and purges answer the log's count while its lists are refused naming the table. The seam's `herestate` mode went, since the state read has one hook. `CHECKEDFLOOR` is 152, the count the walk asks on HEAD (measured).
+- **Verified:** on `ocupilot-b-ci`, the five Batch 2 classes (forward, then reversed), `ConfirmNamespaceRoster`, `GovernanceBaseline`, `Governance`, `ToolDispatch` and `InteropPurgeControl` are green; `test:tools` and `ci.test.mjs` are green.
+- mutation: `LogSelectGate` put back at the head of `ReadLogState` -> `InteropLogPurgeGate.TestTheGateRefusesEachPrincipalBeforeAnyVendorCall` red on the no-grant principal's state legs and on both purge answers' count (run 40).
+- mutation: `CHECKEDFLOOR` 153 -> `ConfirmNamespaceRoster.TestEveryWriteToolAsksItsPortInTheNamespaceItsProposalRead` red, 152 asked (run 41).
 
 **Review pass (2026-11-25).**
 

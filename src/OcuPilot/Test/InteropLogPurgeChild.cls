@@ -1,6 +1,6 @@
 /// <p>The child process Story 24.17 Batch 2's principal legs run: <method>ProbeAs</method> starts <method>Probe</method> as a real user in a job of its own and answers what it signalled, so
 /// the gate, the process's roles and the classic page's own query are tried as that user and not as the test account. A probe is <code>legs</code> (the six calls of the two logs through the port,
-/// each answered as <code>{http, code, failedPair}</code>), <code>roles</code> (one purge of a log through the port or a seam, with the process's roles, user and namespace before and after) or
+/// each answered as <code>{http, code, failedPair}</code>, and <code>count</code> for a state or purge answer that carries one), <code>roles</code> (one purge of a log through the port or a seam, with the process's roles, user and namespace before and after) or
 /// <code>equality</code> (for each log in <code>USER</code> and in <code>HSCUSTOM</code>, whether its list is admitted and whether the classic page's own query prepares there).</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests. It runs only on a throwaway instance, which sets the arming variable <class>OcuPilot.Test.InteropLogPurgeCase</class> names.</p>
 Class OcuPilot.Test.InteropLogPurgeChild Extends %RegisteredObject
@@ -28,6 +28,7 @@ ClassMethod Leg(pKind As %String, pType As %String, pClass As %String = "OcuPilo
     Set tSC = $ClassMethod(pClass, "Invoke", $ClassMethod(..#CASE, "Spec", pKind, "endpoint"), tType, .tQuery, "", .tResult, .tHttp, .tFault)
     Set tLeg = {}
     Do tLeg.%Set("http", +tHttp, "number")
+    If (pType '= "LIST") && $IsObject(tResult) && (tResult.%Get("Count") '= "") Do tLeg.%Set("count", tResult.%Get("Count"), "number")
     If $IsObject(tFault) {
         Do tLeg.%Set("code", tFault.%Get("code"))
         If $IsObject(tFault.%Get("detail")) Do tLeg.%Set("failedPair", tFault.detail.%Get("failedPair"))

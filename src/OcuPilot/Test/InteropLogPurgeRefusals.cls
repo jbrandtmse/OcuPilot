@@ -114,11 +114,11 @@ Method TestNothingIsLoggedWhileTheNamespaceIsSwitched()
         Do $$$AssertEquals($Get(^IRIS.Temp.OcuProbe2417LogMode("ranIn")), ..#SOURCE, tKind _ ": the vendor call ran in the log's namespace")
         Do $$$AssertEquals($ClassMethod(tSeam, "LoggedIn"), $NAMESPACE, tKind _ ": and the one line it caused was written in the namespace the call came from")
         Kill ^IRIS.Temp.OcuProbe2417LogMode
-        Set ^IRIS.Temp.OcuProbe2417LogMode = "herestate"
+        Set ^IRIS.Temp.OcuProbe2417LogMode = "here"
         Do $ClassMethod(tSeam, "ClearLog")
         Kill tQuery
-        Do $$$AssertEquals(..Verdict(tKind, "state", .tRow, .tFault, .tQuery, ..#SOURCE, tSeam), "500 INTERNAL", tKind _ ": a fault inside the state read's own switched block, past its privilege check, is a 500")
-        Do $$$AssertEquals($Get(^IRIS.Temp.OcuProbe2417LogMode("hereCalls")) _ "|" _ $Get(^IRIS.Temp.OcuProbe2417LogMode("hereIn")), "2|" _ ..#SOURCE, tKind _ ": the state read's own hook raised, in the log's namespace")
+        Do $$$AssertEquals(..Verdict(tKind, "state", .tRow, .tFault, .tQuery, ..#SOURCE, tSeam), "500 INTERNAL", tKind _ ": a fault inside the state read's own switched block, which asks no privilege check, is a 500")
+        Do $$$AssertEquals($Get(^IRIS.Temp.OcuProbe2417LogMode("hereIn")), ..#SOURCE, tKind _ ": the state read's own hook raised, in the log's namespace")
         Do $$$AssertEquals($ClassMethod(tSeam, "LoggedIn"), $NAMESPACE, tKind _ ": and its line was written after the namespace was restored")
         Do $$$AssertTrue($ClassMethod(tSeam, "LoggedText") '[ $Parameter(tSeam, "MARKER"), tKind _ ": and names no vendor text: " _ $ClassMethod(tSeam, "LoggedText"))
         Set ^IRIS.Temp.OcuProbe2417LogMode = "here"

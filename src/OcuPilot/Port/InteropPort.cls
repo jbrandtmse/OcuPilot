@@ -14165,13 +14165,11 @@ ClassMethod ListLog(pNamespace As %String, pKind As %String, ByRef pQuery, pMax 
 }
 
 /// <p>The state row of the log of kind <var>pKind</var> (Story 24.17 Batch 2): <code>{Count, DaysToKeep, Namespace}</code>, <code>Count</code> the vendor's own count of the log's records
-/// (<code>Ens.Purge.RuleLogCount</code> or <code>BusinessProcessCount</code>) and <code>DaysToKeep</code> empty, since the days belong to the call that asks for the purge. The caller's SQL SELECT
-/// privilege is judged first, as the list's is (<method>LogSelectGate</method>); the vendor's count is embedded SQL, which checks no SQL privilege of its own.</p>
+/// (<code>Ens.Purge.RuleLogCount</code> or <code>BusinessProcessCount</code>) and <code>DaysToKeep</code> empty, since the days belong to the call that asks for the purge. It takes no SQL privilege check, as the classic page's
+/// count and purge take none (<method>LogSelectGate</method> gates the two lists only); it is the purges' fresh read, and the vendor's count is embedded SQL, which checks no SQL privilege of its own.</p>
 ClassMethod ReadLogState(pNamespace As %String, pKind As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pRow = ""
-    Set tSC = ..LogSelectGate(pNamespace, pKind, .pHttpStatus, .pFault)
-    If $$$ISERR(tSC) Quit tSC
     Set tCount = 0
     Set tCaught = ""
     Set tOrigNS = $NAMESPACE

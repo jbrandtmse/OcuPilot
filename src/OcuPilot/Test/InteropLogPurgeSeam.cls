@@ -2,7 +2,7 @@
 /// written in, so a test reads what a refused or failed read or purge put in the log (Story 24.17 Batch 2); whose <method>VendorLogPurge</method> answers what
 /// <code>^IRIS.Temp.OcuProbe2417LogMode</code> says: <code>status</code> to delete the oldest probe of the log and answer an error status that carries a marker text, <code>fault</code> to
 /// raise an error, <code>roles</code> to change the process's roles and then raise, <code>rolesok</code> to run the vendor's own purge and then change them, anything else the vendor's own purge;
-/// whose <method>LogHere</method> raises when the mode is <code>here</code>, or at its second call when it is <code>herestate</code>; and whose two list limits are three. The namespace, the kind, the days and the roles before the call are kept under the
+/// whose <method>LogHere</method> raises when the mode is <code>here</code>; and whose two list limits are three. The namespace, the kind, the days and the roles before the call are kept under the
 /// global's <code>ranIn</code>, <code>kind</code>, <code>days</code> and <code>before</code> subscripts. <method>ClearLog</method> forgets the lines.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.InteropLogPurgeSeam Extends OcuPilot.Port.InteropPort
@@ -108,12 +108,10 @@ ClassMethod VendorLogPurge(pKind As %String, pDays As %Integer, Output pDeleted)
     Quit ##super(pKind, pDays, .pDeleted)
 }
 
-/// <p>Raise inside each namespace-switched block of the privilege check and the state read when the mode is <code>here</code>; when it is <code>herestate</code>, only at the second call, which
-/// is the state read's own block after its privilege check has passed.</p>
+/// <p>Raise inside each namespace-switched block of the list's privilege check and the state read when the mode is <code>here</code>.</p>
 ClassMethod LogHere() [ Private ]
 {
-    Set tMode = $Get(^IRIS.Temp.OcuProbe2417LogMode)
-    If (tMode = "here") || ((tMode = "herestate") && ($Increment(^IRIS.Temp.OcuProbe2417LogMode("hereCalls")) = 2)) {
+    If $Get(^IRIS.Temp.OcuProbe2417LogMode) = "here" {
         Set ^IRIS.Temp.OcuProbe2417LogMode("hereIn") = $NAMESPACE
         Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, ..#MARKER _ " raised in the log's namespace"))
     }

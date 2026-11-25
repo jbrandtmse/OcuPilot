@@ -1,6 +1,6 @@
 /// <p>Pins Story 24.17 Batch 2's gate as real principals in a child process (AD-8, AD-29, AD-39, AD-62): every read and purge of the two logs is refused before any vendor call and before any value
 /// is judged, naming the pair that fails: the portal's, the classic page's own resource, the purge resource a purge adds, WRITE on the namespace's database and, for a read, the SQL SELECT
-/// privilege on the log's table. The last is pinned by equality with the classic page: for each principal and each log, the list is admitted exactly when the classic page's own query prepares as
+/// privilege on the log's table, which a list alone is asked. The last is pinned by equality with the classic page: for each principal and each log, the list is admitted exactly when the classic page's own query prepares as
 /// that principal through <class>%Library.ResultSet</class>, and is refused exactly when that answers <code>#5580</code>. A refused purge changes nothing and an admitted one deletes the old probe.</p>
 /// <p><b>What it needs from the environment:</b> what <class>OcuPilot.Test.InteropLogPurgeCase</class> needs; it creates and removes seven principals and their SQL grants in <code>USER</code>.</p>
 Class OcuPilot.Test.InteropLogPurgeGate Extends OcuPilot.Test.InteropLogPurgeCase
@@ -81,10 +81,10 @@ ClassMethod Expect(pPair As %String = "") As %String
 /// <p>AC3: the gate, as real principals in a child process, refuses before any vendor call and before any value is judged, naming the pair: a principal holding every pair and the SQL SELECT reads and
 /// purges both logs and deletes the old probes; one without <code>%Ens_Purge:USE</code> reads and is refused each purge naming it; one who can only read <code>USER</code>'s database reads and is refused each
 /// purge naming <code>%DB_USER:WRITE</code>; one without the rule log's resource is refused each rule log call naming it, and one without the business process resource each business process call;
-/// and one with every pair and no SQL SELECT is refused each read naming the table and <code>SELECT</code> while its purges, which the classic pages ask no SQL privilege of, run. A refused purge changed
-/// nothing.</p>
+/// and one with every pair and no SQL SELECT is refused each list naming the table and <code>SELECT</code> while its state reads and purges, which the classic pages ask no SQL privilege of, run
+/// and answer the log's count. A refused purge changed nothing.</p>
 /// <p>Mutation (Rule 19): drop <parameter>OcuPilot.Port.InteropPort.LOGPURGEPAIR</parameter> from <method>OcuPilot.Port.InteropPort.Pairs</method> -- the <code>OcuP2417gNoPurge</code> legs go red; drop
-/// <method>OcuPilot.Port.InteropPort.LogSelectGate</method> from <method>OcuPilot.Port.InteropPort.ListLog</method> -- the <code>OcuP2417gNoSelect</code> list legs go red.</p>
+/// <method>OcuPilot.Port.InteropPort.LogSelectGate</method> from <method>OcuPilot.Port.InteropPort.ListLog</method> -- the <code>OcuP2417gNoSelect</code> list legs go red; call it at the head of <method>OcuPilot.Port.InteropPort.ReadLogState</method> -- the <code>OcuP2417gNoSelect</code> state and purge legs go red.</p>
 Method TestTheGateRefusesEachPrincipalBeforeAnyVendorCall()
 {
     Set tSC = ..CreateGated()
@@ -102,7 +102,7 @@ Method TestTheGateRefusesEachPrincipalBeforeAnyVendorCall()
     Set tExpected("OcuP2417gDbRead") = $ListBuild(tOk, tOk, tOk, tOk, tDb, tDb)
     Set tExpected("OcuP2417gNoRule") = $ListBuild(tRule, tOk, tRule, tOk, tRule, tOk)
     Set tExpected("OcuP2417gNoJobs") = $ListBuild(tOk, tJobs, tOk, tJobs, tOk, tJobs)
-    Set tExpected("OcuP2417gNoSelect") = $ListBuild(tSelectRule, tSelectProcess, tSelectRule, tSelectProcess, tOk, tOk)
+    Set tExpected("OcuP2417gNoSelect") = $ListBuild(tSelectRule, tSelectProcess, tOk, tOk, tOk, tOk)
     Set tUser = ""
     For {
         Set tUser = $Order(tExpected(tUser))
@@ -121,6 +121,7 @@ Method TestTheGateRefusesEachPrincipalBeforeAnyVendorCall()
             Set tLeg = tOut.%Get(tLegName)
             Set tGot = $Select($IsObject(tLeg): tLeg.http _ "|" _ tLeg.%Get("code") _ "|" _ tLeg.%Get("failedPair"), 1: "no answer")
             Do $$$AssertEquals(tGot, $List(tExpected(tUser), tI), tUser _ ": the " _ tLegName _ " leg is answered as declared")
+            If $IsObject(tLeg) && (tGot = tOk) && (tLegName '= "list") && (tLegName '= "plist") Do $$$AssertTrue(tLeg.%Get("count") '= "", tUser _ ": the " _ tLegName _ " answer carries the log's count, which is the purge's fresh read")
             If (tLegName = "rpurge") && (tGot = tOk) Set tRuleDone = 1
             If (tLegName = "ppurge") && (tGot = tOk) Set tProcessDone = 1
         }
