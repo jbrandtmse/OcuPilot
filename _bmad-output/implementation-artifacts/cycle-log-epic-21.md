@@ -1124,3 +1124,4 @@
 2026-11-25T15:46:22Z	Story 21.40	code_head_pushed	sha=1c36eef57 run=45648536752 parent=M_6f3591d29(feature_f441bbb11) note=one-constant_head_alone(orchestrator_ruling)
 2026-11-25T15:46:57Z	Epic 21	stage_spawned	stage=epic_context_prewarm spawn_at=2026-11-25T15:46:57Z model=opus agent_name=e21-context-prewarm reason=planning_artifact_newer(since_2026-11-15;21.31/21.40/feature_merges) cycle_iteration=1
 2026-11-25T15:49:55Z	Epic 21	epic_context_compiled	reason=planning_artifact_newer(since_2026-11-15) model=opus lines=110 agent=e21-context-prewarm
+2026-11-25T15:50:25Z	Story 21.26	stage_spawned	stage=plan spawn_at=2026-11-25T15:50:25Z model=opus agent_name=21-26-plan cycle_iteration=1 prompt=e21-kit/21-26/plan/prompt.md
