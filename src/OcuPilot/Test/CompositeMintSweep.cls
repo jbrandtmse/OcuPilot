@@ -68,6 +68,7 @@ ClassMethod Roster() As %DynamicArray
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.SqlActivityMint", "args": {"server": "ProbeServer:1972", "processId": "4242", "statementHash": "ProbeHash"}, "idValue": "4242", "parts": ["ProbeServer:1972", "4242", "ProbeHash"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.InteropDefaultSettingMint", "args": {"Production": "Probe.Production", "Item": "ProbeItem", "HostClass": "ProbeHost", "Setting": "ProbeSetting"}, "idValue": "ProbeSetting", "parts": ["Probe.Production", "ProbeItem", "ProbeHost", "ProbeSetting"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.SqlIndexMint", "args": {"Table": "ProbeSchema.ProbeTable", "Map": "ProbeIndex"}, "idValue": "ProbeIndex", "parts": ["ProbeSchema.ProbeTable", "ProbeIndex"]})
+    Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.SqlFieldMint", "args": {"Table": "ProbeSchema.ProbeTable", "Field": "ProbeField"}, "idValue": "ProbeField", "parts": ["ProbeSchema.ProbeTable", "ProbeField"]})
     Quit tRoster
 }
 

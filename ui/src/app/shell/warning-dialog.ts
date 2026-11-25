@@ -12,8 +12,13 @@ export interface WarningAnswer {
   readonly value?: string;
 }
 
-/** A whole number of megabytes as the field takes it: digits only, surrounding space ignored. */
-const WHOLE_NUMBER = /^[0-9]{1,9}$/;
+/** How many digits a whole-number field takes unless the caller names a bound. */
+const DEFAULT_DIGITS = 9;
+
+/** A whole number as the field takes it: digits only, at most `digits` of them, surrounding space ignored. */
+function wholeNumber(text: string, digits: number): boolean {
+  return new RegExp(`^[0-9]{1,${digits}}$`).test(text);
+}
 
 /**
  * The warning before a non-delete write (EXPERIENCE.md `confirm-dialog`): the title is the verb,
@@ -111,6 +116,9 @@ export class WarningDialog {
   /** What the field takes: a whole number, as every field before Story 18.46, or free text. */
   readonly fieldKind = input<'number' | 'text'>('number');
 
+  /** The most digits a whole-number field takes. */
+  readonly fieldDigits = input(DEFAULT_DIGITS);
+
   /** Emitted once, when Proceed is pressed and released, with the checkbox's state and the field's value. */
   readonly confirmed = output<WarningAnswer>();
 
@@ -134,7 +142,7 @@ export class WarningDialog {
   protected readonly typed = signal('');
 
   /** Whether the field, where drawn, holds what its kind takes: a whole number, or any non-blank text. */
-  private readonly whole = computed(() => (this.fieldKind() === 'text' ? this.typed().trim() !== '' : WHOLE_NUMBER.test(this.typed().trim())));
+  private readonly whole = computed(() => (this.fieldKind() === 'text' ? this.typed().trim() !== '' : wholeNumber(this.typed().trim(), this.fieldDigits())));
 
   protected get advisoryVisible(): boolean {
     return this.advisory() !== '';

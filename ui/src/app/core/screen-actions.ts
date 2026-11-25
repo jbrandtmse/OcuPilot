@@ -211,10 +211,13 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     'rebuild-indices': STRINGS.sqlTableRebuildAllAction,
     tune: STRINGS.sqlTableTuneAction,
     'clear-statistics': STRINGS.sqlTableClearStatisticsAction,
+    'set-extent-size': STRINGS.sqlTableSetExtentSizeAction,
   },
   // Story 21.25: a schema's Tune all tables.
   'OcuPilot.Screen.Descriptor.ExplorerSqlSchema': { tune: STRINGS.sqlSchemaTuneAction },
-  'OcuPilot.Screen.Descriptor.ExplorerSqlIndices': { rebuild: STRINGS.sqlIndexRebuildAction },
+  'OcuPilot.Screen.Descriptor.ExplorerSqlIndices': { rebuild: STRINGS.sqlIndexRebuildAction, 'set-map-size': STRINGS.sqlIndexSetMapSizeAction },
+  // Story 21.31: the Field statistics tab's Set selectivity.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlFieldStatistics': { 'set-selectivity': STRINGS.sqlFieldSetSelectivityAction },
   // Story 21.20: SQL activity's Cancel query and System alerts' Reset alerts.
   'OcuPilot.Screen.Descriptor.SqlActivityList': { cancel: STRINGS.sqlActivityCancelAction },
   'OcuPilot.Screen.Descriptor.SystemAlertsList': { reset: STRINGS.systemAlertsResetAction },

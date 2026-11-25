@@ -438,10 +438,51 @@ Parameter TABLETUNESCHEMA = "SQL.TABLE.TUNESCHEMA";
 
 Parameter REASONTABLETUNESCHEMA = "Every table in this schema is measured as Collect statistics measures one.";
 
+/// <p>The consequence codes of the three fixed-statistics setters, which share one sentence (Story 21.31).</p>
+Parameter TABLESETEXTENTSIZE = "SQL.TABLE.SETEXTENTSIZE";
+
+Parameter TABLESETSELECTIVITY = "SQL.TABLE.SETSELECTIVITY";
+
+Parameter TABLESETMAPSIZE = "SQL.TABLE.SETMAPSIZE";
+
+Parameter REASONTABLESET = "The optimizer uses this value in place of the collected one until the table's fixed statistics are cleared. If the table's statistics were collected, they are first saved as its fixed statistics.";
+
+/// <p>The shape refusals of the setters' values, each 400 <code>BAD_REQUEST</code> before any vendor call, from either caller (Story 21.31): an extent
+/// size, a selectivity (and an outlier selectivity), a whole number 0 or more (a field's average size), a whole number 1 or more (a map's size), and an
+/// outlier value.</p>
+Parameter TABLEEXTENTSIZE = "SQL.TABLE.EXTENTSIZE";
+
+Parameter REASONTABLEEXTENTSIZE = "Enter a whole number from 0 to 1,000,000,000,000.";
+
+Parameter TABLESELECTIVITY = "SQL.TABLE.SELECTIVITY";
+
+Parameter REASONTABLESELECTIVITY = "Enter 1, or a percentage over 0% and up to 99.999%.";
+
+Parameter TABLEWHOLENUMBER = "SQL.TABLE.WHOLENUMBER";
+
+Parameter REASONTABLEWHOLENUMBER = "Enter a whole number, 0 or more.";
+
+Parameter TABLEOUTLIERVALUE = "SQL.TABLE.OUTLIERVALUE";
+
+Parameter REASONTABLEOUTLIERVALUE = "Enter at most 128 characters.";
+
+Parameter TABLEMAPSIZE = "SQL.TABLE.MAPSIZE";
+
+Parameter REASONTABLEMAPSIZE = "Enter a whole number, 1 or more.";
+
+/// <p>The reason of a <code>SQL.TABLE.VENDOR</code> refusal of a setter after the table's collected statistics were saved as its fixed statistics.</p>
+Parameter REASONTABLESETUNAPPLIED = "The table's collected statistics were saved as its fixed statistics, but the new value was not set.";
+
 /// <p>The sentence <var>pCode</var>, one of the <code>SQL.STATEMENT.*</code>, <code>SQL.CACHEDQUERY.*</code> and <code>SQL.TABLE.*</code> codes above,
-/// carries, or <code>""</code> for any other code (Stories 21.6 and 21.25).</p>
+/// carries, or <code>""</code> for any other code (Stories 21.6, 21.25 and 21.31).</p>
 ClassMethod SqlReasonFor(pCode As %String) As %String
 {
+    If (pCode = ..#TABLESETEXTENTSIZE) || (pCode = ..#TABLESETSELECTIVITY) || (pCode = ..#TABLESETMAPSIZE) Quit ..#REASONTABLESET
+    If pCode = ..#TABLEEXTENTSIZE Quit ..#REASONTABLEEXTENTSIZE
+    If pCode = ..#TABLESELECTIVITY Quit ..#REASONTABLESELECTIVITY
+    If pCode = ..#TABLEWHOLENUMBER Quit ..#REASONTABLEWHOLENUMBER
+    If pCode = ..#TABLEOUTLIERVALUE Quit ..#REASONTABLEOUTLIERVALUE
+    If pCode = ..#TABLEMAPSIZE Quit ..#REASONTABLEMAPSIZE
     If pCode = ..#TABLEVENDOR Quit ..#REASONTABLEVENDOR
     If pCode = ..#TABLEDATAMAP Quit ..#REASONTABLEDATAMAP
     If pCode = ..#TABLEREBUILD Quit ..#REASONTABLEREBUILD

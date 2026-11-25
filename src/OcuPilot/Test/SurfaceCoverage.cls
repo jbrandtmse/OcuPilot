@@ -576,6 +576,9 @@ XData Coverage
 <tool name="explorer.sqltable.tune" class="OcuPilot.Test.SqlTableTune" method="TestTheToolsDeclareTheirWritePath" corpus="the three statistics writes are asserted together in one loop"/>
 <tool name="explorer.sqltable.clearstatistics" class="OcuPilot.Test.SqlTableTune" method="TestTheToolsDeclareTheirWritePath" corpus="the three statistics writes are asserted together in one loop"/>
 <tool name="explorer.sqlschematables.tune" class="OcuPilot.Test.SqlTableTune" method="TestTheToolsDeclareTheirWritePath" corpus="the three statistics writes are asserted together in one loop"/>
+<tool name="explorer.sqltable.setextentsize" class="OcuPilot.Test.SqlTableFixedStats" method="TestTheToolsDeclareTheirWritePath" corpus="the three setters are asserted together in one loop"/>
+<tool name="explorer.sqlindices.setmapsize" class="OcuPilot.Test.SqlTableFixedStats" method="TestTheToolsDeclareTheirWritePath" corpus="the three setters are asserted together in one loop"/>
+<tool name="explorer.sqlfieldstatistics.setselectivity" class="OcuPilot.Test.SqlTableFixedStats" method="TestTheToolsDeclareTheirWritePath" corpus="the three setters are asserted together in one loop"/>
 <tool name="explorer.globals.delete" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
 <tool name="explorer.globalnodes.save" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
 <tool name="explorer.globalnodes.delete" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>

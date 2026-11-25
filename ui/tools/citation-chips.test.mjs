@@ -21,7 +21,7 @@ const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 const { parseCitations, acceptsEntityId, citationPresence, citationScreen, formatCitationAbsent } = await import(
   corePath('citations.ts')
 );
-const { entityUrl } = await import(corePath('navigation.ts'));
+const { entityUrl, screenForEntityType } = await import(corePath('navigation.ts'));
 const { encodeEntityId } = await import(corePath('entity-id.ts'));
 const { SCREENS } = await import(corePath('screens.generated.ts'));
 const { STRINGS } = await import(corePath('strings.ts'));
@@ -45,6 +45,23 @@ test('parseCitations keeps only routes the registry builds, on screens that open
   assert.deepEqual(parsed, [USERS]);
   assert.deepEqual(parseCitations(undefined), [], 'a missing member reads as none');
   assert.deepEqual(parseCitations({}), [], 'and so does anything that is not an array');
+});
+
+// Story 21.31, AC4: the Field statistics tab shows its rows under `sql-field`, and a stored `class`
+// reference to a table still opens the class screen, not that tab.
+test('a stored class citation of a table still resolves to the class screen while sql-field is a registered type', () => {
+  const classScreen = screenForEntityType('class');
+  assert.ok(classScreen !== null && classScreen.route === 'system-explorer/classes', 'the class type opens the class list');
+  const field = SCREENS.find((screen) => screen.built && screen.entityType === 'sql-field');
+  assert.ok(field !== undefined && field.route !== classScreen.route, 'sql-field is registered, on a screen of its own');
+  const stored = { type: 'class', scope: 'USER', id: 'OcuProbe225.T1', route: classScreen.route, label: 'OcuProbe225.T1' };
+  assert.deepEqual(parseCitations([stored]), [stored], 'the stored citation is still accepted');
+  assert.equal(citationScreen(stored.route), classScreen, 'and opens the class screen');
+  assert.equal(
+    entityUrl(stored.route, stored.id, stored.scope, '/home?ns=USER'),
+    `/${classScreen.route}/${encodeEntityId(stored.id)}?ns=USER`,
+    'at the table, in the namespace the citation names'
+  );
 });
 
 test('acceptsEntityId: single, or composite with exactly one part', () => {

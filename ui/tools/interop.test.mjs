@@ -384,7 +384,7 @@ test('the README states the count of the agent actions that ship switched off an
   const readme = readFileSync(README, 'utf8').replace(/\s+/g, ' ');
   assert.ok(readme.includes(`${numberWords(off)} agent actions ship switched off`), `the README says ${numberWords(off)} agent actions ship switched off: the ${offKeys.length} false keys of the baseline less the ${personOnly.length} a person alone runs`);
   assert.ok(
-    readme.includes('running SQL that changes data or the schema, clearing an SQL statement\'s run statistics, cleaning out the SQL statements no class or routine still holds, rebuilding one or all of a table\'s indices, removing a table\'s fixed statistics, collecting the statistics of every table in a schema, purging the audit database'),
+    readme.includes('running SQL that changes data or the schema, clearing an SQL statement\'s run statistics, cleaning out the SQL statements no class or routine still holds, rebuilding one or all of a table\'s indices, removing a table\'s fixed statistics, collecting the statistics of every table in a schema, setting a table\'s extent size, a field\'s selectivity or an index\'s map size, purging the audit database'),
     'the off list names the SQL statement, index, statistics and schema writes'
   );
   assert.ok(

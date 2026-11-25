@@ -384,7 +384,8 @@ Method TestTablesAndASchemaWhoseNamesHoldAQuoteAreTunedOnBothCallers()
     Do $$$AssertEquals($Piece($ClassMethod(..#PROBE, "SchemataRead", ..#NAMESPACE), "|", 2), 100, "and the instance's schema list reads to its end")
 }
 
-/// <p>AC3. The table's Info tab and the schema's Tables tab declare the command aliases the story rules, and no other: "table statistics" is not one.</p>
+/// <p>AC3. The table's Info tab and the schema's Tables tab declare the command aliases the story rules, and no other: "table statistics" belongs to the
+/// Field statistics tab (Story 21.31).</p>
 /// <p>Mutation (Rule 19): add <code>"table statistics"</code> to <class>OcuPilot.Screen.Descriptor.ExplorerSqlSchema</class>'s <code>commandAliases</code>
 /// -> the schema assertion goes red.</p>
 Method TestTheTabsDeclareOnlyTheirRuledCommandAliases()
@@ -530,6 +531,7 @@ Method TestTheFieldStatisticsTabAndTheAgentsReadAnswerTheDirectRows()
         Set tSeen = tSeen + 1
         Set tShown = tRow.Selectivity _ "|" _ tRow.OutlierValue _ "|" _ tRow.OutlierSelectivity _ "|" _ tRow.AverageFieldSize _ "|" _ tRow.FixedSelectivity _ "|" _ tRow.FixedOutlierValue _ "|" _ tRow.FixedOutlierSelectivity _ "|" _ tRow.FixedAverageFieldSize
         Do $$$AssertEquals(tShown, $Get(tDirect(tRow.Field)), "field " _ tRow.Field _ " reads what the direct select reads")
+        Do $$$AssertEquals(tRow.Table, tTable, "field " _ tRow.Field _ " names its table, which with the field is its composite id")
         If tRow.Field = "B" {
             Do $$$AssertEquals(tRow.FixedSelectivity _ "|" _ tRow.Selectivity, "2.5000%|20.0000%", "field B shows its fixed selectivity under the fixed heading and the collected one under its own: " _ tShown)
         } ElseIf tRow.Field '= "ID" {
@@ -537,7 +539,9 @@ Method TestTheFieldStatisticsTabAndTheAgentsReadAnswerTheDirectRows()
         }
     }
     Do $$$AssertTrue(tSeen >= 3, "the tab shows each field: " _ tSeen)
-    Do $$$AssertEquals($ClassMethod(..#READS, "Declaration", ..#STATISTICSDESCRIPTOR).tab.position _ "|" _ $ClassMethod(..#READS, "Declaration", ..#STATISTICSDESCRIPTOR).entityType _ "|" _ $ClassMethod(..#READS, "Declaration", ..#STATISTICSDESCRIPTOR).rowActions.%Size(), "10|class|0", "the tab is the tenth, a read of the class entity with no row action")
+    Do $$$AssertEquals($ClassMethod(..#READS, "Declaration", ..#STATISTICSDESCRIPTOR).tab.position _ "|" _ $ClassMethod(..#READS, "Declaration", ..#STATISTICSDESCRIPTOR).entityType _ "|" _ $ClassMethod(..#READS, "Declaration", ..#STATISTICSDESCRIPTOR).rowActions.%Size(), "10|sql-field|1", "the tab is the tenth, a read of the sql-field entity with its one row action")
+    Set tDeclaration = $ClassMethod(..#READS, "Declaration", ..#STATISTICSDESCRIPTOR)
+    Do $$$AssertEquals(tDeclaration.id.kind _ "|" _ tDeclaration.id.parts.%ToJSON() _ "|" _ tDeclaration.rowActions.%Get(0).id _ "|" _ tDeclaration.commandAliases.%ToJSON() _ "|" _ tDeclaration.table.emptyNextKey _ "|" _ tDeclaration.table.emptyAgentKey, "composite|[""Table"",""Field""]|set-selectivity|[""table statistics""]||explorerSqlSchemaTuneEmptyAgent", "its rows are keyed by the composite [Table, Field], and it carries the ruled alias and empty state")
 }
 
 }

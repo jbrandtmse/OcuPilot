@@ -131,6 +131,9 @@ const {
   CONSEQUENCE_SQLTABLETUNE,
   CONSEQUENCE_SQLTABLECLEARSTATISTICS,
   CONSEQUENCE_SQLTABLETUNESCHEMA,
+  CONSEQUENCE_SQLTABLESETEXTENTSIZE,
+  CONSEQUENCE_SQLTABLESETSELECTIVITY,
+  CONSEQUENCE_SQLTABLESETMAPSIZE,
   countdownPhase,
   countdownRemaining,
   formatCountdown,
@@ -335,6 +338,22 @@ test("the table writes' consequence codes resolve to their published sentences",
   assert.equal(consequenceSentence(CONSEQUENCE_SQLTABLECLEARSTATISTICS), STRINGS.sqlTableClearStatisticsConsequence);
   assert.equal(consequenceSentence(CONSEQUENCE_SQLTABLETUNESCHEMA), STRINGS.sqlSchemaTuneConsequence);
   assert.notEqual(STRINGS.sqlTableRebuildConsequence, STRINGS.sqlTableRebuildAllConsequence, 'the two rebuilds publish different sentences');
+});
+
+// Story 21.31: the three fixed-statistics setters' consequence codes each resolve to the one sentence they share, and each is the code the
+// server declares.
+//
+// Mutation (Rule 19): drop the CONSEQUENCE_SQLTABLESETMAPSIZE leg of the setters' branch in `consequenceSentence` -> the map size leg goes red.
+test("the fixed-statistics setters' consequence codes resolve to their shared published sentence", () => {
+  const server = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Api', 'AtelierError.cls'), 'utf8');
+  for (const [constant, parameter] of [
+    [CONSEQUENCE_SQLTABLESETEXTENTSIZE, 'TABLESETEXTENTSIZE'],
+    [CONSEQUENCE_SQLTABLESETSELECTIVITY, 'TABLESETSELECTIVITY'],
+    [CONSEQUENCE_SQLTABLESETMAPSIZE, 'TABLESETMAPSIZE'],
+  ]) {
+    assert.equal(new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(server)?.[1], constant, `${parameter} is the server's code`);
+    assert.equal(consequenceSentence(constant), STRINGS.sqlTableSetConsequence, `${constant} resolves to the setters' sentence`);
+  }
 });
 
 // Story 14.2, AC10: the agent's audit purge is minted destructive carrying the purge tool's own

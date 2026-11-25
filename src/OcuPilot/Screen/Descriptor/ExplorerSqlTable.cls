@@ -13,9 +13,10 @@
 /// namespace's code databases (AD-29). It replaces <code>%CSP.UI.Portal.SQL.Home</code>, whose
 /// custom resource also gates it (AD-44). It does not refresh (AD-43).</p>
 /// <p><b>Its entity type is <code>sql-table</code></b> (Story 21.25): the table, keyed by <code>Schema.Table</code>, which the tab's page action
-/// <code>rebuild-indices</code>, <code>tune</code> and <code>clear-statistics</code> act on, carried out by
-/// <class>OcuPilot.Screen.Tool.ExplorerSqlTableRebuildIndices</class>, <class>OcuPilot.Screen.Tool.ExplorerSqlTableTune</class> and
-/// <class>OcuPilot.Screen.Tool.ExplorerSqlTableClearStatistics</class> for both callers (AD-53). A table of OcuPilot's own is refused for all three.</p>
+/// <code>rebuild-indices</code>, <code>tune</code>, <code>clear-statistics</code> and <code>set-extent-size</code> act on, carried out by
+/// <class>OcuPilot.Screen.Tool.ExplorerSqlTableRebuildIndices</class>, <class>OcuPilot.Screen.Tool.ExplorerSqlTableTune</class>,
+/// <class>OcuPilot.Screen.Tool.ExplorerSqlTableClearStatistics</class> and <class>OcuPilot.Screen.Tool.ExplorerSqlTableSetExtentSize</class> for both callers
+/// (AD-53). A table of OcuPilot's own is refused for all four.</p>
 Class OcuPilot.Screen.Descriptor.ExplorerSqlTable Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -37,7 +38,7 @@ XData Declaration
   "parentScope": "system-explorer/sql-tables",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [{"id": "rebuild-indices", "selfProtection": ""}, {"id": "tune", "selfProtection": ""}, {"id": "clear-statistics", "selfProtection": ""}],
+  "rowActions": [{"id": "rebuild-indices", "selfProtection": ""}, {"id": "tune", "selfProtection": ""}, {"id": "clear-statistics", "selfProtection": ""}, {"id": "set-extent-size", "selfProtection": ""}],
   "context": {"fields": ["Name", "Owner", "LastCompiled", "External", "ReadOnly", "Partitioned", "Class", "ExtentSize", "ExternalType"], "secretFields": []},
   "emptyStateKey": "explorerSqlTableEmpty",
   "commandAliases": ["rebuild indices", "tune table"],
