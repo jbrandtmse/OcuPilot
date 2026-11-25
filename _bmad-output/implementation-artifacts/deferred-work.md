@@ -14647,6 +14647,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-40-the-governance-page-s-render-cost.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Worst local settle 1,818 ms; 1.4 x that is about 2,545 ms against 3,000 ms (inference). The bound follows the plan-gate ruling's derivation.
 - 2026-11-24T05:09:46Z status=by-design owner=21-40-the-governance-page-s-render-cost by=cr note=ruling's derivation is authoritative; a CI red on AC2's settle reopens it via the ruling
+- 2026-11-25T15:43:29Z status=routed owner=21-40-the-governance-page-s-render-cost by=adjudication note=reopened by the orchestrator ruling of 2026-11-24/25: the settle bound must cover the CI runner's measured slowdown (1.6)
+- 2026-11-25T15:43:29Z status=resolved-by:21-40-the-governance-page-s-render-cost by=adjudication note=SETTLE_BOUND_MS 3000->5000 (1818 x 1.6 x 1.5 = 4363, rounded up); local 4x on ocupilot-ci 2/2 settled 1730 ms; mutation 3500 ms Fetch delay -> AC2 red at 5265 ms
 
 ### DW-2870: Baseline.SeedFrom and Policy.Cascade would error on a pBaseline object that is not a %DynamicObject
 - source: spec-21-40-the-governance-page-s-render-cost.md | severity: low | fix-risk: low | footprint: in-story

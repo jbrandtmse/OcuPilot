@@ -79,14 +79,14 @@ deferred:
   - On a page CDP session, `Fetch.enable` for the governance path at `requestStage: 'Response'`. A GET answer's `keys` get a `.x2` copy of every row, in name order; the test fulfils with the new body and drops `content-length`. Anything else continues.
   - Then `Emulation.setCPUThrottlingRate` 4, and a `longtask` `PerformanceObserver` from a start mark.
   - `goInApp` to `/ocupilot/agent/governance?ns=HSCUSTOM`.
-  - Assert `settled` true and `ms` ≤ 3000. The `.ocu-governance-key` count equals twice the keys of an unmodified GET from Node, read in the same test. The longest long task after the mark is ≤ 1000 ms.
+  - Assert `settled` true and `ms` ≤ 5000. The `.ocu-governance-key` count equals twice the keys of an unmodified GET from Node, read in the same test. The longest long task after the mark is ≤ 1000 ms.
   - Throttle back to 1 and close the context in `finally`.
   - DW-1822.
 
 **Acceptance Criteria:**
 
 - Given `ocupilot-ci` on this story's tree, when `GET /api/ocupilot/agent/governance` answers, then its body equals the pre-change answer for the same state, and `Effective` parses the Baseline once: `TestOneReadResolvesEveryRowFromOneParse` passes, and `Governance` and `GovernanceWire` stay green.
-- Given the Governance page at 1280 px light, CPU throttled 4x, with the read's keys doubled in the browser, when it is opened from the shell with the walk's `goInApp`, then it settles within 3,000 ms, it draws twice the instance's key count, and no long task exceeds 1,000 ms (DW-1822).
+- Given the Governance page at 1280 px light, CPU throttled 4x, with the read's keys doubled in the browser, when it is opened from the shell with the walk's `goInApp`, then it settles within 5,000 ms, it draws twice the instance's key count, and no long task exceeds 1,000 ms (DW-1822).
 - Given scratch tree C (Baseline and write keys doubled, outside the worktree, never committed) loaded on `ocupilot-ci` with this fix, when the read is timed by `curl` three times, then its median is within 0.3 s of tree B's. The pre-fix gap was 1.9 s (3.5 s against 1.6 s). Recorded under Verification. `ocupilot-ci` is then restored to this story's tree.
 
 ### Review Findings
@@ -120,6 +120,7 @@ Rejected:
   - **The bounds are measured after the fix, not fixed in advance.** Measure tree C at 4x again on `ocupilot-ci` with at least 5 cold runs. The settle bound is at least 1.5 times the worst of those runs, rounded up to a whole second. The longest-task bound is derived the same way, and 1,000 ms is used only if 1.5 times the measured worst is at or below it. Record both measurements and the derivation in Design Notes; the 5,000 ms and 1,000 ms figures above are superseded.
   - **The registry cache stays deferred.** Caching across requests needs invalidation on compile and upgrade, so it is a story of its own (`deferred:`, ledgered low to burn-down). **The panel's forced layout is not changed.** No markup change and no new strings.
   - **DW-1822 is re-owned at this story's end, not resolved.** The runner routes it to burn-down with the measurements.
+- 2026-11-25, orchestrator ruling before the merge: the settle bound also covers the CI runner's slowdown, 1,818 ms x 1.6 x 1.5 = 4,363 ms, so 5,000 ms; the longest-task bound stays 1,000 ms (248 x 1.6 x 1.5 = 595 ms). DW-2869.
 
 ## Review Triage Log
 
@@ -185,7 +186,7 @@ Trees:
 | The test's own: this tree, the answer doubled in the browser | 6 | 1817, 1818, 1716, 1714, 1719, 1814 | 232, 248, 241, 227, 235, 245 |
 | Tree C with the fix: Baseline and write keys doubled on the instance | 6 | 1610, 1712, 1709, 1716, 1716, 1716 | 239, 227, 240, 221, 229, 240 |
 
-- Worst settle is 1,818 ms; 1.5 times it is 2,727 ms, so the bound is 3,000 ms.
+- Worst settle is 1,818 ms; times the CI runner's measured slowdown of 1.6 (24.16 Batch 3's shards, the node-22 client suite) and 1.5, it is 4,363 ms, so the bound is 5,000 ms.
 - Worst longest task is 248 ms; 1.5 times it is 372 ms, at or below 1,000 ms, so the bound stays 1,000 ms.
 - The read by `curl`, median of three: 1.18 s on this tree and 1.18 s on tree C (1.205, 1.176, 1.182), against 1.6 s and 3.5 s before the fix. The answer on this tree is byte-identical to the pre-change answer.
 
@@ -200,7 +201,7 @@ Trees:
 
 - The fix cuts the read's per-row parse ("less work per row") and leaves the page's markup alone. Collapsed groups would need new grouping and strings for at most 0.2 s at 4x. Virtualisation would take rows out of the DOM that the a11y walk inspects.
 - The doubled count is made in the browser: Fetch fulfils the real GET answer with `.x2` copies. That gives the page's render at twice the keys with no fake key on the instance. The server half is pinned by `TestOneReadResolvesEveryRowFromOneParse`.
-- The bounds are 3,000 ms settle and 1,000 ms longest task, derived from the post-fix measurements below. Before the fix, at 4x and double the keys with the server doubled too, the settle was 4.1 s and the longest task 222 ms.
+- The bounds are 5,000 ms settle and 1,000 ms longest task, derived from the post-fix measurements below. Before the fix, at 4x and double the keys with the server doubled too, the settle was 4.1 s and the longest task 222 ms.
 
 **Rule 2:**
 
@@ -235,7 +236,7 @@ Trees:
 - mutation (server, empty list): `SeedFrom`'s `%GetTypeOf(pKey) '= "boolean"` guard removed -> `TestOneReadResolvesEveryRowFromOneParse` red (an empty list's rows read disabled instead of absent). Reverted and reloaded into `ocupilot-ci`, `git diff` showing only the added method, and the test green again (run 1012).
 - mutation (browser): a 1,500 ms synchronous busy loop at the top of `GovernancePage.rowViews` -> after a rebuild and redeploy, only AC2 red, "the longest task ran 1742 ms, over 1000 ms" (AC1 stayed green). The `.x2` doubling removed from the Fetch handler -> AC2 red on the row count (371 against 742). Each reverted, rebuilt and redeployed, `git status` showing no change to `governance.page.ts`.
 - mutation (review, server): `SeedFrom` answering `1` for every listed key -> only `TestRowsEqualThePerKeyPath` red (run 1017); `TestOneReadResolvesEveryRowFromOneParse` stayed green. `Rows` without its non-object guard -> the same test red on "Rows given no list" (run 1018). Each reverted, `git diff` clean on the mutated lines, reloaded, green (run 1021).
-- mutation (review, browser): a 1,300 ms wait before the Fetch handler fulfils the governance answer -> AC2 red, "the page settled in 3150 ms, over 3000 ms". Reverted, `git status` showing only the review's patches.
+- mutation (bound 5,000 ms, browser): a 3,500 ms wait before the Fetch handler reads the governance answer -> only AC2 red, "the page settled in 5265 ms, over 5000 ms" (AC1 green). Reverted, the file byte-identical to its pre-mutation copy. Unmutated on `ocupilot-ci` with the bundle rebuilt and redeployed: 2 of 2, 744 keys settled in 1730 ms, longest task 206 ms.
 - review evidence on `ocupilot-ci`: a stored policy (read-only preset, then no preset, with 186 keys enabled or disabled) -> `TestRowsEqualThePerKeyPath`'s `Effective` comparison green over each (runs 1019, 1020); the policy cleared and the answer byte-identical to the one read before (372 keys). A baseline line flipped and reloaded -> the next GET answers it (no parse outlives a read); reverted and byte-identical again.
 
 Shared surfaces: none (no roster, menu, schema or count changes; `governance.browser-spec.mjs` gains one test and its time in `ci-timings.json` follows at the next refresh). Every test added or changed passes on a fresh environment, in either order.
@@ -245,7 +246,7 @@ Shared surfaces: none (no roster, menu, schema or count changes; `governance.bro
 Status: done
 Blocking condition: none
 
-Summary: a governance read parses the Baseline once (`Effective` calls `Baseline.Keys` once and hands the list to the new `Policy.Rows`; `Cascade` takes an optional parsed list; `Baseline.SeedFrom` is the lookup over it). The Gate path is unchanged and the read's answer is byte-identical (371 keys, 42,646 bytes). `governance.browser-spec.mjs` gains AC2: 4x CPU throttle, keys doubled in the test's own browser, settle bound 3,000 ms, longest-task bound 1,000 ms, both derived from twelve cold runs (worst settle 1,818 ms, worst task 248 ms).
+Summary: a governance read parses the Baseline once (`Effective` calls `Baseline.Keys` once and hands the list to the new `Policy.Rows`; `Cascade` takes an optional parsed list; `Baseline.SeedFrom` is the lookup over it). The Gate path is unchanged and the read's answer is byte-identical (371 keys, 42,646 bytes). `governance.browser-spec.mjs` gains AC2: 4x CPU throttle, keys doubled in the test's own browser, settle bound 5,000 ms (with the CI slowdown, Spec Change Log 2026-11-25), longest-task bound 1,000 ms, both derived from twelve cold runs (worst settle 1,818 ms, worst task 248 ms).
 
 Files changed:
 

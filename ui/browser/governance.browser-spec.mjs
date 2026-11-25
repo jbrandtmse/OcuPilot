@@ -126,8 +126,11 @@ test('AC1: a key disabled under Read-only in the browser is stored, shown by its
 
 /** The CPU throttle AC2 runs under, which covers the CI runner's measured slowdown. */
 const THROTTLE_RATE = 4;
-/** How long AC2 lets the page take to settle, in ms: 1.5 times the worst of twelve cold runs (1,818 ms), rounded up. */
-const SETTLE_BOUND_MS = 3000;
+/**
+ * How long AC2 lets the page take to settle, in ms: the worst of twelve cold local runs (1,818 ms),
+ * times the CI runner's measured slowdown (1.6), times 1.5, rounded up to a whole second.
+ */
+const SETTLE_BOUND_MS = 5000;
 /** The longest single task AC2 allows after the throttle starts, in ms. */
 const LONGEST_TASK_BOUND_MS = 1000;
 /** What a doubled row's key ends in. */
