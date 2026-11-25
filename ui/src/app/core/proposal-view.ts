@@ -494,6 +494,9 @@ export const CONSEQUENCE_SQLSTATEMENTCLEARSTATISTICS = 'SQL.STATEMENT.CLEARSTATI
 export const CONSEQUENCE_SQLSTATEMENTCLEARERROR = 'SQL.STATEMENT.CLEARERROR';
 export const CONSEQUENCE_SQLSTATEMENTCLEAN = 'SQL.STATEMENT.CLEAN';
 export const CONSEQUENCE_SQLCACHEDQUERYPURGE = 'SQL.CACHEDQUERY.PURGE';
+/** Story 21.26: the runtime statistics purge's and the collection setting's cards; each is one published sentence. */
+export const CONSEQUENCE_SQLRUNTIMESTATSPURGE = 'SQL.RUNTIMESTATS.PURGE';
+export const CONSEQUENCE_SQLRUNTIMESTATSSET = 'SQL.RUNTIMESTATS.SET';
 /** Story 21.25: the table maintenance rebuilds' and statistics writes' cards; each is one published sentence. */
 export const CONSEQUENCE_SQLTABLEREBUILD = 'SQL.TABLE.REBUILD';
 export const CONSEQUENCE_SQLTABLEREBUILDALL = 'SQL.TABLE.REBUILDALL';
@@ -788,6 +791,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_SQLSTATEMENTCLEARERROR) return STRINGS.sqlStatementClearErrorConsequence;
   if (code === CONSEQUENCE_SQLSTATEMENTCLEAN) return STRINGS.sqlStatementCleanConsequence;
   if (code === CONSEQUENCE_SQLCACHEDQUERYPURGE) return STRINGS.sqlCachedQueryPurgeConsequence;
+  if (code === CONSEQUENCE_SQLRUNTIMESTATSPURGE) return STRINGS.sqlRuntimeStatsPurgeConsequence;
+  if (code === CONSEQUENCE_SQLRUNTIMESTATSSET) return STRINGS.sqlRuntimeStatsSetConsequence;
   if (code === CONSEQUENCE_SQLTABLEREBUILD) return STRINGS.sqlTableRebuildConsequence;
   if (code === CONSEQUENCE_SQLTABLEREBUILDALL) return STRINGS.sqlTableRebuildAllConsequence;
   if (code === CONSEQUENCE_SQLTABLETUNE) return STRINGS.sqlTableTuneConsequence;

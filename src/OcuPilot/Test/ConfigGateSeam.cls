@@ -243,6 +243,16 @@ ClassMethod SendNode(pEndpoint As %String, pName As %String, pStored As %String)
     Quit $$$OK
 }
 
+/// <p>The runtime statistics collection write (Story 21.26), recorded as <code>SQLStats|level|terminate</code> with the stop text the port built, and
+/// made through only after <method>WriteThrough</method>; the refusal <method>VendorRefuses</method> feeds is answered before the call.</p>
+ClassMethod SqlStatsCall(pLevel As %Integer, pTerminate As %String) As %Status
+{
+    Set ^||OcuPilotConfigModifies($Increment(^||OcuPilotConfigModifies)) = $ListBuild("SQLStats|" _ pLevel _ "|" _ pTerminate, "")
+    If $Get(^||OcuPilotConfigRefuses) Quit $$$ERROR($$$GeneralError, "a vendor refusal fed by the test")
+    If $Get(^||OcuPilotConfigWriteThrough) Quit ##super(pLevel, pTerminate)
+    Quit $$$OK
+}
+
 /// <p>The mail password write: the refusal <method>VendorRefuses</method> feeds, with no vendor call, else the shipped call. Nothing records the value.</p>
 ClassMethod SendPassword(pValue As %String) As %Status [ Private ]
 {

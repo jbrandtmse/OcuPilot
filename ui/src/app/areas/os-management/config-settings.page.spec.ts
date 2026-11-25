@@ -28,6 +28,7 @@ import {
   ISQL_SETTING_LIST,
   MEMORY_SETTING_LIST,
   NLS_DEFAULT_LIST,
+  SQL_RUNTIME_STATS_SETTING_LIST,
   SQL_SETTING_LIST,
   SQL_SHELL_SETTING_LIST,
   STARTUP_SETTING_LIST,
@@ -334,6 +335,30 @@ describe('the settings page', () => {
     const startup = mount([], STARTUP_SETTING_LIST);
     await open(startup.fixture, startup.store, startup.actions, STARTUP_SETTING_LIST, 'LineRecall');
     expect(startup.host.querySelector('[data-interop-setting-consequence]')?.textContent).not.toContain(STRINGS.systemSecuritySetConsequence);
+  });
+
+  describe('Runtime statistics collection (Story 21.26)', () => {
+    const LEVEL_ROWS = [
+      row('CollectionLevel', { Value: 'Off', Kind: 'choice', Accepts: 'One of Off, Off with collection code, On for open and close, On for all modules.' }),
+      row('StopsAt', { Value: '', Kind: 'text', Accepts: 'Shown here and never changed here.', ReadOnly: true }),
+    ];
+
+    // Mutation (Rule 19): drop `SQL_RUNTIME_STATS_SETTING_LIST` from `SERVED_LISTS` -> the first assertion goes red.
+    it('serves Runtime statistics collection, and registers Set value on its own screen alone', () => {
+      const { actions } = mount([], SQL_RUNTIME_STATS_SETTING_LIST, LEVEL_ROWS);
+      expect(actions.has(SQL_RUNTIME_STATS_SETTING_LIST, CONFIG_SET_ACTION)).toBe(true);
+      expect(actions.has(SQL_SHELL_SETTING_LIST, CONFIG_SET_ACTION)).toBe(false);
+    });
+
+    // Mutation (Rule 19): drop the runtime statistics branch from `onOpen`'s statement -> the dialog states the Accepts line alone and this goes red.
+    it('states that a change applies to every namespace in the dialog, and states it on no other screen', async () => {
+      const { fixture, host, store, actions } = mount([], SQL_RUNTIME_STATS_SETTING_LIST, LEVEL_ROWS);
+      await open(fixture, store, actions, SQL_RUNTIME_STATS_SETTING_LIST, 'CollectionLevel');
+      expect(host.querySelector('[data-interop-setting-consequence]')?.textContent?.trim()).toBe(`${LEVEL_ROWS[0]['Accepts']} ${STRINGS.sqlRuntimeStatsSetConsequence}`);
+      const shell = mount([], SQL_SHELL_SETTING_LIST);
+      await open(shell.fixture, shell.store, shell.actions, SQL_SHELL_SETTING_LIST, 'LineRecall');
+      expect(shell.host.querySelector('[data-interop-setting-consequence]')?.textContent).not.toContain(STRINGS.sqlRuntimeStatsSetConsequence);
+    });
   });
 
   describe('Task Manager email (Story 21.19)', () => {

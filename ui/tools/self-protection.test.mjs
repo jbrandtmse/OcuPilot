@@ -778,6 +778,12 @@ const ATELIER_REFUSALS = [
   ['REASONTABLEWHOLENUMBER', 'sqlTableWholeNumberShape'],
   ['REASONTABLEMAPSIZE', 'sqlTableMapSizeShape'],
   ['REASONTABLESETUNAPPLIED', 'sqlTableRefusalSetAfterFix'],
+  // Story 21.26: the runtime statistics purge's refusals, the Plan with statistics refusal and the sentences the purge's and the setting's cards and dialogs state.
+  ['REASONRUNTIMESTATSNOROWS', 'sqlRuntimeStatsRefusalNoRows'],
+  ['REASONRUNTIMESTATSVENDOR', 'sqlRuntimeStatsRefusalVendor'],
+  ['REASONSQLPLANSTATS', 'sqlPlanStatisticsRefusal'],
+  ['REASONRUNTIMESTATSPURGE', 'sqlRuntimeStatsPurgeConsequence'],
+  ['REASONRUNTIMESTATSSET', 'sqlRuntimeStatsSetConsequence'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {

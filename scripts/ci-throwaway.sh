@@ -1031,7 +1031,8 @@ services:
       # ResourceTransferWrite creates, exports, deletes and imports one probe resource and writes files under the first allowed directory, removing each (Story 21.19).
       # TaskMailPasswordWrite sets and clears the Task Manager's mail password on both callers with a generated probe and restores the stored value, never printing either (Story 21.36).
       # SqlTuningWrite purges the cached queries of a whole namespace and cleans its statement index on both callers, asserting on its own probe objects alone (Story 21.6).
-      # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask, LocaleWrite, LocaleEditWrite, LocaleTransferWrite, SystemSecuritySettingWrite, PhoneProviderWrite, AuditExportWrite, TaskMailSettingWrite, ResourceTransferWrite, TaskMailPasswordWrite, SqlTuningWrite
+      # SqlRuntimeStatsWrite sets the instance-wide runtime statistics collection and purges a whole namespace's runtime statistics on both callers, restoring the flag it read first (Story 21.26).
+      # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask, LocaleWrite, LocaleEditWrite, LocaleTransferWrite, SystemSecuritySettingWrite, PhoneProviderWrite, AuditExportWrite, TaskMailSettingWrite, ResourceTransferWrite, TaskMailPasswordWrite, SqlTuningWrite, SqlRuntimeStatsWrite
       OCUPILOT_ALLOW_CONFIG_SETTINGS: "1"
       # Sets the instance's system state to Alert and resets its system alerts, through the shipped screen-action and confirm paths, and
       # reads alerts.log to show that no line is lost (Story 21.20). The reset is not undoable; the throwaway's own monitor raises the state again.

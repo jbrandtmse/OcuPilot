@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:677 */
+  /** EXPERIENCE.md:678 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5535,6 +5535,33 @@ export const STRINGS = {
   explorerSqlStatementListPrompt1: 'Which statements take the longest on average?',
   explorerSqlStatementListPrompt2: 'Is any plan frozen, and does a newer plan exist?',
   explorerSqlStatementListPrompt3: 'Which statements have a plan error?',
+  // Story 21.26: the SQL runtime statistics list and the Runtime statistics collection list, their columns, empty states, note and prompts.
+  explorerSqlTabRuntimeStats: 'SQL runtime statistics',
+  runtimeStatsSettingsLabel: 'Runtime statistics collection',
+  runtimeStatsColumnCursor: 'Cursor',
+  runtimeStatsColumnModule: 'Module',
+  runtimeStatsColumnRuns: 'Runs',
+  runtimeStatsColumnModuleRuns: 'Module runs',
+  runtimeStatsColumnAverageRows: 'Average rows',
+  runtimeStatsColumnAverageGlobalRefs: 'Average global references',
+  runtimeStatsColumnAverageCommands: 'Average commands',
+  runtimeStatsColumnAverageDiskWait: 'Average disk wait',
+  explorerSqlRuntimeStatsEmpty: 'No runtime statistics are recorded in this namespace.',
+  explorerSqlRuntimeStatsEmptyAgent: 'purge runtime statistics',
+  runtimeStatsSettingsEmptyAgent: 'change runtime statistics collection',
+  explorerSqlRuntimeStatsNote: 'Statistics are recorded only while collection is on, and by Plan with statistics on SQL query.',
+  explorerSqlRuntimeStatsPrompt2: 'Which module of a slow statement takes the most time?',
+  explorerSqlRuntimeStatsPrompt3: 'Are runtime statistics being collected?',
+  runtimeStatsSettingsPrompt1: 'Is runtime statistics collection on, and when does it stop?',
+  configRefusalSqlStatsNoStop: 'Collection must be on before its stop can be set.',
+  sqlRuntimeStatsPurgeAction: 'Purge statistics',
+  explorerSqlPlanWithStatistics: 'Plan with statistics',
+  sqlRuntimeStatsPurgeConsequence: 'This namespace\'s runtime statistics are removed. New statistics are recorded only while collection is on.',
+  sqlRuntimeStatsSetConsequence: 'This applies to every namespace on the instance. A query prepared while collection was set to Off records nothing once collection is turned on, until its cached query is purged.',
+  sqlRuntimeStatsRefusalNoRows: 'This namespace holds no runtime statistics.',
+  sqlRuntimeStatsRefusalVendor: 'The instance did not purge this namespace\'s runtime statistics.',
+  sqlPlanStatisticsRefusal: 'Plan with statistics runs the statement, so it takes a query only.',
+  sqlPlanStatisticsNote: 'Plan with statistics runs the statement without its values, so a filtered query can show zero rows.',
   // Story 21.6: the statement and cached-query actions, the sentences their dialogs and cards state, and the refusals the instance answers.
   // Purge on one query reuses auditDatabasePurgeConfirm.
   sqlStatementFreezeAction: 'Freeze plan',
@@ -9827,37 +9854,37 @@ export const STRINGS = {
   /** EXPERIENCE.md:634 */
   interopManagedAlertHistoryPrompt1: 'What has happened to this alert so far?',
   // Story 24.17 Batch 2: the business rule log and business process log screens, the completed column and filter, the two purge consequences, the empty states and the prompts.
-  /** EXPERIENCE.md:635 */
+  /** EXPERIENCE.md:636 */
   interopRuleLogLabel: 'Business rule log',
-  /** EXPERIENCE.md:635 */
+  /** EXPERIENCE.md:636 */
   interopProcessLogLabel: 'Business process log',
-  /** EXPERIENCE.md:635 */
+  /** EXPERIENCE.md:636 */
   interopLogColumnCompleted: 'Is completed',
-  /** EXPERIENCE.md:635 */
+  /** EXPERIENCE.md:636 */
   interopRuleLogPurgeConsequence:
     'Deletes this namespace\'s business rule log entries older than the days to keep. With 0 days, everything up to the end of today is deleted. It cannot be undone.',
-  /** EXPERIENCE.md:635 */
+  /** EXPERIENCE.md:636 */
   interopProcessLogPurgeConsequence:
     'Deletes this namespace\'s completed business process records older than the days to keep; a business process still running is kept. With 0 days, every completed one up to the end of today is deleted. It cannot be undone.',
-  /** EXPERIENCE.md:635 */
+  /** EXPERIENCE.md:636 */
   interopRuleLogEmpty: 'No business rule log entries in this namespace.',
-  /** EXPERIENCE.md:635 */
+  /** EXPERIENCE.md:636 */
   interopRuleLogEmptyAgent: 'purge the business rule log',
-  /** EXPERIENCE.md:635 */
+  /** EXPERIENCE.md:636 */
   interopProcessLogEmpty: 'No business process records in this namespace.',
-  /** EXPERIENCE.md:635 */
+  /** EXPERIENCE.md:636 */
   interopProcessLogEmptyAgent: 'purge business process records',
-  /** EXPERIENCE.md:635 */
+  /** EXPERIENCE.md:636 */
   interopRuleLogPrompt1: 'Which rules returned an error recently?',
-  /** EXPERIENCE.md:635 */
+  /** EXPERIENCE.md:636 */
   interopRuleLogPrompt2: 'Which rule fires most often here?',
-  /** EXPERIENCE.md:635 */
+  /** EXPERIENCE.md:636 */
   interopRuleLogPrompt3: 'Purge business rule log entries older than 30 days.',
-  /** EXPERIENCE.md:635 */
+  /** EXPERIENCE.md:636 */
   interopProcessLogPrompt1: 'Which business processes are still running?',
-  /** EXPERIENCE.md:635 */
+  /** EXPERIENCE.md:636 */
   interopProcessLogPrompt2: 'Which business process has the most records?',
-  /** EXPERIENCE.md:635 */
+  /** EXPERIENCE.md:636 */
   interopProcessLogPrompt3: 'Purge completed business process records older than 30 days.',
 } as const;
 
