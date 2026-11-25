@@ -1159,3 +1159,6 @@
 2026-11-25T20:43:52Z	Story 21.29	escalation_sent	to=orchestrator items=owner_gated_A(import_compiles_code),B(mailto_vendor),strings_batch,AD-7,AD-51,AD-10,AD-21_allowed_dir,governance_keys,gate at=2026-11-25T20:43:52Z
 2026-11-25T20:45:31Z	Story 21.29	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-7,AD-21,AD-51,AD-29,AD-10 decision_dependency=none owned_ledger=none mutates_shared_runtime=false(throwaway_only) ruling=orchestrator_2026-11-25(A2,B1,1-7) inbox=U-167 ac_restated=AC4(no_mail),AC5(screen_only) batch3=empty batch4=conditional(Task0_f)
 2026-11-25T20:45:31Z	Epic 21	spine_updated	ad=AD-7,AD-21,AD-51 reason=orchestrator_ruling(U-167) by=runner story=21-29-troubleshooting-reports lint=preexisting_low_placeholder_only
+2026-11-25T22:54:09Z	Story 21.26	gate_step	step=full_sweep+smoke head=fdd7d928f sweep=20/20 smoke=50/50 result=pass
+2026-11-25T22:54:09Z	Story 21.26	smoke_complete	method=api(smoke.sh)+browser(fresh_specs) result=pass iterations=1 defects_caught=0 evidence=e21-kit/21-26/gate1
+2026-11-25T22:54:09Z	Story 21.26	committed	sha=fdd7d928f submodules= ci=pending runs=45717008360 amendments=none note=code_head_pushed_alone(skip-token_heuristic_unavailable_but_run_registered)
