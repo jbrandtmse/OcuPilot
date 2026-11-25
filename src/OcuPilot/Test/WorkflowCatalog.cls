@@ -143,6 +143,13 @@ Method TestTheSlowQueryWorkflowReadsTheStatementIndexAndWritesNothing()
     Do $$$AssertEquals($ListLength($ClassMethod(..#WORKFLOW, "Writes", "slowquery")), 0, "and no write tool")
     ; Story 21.26: its steps also name the runtime statistics and the collection setting reads.
     Do $$$AssertTrue(($ListFind($ListFromString(tReads), "explorer.sqlruntimestats.read") > 0) && ($ListFind($ListFromString(tReads), "explorer.sqlruntimestatssettings.read") > 0), "its steps name the runtime statistics and the collection setting reads: " _ tReads)
+    ; The step that reads the statistics carries the note about Plan with statistics' rows.
+    Set tNoted = 0
+    Set tSteps = tEntry.%Get("steps").%GetIterator()
+    While tSteps.%GetNext(.tStepIndex, .tStep) {
+        If tStep.%Get("say") [ "Plan with statistics runs the statement without its values, so a filtered query can show zero rows." Set tNoted = tNoted + 1
+    }
+    Do $$$AssertEquals(tNoted, 1, "exactly one step carries the ruled note about Plan with statistics")
     Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
     Set tOffering = ""
     For tI = 1:1:$ListLength(tList) {

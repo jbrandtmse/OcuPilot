@@ -262,7 +262,7 @@ XData Catalog [ MimeType = application/json ]
   "steps": [
    {"say": "Read the statements recorded for the table the query uses and the cached queries, for their run counts and times.", "reads": ["explorer.sqltablestatements.read", "explorer.sqlcachedqueries.read"]},
    {"say": "Read the namespace's statement index for statements with a high average time, a frozen plan that differs from the current one, or a plan error.", "reads": ["explorer.sqlstatements.read"]},
-   {"say": "Read the namespace's runtime statistics for the statements and modules with the highest average time, and the collection setting; when collection is off, say so and that turning it on records new runs only.", "reads": ["explorer.sqlruntimestats.read", "explorer.sqlruntimestatssettings.read"]},
+   {"say": "Read the namespace's runtime statistics for the statements and modules with the highest average time, and the collection setting; when collection is off, say so and that turning it on records new runs only. Plan with statistics runs the statement without its values, so a filtered query can show zero rows.", "reads": ["explorer.sqlruntimestats.read", "explorer.sqlruntimestatssettings.read"]},
    {"say": "Read the table's indices to see which could serve the query's conditions.", "reads": ["explorer.sqlindices.read"]},
    {"say": "When the person gave the statement, run it as a read to see what it returns.", "reads": ["explorer.sqlquery.read"]},
    {"say": "Weigh the findings: a condition on a column with no index, a function on an indexed column, a join without an index, a cached query with a high average time."}],

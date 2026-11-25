@@ -793,7 +793,7 @@ ClassMethod Run(pNamespace As %String, pText As %String, pValues As %DynamicArra
 /// refused (422 <code>EXPLORER.SQL.PLANSTATS</code>) before anything runs. The run is bounded at
 /// <method>BoundSeconds</method>, and an overrun answers <code>{outcome: stopped, kind, seconds}</code>
 /// as <method>Run</method> does. <var>pValues</var> is handed to the instance as the statement's dynamic
-/// arguments.</p>
+/// arguments, which the instance's statistics run does not bind.</p>
 ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pStats As %Boolean = 0, pValues As %DynamicArray = "") As %Status
 {
     Set pAnswer = ""

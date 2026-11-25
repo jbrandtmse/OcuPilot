@@ -309,6 +309,38 @@ Method TestTheCopyOutScriptsAreTheirOneVendorCall()
     Do $$$AssertEquals(tSteps.%Size(), 0, "the read-only row renders no script")
 }
 
+/// <p>AD-36. The list's read caps its rows at the cap the caller names and reports the cut: the probe's statement, run twice, holds more than one row,
+/// and a cap of one answers one row with <code>truncated</code> set, while a cap above the count answers every row with it unset.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Screen.Read.Execute</code> sets <code>truncated</code> to 0 where the port answered no cut of its own -> the cap
+/// assertion goes red. (The port's own caps, <code>CatalogRows</code>' <code>max</code> and its row loop, both disabled, leave this green: the shared
+/// reader trims and reports the cut.)</p>
+Method TestTheListCapsItsRowsAndReportsTheCut()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RecordStats", ..#NAMESPACE), "the probe's statement is run once with statistics on")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RecordStats", ..#NAMESPACE), "and a second time")
+    Set tHeld = $ClassMethod(..#PROBE, "StatsRowCount", ..#NAMESPACE)
+    Do $$$AssertTrue(tHeld > 1, "the probe's rows are more than one: " _ tHeld)
+    Do ##class(OcuPilot.Kernel.Scope).Set(..#NAMESPACE)
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute(..#LIST, 1, .tCut, .tHttp, .tFault)
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Do $$$AssertEquals($Select($$$ISOK(tSC) && $IsObject(tCut): tHttp _ "|" _ tCut.rows.%Size() _ "|" _ tCut.truncated, 1: ""), "200|1|1", "a cap of one row is reported as truncation")
+    Do ##class(OcuPilot.Kernel.Scope).Set(..#NAMESPACE)
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute(..#LIST, 100000, .tAll, .tHttp, .tFault)
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Do $$$AssertEquals($Select($$$ISOK(tSC) && $IsObject(tAll): tHttp _ "|" _ (tAll.rows.%Size() '< tHeld) _ "|" _ tAll.truncated, 1: ""), "200|1|0", "a cap above the count answers every row and reports no cut")
+}
+
+/// <p>The model's description of the list carries the ruled note that Plan with statistics runs the statement without its values, so the agent reading
+/// a zero-row statistics row is told what the person reading the plan is told.</p>
+/// <p>Mutation (Rule 19): the list's read <code>label</code> drops the sentence -> the description assertion goes red.</p>
+Method TestTheListsDescriptionToTheModelCarriesThePlanNote()
+{
+    Set tNote = "Plan with statistics runs the statement without its values, so a filtered query can show zero rows."
+    Set tText = ##class(OcuPilot.Screen.Tool.Read).Description(..#LIST)
+    Do $$$AssertTrue(tText [ tNote, "the list's read tool description carries the ruled sentence verbatim: " _ tText)
+    Do $$$AssertEquals($Length(tText, tNote) - 1, 1, "once")
+}
+
 /// <p>The runtime statistics rows <var>pNamespace</var> holds, counted directly from the instance's own table.</p>
 ClassMethod DirectCount(pNamespace As %String) As %Integer
 {

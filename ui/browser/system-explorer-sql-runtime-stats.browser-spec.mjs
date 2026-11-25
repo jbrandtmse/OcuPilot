@@ -200,6 +200,9 @@ test('AC4: Plan with statistics on SQL query shows module statistics, and the ru
     await page.waitForSelector('[data-ocu-sql="plan"]', { timeout: config.navigationTimeoutMs });
     const plan = await page.$eval('[data-ocu-sql="plan"]', (node) => node.textContent);
     assert.match(plan, /Stats:/, `the plan carries each module's statistics: ${plan.slice(0, 400)}`);
+    // Mutation (Rule 19): `SqlQueryPage` drops the `stats-note` paragraph from its template -> this wait times out.
+    await page.waitForSelector('[data-ocu-sql="stats-note"]', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('[data-ocu-sql="stats-note"]', (node) => node.textContent.trim()), STRINGS.sqlPlanStatisticsNote, 'the result carries the ruled note about the statement running without its values');
   } finally {
     await context.close();
   }
@@ -227,7 +230,7 @@ test('AC6: Purge statistics asks, confirms and empties the list', async () => {
     assert.ok(first >= 0, 'a row of the probe is drawn');
     await clickRowCentre(page, { index: first, cell: 2 });
     await page.waitForFunction((selector, at) => document.querySelectorAll(selector)[at]?.getAttribute('aria-selected') === 'true', { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, first);
-    // Mutation (Rule 19): remove the `purge` row action from `ExplorerSqlRuntimeStats` -> the command bar never draws Purge statistics and this wait times out.
+    // Mutation (Rule 19): `SqlRuntimeStatsPage` drops its `actions.register` of Purge statistics -> the command bar never draws it and this wait times out.
     await bar(page, STRINGS.sqlRuntimeStatsPurgeAction);
     await confirmWarning(page, STRINGS.sqlRuntimeStatsPurgeConsequence);
     await page.waitForFunction((selector) => document.querySelectorAll(selector).length === 0, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);

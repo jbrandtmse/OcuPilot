@@ -141,6 +141,9 @@ export class SqlQueryState {
 
   private answerValue: SqlAnswer | null = null;
 
+  /** The answer the last Plan with statistics adopted, so the page can tell it from any other answer. */
+  private statisticsAnswerValue: SqlAnswer | null = null;
+
   private confirmValue: SqlConfirm | null = null;
 
   private refusalValue = '';
@@ -182,6 +185,11 @@ export class SqlQueryState {
 
   answer(): SqlAnswer | null {
     return this.answerValue;
+  }
+
+  /** Whether the answer on screen is a Plan with statistics result, which runs without the statement's values. */
+  statisticsAnswer(): boolean {
+    return this.answerValue !== null && this.answerValue === this.statisticsAnswerValue;
   }
 
   /** The statement a confirmation waits on, or `null`. */
@@ -262,12 +270,14 @@ export class SqlQueryState {
 
   /**
    * Plan with statistics (Story 21.26): post the statement and `stats: true` to the plan route and show the plan with each module's statistics.
-   * The route runs a query only and refuses any other statement before anything runs; no values are sent.
+   * The route runs a query only and refuses any other statement before anything runs; no values are sent, and every answer carries the page's note about that.
    */
   async planWithStatistics(deps: SqlQueryDeps): Promise<void> {
     const result = await this.post(deps, SQL_PLAN_PATH, false, true);
     if (result === null) return;
-    this.adopt(answerOf(result));
+    const answer = answerOf(result);
+    this.statisticsAnswerValue = answer;
+    this.adopt(answer);
   }
 
   /** Proceed: send the confirmed run as the screen action, and show what the instance answered. */

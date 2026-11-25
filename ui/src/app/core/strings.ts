@@ -5561,6 +5561,7 @@ export const STRINGS = {
   sqlRuntimeStatsRefusalNoRows: 'This namespace holds no runtime statistics.',
   sqlRuntimeStatsRefusalVendor: 'The instance did not purge this namespace\'s runtime statistics.',
   sqlPlanStatisticsRefusal: 'Plan with statistics runs the statement, so it takes a query only.',
+  sqlPlanStatisticsNote: 'Plan with statistics runs the statement without its values, so a filtered query can show zero rows.',
   // Story 21.6: the statement and cached-query actions, the sentences their dialogs and cards state, and the refusals the instance answers.
   // Purge on one query reuses auditDatabasePurgeConfirm.
   sqlStatementFreezeAction: 'Freeze plan',

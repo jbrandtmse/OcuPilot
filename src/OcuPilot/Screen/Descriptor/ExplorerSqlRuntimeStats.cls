@@ -45,7 +45,7 @@ XData Declaration
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "row": "runtime statistics row",
-    "label": "The runtime statistics this namespace holds, one summary row and one row per module for each statement, with its runs and what each run averaged; whether collection is on is in explorer.sqlruntimestatssettings.",
+    "label": "Runtime statistics of this namespace, a summary row and one row per module for each statement, with runs and averages per run. Plan with statistics runs the statement without its values, so a filtered query can show zero rows.",
     "source": {"port": "atelier", "endpoint": "Catalog.RuntimeStats", "type": "LIST"},
     "fields": ["Routine", "Cursor", "Module", "Runs", "AverageRows", "AverageGlobalRefs", "AverageCommands", "AverageDiskWait", "AverageTime", "ModuleRuns", "Statement"],
     "filter": ["Routine", "Cursor", "Module", "Statement"],

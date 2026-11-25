@@ -131,6 +131,9 @@ interface ValueField {
     @if (hasMessage) {
       <pre class="ocu-source-text ocu-sql-query-message" tabindex="0" data-ocu-sql="message" [attr.aria-label]="statusLine">{{ message }}</pre>
     }
+    @if (hasStatisticsNote) {
+      <p class="ocu-explorer-status" data-ocu-sql="stats-note">{{ STRINGS.sqlPlanStatisticsNote }}</p>
+    }
     @if (hasPlan) {
       <h2 class="ocu-details-heading">{{ STRINGS.explorerSqlPlanHeading }}</h2>
       <pre class="ocu-source-text ocu-sql-query-plan" tabindex="0" data-ocu-sql="plan" [attr.aria-label]="STRINGS.explorerSqlPlanHeading">{{ plan }}</pre>
@@ -328,6 +331,12 @@ export class SqlQueryPage {
 
   protected get hasPlan(): boolean {
     return this.plan !== '';
+  }
+
+  /** Every Plan with statistics result carries the note that the statement ran without its values. */
+  protected get hasStatisticsNote(): boolean {
+    this.generation();
+    return !this.state.running() && this.state.statisticsAnswer();
   }
 
   protected get result(): SqlRows | null {

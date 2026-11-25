@@ -192,10 +192,11 @@ ClassMethod Agent(pName As %String, pValue As %String, Output pResult As %Dynami
 /// the level after it Off, the stop falling about 50 minutes ahead and read back through the list's own row; the stop moved to 120 minutes leaves the
 /// level and moves the time; the level after the stop set to Off with collection code reads back; collection turned off reads level 0 and empty stop rows.
 /// Each answer reads back <code>matches</code>.</p>
-/// <p>Mutation (Rule 19): <code>OcuPilot.Port.ConfigPort.SqlStatsTarget</code> builds an empty stop for a level of 2 or 3 -> the defaults assertion goes red.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.ConfigPort.SqlStatsTarget</code> builds an empty stop for a level of 2 or 3 -> the defaults assertion goes red;
+/// <code>OcuPilot.Port.ConfigPort.CollectRoster</code> answers a level of 3 whatever the flag reads -> the first assertion goes red.</p>
 Method TestTheScreenSetsTheLevelTheStopAndTheLevelAfterIt()
 {
-    Do $$$AssertEquals(..State(), "0||", "the instance starts with collection off, as the throwaway's own flag reads")
+    Do $$$AssertEquals(..ValueOf("CollectionLevel") _ "|" _ ..ValueOf("StopAfterMinutes") _ "|" _ ..ValueOf("LevelAfterStop") _ "|" _ ..ValueOf("StopsAt"), "Off|||", "the settings port reads collection Off with every stop row empty before the first set, through its own rows")
     Set tStatus = ..Act("CollectionLevel", "On for all modules", .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ $ClassMethod(..#VERDICT, "Verdict", tAnswer) _ "|" _ ..State(), "200|matches|3|50|0", "turning collection on takes the classic page's defaults, a 50 minute stop and Off after it: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
     Set tUntil = ..SecondsUntil(..ValueOf("StopsAt"))
@@ -344,6 +345,26 @@ Method TestAChangedTargetAndTheInstancesRefusalLeaveTheRowsBehind()
     Do $$$AssertEquals($Select($IsObject($Get(tFault)): tFault.reason, 1: ""), ##class(OcuPilot.Api.AtelierError).#REASONRUNTIMESTATSVENDOR, "its reason is the ruled sentence")
     Do $$$AssertTrue($IsObject($Get(tFault)) && (tFault.detail.message [ "could not be removed") && (tFault.reason '[ "removed"), "the instance's message is in detail alone")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls") _ "|" _ ##class(OcuPilot.Test.SqlRuntimeStatsRead).DirectCount(..#NAMESPACE), "1|" _ tCount, "one call was made and every row is still there")
+}
+
+/// <p>AC2. A proposal to turn collection on whose level moved after it was minted is closed <code>PROPOSAL.TARGETCHANGED</code> at its confirm, and the
+/// instance keeps the level it was moved to; the cleanup puts the flag read before the test back and reads it again.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Screen.Tool.ExplorerSqlRuntimeStatsSettingSet.MergeUpdate</code> adds no <code>Was</code> -> the confirm is not
+/// refused and the assertion goes red.</p>
+Method TestALevelMovedSinceTheMintRefusesTheConfirm()
+{
+    Set ^||OcuPilotDatabaseWritePort = ..#CONFIGPORT
+    Set tArgs = {}
+    Do tArgs.%Set("Name", "CollectionLevel", "string")
+    Do tArgs.%Set("Value", "On for all modules", "string")
+    Set tSC = $ClassMethod(..#AGENT, "Mint", ..#SETTINGTOOL, "CollectionLevel", tArgs, .tProposal, .tHttp, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the proposal is minted: " _ $Get(tProblem))
+    If '$IsObject($Get(tProposal)) Quit
+    Do $$$AssertEquals(..State(), "0||", "the mint changed nothing")
+    Set tMoved = ##class(%SYS.PTools.StatsSQL).SetSQLStats(2, 1, "", "M:5:0")
+    Do $$$AssertEquals(..State(), "2|5|0", "the level is moved out of band")
+    Set tConfirm = $ClassMethod(..#AGENT, "Confirm", tProposal, .tResult)
+    Do $$$AssertEquals(tConfirm _ "|" _ ..State(), "409 PROPOSAL.TARGETCHANGED|2|5|0", "the confirm is refused target-changed and the level stays where it was moved: " _ tConfirm)
 }
 
 }

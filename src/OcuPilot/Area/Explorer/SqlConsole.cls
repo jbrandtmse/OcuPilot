@@ -75,7 +75,8 @@ ClassMethod HandleRun() As %Status
 /// <p>Answer <code>POST /explorer/sql/plan</code> in the request's scope: the port's plan answer
 /// (<method>OcuPilot.Port.SqlPort.Plan</method>), nothing executed, after the same gate, bounds,
 /// refusals and self-protection the run route applies. A body <code>stats</code> of <code>true</code>
-/// asks for Plan with statistics, which the port runs for a query only, with the body's values.</p>
+/// asks for Plan with statistics, which the port runs for a query only. The instance binds none of the body's
+/// values to that run.</p>
 ClassMethod HandlePlan() As %Status
 {
     Set tSC = $$$OK

@@ -2,8 +2,8 @@
 title: 'Story 21.26: Runtime statistics'
 type: 'feature'
 created: '2026-11-25'
-status: 'in-progress'
-baseline_revision: '747dd2a457ecb50371cf50291b0e01880f072d61'
+status: 'done'
+baseline_revision: '1eea75fcfc1949a19e336de4be3a81b2f5aa63e8'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -11,14 +11,6 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-6-the-sql-tuning-track.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-31-fixed-table-statistics.md'
 warnings: ['oversized']
-deferred:
-  - summary: >-
-      The pLevel >= 2 guard in ConfigPort.SqlStatsState has no recorded mutation.
-    evidence: |-
-      It reddens a test only if the vendor leaves a stale stop at level 0; settle by applying the mutation on ocupilot-ci after setting level 2 then 0.
-    location: >-
-      src/OcuPilot/Port/ConfigPort.cls SqlStatsState
-    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -169,14 +161,14 @@ deferred:
 
 **Rework 1** (orchestrator ruling 2026-11-25, veto U-164; Spec Change Log):
 
-- [ ] [Review] AC4 "with values": Plan with statistics keeps the query-only guard, runs without values, and EVERY result shows the note "Plan with statistics runs the statement without its values, so a filtered query can show zero rows." (no literal detection) -- client result pane, plus the same sentence in the model-facing tool result or description, and the `slowquery` step text where it uses the read. A test pins the client note and one pins the model-facing sentence (each with a `mutation:` line). The client posts no values.
-- [ ] [Review] Set consequence: ship "This applies to every namespace on the instance. A query prepared while collection was set to Off records nothing once collection is turned on, until its cached query is purged." -- measured in that direction at Task 0 (c) (prepared at level 0, set to 2: 0 rows on two runs; purged and prepared at level 2: 3 rows). Re-measure once on `ocupilot-ci` and record the line under Verification; if it measures false, ship the first sentence alone.
-- [ ] [Review] Security note in Design Notes: Task 0 measured the vendor needs no `%DB_IRISSYS` pair for read, set or purge; the shipped gate keeps it (stricter than the classic page, U-161).
-- [ ] [Review] AD-36 truncation test for the SQL runtime statistics list.
-- [ ] [Review] `SqlRuntimeStatsWrite`'s always-true first assertion made able to fail.
-- [ ] [Review] The AC6 mutation comment in the browser spec names a mutation that can run.
-- [ ] [Review] A changed-target test for the collection level (the level read back after a set, restored in cleanup).
-- [ ] [Review] A `mutation:` line for `ConfigPort.SqlStatsState`'s `pLevel >= 2` guard.
+- [x] [Review] AC4 "with values": Plan with statistics keeps the query-only guard, runs without values, and EVERY result shows the note "Plan with statistics runs the statement without its values, so a filtered query can show zero rows." (no literal detection) -- client result pane, plus the same sentence in the model-facing tool result or description, and the `slowquery` step text where it uses the read. A test pins the client note and one pins the model-facing sentence (each with a `mutation:` line). The client posts no values.
+- [x] [Review] Set consequence: ship "This applies to every namespace on the instance. A query prepared while collection was set to Off records nothing once collection is turned on, until its cached query is purged." -- measured in that direction at Task 0 (c) (prepared at level 0, set to 2: 0 rows on two runs; purged and prepared at level 2: 3 rows). Re-measure once on `ocupilot-ci` and record the line under Verification; if it measures false, ship the first sentence alone.
+- [x] [Review] Security note in Design Notes: Task 0 measured the vendor needs no `%DB_IRISSYS` pair for read, set or purge; the shipped gate keeps it (stricter than the classic page, U-161).
+- [x] [Review] AD-36 truncation test for the SQL runtime statistics list.
+- [x] [Review] `SqlRuntimeStatsWrite`'s always-true first assertion made able to fail.
+- [x] [Review] The AC6 mutation comment in the browser spec names a mutation that can run.
+- [x] [Review] A changed-target test for the collection level (the level read back after a set, restored in cleanup).
+- [x] [Review] A `mutation:` line for `ConfigPort.SqlStatsState`'s `pLevel >= 2` guard.
 
 **Acceptance Criteria:**
 
@@ -216,6 +208,16 @@ deferred:
   - `[low]` `[reject]` Plan with statistics route tests use the web process rather than `SetSQLStatsFlagJob` — the Explain call records its own rows and the test removes them by routine, so no collection flag is touched; no harm named.
   - `[low]` `[reject]` Governance defaults and the setting call's overridable seam are not stated in the intent — both are Spec Change Log rulings 5 and 6 and the AD-59 seam pattern.
 
+### 2026-11-25 — Review pass (rework 1)
+
+- verdicts: 5 findings — high 0, medium 0, low 5, false 0, maybe-false 0
+- findings:
+  - `[low]` `[reject]` The `pLevel >= 2` guard in `ConfigPort.SqlStatsState` has no test that can fail — the mutation was applied and stays green because the vendor reads the stop empty below level 2 on this build; pinning it needs a vendor-read seam, which adds surface for a defensive guard (recorded under Verification).
+  - `[low]` `[reject]` The rewritten `read.label` of `ExplorerSqlRuntimeStats` no longer points at the settings read — the `slowquery` step names both reads and the label's 240-character limit forced the cut; no test or caller depends on the pointer.
+  - `[low]` `[reject]` `TestALevelMovedSinceTheMintRefusesTheConfirm` does not check the return of its out-of-band `SetSQLStats` — the next assertion reads the state and catches a failed set.
+  - `[low]` `[patch]` The doc comments of `SqlConsole.HandlePlan` and `SqlPort.Plan` said or implied the body's values reach the statistics run — both now say the instance binds none of them; reloaded, `SqlConsoleRoutes` 8/8.
+  - `[low]` `[reject]` Intent audit: the plan route's own answer carries no note and no agent tool runs Plan with statistics — the ruling names the client result and the model-facing result or description (the list read's description and the `slowquery` step), and the spec forbids an agent tool for it.
+
 ## Design Notes
 
 **Governing ADs (spine line ranges):**
@@ -248,6 +250,7 @@ deferred:
 - **Plan with statistics takes a query only.** Explain with statistics runs the statement (Task 0 (f) confirms for DML). The console runs a query unconfirmed today and confirms everything else.
 - **Tests.** The armed class (whole namespace and system-wide) joins `OCUPILOT_ALLOW_CONFIG_SETTINGS` beside `SqlTuningWrite`. The list test records statistics in its own process only.
 - **The set consequence, reworded to what Task 0 (c) measured.** The measure-first second clause ("Queries prepared before the change keep recording as they did until they are purged or compiled again") measured false for a set to Off: a query prepared at level 2 stopped recording at once. New sentence, verbatim: "This applies to every namespace on the instance. A query prepared while collection was set to Off records nothing once collection is turned on, until its cached query is purged." It is `SQL.RUNTIMESTATS.SET` in `AtelierError`. The list note and the purge consequence ship as ruled.
+- **Security note (U-161).** Task 0 measured that the vendor needs no `%DB_IRISSYS` pair for the flag's read, the set or the purge. The shipped gate keeps `%DB_IRISSYS:READ` for the setting's read and `%DB_IRISSYS:WRITE` for its set, stricter than the classic page, as ruled.
 - **Batch 1 decisions.**
   - The settings descriptor declares its `%DB_IRISSYS:READ` as an `ownPrivileges` pair, since System Explorer's area declares `%Development:USE` alone; the port's own pairs (ruling 2) gate every read and write.
   - The settings descriptor declares three suggested prompts, since the validator refuses fewer: the ruled one, and two of the list's ruled prompts ("Are runtime statistics being collected?", "Which module of a slow statement takes the most time?"). No new sentence.
@@ -367,6 +370,7 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
   - **Values do not reach the run.** On a 5-row table, `SELECT A FROM T WHERE A > ?` with `dynArgs(1)=3` answered `Rows Returned: 0`, `Global Refs: 0`, and so did `WHERE A > 3` and `WHERE B = 'x'` with no values: the instance replaces every literal and placeholder with `?` and the statistics run binds none. The same outcome held with `preparse`, and with the statement passed as an array (`sql=1`, `sql(1)=text`). A statement with no literal and no placeholder (`SELECT A FROM T`) ran honestly: 5 rows, 6 global references. `SqlPort.Plan` with `pValues` answered the same `Rows Returned: 0`.
   - **The bound.** A self join of 1,500 rows ran 16.1 s under `Executed` with no bound, answering a row; under a bound of 2 s and of 5 s it ran 14.4 s and 17.0 s and answered SQLCODE -450 `stopped`. Under the same 2 s alarm `Explain` with statistics ran 16.5 s and answered status OK with its plan text holding `ERROR #5521: SQLError: SQLCODE=-450 ... timed out due to user timeout`. So the alarm is honoured as `Run` honours it (the stop is raised by the engine when the statement ends or at its next check, and reported), and `Explained` reads the -450 from the plan text, from the status or as an `<ALARM>` exception. A 40-row five-way self join under a 2 s bound answered `stopped` from `Plan` (`SqlPortLive`). The stop arrives no sooner than `Run`'s does.
   - **A stopped or refused plan records no row.** The stopped five-way join, a refused UPDATE and a refused CREATE TABLE each left no statistics row for its tables (read by routine after the run).
+- **Set consequence re-measurement** (rework 1, `ocupilot-ci`, `USER`, 2026-11-25; table dropped, rows removed by routine, flag restored to `0:0:0::0:0` and read back). A query prepared at level 0 recorded 0 rows after a set to 2 (`M:5:0`), on two runs in a fresh process; after `PurgeForTable` and a prepare at level 2 it recorded 1 row. The second sentence of the set consequence measured true and ships.
 - **Rows.** `%SYS_PTools.StatsSQL` holds the current namespace's rows only, so every read runs in the target namespace. Each recorded run adds one group: a statement run twice holds one summary row and each module twice, so the list's id `[Routine, Cursor, Module]` repeats for such a statement (reported to the orchestrator for Batch 3).
 
 **Mutations (Rule 19).** One per AC. Each is applied, observed red and reverted, the tree is confirmed identical, and the source is reloaded.
@@ -378,18 +382,23 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
 - AC5: `slowquery` loses the step -> `WorkflowCatalog.TestTheSlowQueryWorkflowReadsTheStatementIndexAndWritesNothing` red. Observed red 2026-11-25.
 - AC4 (client, Batch 3): `SqlQueryState.body` drops `stats: true` from Plan with statistics' body -> `sql-query.page.spec.ts` "plans with statistics" red, and, after rebuild and redeploy, the browser spec's AC4 red on the plan lacking `Stats:`. Reverted, tree identical (`git diff` checksum), rebuilt and redeployed. Observed red 2026-11-25.
 - AC6: `SqlRuntimeStatsPage` drops its `actions.register` of Purge statistics -> after rebuild and redeploy the browser spec's AC1 (the bar offers Purge statistics) and AC6 (Purge statistics asks, confirms and empties the list) red. Reverted, tree identical (`git diff` checksum), rebuilt and redeployed. Observed red 2026-11-25. (The spec's first form, the descriptor losing its row action, is refused by `screen-mirror.mjs` before it can build: a list with no action may not declare `emptyAgentKey`.)
+- Rework 1, each applied, observed red and reverted (tree identical, source reloaded or bundle rebuilt and redeployed), 2026-11-25:
+  - Plan note, model: the list's `read.label` drops the ruled sentence -> `SqlRuntimeStatsRead.TestTheListsDescriptionToTheModelCarriesThePlanNote` red; the `slowquery` step drops it -> `WorkflowCatalog.TestTheSlowQueryWorkflowReadsTheStatementIndexAndWritesNothing` red.
+  - Plan note, client: `SqlQueryPage.hasStatisticsNote` answers false -> `sql-query.page.spec.ts` "shows the ruled note..." red; `planWithStatistics` skips recording its answer -> the same test red; the template drops the `stats-note` paragraph -> after rebuild and redeploy the browser spec's AC4 red.
+  - AD-36: `Screen.Read.Execute` sets `truncated` 0 -> `SqlRuntimeStatsRead.TestTheListCapsItsRowsAndReportsTheCut` red. The port's own caps (`CatalogRows`' `max` and its row loop) both disabled stays green: the shared reader trims and reports the cut.
+  - The write class's first assertion: `CollectRoster` answers a level of 3 -> it goes red, with three others of the class.
+  - Changed target: `ExplorerSqlRuntimeStatsSettingSet.MergeUpdate` adds no `Was` -> `SqlRuntimeStatsWrite.TestALevelMovedSinceTheMintRefusesTheConfirm` red (the confirm answered 200). The set tool carried no such guard before this test, so a level moved after the mint was not refused.
+  - `ConfigPort.SqlStatsState`'s `pLevel >= 2` guard dropped -> `SqlRuntimeStatsWrite` stays green (7 of 7): after a set to 2 and then 0, and at expiry, the vendor reads the stop empty, so the guard is defensive on this build and no test can pin it.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap. AC4 and the matrix row "Plan with statistics" say a query "with values", but on this build the values never bind in `$SYSTEM.SQL.Explain` with statistics (Task 0 (b), Batch 2 re-measurement), so a statement with a literal or placeholder is planned unbound and shows zero rows and zero global references. Recommended amendment: Plan with statistics takes a query with no literal and no placeholder and refuses any other with one ruled sentence (more honest than the alternative), or keeps today's behavior with one ruled note beside the result. Either needs a new user-facing string; neither is decided here. The three batch commits stay on the branch (no revert) so the re-dispatch builds on them.
+Status: done
+Blocking condition: none
 
-**Summary.** Task 0 measured on `ocupilot-ci`; Batch 1 added the SQL runtime statistics list (`Catalog.RuntimeStats`), the Purge statistics write (`SqlPort` `RuntimeStats`, `PURGESTATS`), the Runtime statistics collection settings rows (`ConfigPort` `SQLStats`), both write tools, descriptors, entity types, governance keys and the `slowquery` read step; Batch 2 added `Plan` with statistics (query only, under the console's bound); Batch 3 added the client page, the Plan with statistics button (no values sent), the strings and the browser spec.
+**Rework 1 summary.** The ruled note "Plan with statistics runs the statement without its values, so a filtered query can show zero rows." now shows beside every Plan with statistics result on SQL query (`sqlPlanStatisticsNote`, EXPERIENCE.md Fixed strings row, add-only), ends the list's `read.label` for the model, and ends the `slowquery` runtime statistics step. The set consequence's second sentence re-measured true and stays. The setting tool now refuses a confirm after the level moved (`MergeUpdate` adds `Was`, as `AnalyticsSettingSet`). New or changed tests: AD-36 truncation and the model-facing note in `SqlRuntimeStatsRead`, the changed-target leg and the made-able-to-fail first assertion in `SqlRuntimeStatsWrite`, the step note in `WorkflowCatalog`, `sql-query.page.spec.ts` and the browser spec's AC4. The `pLevel >= 2` mutation stayed green, so its deferred entry is closed.
 
-**Commits.** `46ac9c479` Batch 1, `82a8c0e08` Batch 2, `e993a6f7f` Batch 3.
+**Verification.** `SqlRuntimeStatsRead` 10/10, `SqlRuntimeStatsWrite` 7/7 (armed), `WorkflowCatalog` 10/10, `ReadDescriptions` 9/9, `ReadTool` 28/28, `ToolWrite` 33/33, `ConfigSettingRules` 7/7, `ConfigSettingRead` 9/9, `npm run test:tools` 2415/2415, `npm run test:components` 3966/3966, `npm run build`, the new browser spec 4/4 and `system-explorer-sql-statements` 5/5 in both orders, `check-objectscript` and `lint-docs` clean. Mutations: Verification, "Rework 1".
 
-**Verification.** `SqlRuntimeStatsRead` 8/8, `SqlRuntimeStatsWrite` 6/6 (armed), `SqlConsoleRoutes` 8/8, `SqlPortLive` 15/15, the shared-surface classes each green when run one per call, `npm run test:tools` 2415/2415, `npm run test:components` 3965/3965 (337 files), `npm run build` green (initial bundle 2.30 MB), the new browser spec 4/4 and `system-explorer-sql-statements` 5/5 in both file orders, `check-objectscript` and `lint-docs` clean. Mutations are recorded under Verification for AC1 to AC6.
+**Review (rework 1).** Verification-gap and intent-alignment layers: 5 findings, 1 low patched (two doc comments on the values), 4 low rejected with reasons in the triage log, 0 deferred. Follow-up review recommended: `false` (no high patched).
 
-**Review.** Verification-gap and intent-alignment layers reported; triage log above: 2 medium grouped as the intent gap, 4 low patches not applied because of the cascade (open items for the re-dispatch: AD-36 truncation leg for the new list, the always-true first assertion in `SqlRuntimeStatsWrite`, the AC6 mutation comment in the browser spec, a setting-level changed-target leg), 1 maybe-false deferred, 2 low rejected.
-
-**Residual risks.** Statistics for a statement with a literal or placeholder read as real zeros until the gap is ruled. Epic 24 has commits on `EXPERIENCE.md` and `strings.ts`; this story's edits there are add-only and may need a token union at merge.
+**Residual risks.** Epic 24 has commits on `EXPERIENCE.md` and `strings.ts`; this story's edits there are add-only and may need a token union at merge.

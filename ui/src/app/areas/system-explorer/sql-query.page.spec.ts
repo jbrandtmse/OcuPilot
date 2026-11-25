@@ -386,6 +386,28 @@ describe('SQL query', () => {
     expect(dialog()).toBeNull();
   });
 
+  // Mutation (Rule 19): `SqlQueryPage.hasStatisticsNote` answers false -> the note assertions go red; `planWithStatistics` skips recording its answer -> the first goes red.
+  it('shows the ruled note beside every Plan with statistics result and beside no other result', async () => {
+    const mounted = await mount();
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: 'Stats:\n    Module: 1\n', truncated: false } };
+    await type(mounted, 'SELECT Name FROM OcuProbe2126.Stats WHERE Num = 3');
+    expect(el(mounted.host, 'stats-note')).toBeNull();
+    el<HTMLButtonElement>(mounted.host, 'explain-stats').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'stats-note').textContent?.trim()).toBe('Plan with statistics runs the statement without its values, so a filtered query can show zero rows.');
+    expect(el(mounted.host, 'stats-note').textContent?.trim()).toBe(STRINGS.sqlPlanStatisticsNote);
+    mounted.answer = { ok: { outcome: 'stopped', kind: 'query', seconds: 50 } };
+    el<HTMLButtonElement>(mounted.host, 'explain-stats').click();
+    await settle(mounted.fixture);
+    expect(status(mounted.host)).toBe(STRINGS.explorerSqlStopped.replace('<s>', '50'));
+    expect(el(mounted.host, 'stats-note').textContent?.trim()).toBe(STRINGS.sqlPlanStatisticsNote);
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: '<plans><plan>Read master map</plan></plans>', truncated: false } };
+    el<HTMLButtonElement>(mounted.host, 'explain').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'plan').textContent).toBe('<plans><plan>Read master map</plan></plans>');
+    expect(el(mounted.host, 'stats-note')).toBeNull();
+  });
+
   // Mutation (Rule 19): drop the refusal's `adopt` path in `post` -> no refusal is drawn and this goes red.
   it('shows the refusal of a statement that is not a query as the envelope sent it, and draws no plan', async () => {
     const mounted = await mount();
