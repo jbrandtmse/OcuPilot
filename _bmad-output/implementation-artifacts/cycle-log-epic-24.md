@@ -870,3 +870,7 @@
 2026-11-25T17:06:05Z	Story 24.17	code_head_pushed	scope=batch2 sha=76959926c runs=45661016373 ci=pending missing=none
 2026-11-25T17:06:05Z	Story 24.17	hold_restored	story=24-17 note=committed_locally(b20dd9c24_on_origin_via_76959926c;hold_patch_deleted)
 2026-11-25T17:06:17Z	Story 24.17	stage_spawned	stage=plan spawn_at=2026-11-25T17:06:17Z model=opus agent_name=24-17-plan-batch3 cycle_iteration=3 scope=batch3_workflow_roles_users_membership
+2026-11-25T17:22:10Z	Story 24.17	story_created	scope=batch3_split(3a_users=-3.md,3b_roles_members=-4.md;old_4,5->-5,-6) commit=c46421061 build_status=ready-for-dev warning=oversized
+2026-11-25T17:22:10Z	Story 24.17	ruling	question=batch3_split choice=3a_users_then_3b_roles_members rejected=one_batch why=size(8_writes) category=decide policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-25T17:22:10Z	Story 24.17	ruling	question=batch3a+3b_veto_set choice=keep_all(3a_V1-V6;V2_SQL_check_on_list_only_if_#5580;3b_V1-V6;member_remove_true) category=veto inbox=U-162 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-25T17:22:10Z	Story 24.17	spec_validated	scope=batch3a,3b ledger_inbox=empty mutates_shared_runtime=false(throwaway_only)

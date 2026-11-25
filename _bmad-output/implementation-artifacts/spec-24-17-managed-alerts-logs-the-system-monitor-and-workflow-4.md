@@ -133,6 +133,16 @@ Each is the lead's to take to the veto gate; the recommended option is first.
 
 No new dependency; nothing is written into another namespace. A workflow role is not an instance role and grants no privilege (veto item 3 names its task reach).
 
+**Lead rulings at the spec gate (2026-11-25; filed as an INBOX veto item, binding unless the orchestrator reverses them).** Every veto item is kept as recommended:
+
+- **V1:** kept. If Task 0 (c) measures a consequence sentence untrue, HALT with `## Clarification Needed`; never reword it in-stage. The README count is derived from the Baseline on the tree you commit (after Batch 3a), never typed from this plan.
+- **V2:** kept: Batch 3a's posture and its ruled SQL condition (lists only).
+- **V3:** kept. Adding a member is an ordinary write behind the confirmation the person sees.
+- **V4:** kept, the narrower values.
+- **V5:** kept as recommended. `interop.workflowroles.remove` ships `false`, destructive, typed name; `interop.workflowroles.add`, `.update`, `interop.workflowmembers.add` and `interop.workflowmembers.remove` ship `true`, the member remove not destructive, its card showing the rank, the title and the consequence sentence.
+- **V6:** kept for story end; the lead writes the lines.
+- **Order:** this batch is implemented after Batch 3a is merged or green, on a tree that holds 3a.
+
 ## Design Notes
 
 **Batch split.** As Batch 3a's Design Notes: 3a is workflow users, this spec is 3b, and Batch 1's items 4 and 5 take `-5.md` and `-6.md`. This spec is planned against HEAD `2ded140f5`, before 3a lands; its implement stage re-reads 3a's spec and Code Map as built.

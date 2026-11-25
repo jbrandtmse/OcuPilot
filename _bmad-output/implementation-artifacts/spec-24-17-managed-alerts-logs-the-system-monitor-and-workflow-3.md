@@ -130,6 +130,15 @@ Each is the lead's to take to the veto gate; the recommended option is first.
 
 No new dependency; nothing is written into another namespace. A workflow user is not an instance user, role or resource: adding one grants no privilege (veto item 5 names its task reach).
 
+**Lead rulings at the spec gate (2026-11-25; filed as an INBOX veto item, binding unless the orchestrator reverses them).** Every veto item is kept as recommended:
+
+- **V1:** kept. If Task 0 (d) measures a consequence sentence untrue, HALT with `## Clarification Needed`; never reword it in-stage. The README count is derived from the Baseline on the tree you commit, never typed from this plan.
+- **V2:** kept, and its condition is ruled now: if Task 0 (b) finds the classic `Engine:ListUsers` query refused (`#5580`), the list takes Batch 2's SQL SELECT check on its table (the vendor's `CheckPrivilege`, run in the target namespace, the existing `AUTH.NOPRIVILEGE` refusal), pinned by the same equality table, on the list read only: the writes, and any state read a write uses as its fresh read, take no SQL check (Batch 2's R1). No HALT for it.
+- **V3:** kept. The choices read answers a holder of the write pairs only.
+- **V4:** kept, the narrower values.
+- **V5:** kept. Remove ships `false`, destructive, typed name; add and update ship `true`.
+- **V6:** kept for story end; the lead writes the lines.
+
 ## Design Notes
 
 **Batch split.** Batch 1's item 3 (four pages' worth, eight writes) is split at this plan: **3a, workflow users** (this spec, `-3.md`: one list, three writes) and **3b, workflow roles and membership** (`-4.md`: a list and a members sub-screen, five writes), each its own spec and commit series. Users go first because a member is a workflow user: 3b's Add member offers 3a's list. Batch 1's items 4 and 5 keep their numbers and take `-5.md` and `-6.md`.
