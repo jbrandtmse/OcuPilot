@@ -63,6 +63,11 @@ Parameter NLSRELOAD = "CONFIG.NLS.RELOAD";
 
 Parameter REASONNLSRELOAD = "Changing this reloads the current locale, so new processes take its date, time and number formats.";
 
+/// <p>409: the stop or the level after the stop of the runtime statistics collection is set while collection is off (Story 21.26).</p>
+Parameter SQLSTATSNOSTOP = "CONFIG.SQLSTATS.NOSTOP";
+
+Parameter REASONSQLSTATSNOSTOP = "Collection must be on before its stop can be set.";
+
 /// <p>What a row's <code>Accepts</code> reads, one sentence per kind. <code>%1</code> and <code>%2</code> are replaced
 /// by <method>Accepting</method>.</p>
 Parameter ACCEPTSBOOLEAN = "0 (off) or 1 (on).";
@@ -94,6 +99,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#MAPPINGNAME Quit ..#REASONMAPPINGNAME
     If pCode = ..#MAPPINGDELETE Quit ..#REASONMAPPINGDELETE
     If pCode = ..#NLSRELOAD Quit ..#REASONNLSRELOAD
+    If pCode = ..#SQLSTATSNOSTOP Quit ..#REASONSQLSTATSNOSTOP
     Quit ""
 }
 
@@ -103,6 +109,7 @@ ClassMethod HttpStatusFor(pCode As %String) As %Integer
     If pCode = ..#SETTINGNOTFOUND Quit 404
     If pCode = ..#SETTINGREADONLY Quit 409
     If pCode = ..#MAPPINGTAKEN Quit 409
+    If pCode = ..#SQLSTATSNOSTOP Quit 409
     If pCode = ..#SETTINGVALUE Quit 400
     If pCode = ..#SETTINGSUBSTITUTION Quit 400
     If pCode = ..#MAPPINGNAME Quit 400

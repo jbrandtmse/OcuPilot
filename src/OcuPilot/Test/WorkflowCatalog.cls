@@ -123,7 +123,8 @@ Method TestEveryNamedToolResolvesAsItsKind()
 /// <p>AC6 (Story 21.6). The <code>slowquery</code> workflow reads the namespace's statement index among its steps' reads, names no write tool, and is
 /// still offered by the SQL query screen alone.</p>
 /// <p>Mutation (Rule 19): <code>OcuPilot.Kernel.Agent.Workflow</code>'s <code>slowquery</code> loses its <code>explorer.sqlstatements.read</code> step -> the
-/// read assertion goes red; the step gains a write -> the write assertion goes red.</p>
+/// read assertion goes red; the step gains a write -> the write assertion goes red; Story 21.26: the step that names the two runtime statistics reads is
+/// removed -> the runtime statistics assertion goes red.</p>
 Method TestTheSlowQueryWorkflowReadsTheStatementIndexAndWritesNothing()
 {
     Set tEntry = $ClassMethod(..#WORKFLOW, "Lookup", "slowquery", .tFound)
@@ -140,6 +141,15 @@ Method TestTheSlowQueryWorkflowReadsTheStatementIndexAndWritesNothing()
     }
     Do $$$AssertTrue($ListFind($ListFromString(tReads), "explorer.sqlstatements.read") > 0, "its steps name the statement index read: " _ tReads)
     Do $$$AssertEquals($ListLength($ClassMethod(..#WORKFLOW, "Writes", "slowquery")), 0, "and no write tool")
+    ; Story 21.26: its steps also name the runtime statistics and the collection setting reads.
+    Do $$$AssertTrue(($ListFind($ListFromString(tReads), "explorer.sqlruntimestats.read") > 0) && ($ListFind($ListFromString(tReads), "explorer.sqlruntimestatssettings.read") > 0), "its steps name the runtime statistics and the collection setting reads: " _ tReads)
+    ; The step that reads the statistics carries the note about Plan with statistics' rows.
+    Set tNoted = 0
+    Set tSteps = tEntry.%Get("steps").%GetIterator()
+    While tSteps.%GetNext(.tStepIndex, .tStep) {
+        If tStep.%Get("say") [ "Plan with statistics runs the statement without its values, so a filtered query can show zero rows." Set tNoted = tNoted + 1
+    }
+    Do $$$AssertEquals(tNoted, 1, "exactly one step carries the ruled note about Plan with statistics")
     Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
     Set tOffering = ""
     For tI = 1:1:$ListLength(tList) {

@@ -35,6 +35,8 @@ export const SYSTEM_SECURITY_SETTING_LIST = 'OcuPilot.Screen.Descriptor.SystemSe
 /** Task Manager email (Story 21.19), a Tasks screen this page serves with the same dialog; its message settings are long text, drawn as a text area. */
 export const TASK_MAIL_SETTING_LIST = 'OcuPilot.Screen.Descriptor.TaskMailSettingList';
 const TASK_MAIL_MESSAGE_PREFIX = 'Message';
+/** Runtime statistics collection (Story 21.26), a System Explorer screen this page serves; its dialog states that a change applies to every namespace. */
+export const SQL_RUNTIME_STATS_SETTING_LIST = 'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStatsSettings';
 /** Analytics' General settings (Story 24.13): the first tab of the Settings group, a detail screen, whose Set value this page sends. */
 export const ANALYTICS_SETTING_LIST = 'OcuPilot.Screen.Descriptor.AnalyticsSettingList';
 
@@ -53,6 +55,7 @@ const SERVED_LISTS: readonly string[] = [
   COMPATIBILITY_SETTING_LIST,
   SQL_SETTING_LIST,
   SQL_SHELL_SETTING_LIST,
+  SQL_RUNTIME_STATS_SETTING_LIST,
   TSQL_SETTING_LIST,
   ISQL_SETTING_LIST,
   DDL_SYSTEM_MAPPING_LIST,
@@ -423,7 +426,9 @@ export class ConfigSettingsPage {
               ? `${accepts} ${STRINGS.nlsDefaultReloadConsequence}`
               : saves
                 ? `${accepts} ${STRINGS.analyticsSettingSaveConsequence}`
-                : accepts,
+                : this.screen?.descriptor === SQL_RUNTIME_STATS_SETTING_LIST
+                  ? `${accepts} ${STRINGS.sqlRuntimeStatsSetConsequence}`
+                  : accepts,
     });
   }
 

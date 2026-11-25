@@ -40,6 +40,7 @@ const SENTENCES = [
   ['REASONMAPPINGNAME', 'configMappingName'],
   ['REASONMAPPINGDELETE', 'configMappingDelete'],
   ['REASONNLSRELOAD', 'nlsDefaultReloadConsequence'],
+  ['REASONSQLSTATSNOSTOP', 'configRefusalSqlStatsNoStop'],
 ];
 
 function stringValue(key) {

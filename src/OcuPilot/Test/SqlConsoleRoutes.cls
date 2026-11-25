@@ -165,6 +165,34 @@ Method TestThePlanRouteExecutesNothing()
     }
 }
 
+/// <p>AC4: the plan route takes a boolean <code>stats</code> key. With <code>true</code> a query's plan carries each module's statistics, and a
+/// statement that is not a query is refused 422 <code>EXPLORER.SQL.PLANSTATS</code> before anything runs; OcuPilot's own tables are refused 403 as on
+/// every route; a <code>stats</code> that is not a boolean is refused 400, and so is the key on the run route. With <code>false</code> or no key the plan
+/// carries none.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Area.Explorer.SqlConsole.HandlePlan</code> passes no <code>stats</code> on -> the statistics leg goes red;
+/// <code>OcuPilot.Area.Explorer.SqlConsole.Body</code> accepts the key on every route -> the run route leg goes red.</p>
+Method TestThePlanRouteTakesStatsForAQueryOnly()
+{
+    Set tQuery = "SELECT Name FROM OcuProbe196.Granted WHERE Num = 1"
+    Do ..Post(..#PLAN, {"statement": (tQuery), "stats": true}, .tStatus, .tAnswer, .tType)
+    Do $$$AssertEquals($Select($IsObject(tAnswer): tStatus _ " " _ tAnswer.%Get("outcome") _ " " _ (tAnswer.%Get("plan") [ "Stats:"), 1: ""), "200 plan 1", "a query's plan with stats true carries statistics")
+    For tBody = {"statement": (tQuery), "stats": false}, {"statement": (tQuery)} {
+        Do ..Post(..#PLAN, tBody, .tStatus, .tAnswer, .tType)
+        Do $$$AssertEquals($Select($IsObject(tAnswer): tStatus _ " " _ tAnswer.%Get("outcome") _ " " _ (tAnswer.%Get("plan") [ "Stats:"), 1: ""), "200 plan 0", "with stats false or none it carries none: " _ tBody.%ToJSON())
+    }
+    Do ..Post(..#PLAN, {"statement": "UPDATE OcuProbe196.Granted SET Num = Num + 1", "stats": true}, .tStatus, .tAnswer, .tType)
+    Do $$$AssertEquals(..Code(tStatus, tAnswer) _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("reason"), 1: ""), "422 EXPLORER.SQL.PLANSTATS " _ ##class(OcuPilot.Api.AtelierError).#REASONSQLPLANSTATS, "an UPDATE is refused with the published sentence")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Granted"), "40 820", "and nothing ran")
+    Do ..Post(..#PLAN, {"statement": "SELECT ID FROM OcuPilot_Kernel_State.Proposal", "stats": true}, .tStatus, .tAnswer, .tType, $NAMESPACE)
+    Do $$$AssertEquals(..Code(tStatus, tAnswer), "403 PROHIBITED.OCUPILOTSQL", "OcuPilot's own table is refused before anything runs")
+    Do ..Post(..#PLAN, {"statement": (tQuery), "stats": "yes"}, .tStatus, .tAnswer, .tType)
+    Do $$$AssertEquals(..Code(tStatus, tAnswer), "400 EXPLORER.SQL.INPUT", "a stats that is not a boolean is refused")
+    Do ..Post(..#RUN, {"statement": (tQuery), "stats": true}, .tStatus, .tAnswer, .tType)
+    Do $$$AssertEquals(..Code(tStatus, tAnswer), "400 EXPLORER.SQL.INPUT", "the run route takes no stats key")
+    Do $$$AssertTrue($ClassMethod(..#PROBE, "RemoveStats") '< 0, "the statistics the plans recorded are removed")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "StatsRoutines"), "", "and none is left")
+}
+
 /// <p>Bad input is refused 400 <code>EXPLORER.SQL.INPUT</code> before any prepare: an empty or
 /// over-long statement, values that are not an array of strings, more than 100 values, one too long,
 /// Max rows outside 1 to 1,000, and a key the route does not take.</p>

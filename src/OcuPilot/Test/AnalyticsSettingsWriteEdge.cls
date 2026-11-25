@@ -169,7 +169,7 @@ Method TestASecondWriterIsRefusedWhileTheLockIsHeld()
 
 /// <p>The Edge row "stale": a proposal minted before the setting changed is closed as moved when it is confirmed after, whether the setting was unstored at the mint and is stored now or held another value;
 /// nothing the proposal would have written is written.</p>
-/// <p>Mutation (Rule 19): drop <code>Was</code> from <method>OcuPilot.Screen.Tool.AnalyticsSettingSet.MergeUpdate</method> -- the second leg goes red.</p>
+/// <p>Mutation (Rule 19): <parameter>OcuPilot.Screen.Tool.AnalyticsSettingSet.GUARDMOVED</parameter> 0, so <method>OcuPilot.Screen.Tool.ConfigSettingSet.MergeUpdate</method> adds no <code>Was</code> -- the second leg goes red.</p>
 Method TestAProposalMintedBeforeTheSettingChangedIsClosedAsMoved()
 {
     Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()

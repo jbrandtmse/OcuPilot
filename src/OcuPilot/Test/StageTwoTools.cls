@@ -218,6 +218,8 @@ XData Elsewhere
 <screen name="ExplorerSqlProcedureStatements"/>
 <screen name="ExplorerSqlProcedures"/>
 <screen name="ExplorerSqlQuery"/>
+<screen name="ExplorerSqlRuntimeStats"/>
+<screen name="ExplorerSqlRuntimeStatsSettings"/>
 <screen name="ExplorerSqlSchema"/>
 <screen name="ExplorerSqlSchemaProcedures"/>
 <screen name="ExplorerSqlSchemaViews"/>

@@ -139,6 +139,7 @@ No HIGH. Runs are on `ocupilot-b-ci`.
   - R23: `CHECKEDFLOOR` recommended at 152 (measured on HEAD), not edited.
   - R24 `by-design`: the `{Namespace}` fallback.
 - **R25 MED, ledger candidate.** Story 24.16's `PerformPurge` writes no audit row when the vendor raises (AD-15). Owner: burndown.
+- CI rework: `InteropControl` left 1 business process row (`Ens.ScheduleHandler`, not completed, no creation time) in USER, and the shared `ProductionProbe.Remove` now removes it; the guard is unchanged.
 
 ## Veto items
 
@@ -270,6 +271,7 @@ The check reads `Ens_Rule.Log` and `Ens.BusinessProcess` as the vendor names the
 - mutation: the dialog's Purge sends `'0'` days, on a rebuilt and redeployed bundle -> `interop-log-purge.browser-spec.mjs` red in both tests; the component runner reddened for two more client mutations (the page's registration of Purge dropped; the dialog's count line) (AC9).
 - mutation: `DropProbes` leaves the rule log probes -> `InteropLogPurgeElsewhere` red on `OnAfterOneTest`'s assertion that none survives (AC10).
 - mutation (review): `LogSelectGate` asks `CheckPrivilege` in `USER` whatever the namespace -> `InteropLogPurgeGate.TestTheSqlSelectCheckIsTheClassicPagesOwn` red on the `HSCUSTOM` legs (AC3); a `LogFault` in `ReadLogState`'s switched `Catch` -> `InteropLogPurgeRefusals.TestNothingIsLoggedWhileTheNamespaceIsSwitched` red on the state leg, and the privilege check mapped through `Mapped` -> red on "names no vendor text" (AC7); `Foreign`'s old date-only predicate -> the class starts beside a foreign business process created today and deletes it (AC10).
+- mutation (CI rework): `RemoveScheduleHandler` dropped from `ProductionProbe.Remove` -> `InteropControl.TestTheProbeRemovalLeavesNoScheduleHandlerRow` red; then `InteropControl`, `InteropLogPurgeGate` and `InteropLogPurgeControl` green in that order.
 
 ## Auto Run Result
 

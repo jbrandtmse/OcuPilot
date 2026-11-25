@@ -118,6 +118,9 @@ interface ValueField {
         <button type="button" class="ocu-button-text" data-ocu-sql="explain" [attr.aria-disabled]="blocked" (click)="onPlan()">
           {{ STRINGS.explorerSqlExplainPlan }}
         </button>
+        <button type="button" class="ocu-button-text" data-ocu-sql="explain-stats" [attr.aria-disabled]="blocked" (click)="onPlanWithStatistics()">
+          {{ STRINGS.explorerSqlPlanWithStatistics }}
+        </button>
         <button type="button" class="ocu-button-text" data-ocu-sql="background" [attr.aria-disabled]="backgroundBlocked" (click)="onBackground()">
           {{ STRINGS.explorerSqlRunInBackground }}
         </button>
@@ -127,6 +130,9 @@ interface ValueField {
     <p class="ocu-explorer-status" role="status" data-ocu-sql="status">{{ statusLine }}</p>
     @if (hasMessage) {
       <pre class="ocu-source-text ocu-sql-query-message" tabindex="0" data-ocu-sql="message" [attr.aria-label]="statusLine">{{ message }}</pre>
+    }
+    @if (hasStatisticsNote) {
+      <p class="ocu-explorer-status" data-ocu-sql="stats-note">{{ STRINGS.sqlPlanStatisticsNote }}</p>
     }
     @if (hasPlan) {
       <h2 class="ocu-details-heading">{{ STRINGS.explorerSqlPlanHeading }}</h2>
@@ -327,6 +333,12 @@ export class SqlQueryPage {
     return this.plan !== '';
   }
 
+  /** Every Plan with statistics result carries the note that the statement ran without its values. */
+  protected get hasStatisticsNote(): boolean {
+    this.generation();
+    return !this.state.running() && this.state.statisticsAnswer();
+  }
+
   protected get result(): SqlRows | null {
     this.generation();
     const answer = this.state.answer();
@@ -366,6 +378,11 @@ export class SqlQueryPage {
   protected onPlan(): void {
     if (this.blocked) return;
     void this.state.plan(this.deps);
+  }
+
+  protected onPlanWithStatistics(): void {
+    if (this.blocked) return;
+    void this.state.planWithStatistics(this.deps);
   }
 
   protected onBackground(): void {

@@ -438,6 +438,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/class-method',
       // Story 21.6: SQL statements, after Class method console.
       'system-explorer/sql-statements',
+      // Story 21.26: SQL runtime statistics and Runtime statistics collection, after SQL statements.
+      'system-explorer/sql-runtime-stats',
+      'system-explorer/sql-runtime-stats-settings',
       // Story 20.3: the unlisted Production items list, reached from a Productions row, ahead of its area's listed lists.
       // Story 20.4: the item's tabs around it -- Jobs, Log, Messages, Queue, Item settings (Story 20.22) and the Status
       // head -- and Queue messages after them, all unlisted, in the descriptors' class order.

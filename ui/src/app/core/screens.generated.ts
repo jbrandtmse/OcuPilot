@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting' | 'statement-index-entry' | 'cached-query' | 'sql-table' | 'sql-index' | 'sql-schema' | 'interop-archive' | 'interop-archive-setting' | 'sql-field' | 'interop-managed-alert' | 'interop-rule-log' | 'interop-process-log' | 'interop-workflow-user';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting' | 'statement-index-entry' | 'cached-query' | 'sql-table' | 'sql-index' | 'sql-schema' | 'interop-archive' | 'interop-archive-setting' | 'sql-field' | 'interop-managed-alert' | 'sql-runtime-stat' | 'sql-runtime-stats-setting' | 'interop-rule-log' | 'interop-process-log' | 'interop-workflow-user';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -606,6 +606,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "interop-archive-setting",
   "sql-field",
   "interop-managed-alert",
+  "sql-runtime-stat",
+  "sql-runtime-stats-setting",
   "interop-rule-log",
   "interop-process-log",
   "interop-workflow-user"
@@ -15969,6 +15971,341 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "read": null,
     "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStats",
+    "route": "system-explorer/sql-runtime-stats",
+    "area": "system-explorer",
+    "labelKey": "explorerSqlTabRuntimeStats",
+    "sideBarPosition": 21,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "sql-runtime-stat",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Routine",
+        "Cursor",
+        "Module"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "purge",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Routine",
+        "Cursor",
+        "Module",
+        "Runs",
+        "AverageRows",
+        "AverageTime",
+        "Statement"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerSqlRuntimeStatsEmpty",
+    "commandAliases": [
+      "runtime statistics",
+      "sql stats"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "explorerSqlStatementListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "explorerSqlRuntimeStatsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "explorerSqlRuntimeStatsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.QButtons.RuntimeStats",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "runtime statistics row",
+      "label": "Runtime statistics of this namespace, a summary row and one row per module for each statement, with runs and averages per run. Plan with statistics runs the statement without its values, so a filtered query can show zero rows.",
+      "source": {
+        "port": "atelier",
+        "endpoint": "Catalog.RuntimeStats",
+        "type": "LIST"
+      },
+      "fields": [
+        "Routine",
+        "Cursor",
+        "Module",
+        "Runs",
+        "AverageRows",
+        "AverageGlobalRefs",
+        "AverageCommands",
+        "AverageDiskWait",
+        "AverageTime",
+        "ModuleRuns",
+        "Statement"
+      ],
+      "filter": [
+        "Routine",
+        "Cursor",
+        "Module",
+        "Statement"
+      ],
+      "sort": {
+        "fields": [
+          "Routine",
+          "Module",
+          "Runs",
+          "AverageRows",
+          "AverageGlobalRefs",
+          "AverageCommands",
+          "AverageDiskWait",
+          "AverageTime",
+          "ModuleRuns"
+        ],
+        "default": "AverageTime",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "note": {
+        "key": "explorerSqlRuntimeStatsNote",
+        "text": "Statistics are recorded only while collection is on, and by Plan with statistics on SQL query."
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Routine",
+          "labelKey": "processColumnRoutine",
+          "kind": "name"
+        },
+        {
+          "field": "Cursor",
+          "labelKey": "runtimeStatsColumnCursor",
+          "kind": "text"
+        },
+        {
+          "field": "Module",
+          "labelKey": "runtimeStatsColumnModule",
+          "kind": "text"
+        },
+        {
+          "field": "Runs",
+          "labelKey": "runtimeStatsColumnRuns",
+          "kind": "number"
+        },
+        {
+          "field": "AverageRows",
+          "labelKey": "runtimeStatsColumnAverageRows",
+          "kind": "number"
+        },
+        {
+          "field": "AverageGlobalRefs",
+          "labelKey": "runtimeStatsColumnAverageGlobalRefs",
+          "kind": "number"
+        },
+        {
+          "field": "AverageCommands",
+          "labelKey": "runtimeStatsColumnAverageCommands",
+          "kind": "number"
+        },
+        {
+          "field": "AverageDiskWait",
+          "labelKey": "runtimeStatsColumnAverageDiskWait",
+          "kind": "number"
+        },
+        {
+          "field": "AverageTime",
+          "labelKey": "explorerSqlColumnAverageTime",
+          "kind": "number"
+        },
+        {
+          "field": "ModuleRuns",
+          "labelKey": "runtimeStatsColumnModuleRuns",
+          "kind": "number"
+        },
+        {
+          "field": "Statement",
+          "labelKey": "explorerSqlColumnStatement",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "explorerSqlRuntimeStatsEmptyAgent"
+    },
+    "toolIdentifier": "explorer.sqlruntimestats",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStatsSettings",
+    "route": "system-explorer/sql-runtime-stats-settings",
+    "area": "system-explorer",
+    "labelKey": "runtimeStatsSettingsLabel",
+    "sideBarPosition": 22,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "sql-runtime-stats-setting",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "set",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "configSettingsEmpty",
+    "commandAliases": [
+      "runtime statistics settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "runtimeStatsSettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "explorerSqlRuntimeStatsPrompt3"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "explorerSqlRuntimeStatsPrompt2"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.QButtons.RuntimeStatsSettings",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "runtime statistics setting",
+      "label": "Whether this instance collects SQL runtime statistics, when the collection stops and what it falls back to; the statistics themselves are in explorer.sqlruntimestats.",
+      "source": {
+        "port": "config",
+        "endpoint": "SQLStats",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Value",
+        "Kind",
+        "Accepts",
+        "Restart",
+        "ReadOnly",
+        "Purges"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Value"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "agentGovernanceColumnSetting",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "runtimeStatsSettingsEmptyAgent"
+    },
+    "toolIdentifier": "explorer.sqlruntimestatssettings",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,

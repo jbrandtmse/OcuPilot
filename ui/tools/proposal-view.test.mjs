@@ -79,6 +79,8 @@ const {
   CONSEQUENCE_SQLSTATEMENTCLEARERROR,
   CONSEQUENCE_SQLSTATEMENTCLEAN,
   CONSEQUENCE_SQLCACHEDQUERYPURGE,
+  CONSEQUENCE_SQLRUNTIMESTATSPURGE,
+  CONSEQUENCE_SQLRUNTIMESTATSSET,
   CONSEQUENCE_CONFIGSETTINGRESTART,
   CONSEQUENCE_CONFIGMAPPINGDELETE,
   CONSEQUENCE_CONFIGNLSRELOAD,
@@ -1429,6 +1431,9 @@ test('Story 21.6: the SQL statement writes and the cached-query purges state the
     ['ExplorerSqlStatementClearError', 'SQL.STATEMENT.CLEARERROR', CONSEQUENCE_SQLSTATEMENTCLEARERROR, STRINGS.sqlStatementClearErrorConsequence],
     ['ExplorerSqlStatementClean', 'SQL.STATEMENT.CLEAN', CONSEQUENCE_SQLSTATEMENTCLEAN, STRINGS.sqlStatementCleanConsequence],
     ['SqlCachedQueryPurge', 'SQL.CACHEDQUERY.PURGE', CONSEQUENCE_SQLCACHEDQUERYPURGE, STRINGS.sqlCachedQueryPurgeConsequence],
+    // Story 21.26: the runtime statistics purge and the collection setting's set.
+    ['ExplorerSqlRuntimeStatsPurge', 'SQL.RUNTIMESTATS.PURGE', CONSEQUENCE_SQLRUNTIMESTATSPURGE, STRINGS.sqlRuntimeStatsPurgeConsequence],
+    ['ExplorerSqlRuntimeStatsSettingSet', 'SQL.RUNTIMESTATS.SET', CONSEQUENCE_SQLRUNTIMESTATSSET, STRINGS.sqlRuntimeStatsSetConsequence],
   ];
   for (const [name, code, constant, sentence] of rows) {
     assert.equal(constant, code, `${name}'s code is the constant the card reads`);

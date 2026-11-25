@@ -74,18 +74,19 @@ ClassMethod HandleRun() As %Status
 
 /// <p>Answer <code>POST /explorer/sql/plan</code> in the request's scope: the port's plan answer
 /// (<method>OcuPilot.Port.SqlPort.Plan</method>), nothing executed, after the same gate, bounds,
-/// refusals and self-protection the run route applies.</p>
+/// refusals and self-protection the run route applies. A body <code>stats</code> of <code>true</code>
+/// asks for Plan with statistics, which the port runs for a query only and without the body's values.</p>
 ClassMethod HandlePlan() As %Status
 {
     Set tSC = $$$OK
     Try {
-        Set tSC = ..Prepare(.tRefused, .tNamespace, .tText, .tValues, .tMaxRows, .tGuard, .tAnswer)
+        Set tSC = ..Prepare(.tRefused, .tNamespace, .tText, .tValues, .tMaxRows, .tGuard, .tAnswer, .tStats, 1)
         If tRefused Quit
         If $IsObject(tAnswer) {
             Set tSC = ##class(OcuPilot.Api.Response).JSON(tAnswer)
             Quit
         }
-        Set tPlanSC = $ClassMethod(..#PORTCLASS, "Plan", tNamespace, tText, .tAnswer, .tHttp, .tFault)
+        Set tPlanSC = $ClassMethod(..#PORTCLASS, "Plan", tNamespace, tText, .tAnswer, .tHttp, .tFault, tStats)
         If $$$ISERR(tPlanSC) {
             Set tSC = ..RenderFault(tPlanSC, $Get(tHttp), $Get(tFault))
             Quit
@@ -101,12 +102,13 @@ ClassMethod HandlePlan() As %Status
 /// the port's classification and the self-protection check (<method>Check</method>), in that order.
 /// <var>pRefused</var> 1 means the envelope is written and the caller writes nothing else. Otherwise
 /// <var>pGuard</var> is the port's guard, and <var>pAnswer</var> is the <code>error</code> outcome when
-/// the instance would not prepare the statement, or <code>""</code>.</p>
-ClassMethod Prepare(Output pRefused As %Boolean, Output pNamespace As %String, Output pText As %String, Output pValues As %DynamicArray, Output pMaxRows As %Integer, Output pGuard As %DynamicObject, Output pAnswer As %DynamicObject) As %Status [ Private ]
+/// the instance would not prepare the statement, or <code>""</code>. <var>pStats</var> is the body's
+/// <code>stats</code> flag, read only when <var>pAllowStats</var> is 1 (<method>Read</method>).</p>
+ClassMethod Prepare(Output pRefused As %Boolean, Output pNamespace As %String, Output pText As %String, Output pValues As %DynamicArray, Output pMaxRows As %Integer, Output pGuard As %DynamicObject, Output pAnswer As %DynamicObject, Output pStats As %Boolean, pAllowStats As %Boolean = 0) As %Status [ Private ]
 {
     Set pGuard = ""
     Set pAnswer = ""
-    Set tSC = ..Read(.pRefused, .pNamespace, .pText, .pValues, .pMaxRows)
+    Set tSC = ..Read(.pRefused, .pNamespace, .pText, .pValues, .pMaxRows, .pStats, pAllowStats)
     If pRefused Quit tSC
     Set pRefused = 1
     Set tCheckSC = ..Check(pNamespace, pText, .pGuard, .tHttp, .tFault)
@@ -122,10 +124,13 @@ ClassMethod Prepare(Output pRefused As %Boolean, Output pNamespace As %String, O
 /// <p>The screen gate, the body and its bounds, as both routes and the background run's start read
 /// them. <var>pRefused</var> 1 means the envelope is written and the caller writes nothing else;
 /// otherwise <var>pNamespace</var> is the request's scope and <var>pText</var>, <var>pValues</var> and
-/// <var>pMaxRows</var> the body's statement, values and row cap, nothing yet prepared.</p>
-ClassMethod Read(Output pRefused As %Boolean, Output pNamespace As %String, Output pText As %String, Output pValues As %DynamicArray, Output pMaxRows As %Integer) As %Status
+/// <var>pMaxRows</var> the body's statement, values and row cap, nothing yet prepared. The body's
+/// <code>stats</code> key is accepted only with <var>pAllowStats</var> 1, and answers <var>pStats</var>;
+/// on any other route it is a stray key.</p>
+ClassMethod Read(Output pRefused As %Boolean, Output pNamespace As %String, Output pText As %String, Output pValues As %DynamicArray, Output pMaxRows As %Integer, Output pStats As %Boolean, pAllowStats As %Boolean = 0) As %Status
 {
     Set pRefused = 1
+    Set pStats = 0
     Set (pNamespace, pText) = ""
     Set pValues = []
     Set pMaxRows = ##class(OcuPilot.Port.SqlPort).#MAXROWS
@@ -133,7 +138,7 @@ ClassMethod Read(Output pRefused As %Boolean, Output pNamespace As %String, Outp
     If tGateRefused || $$$ISERR(tSC) Quit tSC
     Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
     If $$$ISERR(tReadSC) || '$IsObject(tBody) || 'tBody.%IsA("%Library.DynamicObject") Quit ..RenderInput()
-    If '..Body(tBody, .pText, .pValues, .pMaxRows) Quit ..RenderInput()
+    If '..Body(tBody, .pText, .pValues, .pMaxRows, .pStats, pAllowStats) Quit ..RenderInput()
     If ##class(OcuPilot.Port.SqlPort).InputProblem(pText, pValues, pMaxRows) '= "" Quit ..RenderInput()
     Set pNamespace = ##class(OcuPilot.Kernel.Scope).Current()
     Set pRefused = 0
@@ -189,15 +194,18 @@ ClassMethod ErrorOutcome(pGuard As %DynamicObject) As %DynamicObject
 }
 
 /// <p>Read <var>pBody</var> into the statement, its values and its row cap, answering 0 for any key
-/// but the three or a value of the wrong shape. A missing <code>parameters</code> is no values, a
-/// missing <code>maxRows</code> the default.</p>
-ClassMethod Body(pBody As %DynamicObject, Output pText As %String, Output pValues As %DynamicArray, Output pMaxRows As %Integer) As %Boolean [ Private ]
+/// but the three, or the fourth, <code>stats</code>, when <var>pAllowStats</var> is 1, or a value of
+/// the wrong shape. A missing <code>parameters</code> is no values, a missing <code>maxRows</code> the
+/// default, a missing <code>stats</code> 0.</p>
+ClassMethod Body(pBody As %DynamicObject, Output pText As %String, Output pValues As %DynamicArray, Output pMaxRows As %Integer, Output pStats As %Boolean, pAllowStats As %Boolean = 0) As %Boolean [ Private ]
 {
     Set pText = ""
     Set pValues = []
     Set pMaxRows = ##class(OcuPilot.Port.SqlPort).#MAXROWS
+    Set pStats = 0
     Set tPort = "OcuPilot.Port.SqlPort"
     Set tKeys = $ListBuild($Parameter(tPort, "STATEMENTKEY"), $Parameter(tPort, "PARAMETERSKEY"), $Parameter(tPort, "MAXROWSKEY"))
+    If pAllowStats Set tKeys = tKeys _ $ListBuild($Parameter(tPort, "STATSKEY"))
     Set tStray = 0
     Set tIterator = pBody.%GetIterator()
     While tIterator.%GetNext(.tKey, .tValue) {
@@ -215,6 +223,12 @@ ClassMethod Body(pBody As %DynamicObject, Output pText As %String, Output pValue
     Set tType = pBody.%GetTypeOf($Parameter(tPort, "MAXROWSKEY"))
     If tType = "number" {
         Set pMaxRows = pBody.%Get($Parameter(tPort, "MAXROWSKEY"))
+    } ElseIf tType '= "unassigned" {
+        Quit 0
+    }
+    Set tType = pBody.%GetTypeOf($Parameter(tPort, "STATSKEY"))
+    If tType = "boolean" {
+        Set pStats = ''pBody.%Get($Parameter(tPort, "STATSKEY"))
     } ElseIf tType '= "unassigned" {
         Quit 0
     }

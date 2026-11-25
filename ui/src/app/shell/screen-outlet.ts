@@ -167,6 +167,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 21.6: the SQL statements list with its Clean stale statements, and a table's Cached queries tab with its two purges.
   'OcuPilot.Screen.Descriptor.ExplorerSqlStatementList': () => import('../areas/system-explorer/sql-statement-list.page').then((m) => m.SqlStatementListPage),
   'OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries': () => import('../areas/system-explorer/sql-cached-queries.page').then((m) => m.SqlCachedQueriesPage),
+  // Story 21.26: SQL runtime statistics with its Purge statistics, and Runtime statistics collection on the settings page.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStats': () => import('../areas/system-explorer/sql-runtime-stats.page').then((m) => m.SqlRuntimeStatsPage),
+  'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStatsSettings': CONFIG_SETTINGS_PAGE,
   // Story 21.25: a table's Table info tab with its three page actions, and a schema's Tables tab with Tune all tables.
   'OcuPilot.Screen.Descriptor.ExplorerSqlTable': () => import('../areas/system-explorer/sql-table.page').then((m) => m.SqlTablePage),
   'OcuPilot.Screen.Descriptor.ExplorerSqlSchema': () => import('../areas/system-explorer/sql-schema.page').then((m) => m.SqlSchemaPage),

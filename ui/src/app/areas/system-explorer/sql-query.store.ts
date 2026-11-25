@@ -49,6 +49,8 @@ export const RUN_TARGET = 'sql';
 export const STATEMENT_VALUE = 'statement';
 export const PARAMETERS_VALUE = 'parameters';
 export const MAX_ROWS_VALUE = 'maxRows';
+/** The plan route's flag that asks for Plan with statistics (Story 21.26). */
+export const STATS_VALUE = 'stats';
 
 /** Max rows before the person changes it. */
 export const DEFAULT_MAX_ROWS = '1000';
@@ -139,6 +141,9 @@ export class SqlQueryState {
 
   private answerValue: SqlAnswer | null = null;
 
+  /** The answer the last Plan with statistics adopted, so the page can tell it from any other answer. */
+  private statisticsAnswerValue: SqlAnswer | null = null;
+
   private confirmValue: SqlConfirm | null = null;
 
   private refusalValue = '';
@@ -180,6 +185,11 @@ export class SqlQueryState {
 
   answer(): SqlAnswer | null {
     return this.answerValue;
+  }
+
+  /** Whether the answer on screen is a Plan with statistics result, which runs without the statement's values. */
+  statisticsAnswer(): boolean {
+    return this.answerValue !== null && this.answerValue === this.statisticsAnswerValue;
   }
 
   /** The statement a confirmation waits on, or `null`. */
@@ -256,6 +266,18 @@ export class SqlQueryState {
     const result = await this.post(deps, SQL_PLAN_PATH, false);
     if (result === null) return;
     this.adopt(answerOf(result));
+  }
+
+  /**
+   * Plan with statistics (Story 21.26): post the statement and `stats: true` to the plan route and show the plan with each module's statistics.
+   * The route runs a query only and refuses any other statement before anything runs; no values are sent, and every answer carries the page's note about that.
+   */
+  async planWithStatistics(deps: SqlQueryDeps): Promise<void> {
+    const result = await this.post(deps, SQL_PLAN_PATH, false, true);
+    if (result === null) return;
+    const answer = answerOf(result);
+    this.statisticsAnswerValue = answer;
+    this.adopt(answer);
   }
 
   /** Proceed: send the confirmed run as the screen action, and show what the instance answered. */
@@ -336,7 +358,8 @@ export class SqlQueryState {
   }
 
   /** The request a Run or Explain plan posts: the statement, its values and, for a run, Max rows. */
-  private body(withMaxRows: boolean): string {
+  private body(withMaxRows: boolean, stats = false): string {
+    if (stats) return JSON.stringify({ [STATEMENT_VALUE]: this.textValue, [STATS_VALUE]: true });
     const maxRows = this.maxRowsValue.trim();
     const body: Record<string, unknown> = { [STATEMENT_VALUE]: this.textValue, [PARAMETERS_VALUE]: this.valuesValue };
     if (withMaxRows) body[MAX_ROWS_VALUE] = /^[0-9]+$/.test(maxRows) ? Number(maxRows) : maxRows;
@@ -344,7 +367,7 @@ export class SqlQueryState {
   }
 
   /** Post to `path`; the answer's body, or `null` after a refusal or an older request's answer. */
-  private async post(deps: SqlQueryDeps, path: string, withMaxRows: boolean): Promise<unknown> {
+  private async post(deps: SqlQueryDeps, path: string, withMaxRows: boolean, stats = false): Promise<unknown> {
     if (this.runningValue) return null;
     const generation = ++this.generation;
     this.runningValue = true;
@@ -354,7 +377,7 @@ export class SqlQueryState {
     const result: JsonResult<unknown> = await deps.api.requestJson<unknown>(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: this.body(withMaxRows),
+      body: this.body(withMaxRows, stats),
       scope: deps.scope(),
     });
     if (generation !== this.generation) return null;

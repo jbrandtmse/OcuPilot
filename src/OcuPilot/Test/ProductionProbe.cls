@@ -862,7 +862,8 @@ ClassMethod Gone() As %Boolean
 
 /// <p>Leave <code>USER</code> holding no probe state: settle the current production, delete the probe
 /// classes, their configuration rows, their activity and last-production records, and the message
-/// headers and event-log rows whose configuration names begin with <parameter>CONFIGPREFIX</parameter>.
+/// headers and event-log rows whose configuration names begin with <parameter>CONFIGPREFIX</parameter>, and the schedule handler's
+/// business process rows (<method>RemoveScheduleHandler</method>).
 /// It refuses, touching nothing, when <code>USER</code>'s current production is not one of its own. One
 /// of its own that cannot be settled is removed all the same, and the failure is the status returned.</p>
 ClassMethod Remove() As %Status
@@ -888,12 +889,30 @@ ClassMethod Remove() As %Status
         Do $System.OBJ.DeletePackage("OcuPilotProbe", "-d")
         Set tRS = ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM Ens.MessageHeader WHERE SourceConfigName %STARTSWITH ? OR TargetConfigName %STARTSWITH ?", ..#CONFIGPREFIX, ..#CONFIGPREFIX)
         Set tRS = ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM Ens_Util.Log WHERE ConfigName %STARTSWITH ?", ..#CONFIGPREFIX)
+        If ..Current() = "" Do ..RemoveScheduleHandler()
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Delete the business process rows of the vendor's schedule handler, which every production start adds to <code>USER</code> beside the
+/// probe's own items and which nothing else removes. Called only inside <code>USER</code>, with no production current.</p>
+ClassMethod RemoveScheduleHandler() [ Private ]
+{
+    Kill tIds
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT ID FROM Ens.BusinessProcess WHERE %ConfigName = 'Ens.ScheduleHandler'")
+    While tRS.%Next() {
+        Set tIds(tRS.%GetData(1)) = ""
+    }
+    Set tId = ""
+    For {
+        Set tId = $Order(tIds(tId))
+        If tId = "" Quit
+        Do ##class(Ens.BusinessProcess).%DeleteId(tId)
+    }
 }
 
 }
