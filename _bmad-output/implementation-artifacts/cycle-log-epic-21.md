@@ -1162,3 +1162,5 @@
 2026-11-25T22:54:09Z	Story 21.26	gate_step	step=full_sweep+smoke head=fdd7d928f sweep=20/20 smoke=50/50 result=pass
 2026-11-25T22:54:09Z	Story 21.26	smoke_complete	method=api(smoke.sh)+browser(fresh_specs) result=pass iterations=1 defects_caught=0 evidence=e21-kit/21-26/gate1
 2026-11-25T22:54:09Z	Story 21.26	committed	sha=fdd7d928f submodules= ci=pending runs=45717008360 amendments=none note=code_head_pushed_alone(skip-token_heuristic_unavailable_but_run_registered)
+2026-11-25T23:35:29Z	Story 21.26	ci_resolved	story=21.26 sha=fdd7d928f runs=45717008360 result=success failed=none via=none resolved_at=next_plan attempt=1
+2026-11-25T23:35:29Z	Story 21.26	story_complete	head=fdd7d928f run=45717008360(green_attempt1) gates=fresh(23+2_specs_fwd/rev)+sweep20/20+smoke50/50 vetoes=U-161,U-164 spine=0f02aed97(AD-7,AD-51) ledger=DW-2873(decision-pending) footprint_ext=ConfigSettingSet.cls,AnalyticsSettingSet.cls,AnalyticsSettingsWriteEdge.cls next_cut_keys=explorer.sqlruntimestats.purge=false,explorer.sqlruntimestatssettings.set=true report=to_main
