@@ -874,3 +874,4 @@
 2026-11-25T17:22:10Z	Story 24.17	ruling	question=batch3_split choice=3a_users_then_3b_roles_members rejected=one_batch why=size(8_writes) category=decide policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-25T17:22:10Z	Story 24.17	ruling	question=batch3a+3b_veto_set choice=keep_all(3a_V1-V6;V2_SQL_check_on_list_only_if_#5580;3b_V1-V6;member_remove_true) category=veto inbox=U-162 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-25T17:22:10Z	Story 24.17	spec_validated	scope=batch3a,3b ledger_inbox=empty mutates_shared_runtime=false(throwaway_only)
+2026-11-25T17:22:35Z	Story 24.17	stage_spawned	stage=implement spawn_at=2026-11-25T17:22:35Z model=sonnet agent_name=24-17-implement-batch3a cycle_iteration=3 story_base=77fcd80f0 scope=batch3a_workflow_users
