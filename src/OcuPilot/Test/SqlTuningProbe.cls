@@ -758,6 +758,79 @@ ClassMethod AnalysisCounts(pNamespace As %String) As %DynamicObject
     Quit tCounts
 }
 
+/// <p>Story 21.27's advice probe: the table <parameter>ADVICETABLE</parameter>, never tuned, with two indexed columns (<code>A</code> and <code>C</code>),
+/// one unindexed column (<code>B</code>) and one row. It touches no analyzer store.</p>
+Parameter ADVICESCHEMA = "OcuProbe227Advice";
+
+Parameter ADVICETABLE = "OcuProbe227Advice.T";
+
+/// <p>Create <parameter>ADVICETABLE</parameter> in <var>pNamespace</var>, after removing any an earlier run left (<method>RemoveAdvice</method>).</p>
+ClassMethod MakeAdvice(pNamespace As %String) As %Status
+{
+    Set tSC = ..RemoveAdvice(pNamespace)
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ..Run("CREATE TABLE " _ ..#ADVICETABLE _ " (A INTEGER, B VARCHAR(20), C VARCHAR(20))")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run("CREATE INDEX IdxA ON " _ ..#ADVICETABLE _ " (A)")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run("CREATE INDEX IdxC ON " _ ..#ADVICETABLE _ " (C)")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run("INSERT INTO " _ ..#ADVICETABLE _ " (A, B, C) VALUES (1, 'x', 'y')")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Purge <parameter>ADVICETABLE</parameter>'s cached queries, then drop it, in <var>pNamespace</var>; a table that is already gone is not an error.</p>
+ClassMethod RemoveAdvice(pNamespace As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do $SYSTEM.SQL.PurgeQueries({"table": [(..#ADVICETABLE)]})
+        Do ..Run("DROP TABLE " _ ..#ADVICETABLE)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>How many of the tables named <parameter>ADVICETABLE</parameter> <var>pNamespace</var> holds, and the value of its row's <code>B</code>:
+/// <code>count|value</code>, with <code>-1</code> for a count that could not be read.</p>
+ClassMethod AdviceState(pNamespace As %String) As %String
+{
+    Set tAnswer = "-1|"
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ?", 0)
+        Set tResult = tStatement.%Execute(..#ADVICESCHEMA)
+        If tResult.%Next() Set tAnswer = tResult.%GetData(1) _ "|"
+        Set tValue = ""
+        If +tAnswer {
+            Set tStatement = ##class(%SQL.Statement).%New()
+            Set tSC = tStatement.%Prepare("SELECT B FROM " _ ..#ADVICETABLE, 0)
+            Set tResult = tStatement.%Execute()
+            If tResult.%Next() Set tValue = tResult.%GetData(1)
+            Set tAnswer = +tAnswer _ "|" _ tValue
+        }
+        Set (tResult, tStatement) = ""
+    } Catch {
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tAnswer
+}
+
 /// <p>Run the statement over OcuPilot's own table in <var>pNamespace</var>, the install namespace, and answer its hash.</p>
 ClassMethod MakeOwn(pNamespace As %String) As %String
 {

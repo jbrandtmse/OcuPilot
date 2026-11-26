@@ -454,6 +454,12 @@ Parameter INDEXANALYSISREPORT = "SQL.INDEXANALYSIS.REPORT";
 
 Parameter REASONINDEXANALYSISREPORT = "Choose Index usage, Table scan, Temporary index, Missing join index or Outlier index.";
 
+/// <p>Envelope code: Advise sent a statement that is not a query (Story 21.27). Rendered on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422, before the plan is read.</p>
+Parameter SQLADVICE = "EXPLORER.SQL.ADVICE";
+
+Parameter REASONSQLADVICE = "Advice reads a query's plan, so it takes a query only.";
+
 /// <p>The consequence codes the proposal card and the dialog of the analyzer's writes carry (Story 21.27). A gather states the first sentence, and the
 /// second too when it includes system classes and routines, which take longer than the page waits.</p>
 Parameter INDEXANALYSISGATHER = "SQL.INDEXANALYSIS.GATHER";

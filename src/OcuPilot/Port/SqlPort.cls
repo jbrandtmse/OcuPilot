@@ -301,6 +301,15 @@ Parameter MAXROWSKEY = "maxRows";
 /// <p>The plan route's body key that asks for Plan with statistics: a boolean.</p>
 Parameter STATSKEY = "stats";
 
+/// <p>The plan route's body key that asks for the advice on the plan (Story 21.27): a boolean.</p>
+Parameter ADVISEKEY = "advise";
+
+/// <p>The two dictionary reads behind the advice, both fixed statements with their values bound: the compiled class of a table, from its SQL schema
+/// and name, and that class's indices.</p>
+Parameter ADVICECLASSQUERY = "SELECT Name FROM %Dictionary.CompiledClass WHERE SqlSchemaName = ? AND SqlTableName = ?";
+
+Parameter ADVICEINDEXQUERY = "SELECT Name, Properties, Type, PrimaryKey, IdKey FROM %Dictionary.CompiledIndex WHERE parent = ? ORDER BY Name";
+
 /// <p>The save's query keys: the table's schema and name, and its staged changes as JSON array
 /// text.</p>
 Parameter SCHEMAKEY = "schema";
@@ -833,13 +842,20 @@ ClassMethod Run(pNamespace As %String, pText As %String, pValues As %DynamicArra
 /// refused (422 <code>EXPLORER.SQL.PLANSTATS</code>) before anything runs. The run is bounded at
 /// <method>BoundSeconds</method>, and an overrun answers <code>{outcome: stopped, kind, seconds}</code>
 /// as <method>Run</method> does. The statement runs without values.</p>
-ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pStats As %Boolean = 0) As %Status
+/// <p>With <var>pAdvise</var> 1 the plan also carries <code>advice: {recognized, tables, findings, truncated}</code> (<method>Advised</method>),
+/// read from the plan as the instance explains it, which runs nothing. Only a <parameter>KINDQUERY</parameter> is taken: any other kind is refused
+/// (422 <code>EXPLORER.SQL.ADVICE</code>) before the plan is read, and <var>pAdvise</var> with <var>pStats</var> is the input refusal.</p>
+ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pStats As %Boolean = 0, pAdvise As %Boolean = 0) As %Status
 {
     Set pAnswer = ""
     Set pHttpStatus = 0
     Set pFault = ""
     Set tSC = $$$OK
     Try {
+        If pAdvise && pStats {
+            Set tSC = ..RefuseFor("input", .pHttpStatus, .pFault)
+            Quit
+        }
         Set tSC = ..Classify(pNamespace, pText, .tGuard, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
         If tGuard.%GetTypeOf("error") = "object" {
@@ -849,6 +865,10 @@ ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %Dyn
         Set tKind = tGuard.%Get("Kind")
         If pStats && (tKind '= ..#KINDQUERY) {
             Set tSC = ..RefuseFor("planstats", .pHttpStatus, .pFault)
+            Quit
+        }
+        If pAdvise && (tKind '= ..#KINDQUERY) {
+            Set tSC = ..RefuseFor("advice", .pHttpStatus, .pFault)
             Quit
         }
         Set pAnswer = {}
@@ -876,11 +896,134 @@ ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %Dyn
         Do pAnswer.%Set("outcome", ..#OUTCOMEPLAN, "string")
         Do pAnswer.%Set("plan", $Extract(tPlan, 1, ..#MAXANSWER), "string")
         Do pAnswer.%Set("truncated", ($Length(tPlan) > ..#MAXANSWER), "boolean")
+        If pAdvise {
+            Set tSC = ..Advised(pNamespace, tPlan, .tAdvice, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) {
+                Set pAnswer = ""
+                Quit
+            }
+            Do pAnswer.%Set("advice", tAdvice)
+        }
     } Catch ex {
         Set pAnswer = ""
         Set tSC = ..Fail("the statement's plan could not be read", $$$ERROR($$$GeneralError, ex.Name), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>The advice for <var>pPlan</var>, the text of a query's plan in <var>pNamespace</var>: <code>{recognized, tables, findings, truncated}</code>.
+/// <code>tables</code> is each table the plan reads, at most <parameter>OcuPilot.Port.SqlAdvice.MAXTABLES</parameter>, as <code>{Schema, Table,
+/// Class}</code>, with <code>Class</code> the compiled class the dictionary holds for it or <code>""</code>; <code>findings</code> are
+/// <method>OcuPilot.Port.SqlAdvice.Findings</method>'s, read from the plan and those tables' indices. A plan the advice does not recognize answers no
+/// tables and no findings. The dictionary is read through <parameter>ADVICECLASSQUERY</parameter> and <parameter>ADVICEINDEXQUERY</parameter> alone, with the
+/// schema, table and class bound, and nothing is composed from the statement or the plan into SQL text. A failed dictionary read is the internal
+/// fault.</p>
+ClassMethod Advised(pNamespace As %String, pPlan As %String, Output pAdvice As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pAdvice = ""
+    Set tSC = $$$OK
+    Set tAdvisor = "OcuPilot.Port.SqlAdvice"
+    Set tRecognized = $ClassMethod(tAdvisor, "Recognized", pPlan)
+    Set tAdvice = {}
+    Do tAdvice.%Set("recognized", tRecognized, "boolean")
+    Set tTables = []
+    Set tGroups = []
+    Set tTruncated = 0
+    If tRecognized {
+        Set tRead = $ClassMethod(tAdvisor, "Tables", pPlan)
+        Set tMax = $Parameter(tAdvisor, "MAXTABLES")
+        If tRead.%Size() > tMax Set tTruncated = 1
+        Set tIterator = tRead.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tRef) {
+            If tKey >= tMax Quit
+            Set tSC = ..Indexed(pNamespace, tRef.%Get("Schema"), tRef.%Get("Table"), .tClass, .tRows, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            Set tTable = {}
+            Do tTable.%Set("Schema", tRef.%Get("Schema"), "string")
+            Do tTable.%Set("Table", tRef.%Get("Table"), "string")
+            Do tTable.%Set("Class", tClass, "string")
+            Do tTables.%Push(tTable)
+            Set tGroup = {}
+            Do tGroup.%Set("Schema", tRef.%Get("Schema"), "string")
+            Do tGroup.%Set("Table", tRef.%Get("Table"), "string")
+            If $IsObject(tRows) Do tGroup.%Set("Rows", tRows)
+            Do tGroups.%Push(tGroup)
+        }
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Set tFindings = $ClassMethod(tAdvisor, "Findings", pPlan, tGroups, .tCut)
+    Do tAdvice.%Set("tables", tTables)
+    Do tAdvice.%Set("findings", tFindings)
+    Do tAdvice.%Set("truncated", ''(tTruncated || tCut), "boolean")
+    Set pAdvice = tAdvice
+    Quit $$$OK
+}
+
+/// <p>The compiled class and the indices of the table <var>pSchema</var>.<var>pTable</var> in <var>pNamespace</var>, as <var>pClass</var> (<code>""</code>
+/// when the dictionary holds none, as for a view) and <var>pRows</var>, an array of <code>{Name, Properties, Type, PrimaryKey, IdKey}</code> or
+/// <code>""</code> when there is no class. A name the dictionary does not hold, such as one with a quote, resolves nothing and raises nothing. A table in a
+/// system schema is not read. The caller is gated here (AD-29), and both reads are prepared without SQL privilege checks, as the dictionary's
+/// system tables are the port's to read.</p>
+ClassMethod Indexed(pNamespace As %String, pSchema As %String, pTable As %String, Output pClass As %String, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pClass = ""
+    Set pRows = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tSC = ..Gate(pNamespace, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If ($Extract(pSchema, 1) = "%") || ($ZConvert(pSchema, "U") = "INFORMATION_SCHEMA") Quit $$$OK
+    Set tSC = ..UncheckedRows(pNamespace, ..#ADVICECLASSQUERY, [(pSchema), (pTable)], 1, "the class of an advised table", .tClasses, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If tClasses.%Size() = 0 Quit $$$OK
+    Set pClass = tClasses.%Get(0).%Get(0)
+    Set tSC = ..UncheckedRows(pNamespace, ..#ADVICEINDEXQUERY, [(pClass)], ..#MAXROWS, "the indices of an advised table", .tIndices, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pRows = []
+    Set tIterator = tIndices.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tRow) {
+        Set tIndex = {}
+        Do tIndex.%Set("Name", tRow.%Get(0), "string")
+        Do tIndex.%Set("Properties", tRow.%Get(1), "string")
+        Do tIndex.%Set("Type", tRow.%Get(2), "string")
+        Do tIndex.%Set("PrimaryKey", ''tRow.%Get(3), "boolean")
+        Do tIndex.%Set("IdKey", ''tRow.%Get(4), "boolean")
+        Do pRows.%Push(tIndex)
+    }
+    Quit $$$OK
+}
+
+/// <p>The rows of the fixed statement <var>pText</var> run in <var>pNamespace</var> with <var>pValues</var> bound, at most <var>pMax</var>, as
+/// <var>pRows</var>, an array of arrays of text cells; prepared without SQL privilege checks (the gate has already admitted the caller). A statement the
+/// instance refuses or a failed read is the internal fault, named by <var>pWhat</var>. The switched region calls vendor classes only.</p>
+ClassMethod UncheckedRows(pNamespace As %String, pText As %String, pValues As %DynamicArray, pMax As %Integer, pWhat As %String, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = []
+    Set tCode = 0
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare(pText, 0)
+        If $$$ISOK(tSC) {
+            Set tResult = $Case(pValues.%Size(), 1: tStatement.%Execute(pValues.%Get(0)), 2: tStatement.%Execute(pValues.%Get(0), pValues.%Get(1)), : tStatement.%Execute())
+            Set tCode = tResult.%SQLCODE
+            While (tCode >= 0) && (pRows.%Size() < pMax) && tResult.%Next() {
+                Set tRow = []
+                For tI = 1:1:tResult.%ResultColumnCount Do tRow.%Push(tResult.%GetData(tI), "string")
+                Do pRows.%Push(tRow)
+            }
+        }
+        Set (tResult, tStatement) = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = $$$ERROR($$$GeneralError, pWhat _ " raised " _ ex.Name)
+    }
+    If $$$ISOK(tSC) && (tCode < 0) Set tSC = $$$ERROR($$$GeneralError, pWhat _ " answered SQLCODE " _ tCode)
+    If $$$ISERR(tSC) Quit ..Fail(pWhat _ " failed", tSC, .pHttpStatus, .pFault)
+    Quit $$$OK
 }
 
 /// <p>Serve <var>pEndpoint</var> (<parameter>ENDPOINTSQL</parameter> or
@@ -2778,7 +2921,8 @@ ClassMethod Closed(pNamespace As %String, ByRef pStatement) [ Private ]
 /// <code>changes</code> (422 <code>EXPLORER.SQL.CHANGES</code>), <code>reads</code> (422
 /// <code>EXPLORER.SQL.READS</code>), <code>agentcode</code> (422 <code>EXPLORER.SQL.AGENTCODE</code>),
 /// <code>notprepared</code> (422 <code>EXPLORER.SQL.NOTPREPARED</code>) and <code>parameters</code>
-/// (422 <code>EXPLORER.SQL.PARAMETERS</code>), <var>pDetail</var> becoming the fault's
+/// (422 <code>EXPLORER.SQL.PARAMETERS</code>), <code>planstats</code> (422 <code>EXPLORER.SQL.PLANSTATS</code>) and <code>advice</code> (422
+/// <code>EXPLORER.SQL.ADVICE</code>), <var>pDetail</var> becoming the fault's
 /// <code>detail</code> when supplied. A tool names this method rather than the error class, which only
 /// a port may name.</p>
 ClassMethod RefuseFor(pWhich As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pDetail As %DynamicObject = "") As %Status
@@ -2792,6 +2936,7 @@ ClassMethod RefuseFor(pWhich As %String, Output pHttpStatus As %Integer, Output 
     If pWhich = "notprepared" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLNOTPREPARED"), $Parameter(tError, "REASONSQLNOTPREPARED"), .pHttpStatus, .pFault, pDetail)
     If pWhich = "parameters" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLPARAMETERS"), $Parameter(tError, "REASONSQLPARAMETERS"), .pHttpStatus, .pFault, pDetail)
     If pWhich = "planstats" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLPLANSTATS"), $Parameter(tError, "REASONSQLPLANSTATS"), .pHttpStatus, .pFault, pDetail)
+    If pWhich = "advice" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLADVICE"), $Parameter(tError, "REASONSQLADVICE"), .pHttpStatus, .pFault, pDetail)
     Quit ..Fail("an agent tool asked for a refusal the port does not publish", $$$ERROR($$$GeneralError, pWhich), .pHttpStatus, .pFault)
 }
 

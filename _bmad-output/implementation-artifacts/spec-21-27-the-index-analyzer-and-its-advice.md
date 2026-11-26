@@ -411,6 +411,26 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
   - Gather's consequence: mutation: `ExplorerSqlIndexAnalysisGather.Consequence` ignores `SkipSystem` -> `TestTheScreenAndTheToolsDeclareTheirShape` red.
   - AC4 (Batch 1 half): mutation: `slowquery` loses the index analysis step -> `WorkflowCatalog.TestTheSlowQueryWorkflowReadsTheStatementIndexAndWritesNothing` red.
 
+**Batch 2 results (2026-11-25, `ocupilot-ci`; every line observed unless marked (inference)).**
+
+- **Shape.** `Port/SqlAdvice` holds the heuristics with no call to the instance (`Recognized`, `Tables`, `Findings`). `SqlPort.Plan` gained `pAdvise`, `Advised`, the public gated `Indexed` and `UncheckedRows`, and `ADVICECLASSQUERY` and `ADVICEINDEXQUERY` bind every value with `?`. `SqlConsole` reads a boolean `advise` on the plan route alone. `ExplorerSqlAdviceRead` extends `ExplorerSqlRead` and takes `statement`, so SQL query's context lists it. The ten captured plans are embedded in `SqlAdviceRead` as `$ListBuild` lines joined by CR LF and compared byte for byte with the captured files (all ten equal).
+- **Decided in-stage, none a person-facing string.**
+  - The refusal of a statement that is not a query (`EXPLORER.SQL.ADVICE`, string 8) runs after `Classify`, as Plan with statistics' does: the classification prepares the statement, and nothing is explained or run.
+  - Advise with `stats` is refused as `EXPLORER.SQL.INPUT` on the route and the port.
+  - An index with no field (the extent index, `DDLBEIndex`) is never called unused, and a system-schema table is not called not tuned.
+  - The not-tuned line is read wherever it stands in the plan's warnings, because a web process's plan adds an NLS collation line before it.
+  - `Kind` and `Confidence` are the lower-case codes; an unused index's excerpt is the plan's map-read lines. The advice answer also carries `truncated` (AD-36).
+- **Gaps (inference).** A condition is attributed to every scanned table of the plan, as the harvest source does, so a join can name a table for a field of another. A table the dictionary holds no class for gets no index finding. The plan text reaches the model through AD-60's sanitizer as every tool result does; no test of this story reads the sanitizer's output.
+- **Loop.** `LOADERRORS=0`. `SqlAdviceRead` 10/10; green after the roster edits: `ReadTool` 28, `ReadDescriptions` 9, `SurfaceCoverage` 4, `ToolEmit` 11, `ToolRoundTrip` 2, `StageTwoTools` 4, `DeveloperFloor` 10, `EndpointCoverage` 2, `ToolDispatch` 19, `ExplorerDescriptor` 17, `WorkflowCatalog` 10, `SqlConsoleRoutes` 8, `SqlConsoleWrite` 6, `SqlPortLive` 16, `SqlAgentRead` 7, `SqlCredentialMask` 4, `DraftRegistry` 9, `ConfirmNamespaceRoster` 3, `CompositeMintSweep` 5, `MappingDescriptor` 6, `ClassicPageGate` 9, `ToolWrite` 33, `RemovalRowsSweep` 7, `GovernanceBaseline` 5, `Navigation` 14, `Descriptor` 60, `Prohibited` 22, `ClaimReach` 2, `PortGate` 4 (a `<table>` row for `SqlAdvice`), `SqlIndexAnalysisRead` 7, `SqlIndexAnalysisWrite` 9, `SqlRuntimeStatsRead` 10, `SqlTuningWrite` 4. `check-objectscript` 0 problems; the six `node --test` files 395/395; `npm run test:tools` 2415/2415; `screen-mirror`, `field-lists` and `ipm-manifest` `--check` clean.
+- Batch 2, each applied on `ocupilot-ci`, observed red, reverted (md5 of `SqlAdvice`, `SqlPort`, `SqlConsole` and `Workflow` equal to before) and the source reloaded:
+  - AC3: mutation: `Plan` skips the query-only check for `pAdvise` -> `SqlAdviceRead.TestAStatementThatIsNotAQueryAndOwnTablesAreRefused` red on the agent, route and port legs.
+  - AC3: mutation: `SqlAdvice.Findings` drops the leading-field comparison -> `TestTheLeadingFieldDecidesWhetherAnIndexIsMissing` red on the first leg. mutation: `Leading` takes the last field of an index -> the same test red on its first two legs.
+  - AC3: mutation: a missing index is high for every condition set -> `TestTheConfidenceOfAMissingIndexFollowsItsConditions` red on the range, mixed and two-field legs.
+  - AC3: mutation: the temporary-file pattern drops `(?: once)?` and the warning pattern reads only `Table` -> `TestTemporaryFilesAndJoinsAreRead` red on the join leg, the plural leg and the once leg.
+  - AC3: mutation: `Filled` fills `%1` from the fields -> `TestAFullScanComesWithMissingIndexNotTunedAndUnusedIndex` red on every sentence. mutation: `Recognized` answers 1 -> `TestPlansWithNothingToAdviseOnAndPlansItDoesNotRecognize` red. mutation: `Add` never cuts -> `TestSystemTablesAreNeverAdvisedAnIndexAndTheFindingsAreCapped` red.
+  - AC3: mutation: `Advised` answers no findings -> `TestTheProbeTableAnswersTheSameFindingsOnBothCallers` red. mutation: `SqlConsole.Body` refuses the `advise` key -> the same test's route leg and the two route refusals red. mutation: `Indexed` reads system schemas -> `TestTheDictionaryReadsBindTheNamesTheyAreGiven` red on its system leg. mutation: the tool's description loses the ruled note -> `TestTheToolDeclaresItsShape` red.
+  - AC4: mutation: `slowquery` loses the advice read from its step -> `WorkflowCatalog.TestTheSlowQueryWorkflowReadsTheStatementIndexAndWritesNothing` red on the index analysis and advice step.
+
 ## Auto Run Result
 
 Status: blocked

@@ -124,7 +124,7 @@ Method TestEveryNamedToolResolvesAsItsKind()
 /// still offered by the SQL query screen alone.</p>
 /// <p>Mutation (Rule 19): <code>OcuPilot.Kernel.Agent.Workflow</code>'s <code>slowquery</code> loses its <code>explorer.sqlstatements.read</code> step -> the
 /// read assertion goes red; the step gains a write -> the write assertion goes red; Story 21.26: the step that names the two runtime statistics reads is
-/// removed -> the runtime statistics assertion goes red; Story 21.27: the step that names the index analysis read loses it -> the index analysis assertion goes red.</p>
+/// removed -> the runtime statistics assertion goes red; Story 21.27: the step that names the index analysis read loses it, or loses the advice read -> the index analysis assertion goes red.</p>
 Method TestTheSlowQueryWorkflowReadsTheStatementIndexAndWritesNothing()
 {
     Set tEntry = $ClassMethod(..#WORKFLOW, "Lookup", "slowquery", .tFound)
@@ -154,9 +154,9 @@ Method TestTheSlowQueryWorkflowReadsTheStatementIndexAndWritesNothing()
     Set tAnalysisSteps = 0
     Set tSteps = tEntry.%Get("steps").%GetIterator()
     While tSteps.%GetNext(.tStepIndex, .tStep) {
-        If (tStep.%Get("say") [ "Read the namespace's index analysis for table scans, temporary indices and missing join or outlier indices") && (tStep.%Get("say") [ "when no analysis is recorded, say so and that a person can gather statements and run a report on SQL index analyzer.") && (tStep.%GetTypeOf("reads") = "array") && (tStep.%Get("reads").%ToJSON() [ """explorer.sqlindexanalysis.read""") Set tAnalysisSteps = tAnalysisSteps + 1
+        If (tStep.%Get("say") [ "Read the namespace's index analysis for table scans, temporary indices and missing join or outlier indices") && (tStep.%Get("say") [ "when no analysis is recorded, say so and that a person can gather statements and run a report on SQL index analyzer.") && (tStep.%GetTypeOf("reads") = "array") && (tStep.%Get("reads").%ToJSON() [ """explorer.sqlindexanalysis.read""") && (tStep.%Get("reads").%ToJSON() [ """explorer.sqladvice.read""") Set tAnalysisSteps = tAnalysisSteps + 1
     }
-    Do $$$AssertEquals(tAnalysisSteps, 1, "exactly one step names the index analysis read, with the ruled wording")
+    Do $$$AssertEquals(tAnalysisSteps, 1, "exactly one step names the index analysis read and the advice read, with the ruled wording")
     Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
     Set tOffering = ""
     For tI = 1:1:$ListLength(tList) {
