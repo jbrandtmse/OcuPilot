@@ -7,8 +7,8 @@
 /// of an SQLCODE below 0 and of a statement the instance does not prepare, and the console's own-table check refusing before the port is reached.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, the calling account holding the SQL query screen's pairs and READ and WRITE on
 /// <code>USER</code>'s code databases, and a <code>USER</code> namespace, where each test makes the probe table, tunes it and removes it, its cached queries,
-/// its statement index rows and the runtime statistics rows of its own statements after, reading each back absent. Live-safe: it changes no setting and
-/// removes no row it did not record.</p>
+/// its statement index rows and the runtime statistics rows of its own statements after, reading each back absent. Live-safe: it changes no setting, and
+/// its clean-up also clears the namespace's statement index rows that no code holds any longer (<code>$SYSTEM.SQL.Statement.Clean()</code>).</p>
 Class OcuPilot.Test.SqlAlternatePlansRead Extends %UnitTest.TestCase
 {
 
@@ -329,9 +329,11 @@ Method TestACompareThatReachesTheBoundIsStoppedWithNoRows()
 }
 
 /// <p>The instance refusing the caller a procedure (SQLCODE -99) is the 403 <code>SQL.EXECUTE.PRIVILEGE</code> naming it, for the list and for a run of
-/// the statistics query; any other SQLCODE below 0 is the <code>error</code> outcome with the instance's code and message; a statement the instance does
-/// not prepare is the <code>error</code> outcome before any call.</p>
-/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.PlansRead</code> answers the error outcome for -99 -> the 403 legs go red.</p>
+/// the statistics query; any other SQLCODE below 0 is the <code>error</code> outcome with the instance's code and message; a compare whose own text the
+/// instance will not explain is the <code>error</code> outcome before any run; a statement the instance does not prepare is the <code>error</code> outcome
+/// before any call.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.PlansRead</code> answers the error outcome for -99 -> the 403 legs go red;
+/// <code>Compared</code> does not explain its own text -> the compare-text leg goes red.</p>
 Method TestARefusedProcedureIsTheExecuteRefusalAndAnyOtherCodeTheErrorOutcome()
 {
     Set tFixture = ..#FIXTURE
@@ -351,6 +353,11 @@ Method TestARefusedProcedureIsTheExecuteRefusalAndAnyOtherCodeTheErrorOutcome()
     Set tSC = ..Plan(tFixture, ..Query(), "", "", .tAnswer, .tHttp, .tFault)
     Do $$$AssertEquals($Select($$$ISOK(tSC): tAnswer.outcome _ "|" _ tAnswer.kind _ "|" _ tAnswer.sqlcode _ "|" _ tAnswer.message, 1: ..Refused(tSC, tHttp, tFault)), "error|query|-400|probe refused", "any other SQLCODE below 0 is the error outcome")
     Do $ClassMethod(tFixture, "Reset")
+    Do $ClassMethod(tFixture, "RefuseCompareText", -29)
+    Set tSC = ..Plan(tFixture, ..Query(), "", "[1]", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertEquals($Select($$$ISOK(tSC): tAnswer.outcome _ "|" _ tAnswer.kind _ "|" _ tAnswer.sqlcode _ "|" _ tAnswer.message, 1: ..Refused(tSC, tHttp, tFault)), "error|query|-29|probe refused", "a compare whose own text the instance will not explain is the error outcome")
+    Do $$$AssertEquals($ClassMethod(tFixture, "Lists") _ "|" _ $ClassMethod(tFixture, "Stats"), "1|0", "after the list and before any run")
+    Do $ClassMethod(tFixture, "Reset")
     Set tSC = ..Plan(tFixture, "SELECT FROM WHERE", "", "", .tAnswer, .tHttp, .tFault)
     Do $$$AssertEquals($Select($$$ISOK(tSC): tAnswer.outcome _ "|" _ (tAnswer.sqlcode < 0), 1: ..Refused(tSC, tHttp, tFault)), "error|1", "a statement the instance does not prepare is the error outcome")
     Do $$$AssertEquals($ClassMethod(tFixture, "Calls"), 0, "before any call")
@@ -364,44 +371,71 @@ ClassMethod ProcessState() As %String
     Quit $IO _ "|" _ ##class(%Library.Device).GetMnemonicRoutine() _ "|" _ $NAMESPACE _ "|" _ $TLevel _ "|" _ ##class(OcuPilot.Kernel.Utils).DeviceIsOpen(tNull)
 }
 
-/// <p>The vendor read leaves the process as it found it, for a read that succeeds and for one the instance answers an SQLCODE below 0: the current
-/// device and its mnemonic space, the namespace, the transaction level (a transaction the caller holds stays open) and the null device's open state; and
-/// a <code>%AltPlan</code> the process holds is killed.</p>
+/// <p>The vendor read leaves the process as it found it, for a read that succeeds, for one the instance answers an SQLCODE below 0 and for one that
+/// raises (a namespace that does not exist): the current device and its mnemonic space, the namespace, the transaction level (a transaction the caller
+/// holds stays open) and the null device's open state; a <code>%AltPlan</code> the process holds is killed; and the raise is an error status. The page the
+/// instance writes for a statement it cannot explain reaches no byte of the caller's device.</p>
 /// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.PlansCall</code> does not kill <code>%AltPlan</code> -> the <code>%AltPlan</code> assertion of the
-/// error leg goes red.</p>
+/// error leg goes red; it kills <code>%AltPlan</code> inside its <code>Try</code> only -> the raised leg goes red; <code>PlansVendor</code> calls
+/// <code>PlansCall</code> without the null device -> the device leg goes red.</p>
 Method TestThePlansReadLeavesTheProcessAsItFoundIt()
 {
     Set tFixture = ..#FIXTURE
     Set tQuery = $Parameter(..#PORT, "ALTLISTQUERY")
-    For tCase = "success", "error" {
-        Set tIds = $Select(tCase = "success": "", 1: "1")
+    For tCase = "success", "error", "raised" {
+        Set tIds = $Select(tCase = "error": "1", 1: "")
+        Set tNamespace = $Select(tCase = "raised": "OCUNOSUCH228", 1: ..#NAMESPACE)
         TStart
         Set tBefore = ..ProcessState()
         Set %AltPlan = "left behind"
-        Set tSC = $ClassMethod(tFixture, "VendorRead", ..#NAMESPACE, tQuery, ..Query(), tIds, .tRows, .tCode, .tMessage)
+        Set tSC = $ClassMethod(tFixture, "VendorRead", tNamespace, tQuery, ..Query(), tIds, .tRows, .tCode, .tMessage)
         Set tAfter = ..ProcessState()
         Set tAltPlan = $Data(%AltPlan)
         Kill %AltPlan
         TRollback
-        Do $$$AssertStatusOK(tSC, tCase _ ": the read answers")
+        If tCase = "raised" {
+            Do $$$AssertTrue($$$ISERR(tSC), "raised: the raise comes back as an error status")
+        } Else {
+            Do $$$AssertStatusOK(tSC, tCase _ ": the read answers")
+        }
         Do $$$AssertEquals(tAfter, tBefore, tCase _ ": device, mnemonic space, namespace, transaction level and null device are as before")
         Do $$$AssertEquals(tAltPlan, 0, tCase _ ": a %AltPlan the process holds is killed")
         If tCase = "success" {
             Do $$$AssertTrue((tCode = 0) && (tRows.%Size() >= 2), "the read answers its rows with SQLCODE 0: " _ tRows.%Size())
-        } Else {
+        } ElseIf tCase = "error" {
             Do $$$AssertTrue(tCode < 0, "the SQLCODE is below 0: " _ tCode)
         }
     }
+    Set tFile = ##class(%File).TempFilename("txt")
+    Set tDevice = $IO
+    Set tMnemonic = ##class(%Library.Device).GetMnemonicRoutine()
+    Open tFile:("WNS"):2
+    Set tOpened = $Test
+    Do $$$AssertTrue(tOpened, "a file stands in for the caller's device")
+    If 'tOpened Quit
+    Use tFile
+    Set tSC = $ClassMethod(tFixture, "VendorRead", ..#NAMESPACE, tQuery, "SELECT A FROM " _ ..Table() _ " WHERE NoSuchColumn228 = 1", "", .tRows, .tCode, .tMessage)
+    Set tInside = $IO
+    If tMnemonic '= "" {
+        Use tDevice::("^" _ tMnemonic)
+    } Else {
+        Use tDevice
+    }
+    Close tFile
+    Set tSize = ##class(%File).GetFileSize(tFile)
+    Do ##class(%File).Delete(tFile)
+    Do $$$AssertStatusOK(tSC, "the read of a statement the instance cannot explain answers")
+    Do $$$AssertEquals(tInside _ "|" _ tSize, tFile _ "|0", "and the page the instance writes for it reached none of the caller's device")
 }
 
-/// <p>The console's own check refuses a statement over OcuPilot's own tables with <code>PROHIBITED.OCUPILOTSQL</code>, so the caller never reaches the
-/// port; the port itself answers a statement it is given and is not that check.</p>
+/// <p>The console's own check refuses a statement over OcuPilot's own tables with <code>PROHIBITED.OCUPILOTSQL</code>, which both callers run before
+/// the port (<class>OcuPilot.Test.SqlAlternatePlansRoutes</class> counts the calls); the port itself answers a statement it is given and is not that
+/// check.</p>
 /// <p>Mutation (Rule 19): <code>OcuPilot.Area.Explorer.SqlConsole.Check</code> skips its self-protection set -> this goes red.</p>
 Method TestTheConsolesCheckRefusesOcuPilotsOwnTablesBeforeThePort()
 {
     Set tSC = ##class(OcuPilot.Area.Explorer.SqlConsole).Check($NAMESPACE, "SELECT ID FROM OcuPilot_Kernel_State.Proposal", .tGuard, .tHttp, .tFault)
     Do $$$AssertEquals($Select($$$ISERR(tSC) && $IsObject(tFault): tHttp _ " " _ tFault.code, 1: "answered"), "403 PROHIBITED.OCUPILOTSQL", "the check refuses the statement")
-    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Calls"), 0, "and no plans call was made")
 }
 
 }

@@ -14813,3 +14813,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AD-51's Story 21.26 and 21.27 cases describe the STATS and ANALYSIS fresh reads without the checks-on prerequisite, which now refuses a gated principal without SELECT the purge, gather, run and purge-analysis writes; the rule lives only in the 21.27 spec's Security note.
 - 2026-11-26T09:11:34Z status=escalated owner=burndown by=cr note=lead Rule 20: amend AD-51 (veto window) or decline
 - 2026-11-26T09:14:23Z status=resolved-by:21-27-the-index-analyzer-and-its-advice owner=21-27-the-index-analyzer-and-its-advice by=runner note=AD-51 Story 21.27 case amended in place (runner's own line, U-174/U-175): checks on, -99 answers 403 naming the port's tables
+
+### DW-2899: The spine's AD-21 console clause says OcuPilot concatenates nothing into the console's statement, while Compare plans inserts %NOPARALLEL into it, and AD-44 has no line for Alternate plans' ShowPlanAlt custom resource
+- source: spec-21-28-alternate-show-plans.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: SqlPort.Compared runs SqlAlternateScan.NoParallel's rewrite of the statement's own text (ruled U-178 and round 2, AD-7's 21.28 line); AD-21 :657 still reads 'concatenates nothing into it'; GateAlternates and the tool's PrivilegePairs union ShowPlanAlt's resource with no AD-44 line.
+- 2026-11-26T20:12:23Z status=escalated owner=burndown by=cr note=spine wording only; amending AD-21 and AD-44 is the runner's or owner's (Rule 20), code is as ruled
+- 2026-11-26T20:15:04Z status=resolved-by:21-28-alternate-show-plans owner=21-28-alternate-show-plans by=runner note=AD-21 and AD-44 Story 21.28 lines added (add-only, the rulings U-166/U-178 as built)
+
+### DW-2900: The slowquery step asks the agent to compare a plan cheaper than the optimizer's choice, but neither the list nor the agent read says which plan the optimizer chose
+- source: spec-21-28-alternate-show-plans.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Workflow.cls slowquery step (ruled verbatim) and ExplorerSqlAlternatePlansRead.ResultSchema carry no chosen-plan marker; Task 0 (d) measured plan 1 equal to the Explain plan on seven statements only.
+- 2026-11-26T20:12:26Z status=wontfix-accepted owner=21-28-alternate-show-plans by=cr note=reopen_if=a slowquery turn treats a plan other than the one Explain plan shows as the optimizer's choice
+
+### DW-2901: After Show plan, SQL query's plan pane does not say which possible plan's text it shows
+- source: spec-21-28-alternate-show-plans.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: sql-answer.ts answerOf drops the port's alternate member for the plan outcome; the pane shows the text under the generic plan heading and no list row is marked; naming it needs a ruled string or a row marker.
+- 2026-11-26T20:12:30Z status=wontfix-accepted owner=21-28-alternate-show-plans by=cr note=reopen_if=a person reports they could not tell which plan's text the pane showed after Show plan on a second row

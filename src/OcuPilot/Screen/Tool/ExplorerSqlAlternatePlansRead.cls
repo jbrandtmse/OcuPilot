@@ -4,8 +4,9 @@
 /// namespace's statement index as Plan's does. The agent has no compare: comparing plans runs the statement, so it is a person's action on SQL query.</p>
 /// <p><b>It runs the console's own checks</b> as <class>OcuPilot.Screen.Tool.ExplorerSqlRead</class> does, in order: the screen's pairs and the custom
 /// resource assigned to the classic Alternate Show Plans page (<method>PrivilegePairs</method>), <method>OcuPilot.Port.SqlPort.InputProblem</method> and
-/// <method>OcuPilot.Area.Explorer.SqlConsole.Check</method>, whose self-protection set refuses OcuPilot's own tables. A statement of any other kind than a
-/// query is refused 422 <code>EXPLORER.SQL.CHANGES</code> before anything reaches the instance. The statement reaches the instance only as the value the
+/// <method>OcuPilot.Area.Explorer.SqlConsole.Check</method>, whose self-protection set refuses OcuPilot's own tables, through
+/// <method>PlanView</method>. A statement the console types as a change is refused 422 <code>EXPLORER.SQL.CHANGES</code> before anything reaches the
+/// instance. The statement reaches the instance only as the value the
 /// port passes it, and the whole result reaches the model through AD-60's sanitizer like every tool result.</p>
 Class OcuPilot.Screen.Tool.ExplorerSqlAlternatePlansRead Extends OcuPilot.Screen.Tool.ExplorerSqlRead
 {
@@ -19,7 +20,9 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Set tSchema = {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
     Set tProperties = tSchema.%Get("properties")
-    Do tProperties.%Set("statement", {"type": "string", "description": "One SQL query, 1 to 100,000 characters, of at most 4 tables and 4 conditions. Its plans are read and nothing runs; a value may be written as a ?."})
+    Set tPort = ..#PORTCLASS
+    Do tProperties.%Set("statement", {"type": "string"})
+    Do tProperties.%Get("statement").%Set("description", "One SQL query, 1 to 100,000 characters, of at most " _ $Parameter(tPort, "ALTMAXTABLES") _ " tables and " _ $Parameter(tPort, "ALTMAXCONDITIONS") _ " conditions. Its plans are read and nothing runs; a value may be written as a ?.", "string")
     Do tSchema.%Get("required").%Push("statement")
     Do tProperties.%Set("plan", {"type": "integer", "description": "A plan number from the list of this statement's possible plans. Send it to read that plan's text instead of the list. Absent, the list is read."})
     Quit tSchema
@@ -37,7 +40,8 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
 /// instance would not prepare or explain. Each plan is <code>{Plan, Cost, MapType, StartingMap}</code>.</p>
 ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
 {
-    Quit {
+    Set tMax = $Parameter(..#PORTCLASS, "ALTMAXPLANS")
+    Set tSchema = {
         "type": "object",
         "properties": {
             "namespace": {"type": "string", "description": "The namespace the plans were read in."},
@@ -45,10 +49,10 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
             "statementType": {"type": "integer", "description": "The instance's statement type number."},
             "tables": {"type": "array", "items": {"type": "string"}, "description": "The tables and views the instance records for the statement."},
             "outcome": {"type": "string", "enum": ["plans", "plan", "error"], "description": "plans: the list of possible plans. plan: the text of the one plan asked for. error: the instance refused or failed it, see sqlcode and message."},
-            "plans": {"type": "array", "items": {"type": "object", "properties": {"Plan": {"type": "integer", "description": "The plan's number."}, "Cost": {"type": "string", "description": "The optimizer's cost for the plan."}, "MapType": {"type": "string", "description": "The type of the map the plan starts from."}, "StartingMap": {"type": "string", "description": "The map the plan starts from."}}, "required": ["Plan", "Cost", "MapType", "StartingMap"], "additionalProperties": false}, "description": "The possible plans, at most 100, for the list."},
+            "plans": {"type": "array", "items": {"type": "object", "properties": {"Plan": {"type": "integer", "description": "The plan's number."}, "Cost": {"type": "string", "description": "The optimizer's cost for the plan."}, "MapType": {"type": "string", "description": "The type of the map the plan starts from."}, "StartingMap": {"type": "string", "description": "The map the plan starts from."}}, "required": ["Plan", "Cost", "MapType", "StartingMap"], "additionalProperties": false}, "description": ""},
             "alternate": {"type": "integer", "description": "The number of the plan whose text this is, for the plan outcome."},
             "plan": {"type": "string", "description": "The plan's text, cut at the port's bound, for the plan outcome."},
-            "truncated": {"type": "boolean", "description": "True when the list was cut at 100 plans or the plan's text was cut."},
+            "truncated": {"type": "boolean", "description": ""},
             "sqlcode": {"type": "integer", "description": "The instance's SQLCODE, for an error outcome."},
             "message": {"type": "string", "description": "The instance's message, for an error outcome."},
             "rowsSent": {"type": "integer", "description": "How many rows this result carries."},
@@ -58,6 +62,10 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
         "required": ["namespace", "outcome"],
         "additionalProperties": false
     }
+    Set tProperties = tSchema.%Get("properties")
+    Do tProperties.%Get("plans").%Set("description", "The possible plans, at most " _ tMax _ ", for the list.", "string")
+    Do tProperties.%Get("truncated").%Set("description", "True when the list was cut at " _ tMax _ " plans or the plan's text was cut.", "string")
+    Quit tSchema
 }
 
 /// <p>Read the plans of the statement <var>pArgs</var> carries, or the text of the plan it numbers, and answer <method>ResultSchema</method>'s object.
@@ -70,89 +78,7 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
 /// shape).</p>
 ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pContextCap As %Integer, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
-    Set tSC = $$$OK
-    Set pResult = ""
-    Set pHttpStatus = 0
-    Set pFault = ""
-    Try {
-        Set tArgs = $Select($IsObject(pArgs): pArgs, pArgs = "": {}, 1: pArgs)
-        Set tValidSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(..InputSchema(), tArgs, .tProblem)
-        If $$$ISERR(tValidSC) {
-            Set tSC = ..ArgumentsRefusal(tProblem, .pHttpStatus, .pFault)
-            Quit
-        }
-        Set tFailedPair = ""
-        Set tPairs = ..PrivilegePairs(, .tResolved)
-        If 'tResolved || '##class(OcuPilot.Screen.Gate).EvaluateRequired(tPairs, .tFailedPair) {
-            Set pHttpStatus = ##class(OcuPilot.Kernel.Denial).#STATUS
-            Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Kernel.Denial).Slug(), ##class(OcuPilot.Kernel.Denial).Code(), ##class(OcuPilot.Kernel.Denial).Reason())
-            Do pFault.%Set("detail", ##class(OcuPilot.Kernel.Denial).Detail(tFailedPair))
-            Set tSC = $$$ERROR($$$GeneralError, ##class(OcuPilot.Kernel.Denial).Code())
-            Quit
-        }
-
-        Set tText = tArgs.%Get("statement")
-        Set tPlanId = $Select(tArgs.%GetTypeOf("plan") = "number": tArgs.%Get("plan"), 1: "")
-        Set tPort = ..#PORTCLASS
-        If $ClassMethod(tPort, "InputProblem", tText) '= "" {
-            Set tSC = $ClassMethod(tPort, "RefuseFor", "input", .pHttpStatus, .pFault)
-            Quit
-        }
-
-        Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
-        Set tCheckSC = ##class(OcuPilot.Area.Explorer.SqlConsole).Check(tNamespace, tText, .tGuard, .pHttpStatus, .pFault)
-        If $$$ISERR(tCheckSC) {
-            Set tSC = tCheckSC
-            Quit
-        }
-        Set pHttpStatus = 0
-        Set pFault = ""
-        If tGuard.%GetTypeOf("error") = "object" {
-            Set tError = ##class(OcuPilot.Area.Explorer.SqlConsole).ErrorOutcome(tGuard)
-            Do tError.%Set("namespace", tNamespace, "string")
-            Set pResult = tError
-            Set pHttpStatus = 200
-            Quit
-        }
-        If $ClassMethod(tPort, "Mutating", tGuard.%Get("Kind")) {
-            Set tSC = $ClassMethod(tPort, "RefuseFor", "changes", .pHttpStatus, .pFault)
-            Quit
-        }
-
-        Set tPlanSC = $ClassMethod(tPort, "Plan", tNamespace, tText, .tAnswer, .pHttpStatus, .pFault, 0, 0, 1, tPlanId)
-        If $$$ISERR(tPlanSC) {
-            Set tSC = tPlanSC
-            Quit
-        }
-        Set pResult = ..Listed(tNamespace, tGuard, tAnswer)
-        Set pHttpStatus = 200
-        Set pFault = ""
-    } Catch ex {
-        Set pResult = ""
-        Set tSC = ..InternalRefusal("the alternate plans tool failed: " _ ex.Name, .pHttpStatus, .pFault)
-    }
-    Quit tSC
-}
-
-/// <p>The tool's answer from the port's plan answer <var>pAnswer</var> and the classification <var>pGuard</var>: the namespace, kind, statement type and
-/// tables, then the plan answer's own members but a JSON null.</p>
-ClassMethod Listed(pNamespace As %String, pGuard As %DynamicObject, pAnswer As %DynamicObject) As %DynamicObject [ Private ]
-{
-    Set tResult = {}
-    Do tResult.%Set("namespace", pNamespace, "string")
-    Do tResult.%Set("kind", pGuard.%Get("Kind"), "string")
-    Do tResult.%Set("statementType", pGuard.%Get("StatementType"), "number")
-    Do tResult.%Set("tables", pGuard.%Get("Tables"))
-    Set tIterator = pAnswer.%GetIterator()
-    While tIterator.%GetNext(.tKey, .tValue, .tType) {
-        If (tKey = "kind") || (tType = "null") Continue
-        If (tType = "object") || (tType = "array") {
-            Do tResult.%Set(tKey, tValue)
-        } Else {
-            Do tResult.%Set(tKey, tValue, tType)
-        }
-    }
-    Quit tResult
+    Quit ..PlanView(pArgs, 0, 1, "alternate plans", .pResult, .pHttpStatus, .pFault)
 }
 
 }

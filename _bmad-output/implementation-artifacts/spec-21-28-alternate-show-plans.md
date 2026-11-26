@@ -210,6 +210,51 @@ Record each measurement as a short Verification line.
 - AC3. Given the `slowquery` workflow, when a turn follows it, then its steps name `explorer.sqlalternateplans.read` and no write tool.
 - AC4. Given the throwaway, when the browser spec runs forward and in reverse with `system-explorer-sql-runtime-stats.browser-spec.mjs`, then it passes and leaves no probe table, cached query or statistics row.
 
+### Review Findings
+
+Code review 1, 2026-11-26 (full-opus tier; blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor layers). 45 rows, 0 high.
+
+- [x] [Review][Patch] MED: a compare text the instance will not explain answered `compared` with blank statistics, not the `error` outcome runner decision 2 rules (measured: `possiblePlansStats` answers SQLCODE 0 and no row for it); `Compared` now explains its own text before any run [src/OcuPilot/Port/SqlPort.cls:Compared]
+- [x] [Review][Patch] MED: `ExplorerSqlAlternatePlansRead.Listed` copied `ExplorerSqlAdviceRead.Advised` line for line and its `View` copied the sibling's (Rule 2/31); both tools now call `ExplorerSqlRead.PlanView` and `PlanResult` [src/OcuPilot/Screen/Tool/ExplorerSqlRead.cls:PlanView]
+- [x] [Review][Patch] MED: `PlansCall`'s restore on a raise, and the null device keeping the instance's page off the caller's device, were untested; raised and device legs added [src/OcuPilot/Test/SqlAlternatePlansRead.cls:TestThePlansReadLeavesTheProcessAsItFoundIt]
+- [x] [Review][Patch] LOW: an assertion that could not fail (fixture calls after a direct `Check`) deleted [src/OcuPilot/Test/SqlAlternatePlansRead.cls:TestTheConsolesCheckRefusesOcuPilotsOwnTablesBeforeThePort]
+- [x] [Review][Patch] LOW: the `!` of `!=` counted as an OR [src/OcuPilot/Port/SqlAlternateScan.cls:Walk]
+- [x] [Review][Patch] LOW: the agent read's 4, 4 and 100 were literals; now read from `ALTMAXTABLES`, `ALTMAXCONDITIONS` and `ALTMAXPLANS` [src/OcuPilot/Screen/Tool/ExplorerSqlAlternatePlansRead.cls:InputSchema]
+- [x] [Review][Patch] LOW: the scanner's doc said an overcount only makes the bound stricter; it also loosens the cross-product test [src/OcuPilot/Port/SqlAlternateScan.cls:1]
+- [x] [Review][Patch] LOW: OVERLAY's FROM and IS DISTINCT FROM had no `%NOPARALLEL` leg [src/OcuPilot/Test/SqlAlternateScan.cls:TestNoParallelFollowsEachFromClauseAndNothingElse]
+- [x] [Review][Patch] LOW: the tool's doc said every kind but a query is refused `CHANGES`; the console's check refuses the session, administration and server-file kinds first [src/OcuPilot/Screen/Tool/ExplorerSqlAlternatePlansRead.cls:1]
+- [x] [Review][Patch] LOW: the port test's header said it removes no row it did not record; `Statement.Clean()` also clears orphaned statement-index rows [src/OcuPilot/Test/SqlAlternatePlansRead.cls:1]
+- [x] [Review][Patch] LOW: mutation lines for the cross-product, stopped, compare-cap, EXECUTE and view legs recorded under Verification, Code review 1
+- [x] [Review][Defer] MED: AD-21's console clause says nothing is concatenated into the statement and AD-44 has no 21.28 line, while the compare inserts `%NOPARALLEL` and the gate unions ShowPlanAlt's resource [ARCHITECTURE-SPINE.md:657] — deferred: DW-2899 escalated, spine wording for the runner or owner (Rule 20); code is as ruled
+- [x] [Review][Defer] LOW: the `slowquery` step compares against "the one the optimizer chose", which neither read marks [src/OcuPilot/Kernel/Agent/Workflow.cls:267] — deferred: DW-2900 wontfix-accepted
+- [x] [Review][Defer] LOW: after Show plan the pane does not say which plan it shows [ui/src/app/core/sql-answer.ts:144] — deferred: DW-2901 wontfix-accepted
+
+**Rejected:**
+
+- by-design: the cross-product refusal counts conditions, so a filter-only multi-table statement passes it (brief item 3). The round-2 ruling and AD-7's 21.28 line state the rule as the count, "tested at the boundary", and its HALT clause concerns counting reliably, which the scanner does; compare time follows the data even for one table (Task 0 addendum), so no join test would bound it. An acknowledged residual, not a HIGH.
+- by-design: a compare whose last run ends past the bound answers `stopped` and drops its rows (the Batch 1 bullet: "once they reach `BoundSeconds()` after a run").
+- by-design: a single run longer than the bound has no alarm (Task 0 (j) and the round-2 ruling).
+- by-design: every relation's view text is read from `%Dictionary.CompiledClass`, so the reader needs SELECT on it (runner decision 1; 21.27's advice has the same requirement).
+- false: `'=` hides later FROMs from the scanner. IRIS SQL refuses `'=` (SQLCODE -3, measured), so the statement never classifies.
+- false: `StatementText` truncates at a blank line or comments out the rest after `--`. `Explain`'s `SQL:` section strips comments and blank lines (measured).
+- false: `FROM %PARALLEL` beats the inserted keyword. `FROM %NOPARALLEL %PARALLEL` explains with no parallel module (measured; `%PARALLEL` alone has one).
+- false: nested views escape the bound. The statement index records the inner view, and a view of the four-alias view is refused `ALTBOUND` (measured).
+- false: `$ZHOROLOG` wraps at midnight. It counts seconds since the instance started.
+- false: the tool can answer `noplan`. `Classify` refuses the session, administration and server-file kinds, and `Mutating` covers the rest.
+- false: an empty plans list shows a false sentence. `Plan` answers `noplan` before the list for kinds without plans, and every query or DML statement measured listed at least one (Task 0).
+- false: Show plan's "runs nothing" is unpinned. An `Explain` with statistics records runtime-statistics rows (AD-7's 21.26 line), which piece 3 of the routes test counts.
+- false: the refusals are not "the instance's own sentences". The phrase is the established EXPERIENCE.md wording for OcuPilot's server sentences.
+- false: `SQLALTBOUND` and `SQLEXECUTEPRIVILEGE` bypass `RefuseFor`. They follow the parameterized sibling, `SQL.SELECT.PRIVILEGE`, and no tool needs them.
+- false: a non-number `Plan` in a client row. The port always sends a number.
+- false: a dotted schema splits wrongly. The statement index names relations `SCHEMA.TABLE`.
+- low: `compare` takes digit strings; `CompareIds` documents it, and only port-built id text reaches the vendor.
+- low: the routes test still compares the route's cost with the list's; at the route it pins the pass-through, and the vendor-row check is at the port.
+- low: a statement edit or namespace change during a request keeps the stale list; the same holds for every answer on the page.
+- low: `taskCreate`'s citation and `ReadTool`'s count changed on contended files; both were forced and recorded.
+- low: `PlanShown` repeats about six lines of `Plan`'s tail; a shared helper would add parameters.
+- low: `INSERT OR UPDATE` counts its OR as a condition; stricter, and DML is never compared.
+- low: the no-parallel effect was not shown on Handoff 1's own probe; the Task 0 addendum measured 16 busy workers without the keyword and 0 with it on the same vendor call.
+
 ## Spec Change Log
 
 - 2026-11-25, orchestrator rulings at the plan gate (veto U-166 for items 1, 3 and 5), authoritative over the Design Notes records and Tasks where they differ:
@@ -480,6 +525,12 @@ Measured on `ocupilot-ci`, `USER`, by scratch classes that are deleted. The stat
 - **Built.** P1: `PlansVendor` runs `PlansCall` (new, answers `{rows, code, message}`) through `CallWithNullDevice` with namespace `""`, and `PlansCall` switches to the caller's namespace itself, because `OcuPilot.Port.SqlPort` is not visible in every namespace the helper would switch to; it restores the namespace, kills `%AltPlan` and rolls back to its starting `$TLevel` on every path. Fixture gains `VendorRead` (a public pass-through, since `PlansVendor` is private). P2: `AlternateState` pieces 2, 3 and 4 are asserted above 0 after a compare in `SqlAlternatePlansRead`, `SqlAlternatePlansRoutes` and the browser spec's AC4 (all read above 0 on first measure; no key changed). P3: the cost and starting map are asserted against the vendor's own statistics row for the id each compare call named. New test `TestThePlansReadLeavesTheProcessAsItFoundIt` (success and SQLCODE -400 legs).
 - **Run.** `SqlAlternatePlansRead` 11/11, `SqlAlternatePlansRoutes` 6/6, `SqlAlternateScan` 7/7, `SqlPortLive` 16/16, `SqlRuntimeStatsRead` 10/10, `SqlConsoleRoutes` 8/8, `SqlSelectPrivilege` 5/5, browser spec 3/3 after rebuild and redeploy, `check-objectscript` 0 problems.
 - `mutation: Alternates drops MapType -> TestTheListAnswers... red (four columns, map type); Explained drops alt/ids -> TestShowPlanAnswersOnePlansText... red ("not the plan the statement would run"; the one-plan-text assertion stayed green because the chosen plan is also one plan); Compared runs id + 1 -> TestACompareRunsEach... red (the vendor-row cost and starting map, the call-id and the numbers legs) and the cap test's vendor-strings leg red; PlansCall without Kill %AltPlan -> TestThePlansReadLeaves... red on its error leg only (the success leg's query leaves none); RemoveAlternates without its two PurgeQueries -> the 0|0|0|0 read stayed GREEN (DROP TABLE removes the table's cached queries), and without Statement.Clean -> every test red on the 0|0|0|0 read (the statement-index piece), so the purge is not load-bearing and the Clean is (each reverted by Edit, files compared equal to the saved copies, reloaded, green).`
+
+### Code review 1, measured on `ocupilot-ci`
+
+- **Probes** (a scratch class in `HSCUSTOM`, deleted, the probe read back `0|0|0|0`): `'=` is refused by the prepare (SQLCODE -3); `Explain`'s `SQL:` section drops a `--` comment and a blank line; `FROM %NOPARALLEL %PARALLEL` explains with no parallel module and `FROM %PARALLEL` with one; a text with an unknown column through `possiblePlansStats` answers SQLCODE 0 and no row, and through `Explain` SQLCODE -29; a view of the four-alias view is refused `ALTBOUND`, its inner view in the statement index's relations.
+- **Run on HEAD with the patches, one class per call:** `SqlAlternateScan` 7, `SqlAlternatePlansRead` 11, `SqlAlternatePlansRoutes` 6, `SqlAdviceRead` 11, `SqlAgentRead` 7, `SqlPort` 11, `SqlPortLive` 16, `SqlConsoleRoutes` 8, `SqlSelectPrivilege` 5, `WorkflowCatalog` 10, `ReadTool` 28, `ToolRoundTrip` 2, `ToolEmit` 11, `DeveloperFloor` 10, `ExplorerDescriptor` 17, `ReadDescriptions` 9, `SurfaceCoverage` 4, `ClassicPageGate` 10, `MappingDescriptor` 6, `EndpointCoverage` 2, `ToolDispatch` 19, all green. `test:tools` 2422, `test:components` 4112, `check-objectscript` 0 problems. After a rebuild and redeploy: `system-explorer-sql-alternate-plans` 3/3, `system-explorer-sql-runtime-stats` 4/4, `system-explorer-sql-statements` 5/5, and alternate plans again after runtime statistics 3/3. The merged rosters needed no change.
+- `mutation: Compared without the compare-text Explain -> TestARefusedProcedure... red (the compare-text leg); Compared never answers stopped -> TestACompareThatReachesTheBound... red; CrossProduct answers 0 -> TestEveryCompareRefusalCallsNothing red (the ALTJOIN leg); ALTMAXCOMPARE 6 -> TestTheListAndACompareAreCapped... and TestEveryCompareRefusal... red (the six legs); PlansRead without the -99 refusal -> TestARefusedProcedure... red (the list leg); AlternateCounts reads no view text -> TestAStatementOverTheBound... red (the view legs); PlansCall kills %AltPlan inside its Try only -> TestThePlansReadLeaves... red on the raised leg alone; PlansVendor calls PlansCall without the null device -> the same test red on the device leg alone (each reverted by Edit, files compared equal to the saved copies, reloaded, green).`
 
 ## Auto Run Result
 

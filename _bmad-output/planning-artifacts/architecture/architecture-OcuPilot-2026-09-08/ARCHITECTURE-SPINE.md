@@ -669,6 +669,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 21.29** [AMENDED 2026-11-25, Story 21.29 spec gate, orchestrator ruling, veto item U-167, Rule 20] consumes the allowed-directory case: a generated report is written only inside an allowed directory, a missing directory is refused, and the overwrite of an existing file is stated in the consequence the person confirms; the vendor reads and writes only OcuPilot's temporary files.
 
+  **Story 21.28's compare** [AMENDED 2026-11-26, Story 21.28, orchestrator rulings, veto items U-166 and U-178, Rule 20] runs the listing's own parameterized text with the vendor's `%NOPARALLEL` hint inserted after each FROM by the console's own tokenizer; that inserted hint is the only text the port adds, and no caller value is concatenated.
+
 ### AD-22 — Governance is polish-week work, and its shape is fixed now so Release 1 does not preclude it
 
 - **Binds:** FR-72 and the polish-week governance; every tool added after the Release 1 freeze
@@ -1138,6 +1140,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 20.34's `CLASSICPAGES`** [AMENDED 2026-10-15, Story 20.34 spec gate, Rule 20]: the Cube manager and its two tools declare `%DeepSee.UI.CubeRegistry`.
 
   **A classic page's custom resource may be set and cleared from OcuPilot (Story 21.21)** [AMENDED 2026-11-16, Story 21.21, owner answer U-74]: `Port/PortalResourcePort` calls `%CSP.Portal.Utils.%SetCustomResource` in `%SYS` under the caller's own `%Admin_Secure:USE`, which is the vendor's own check, for a page `%IsPortalPage` resolves and a resource the instance defines. A change to a page an OcuPilot screen declares changes that screen's requirement at its next gate call.
+
+  **Story 21.28** [AMENDED 2026-11-26, Story 21.28, orchestrator ruling, veto item U-166, Rule 20]: the Alternate plans actions on SQL query and `explorer.sqlalternateplans.read` also require any custom resource an operator puts on the classic page `%CSP.UI.Portal.SQL.QButtons.ShowPlanAlt`.
 
 ### AD-45 — There is one smoke path, and it is also the health check
 

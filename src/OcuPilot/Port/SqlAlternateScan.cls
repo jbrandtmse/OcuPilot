@@ -4,9 +4,9 @@
 /// <p>A statement is cut into tokens with comments, string literals and delimited identifiers each reduced to one placeholder token, so nothing inside
 /// them is read as a keyword. The tables are the clause FROM keywords, the commas that separate the relations of a FROM clause (or of an UPDATE up to its
 /// SET) at the same parenthesis depth, the JOIN keywords, and one for each UPDATE and each INSERT. The conditions are WHERE, ON, AND, OR, <code>&amp;</code>,
-/// <code>!</code> and HAVING, and one for each column of a USING list. A FROM inside SUBSTRING, TRIM, EXTRACT or OVERLAY, or after DISTINCT, belongs to
-/// the function and is not a clause. <code>BETWEEN ... AND</code> and a derived table count one more than they hold, which only makes the bound
-/// stricter.</p>
+/// <code>!</code> (not the <code>!</code> of <code>!=</code>) and HAVING, and one for each column of a USING list. A FROM inside SUBSTRING, TRIM, EXTRACT
+/// or OVERLAY, or after DISTINCT, belongs to the function and is not a clause. <code>BETWEEN ... AND</code> and a derived table count one more than they
+/// hold, which makes the bound stricter and the cross-product test looser.</p>
 Class OcuPilot.Port.SqlAlternateScan Extends %RegisteredObject
 {
 
@@ -158,7 +158,7 @@ ClassMethod Walk(pText As %String, Output pTables As %Integer, Output pCondition
             If (tWord = "WHERE") || (tWord = "HAVING") Set pConditions = pConditions + 1
             Continue
         }
-        If (tWord = "ON") || (tWord = "AND") || (tWord = "OR") || (tWord = "&") || (tWord = "!") {
+        If (tWord = "ON") || (tWord = "AND") || (tWord = "OR") || (tWord = "&") || ((tWord = "!") && (tFollowing '= "=")) {
             Set pConditions = pConditions + 1
             Continue
         }

@@ -1,6 +1,6 @@
 /// <p><class>OcuPilot.Port.SqlPort</class> with the seams of Alternate plans in a test's hands (Story 21.28): <method>PlansVendor</method> and
 /// <method>Explained</method> count each call, <method>PlansVendor</method> records its query, plan numbers and text, and a test can arm it to answer
-/// <var>Fake</var> rows without calling the instance, to answer an SQLCODE, or to take its time; <method>BoundSeconds</method> answers the bound a test
+/// <var>Fake</var> rows without calling the instance, to answer an SQLCODE, to take its time, or to refuse to explain a compare's own text; <method>BoundSeconds</method> answers the bound a test
 /// armed. Everything else is the production port's. The state is in <code>^||OcuPilotSqlAlt</code>, which <method>Reset</method> kills.</p>
 Class OcuPilot.Test.SqlAlternateFixture Extends OcuPilot.Port.SqlPort
 {
@@ -109,9 +109,23 @@ ClassMethod PlansVendor(pNamespace As %String, pQuery As %String, pText As %Stri
     Quit tSC
 }
 
+/// <p>Answer <var>pCode</var> to the explaining of a compare's own text, the text holding <code>%NOPARALLEL</code>, as the instance answers a text it will
+/// not explain.</p>
+ClassMethod RefuseCompareText(pCode As %Integer)
+{
+    Set ^||OcuPilotSqlAlt("comparetext") = pCode
+}
+
 ClassMethod Explained(pNamespace As %String, pText As %String, Output pPlan As %String, Output pCode As %String, Output pMessage As %String, pStats As %Boolean = 0, pBound As %Integer = 0, Output pStopped As %Boolean, pIds As %String = "") As %Status [ Private ]
 {
     Set ^||OcuPilotSqlAlt("explained") = $Get(^||OcuPilotSqlAlt("explained")) + 1
+    If $Data(^||OcuPilotSqlAlt("comparetext")) && (pText [ "%NOPARALLEL") {
+        Set pPlan = ""
+        Set pCode = ^||OcuPilotSqlAlt("comparetext")
+        Set pMessage = "probe refused"
+        Set pStopped = 0
+        Quit $$$OK
+    }
     Quit ##super(pNamespace, pText, .pPlan, .pCode, .pMessage, pStats, pBound, .pStopped, pIds)
 }
 

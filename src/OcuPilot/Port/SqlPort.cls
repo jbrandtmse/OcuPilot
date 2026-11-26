@@ -1206,7 +1206,9 @@ ClassMethod PlanShown(pNamespace As %String, pText As %String, pKind As %String,
 /// holding <code>$ListBuild(cost, map type, starting map)</code>, names) of <var>pText</var> in <var>pNamespace</var>. The instance runs the statement's
 /// own text, the one <code>$SYSTEM.SQL.Explain</code> gives with its literals replaced by <code>?</code>
 /// (<method>OcuPilot.Port.SqlAlternateScan.StatementText</method>) so each plan number names the plan the list showed, with
-/// <code>%NOPARALLEL</code> after each FROM so it starts no parallel workers, and without values: a <code>?</code> runs as nothing. The statistics query
+/// <code>%NOPARALLEL</code> after each FROM so it starts no parallel workers, and without values: a <code>?</code> runs as nothing. That text is explained
+/// before any run, and one the instance will not explain is the <code>error</code> outcome, since the statistics query answers no row and no error for
+/// it. The statistics query
 /// is called once for each plan, in order, and the elapsed seconds are read after each run: once they reach <method>BoundSeconds</method> the compare
 /// answers <code>{outcome: stopped, kind, seconds}</code> and runs no further plan. The cost and starting map of a row are the list's, the statistics the
 /// instance's own text, blank for a plan that recorded none. Any SQLCODE below 0 is the <code>error</code> outcome.</p>
@@ -1222,6 +1224,12 @@ ClassMethod Compared(pNamespace As %String, pText As %String, pKind As %String, 
     Set tOwn = $ClassMethod(tScan, "StatementText", tPlan)
     If tOwn = "" Quit ..Fail("the statement's own text is not in its plan", $$$ERROR($$$GeneralError, "no statement text in the plan"), .pHttpStatus, .pFault)
     Set tCompare = $ClassMethod(tScan, "NoParallel", tOwn)
+    Set tSC = ..Explained(pNamespace, tCompare, .tPlan, .tCode, .tMessage)
+    If $$$ISERR(tSC) Quit ..Fail("the statement's own text could not be read", tSC, .pHttpStatus, .pFault)
+    If tCode '= "" {
+        Set pAnswer = ..ErrorAnswer(pKind, tCode, tMessage)
+        Quit $$$OK
+    }
     Set tBound = ..BoundSeconds()
     Set tStart = $ZHorolog
     Set tRows = []
