@@ -892,3 +892,6 @@
 2026-11-26T00:22:56Z	Story 24.17	ci_resolved	story=24.17-batch2 sha=07a3771f0 runs=45724102429 result=success failed=none via=none resolved_at=next_plan flake_confirmed=DW-2872(ssl_AC2_green_on_rerun)
 2026-11-26T00:22:56Z	Story 24.17	reported_to_orchestrator	scope=batch2 code_head=07a3771f0 run=45724102429 ledger=DW-2871,DW-2872 note=U-159_correction_checked(measurement_cited)
 2026-11-26T00:38:46Z	Story 24.17	cr_complete	scope=batch3a spawn_at=2026-11-26T00:24Z model=opus commit=42c992501 rebuild=00:04:46Z high=0 med=2 low=6 unresolved_high_med=0 patched=R1(U-168_WorkflowMembershipsGone),R2(EnsureCascade_removed),R3-R8 deferred=R9-R15(DW-2875..2881_wontfix-accepted_with_reopen_if) classes=all_green(3a_fwd+rev,B2_after_3a,rosters) browser=workflow-users2/2,schedules2/2,a11y13/13 npm_test=green README=103 closing_sections_present=true
+2026-11-26T00:42:04Z	Story 24.17	integrate_merge	scope=batch3a theirs=feature@2055196e5(B2_merged+timings) conflicts=none ci.test=109
+2026-11-26T00:42:04Z	Story 24.17	fresh_check_passed	scope=batch3a basis=review_rebuild_00:04:46Z(on_43be2822a_with_review_patches) classes=3a_fwd+rev,B2_after_3a,rosters_green browser=workflow-users,schedules,a11y13/13 smoke=49/49(skip_agentswitches)
+2026-11-26T00:42:04Z	Story 24.17	code_head_pushed	scope=batch3a sha=c08571e7d runs=45730527156 ci=pending
