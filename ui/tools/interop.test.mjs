@@ -151,6 +151,14 @@ const SENTENCES = [
   ['REASONWORKFLOWROLEREMOVE', 'interopWorkflowRoleRemoveConsequence'],
   ['REASONWORKFLOWMEMBERADD', 'interopWorkflowMemberAddConsequence'],
   ['REASONWORKFLOWMEMBERREMOVE', 'interopWorkflowMemberRemoveConsequence'],
+  ['REASONWORKFLOWTASKCOMPLETE', 'interopWorkflowTaskRefusalComplete'],
+  ['REASONWORKFLOWTASKUSER', 'interopWorkflowTaskRefusalUser'],
+  ['REASONWORKFLOWTASKPRIORITY', 'interopWorkflowTaskRefusalPriority'],
+  ['REASONWORKFLOWTASKUNCHANGED', 'interopWorkflowTaskRefusalUnchanged'],
+  ['REASONWORKFLOWTASKSENDER', 'interopWorkflowTaskRefusalSender'],
+  ['REASONWORKFLOWTASKASSIGN', 'interopWorkflowTaskAssignConsequence'],
+  ['REASONWORKFLOWTASKUNASSIGN', 'interopWorkflowTaskUnassignConsequence'],
+  ['REASONWORKFLOWTASKCANCEL', 'interopWorkflowTaskCancelConsequence'],
   ['REASONPURGEDAYS', 'interopPurgeRefusalDays'],
   ['REASONPURGERUNNING', 'interopPurgeRefusalRunning'],
   ['REASONPURGERUN', 'interopPurgeRunConsequence'],
@@ -405,7 +413,7 @@ test('the README states the count of the agent actions that ship switched off an
     'the off list names the SQL statement, index, statistics and schema writes'
   );
   assert.ok(
-    readme.includes('removing a default setting, a credential, a schedule spec, a workflow user or a workflow role, purging interoperability management data, the business rule log or the business process log, resubmitting, editing and resubmitting or deleting a suspended message, archiving interoperability messages into another namespace, building'),
+    readme.includes('removing a default setting, a credential, a schedule spec, a workflow user or a workflow role, canceling a workflow task, purging interoperability management data, the business rule log or the business process log, resubmitting, editing and resubmitting or deleting a suspended message, archiving interoperability messages into another namespace, building'),
     'the off list names the purge, the suspended message writes and the archive run'
   );
   assert.ok(

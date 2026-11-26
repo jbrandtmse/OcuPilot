@@ -582,6 +582,10 @@ export const CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE = 'INTEROP.WORKFLOW.USERINA
 export const CONSEQUENCE_INTEROPWORKFLOWROLEREMOVE = 'INTEROP.WORKFLOW.ROLEREMOVE';
 export const CONSEQUENCE_INTEROPWORKFLOWMEMBERADD = 'INTEROP.WORKFLOW.MEMBERADD';
 export const CONSEQUENCE_INTEROPWORKFLOWMEMBERREMOVE = 'INTEROP.WORKFLOW.MEMBERREMOVE';
+/** Story 24.17 Batch 4: a workflow task assigned to a user, sent back to its role, and canceled. */
+export const CONSEQUENCE_INTEROPWORKFLOWTASKASSIGN = 'INTEROP.WORKFLOW.TASKASSIGN';
+export const CONSEQUENCE_INTEROPWORKFLOWTASKUNASSIGN = 'INTEROP.WORKFLOW.TASKUNASSIGN';
+export const CONSEQUENCE_INTEROPWORKFLOWTASKCANCEL = 'INTEROP.WORKFLOW.TASKCANCEL';
 /** Story 24.16: a purge of management data, and one whose bitmap cleanup is on. */
 export const CONSEQUENCE_INTEROPPURGERUN = 'INTEROP.PURGE.RUN';
 export const CONSEQUENCE_INTEROPPURGEBITMAP = 'INTEROP.PURGE.BITMAP';
@@ -863,6 +867,10 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_INTEROPWORKFLOWROLEREMOVE) return STRINGS.interopWorkflowRoleRemoveConsequence;
   if (code === CONSEQUENCE_INTEROPWORKFLOWMEMBERADD) return STRINGS.interopWorkflowMemberAddConsequence;
   if (code === CONSEQUENCE_INTEROPWORKFLOWMEMBERREMOVE) return STRINGS.interopWorkflowMemberRemoveConsequence;
+  // Story 24.17 Batch 4: a workflow task's assignment, its return to its role and its cancel, each published once.
+  if (code === CONSEQUENCE_INTEROPWORKFLOWTASKASSIGN) return STRINGS.interopWorkflowTaskAssignConsequence;
+  if (code === CONSEQUENCE_INTEROPWORKFLOWTASKUNASSIGN) return STRINGS.interopWorkflowTaskUnassignConsequence;
+  if (code === CONSEQUENCE_INTEROPWORKFLOWTASKCANCEL) return STRINGS.interopWorkflowTaskCancelConsequence;
   // Story 24.16: a purge's sentence, the one its own dialog shows, and the bitmap cleanup's.
   if (code === CONSEQUENCE_INTEROPPURGERUN) return STRINGS.interopPurgeRunConsequence;
   if (code === CONSEQUENCE_INTEROPPURGEBITMAP) return STRINGS.interopPurgeBitmapConsequence;

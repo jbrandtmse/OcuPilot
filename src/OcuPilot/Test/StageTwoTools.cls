@@ -253,6 +253,8 @@ XData Elsewhere
 <screen name="InteropWorkflowUserList"/>
 <screen name="InteropWorkflowRoleList"/>
 <screen name="InteropWorkflowMemberList"/>
+<screen name="InteropWorkflowTaskList"/>
+<screen name="InteropWorkflowWorklist"/>
 <screen name="InteropSuspendedMessageList"/>
 <screen name="InteropItemClassTab"/>
 <screen name="InteropItemJobTab"/>

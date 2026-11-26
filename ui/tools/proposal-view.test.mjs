@@ -130,6 +130,9 @@ const {
   CONSEQUENCE_INTEROPWORKFLOWROLEREMOVE,
   CONSEQUENCE_INTEROPWORKFLOWMEMBERADD,
   CONSEQUENCE_INTEROPWORKFLOWMEMBERREMOVE,
+  CONSEQUENCE_INTEROPWORKFLOWTASKASSIGN,
+  CONSEQUENCE_INTEROPWORKFLOWTASKUNASSIGN,
+  CONSEQUENCE_INTEROPWORKFLOWTASKCANCEL,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
   CONFIRMED_TIME_PLACEHOLDER,
@@ -444,6 +447,24 @@ test("a workflow role's remove and a member's add and remove consequence codes r
     ['WORKFLOWROLEREMOVE', CONSEQUENCE_INTEROPWORKFLOWROLEREMOVE, STRINGS.interopWorkflowRoleRemoveConsequence],
     ['WORKFLOWMEMBERADD', CONSEQUENCE_INTEROPWORKFLOWMEMBERADD, STRINGS.interopWorkflowMemberAddConsequence],
     ['WORKFLOWMEMBERREMOVE', CONSEQUENCE_INTEROPWORKFLOWMEMBERREMOVE, STRINGS.interopWorkflowMemberRemoveConsequence],
+  ];
+  for (const [parameter, constant, sentence] of rows) {
+    const declared = new RegExp(`^Parameter ${parameter} = "([^"]+)";`, 'm').exec(errors);
+    assert.ok(declared, `InteropError.cls declares ${parameter}`);
+    assert.equal(constant, declared[1], `${parameter}'s code is the constant the card reads`);
+    assert.equal(consequenceSentence(constant), sentence, `${parameter} resolves to its published sentence`);
+  }
+});
+
+// Story 24.17 Batch 4: a workflow task's assign, unassign and cancel carry the codes the server mints, and each resolves to the sentence its own screen shows, published once.
+//
+// Mutation (Rule 19): drop any of the three workflow task branches from `consequenceSentence` -> its leg goes red.
+test("a workflow task's assign, unassign and cancel consequence codes resolve to their published sentences", () => {
+  const errors = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Api', 'InteropError.cls'), 'utf8');
+  const rows = [
+    ['WORKFLOWTASKASSIGN', CONSEQUENCE_INTEROPWORKFLOWTASKASSIGN, STRINGS.interopWorkflowTaskAssignConsequence],
+    ['WORKFLOWTASKUNASSIGN', CONSEQUENCE_INTEROPWORKFLOWTASKUNASSIGN, STRINGS.interopWorkflowTaskUnassignConsequence],
+    ['WORKFLOWTASKCANCEL', CONSEQUENCE_INTEROPWORKFLOWTASKCANCEL, STRINGS.interopWorkflowTaskCancelConsequence],
   ];
   for (const [parameter, constant, sentence] of rows) {
     const declared = new RegExp(`^Parameter ${parameter} = "([^"]+)";`, 'm').exec(errors);

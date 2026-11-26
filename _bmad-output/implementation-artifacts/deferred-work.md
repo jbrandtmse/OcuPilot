@@ -14692,16 +14692,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-3.md | severity: low | fix-risk: low | footprint: in
 - evidence: 24.17 B3a review R9: ItemSave.Create runs Violations before the absence read
 - 2026-11-26T00:38:36Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=a caller sees a shape refusal where the spec orders source control first
+- 2026-11-26T06:24:36Z occurrence=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=24.17_B3b_review_repeat(R13-R16)
 
 ### DW-2876: Screen Edit of a workflow user with IsActive 'yes' answers 400 TOOL.ARGUMENTS, not PORT.FIELD.SHAPE (copied from InteropScheduleUpdate; the client never sends it)
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-3.md | severity: low | fix-risk: low | footprint: in
 - evidence: 24.17 B3a review R10: InteropWorkflowUserUpdate.ScreenActionDelta
 - 2026-11-26T00:38:36Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=the client or the agent sends a non-boolean IsActive
+- 2026-11-26T06:24:37Z occurrence=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=24.17_B3b_review_repeat(R13-R16)
 
 ### DW-2877: Workflow user writes: a locked user's remove answers 500 not 503, a concurrent add 500 not 409, a user removed between facts read and edit open 503 not 404 (inference)
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-3.md | severity: low | fix-risk: low | footprint: in
 - evidence: 24.17 B3a review R11: Statused maps only CODERUNTIMELOCK to 503
 - 2026-11-26T00:38:36Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=a measured run shows one of these statuses to a caller
+- 2026-11-26T06:24:37Z occurrence=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=24.17_B3b_review_repeat(R13-R16)
 
 ### DW-2878: A full-name edit of an inactive workflow user re-runs the vendor inactivation (worklist items deleted again) with no consequence shown; a fix needs a new string
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-3.md | severity: low | fix-risk: med | footprint: in
@@ -14712,6 +14715,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-3.md | severity: low | fix-risk: low | footprint: in
 - evidence: 24.17 B3a review R13: HandleChoices sends no cap
 - 2026-11-26T00:38:36Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=an instance holds more than 10,000 users or a user name over 128 characters
+- 2026-11-26T06:24:37Z occurrence=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=24.17_B3b_review_repeat(R13-R16)
 
 ### DW-2880: Batch 3a AC5 (vendor error never a 200) is pinned only through the port seam, not from either caller; add tests rely on the stock test account listing every user
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-3.md | severity: low | fix-risk: low | footprint: in
@@ -14755,6 +14759,54 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-4.md | severity: med | fix-risk: low | footprint: in
 - evidence: 24.17 B3b implement sweep shard 1 red on ocupilot-b-ci; class untouched since ca5626323; not re-run
 - 2026-11-26T05:12:59Z status=routed owner=burndown by=harvest note=Rule 19 hermeticity: raise the id counter first, as Story 24.16's archive rule says
+- 2026-11-26T12:32:12Z occurrence=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=harvest note=B4_sweep_shard16_reproduced_by_setting_USER_header_counter_below_HSCUSTOM;B4_live-task_fixture_now_restores_counters
+- 2026-11-26T13:27:39Z occurrence=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=B4_review_D5:assertion_depends_on_counters;B4_fixture_LowerCounter_never_below_held_id
+
+### DW-2888: The agent can mint a workflow member add to a role the namespace does not hold (the read's 404 is treated as free by a create); only the confirm refuses 404. A refusal at the mint needs a new code and sentence
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-4.md | severity: med | fix-risk: low | footprint: in
+- evidence: 24.17 B3b review R11; suggested sentence: 'This namespace has no workflow role with that name.'
+- 2026-11-26T06:24:36Z status=escalated owner=burndown by=cr note=new user-facing string; decision sheet
+
+### DW-2889: Five interoperability form stores and dialogs (schedule, workflow user, role, member, partner families) repeat about 120 lines of form state; a shared base spans families outside one batch
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-4.md | severity: med | fix-risk: med | footprint: in
+- evidence: 24.17 B3b review R12 (Rule 2); 3a copied the schedule family, 3b copied 3a
+- 2026-11-26T06:24:36Z status=escalated owner=burndown by=cr note=refactor across Epic 24 families
+- 2026-11-26T13:27:40Z occurrence=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=B4_task_dialog_is_a_reasoned_copy_of_the_alert_dialog
+
+### DW-2890: Role members borrows a workflow roles prompt as its third agent prompt (the spec gave it two); a dedicated prompt needs a new string
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-4.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.17 B3b review R17
+- 2026-11-26T06:24:36Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=the owner asks for a members-specific prompt
+
+### DW-2891: Workflow roles: orphan memberships in a namespace without the vendor registry cannot always be removed; an agent edit of a role whose stored capacity is over 100 is refused; a role name containing || answers 500
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-4.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.17 B3b review R19, R20
+- 2026-11-26T06:24:36Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=a customer namespace holds such rows
+
+### DW-2894: Workflow task write: a task completed, reassigned or deleted between the judge and the concurrency-4 open still reaches the vendor, or answers 503 where 404 is right
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-5.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.17 B4 review D1: PerformWorkflowTask judges first and never re-checks after %OpenId(id, 4)
+- 2026-11-26T13:27:39Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=a double delivery or a wrong status is observed
+
+### DW-2895: The agent's workflow task assign mints over an inactive user, unchanged values or a complete task and is refused only at the confirm (READASKSACTION 0)
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-5.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.17 B4 review D2
+- 2026-11-26T13:27:39Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=agent cards for refusable assigns are reported as noise
+
+### DW-2896: Unassigning a task whose workflow role was removed saves, then SendTaskToAll faults: 500 with the task on no worklist (inference; the classic dialog behaves the same)
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-5.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.17 B4 review D3
+- 2026-11-26T13:27:39Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=a task left on no worklist is observed
+
+### DW-2897: The Assign dialog's user list reads through the WorkflowUsers endpoint, which needs %Ens_WorkflowConfig:READ, so a WRITE-only holder sees no users (inference)
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-5.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.17 B4 review D4
+- 2026-11-26T13:27:39Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=a WRITE-only principal is measured to see an empty list
+
+### DW-2898: An assign naming the current, now inactive, assignee with a new priority is not refused (the user is judged only when it changes)
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-5.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.17 B4 review D6
+- 2026-11-26T13:27:39Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=the owner wants inactive assignees refused on any change
 
 ### DW-2893: The spine does not record that SqlPort catalog reads check SQL privileges and refuse 403 SQL.SELECT.PRIVILEGE naming their tables (ruling U-175)
 - source: spec-21-27-the-index-analyzer-and-its-advice.md | severity: med | fix-risk: low | footprint: out-of-footprint

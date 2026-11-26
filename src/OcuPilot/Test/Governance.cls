@@ -74,8 +74,8 @@ Parameter INTEROPARCHIVEDISABLED = "interop.archive.run";
 /// <p>The business rule log and business process log purges (Story 24.17 Batch 2): the two writes that ship disabled.</p>
 Parameter INTEROPLOGPURGEDISABLED = "interop.processlog.purge,interop.rulelog.purge";
 
-/// <p>The workflow user remove (Story 24.17 Batch 3a) and the workflow role remove (Batch 3b): the writes of their families that ship disabled.</p>
-Parameter INTEROPWORKFLOWDISABLED = "interop.workflowusers.remove,interop.workflowroles.remove";
+/// <p>The workflow user remove (Story 24.17 Batch 3a), the workflow role remove (Batch 3b) and the workflow task cancel (Batch 4): the writes of their families that ship disabled.</p>
+Parameter INTEROPWORKFLOWDISABLED = "interop.workflowusers.remove,interop.workflowroles.remove,interop.workflowtasks.cancel";
 
 /// <p>Story 20.34's cube build, which ships disabled (AD-22): it deletes a cube's facts and those of the cubes that depend on it. Its
 /// synchronize ships enabled.</p>
