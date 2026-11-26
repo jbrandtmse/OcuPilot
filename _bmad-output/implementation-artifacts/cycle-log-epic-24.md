@@ -955,3 +955,7 @@
 2026-11-26T21:23:39Z	Story 24.17	ci_resolved	story=24.17-batch5 sha=de6eef2d0 runs=45892451647 result=success failed=none resolved_at=story_end
 2026-11-26T21:23:39Z	Story 24.17	story_complete	batches=1,2,3a,3b,4,5 code_head=de6eef2d0 spine=4d53ca0f0,944b294d0(+marker_trim) tracker=done
 2026-11-26T21:24:28Z	Story 24.18	stage_spawned	stage=plan spawn_at=2026-11-26T21:24:28Z model=opus agent_name=24-18-plan cycle_iteration=1 story_base=d861e4ec3
+2026-11-26T21:27:22Z	Story 24.17	merged_to_feature	scope=story feature=ba0fa0702(ff_d861e4ec3+record+timings_45892451647) next_integrates=ba0fa0702
+2026-11-26T21:42:28Z	Story 24.18	story_created	scope=batch1_hl7_schemas(of_5) path=_bmad-output/implementation-artifacts/spec-24-18-pex-record-maps-and-hl7-authoring.md commit=fe68d7017 build_status=ready-for-dev warning=oversized epic_context=recompiled
+2026-11-26T21:42:28Z	Story 24.18	ruling	question=batch1_veto_set choice=keep_all(V1-V6) category=veto inbox=U-182 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-26T21:42:28Z	Story 24.18	spec_validated	scope=batch1 ledger_inbox=empty mutates_shared_runtime=false(throwaway_only)

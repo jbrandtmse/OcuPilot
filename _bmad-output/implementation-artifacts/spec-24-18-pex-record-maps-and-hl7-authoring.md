@@ -337,6 +337,15 @@ Each is the lead's to take to the veto gate; the recommended option is first.
 
 There is no new dependency, no privilege, role or access grant, and nothing is written into another namespace.
 
+**Lead rulings at the spec gate (2026-11-26; filed as an INBOX veto item, binding unless the orchestrator reverses them).** Every veto item is kept as recommended:
+
+- **V1:** kept, every quoted string. If Task 0 measures a consequence sentence untrue, HALT with `## Clarification Needed`; never reword it in-stage. The README count is derived from the Baseline on the tree you commit, never typed from this plan.
+- **V2:** kept: server files only through an allowed directory behind `PathPort`'s pairs (AD-21's sixth case), stricter than the classic page.
+- **V3:** kept, the classic page's pairs made explicit with the namespace database pair.
+- **V4:** kept, the narrower values (the name set, the exact base, no standard schema replaced or created, the raw-`<Category>` refusal if Task 0 (d) requires it).
+- **V5:** kept: `.add` and `.export` ship `true`; `.import` and `.delete` ship `false`, destructive, the delete asking for the typed name.
+- **V6:** kept for story end; the lead writes the lines.
+
 ## Design Notes
 
 **Batch split.** Each batch has its own spec, `-2` onward, and its own commit series. They are ordered by size, the smallest complete area first.
