@@ -14715,6 +14715,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-4.md | severity: med | fix-risk: low | footprint: in
 - evidence: 24.17 B3b implement sweep shard 1 red on ocupilot-b-ci; class untouched since ca5626323; not re-run
 - 2026-11-26T05:12:59Z status=routed owner=burndown by=harvest note=Rule 19 hermeticity: raise the id counter first, as Story 24.16's archive rule says
+- 2026-11-26T12:32:12Z occurrence=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=harvest note=B4_sweep_shard16_reproduced_by_setting_USER_header_counter_below_HSCUSTOM;B4_live-task_fixture_now_restores_counters
 
 ### DW-2888: The agent can mint a workflow member add to a role the namespace does not hold (the read's 404 is treated as free by a create); only the confirm refuses 404. A refusal at the mint needs a new code and sentence
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-4.md | severity: med | fix-risk: low | footprint: in
