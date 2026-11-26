@@ -984,7 +984,7 @@ ClassMethod MakeAlternateTwoTableViews(pNamespace As %String) As %Status
 }
 
 /// <p>Put <var>pNamespace</var> back as an unmade probe has it: the runtime statistics of <parameter>ALTERNATETOKEN</parameter>'s statements removed by
-/// routine, the table's cached queries purged, the table dropped, and the statement index cleaned of the statements that no longer have a location. A
+/// routine, the probe views dropped, the table's cached queries purged, the table dropped, and the statement index cleaned of the statements that no longer have a location. A
 /// table that is already gone is not an error.</p>
 ClassMethod RemoveAlternates(pNamespace As %String) As %Status
 {

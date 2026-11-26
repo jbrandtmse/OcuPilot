@@ -144,9 +144,10 @@ Method TestOnlyAComparisonOfTwoTablesIsAJoin()
     }
 }
 
-/// <p>A join an OR, a NOT or an expression can make optional, or that is not a comparison of two plain columns, is not counted.</p>
+/// <p>A join an OR, a NOT or an expression can make optional, that is not a comparison of two plain columns, or that stands in a HAVING or a CASE, is
+/// not counted.</p>
 /// <p>Mutation (Rule 19): <code>Conjunct</code> skips its backward OR scan -> the legs with an OR before the join go red; skips its forward OR scan -> the
-/// "an OR outside its parentheses" leg goes red.</p>
+/// "an OR outside its parentheses" leg goes red; its backward scan passes other clause keywords -> the HAVING legs go red.</p>
 Method TestAJoinThatIsNotACertainConjunctIsNotCounted()
 {
     Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.x = b.x OR a.y = 1"), 1, "an OR after it")
@@ -166,6 +167,9 @@ Method TestAJoinThatIsNotACertainConjunctIsNotCounted()
     Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.x = b.x + 1"), 1, "an expression on the right")
     Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.x = b.x ORDER BY a.x"), 0, "a clause end after it")
     Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.x IN (b.x, 2)"), 1, "a list is not a comparison")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.y = 1 GROUP BY a.x, b.x HAVING COUNT(*) > 0 AND a.x = b.x"), 1, "a HAVING after a WHERE")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a WHERE a.y = 1 AND (SELECT COUNT(*) FROM u c, u d WHERE c.x = a.x GROUP BY c.k HAVING COUNT(*) > 1 AND c.k = d.k) > 0"), 1, "a subquery's HAVING")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE CASE WHEN a.y = 1 AND a.x = b.x AND a.z = 1 THEN 1 ELSE 0 END = 1"), 1, "a CASE condition")
 }
 
 /// <p>A subquery and a view are read as texts of their own: a correlated subquery joins its table, one that nothing correlates does not, and each view's
@@ -179,6 +183,29 @@ Method TestASubqueryAndAViewAreReadForTheirOwnJoins()
     Do $$$AssertEquals(..Cross("SELECT * FROM v", ["SELECT * FROM t a, t b WHERE a.x = b.x"]), 0, "a view that joins them")
     Do $$$AssertEquals(..Cross("SELECT * FROM v", ["SELECT * FROM t"]), 0, "a view of one table")
     Do $$$AssertEquals(..Cross("SELECT * FROM v, w", ["SELECT * FROM t"]), 1, "two views and no join between them")
+}
+
+/// <p>A join counts only when it connects a table no earlier join reached: two joins of one pair leave a third table unjoined, in the statement, in a
+/// subquery and with a USING list of two columns.</p>
+/// <p>Mutation (Rule 19): <code>Union</code> answers 1 for qualifiers already connected -> the repeated-pair legs go red.</p>
+Method TestTwoJoinsOfOnePairConnectOneTable()
+{
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b, t c WHERE a.x = b.x AND a.y = b.y"), 1, "the same pair twice leaves the third table unjoined")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b, t c WHERE a.x = b.x AND b.y = a.y"), 1, "in either order")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b, t c WHERE a.x = b.x AND b.y = c.y AND a.z = c.z"), 0, "a third join of a connected group is harmless")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE EXISTS (SELECT 1 FROM u c, u d WHERE c.x = d.x AND c.y = d.y AND c.z = d.z)"), 1, "a subquery's own pair joined three times")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM a JOIN b USING (x, y), c"), 1, "a USING list of two columns is one join")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM a JOIN b USING (x, y) JOIN c USING (z)"), 0, "and two USING lists are two")
+}
+
+/// <p>A relation the instance records and the text does not name, such as the table an arrow reaches, needs a join the scan can read.</p>
+/// <p>Mutation (Rule 19): <code>Count</code> skips the cross-product test after the relations floor -> the arrow leg goes red.</p>
+Method TestARelationTheTextDoesNotNameNeedsAJoin()
+{
+    Do $ClassMethod(..#SCAN, "Count", "SELECT p.Company->Name FROM Sample.Person p", "", 2, .tTables, .tConditions, .tCross)
+    Do $$$AssertEquals(tTables _ "/" _ tCross, "2/1", "an arrow's table is not joined by a condition the scan reads")
+    Do $ClassMethod(..#SCAN, "Count", "SELECT 1 FROM t a, t b WHERE a.x = b.x", "", 2, .tTables, .tConditions, .tCross)
+    Do $$$AssertEquals(tTables _ "/" _ tCross, "2/0", "a floor the text already reaches changes nothing")
 }
 
 /// <p>The keyword is inserted after the FROM that opens a FROM clause, in a subquery and a derived table too, and nowhere else: not after a function's FROM,

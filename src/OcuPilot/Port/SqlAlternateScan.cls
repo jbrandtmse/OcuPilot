@@ -6,12 +6,15 @@
 /// SET) at the same parenthesis depth, the JOIN keywords, and one for each UPDATE and each INSERT. The conditions are WHERE, ON, AND, OR, <code>&amp;</code>,
 /// <code>!</code> (not the <code>!</code> of <code>!=</code>) and HAVING, and one for each column of a USING list. A FROM inside SUBSTRING, TRIM, EXTRACT
 /// or OVERLAY, or after DISTINCT, belongs to the function and is not a clause. <code>BETWEEN ... AND</code> and a derived table count one more than they
-/// hold, which makes the bound stricter and the cross-product test looser.</p>
+/// hold, which makes the bound stricter, and a derived table's makes the cross-product test stricter too.</p>
 /// <p>The cross-product test reads joins, not conditions. A join is a comparison of two columns that each carry a qualifier (<code>t1.B = t2.B</code>), the
 /// qualifiers differing, standing as a conjunct of its WHERE or ON clause: the token before it is WHERE, ON, AND, <code>&amp;</code> or an opening
 /// parenthesis that follows one of those, the token after it is a clause end, AND, <code>&amp;</code> or a closing parenthesis, and no OR, <code>!</code> or
-/// NOT joins it at its own level or an enclosing one. Anything else is not counted, so a shape the scan cannot read is refused, never passed: an
-/// unqualified column, a column of three parts, an expression around a side, an OR, a subquery that no condition correlates. Each USING column is a
+/// NOT joins it at its own level or an enclosing one up to that WHERE or ON. Anything else is not counted, so these shapes are refused: an
+/// unqualified column, a column of three parts, an expression around a side, an OR, a subquery that no condition correlates. Tables and joins are
+/// counted over the whole text, not per query block, and a comparison inside a subquery is read at the subquery's own WHERE or ON whatever encloses
+/// the subquery. A join counts only when it
+/// reaches a qualifier no earlier join of the text has connected to its other side, so two joins of the same pair count once. Each USING list is one
 /// join.</p>
 Class OcuPilot.Port.SqlAlternateScan Extends %RegisteredObject
 {
@@ -34,21 +37,27 @@ Parameter JOINCAP = 8;
 /// <p>The tables and conditions <var>pText</var> holds, in <var>pTables</var> and <var>pConditions</var>. <var>pViews</var>, an array of the texts of
 /// the views the statement reads, adds each view's own two counts to both; <var>pRelations</var>, the number of relations the instance records for the
 /// statement, is the least <var>pTables</var> may be. <var>pCross</var> is 1 when the statement's own text, or the text of any view, has a table no join
-/// reaches (<method>CrossProduct</method> over that text's own tables and joins).</p>
+/// reaches (<method>CrossProduct</method> over that text's own tables and joins), or when the instance records more relations than the texts name and
+/// the joins of all the texts do not reach them.</p>
 ClassMethod Count(pText As %String, pViews As %DynamicArray = "", pRelations As %Integer = 0, Output pTables As %Integer, Output pConditions As %Integer, Output pCross As %Boolean)
 {
     Do ..Walk(pText, .pTables, .pConditions, .tInsert, .tJoins)
     Set pCross = ..CrossProduct(pTables, tJoins)
+    Set tAllJoins = tJoins
     If $IsObject(pViews) {
         Set tIterator = pViews.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tView) {
             Do ..Walk(tView, .tTables, .tConditions, .tIgnored, .tViewJoins)
             Set pTables = pTables + tTables
             Set pConditions = pConditions + tConditions
+            Set tAllJoins = tAllJoins + tViewJoins
             If ..CrossProduct(tTables, tViewJoins) Set pCross = 1
         }
     }
-    If pRelations > pTables Set pTables = pRelations
+    If pRelations > pTables {
+        Set pTables = pRelations
+        If ..CrossProduct(pTables, tAllJoins) Set pCross = 1
+    }
 }
 
 /// <p>Whether a text with <var>pTables</var> tables and <var>pJoins</var> joins leaves some table unjoined: fewer joins than the tables minus one.</p>
@@ -139,10 +148,7 @@ ClassMethod Walk(pText As %String, Output pTables As %Integer, Output pCondition
         }
         If tWord = "," {
             If tFrom(tDepth) Set pTables = pTables + 1
-            If tUsing(tDepth) {
-                Set pConditions = pConditions + 1
-                Set pJoins = pJoins + 1
-            }
+            If tUsing(tDepth) Set pConditions = pConditions + 1
             Continue
         }
         If tWord = "FROM" {
@@ -183,8 +189,28 @@ ClassMethod Walk(pText As %String, Output pTables As %Integer, Output pCondition
             Continue
         }
         If (tWord = "USING") && (tFollowing '= "(") Set pConditions = pConditions + 1
-        If (pJoins < ..#JOINCAP) && ..IsColumn(tWord) && ..JoinAt(.tTok, tN) Set pJoins = pJoins + 1
+        If (pJoins < ..#JOINCAP) && ..IsColumn(tWord) && ..JoinAt(.tTok, tN, .tOther) && ..Union(.tGroup, $Piece(tWord, ".", 1), tOther) Set pJoins = pJoins + 1
     }
+}
+
+/// <p>Connect the qualifiers <var>pLeft</var> and <var>pRight</var> in <var>pGroup</var>, where each qualifier a join has reached is subscripted by
+/// another of its group: 1 when the two were not yet connected, 0 when earlier joins already connect them.</p>
+ClassMethod Union(ByRef pGroup, pLeft As %String, pRight As %String) As %Boolean [ Private ]
+{
+    Set tLeft = ..Root(.pGroup, pLeft)
+    Set tRight = ..Root(.pGroup, pRight)
+    If tLeft = tRight Quit 0
+    Set pGroup(tLeft) = tRight
+    Quit 1
+}
+
+/// <p>The qualifier that stands for <var>pName</var>'s group in <var>pGroup</var> (<method>Union</method>).</p>
+ClassMethod Root(ByRef pGroup, pName As %String) As %String [ Private ]
+{
+    While $Data(pGroup(pName)) {
+        Set pName = pGroup(pName)
+    }
+    Quit pName
 }
 
 /// <p>Whether <var>pWord</var>, an upper-case word token, is a column with one qualifier: two names of letters, digits and <code>_ % $ # @</code> that
@@ -196,9 +222,10 @@ ClassMethod IsColumn(pWord As %String) As %Boolean [ Private ]
 }
 
 /// <p>Whether the qualified column at token <var>pN</var> opens a join: a comparison operator, then a qualified column with another qualifier, the
-/// whole standing as a conjunct (<method>Conjunct</method>).</p>
-ClassMethod JoinAt(ByRef pTok, pN As %Integer) As %Boolean [ Private ]
+/// whole standing as a conjunct (<method>Conjunct</method>). <var>pOther</var> is that other qualifier.</p>
+ClassMethod JoinAt(ByRef pTok, pN As %Integer, Output pOther As %String) As %Boolean [ Private ]
 {
+    Set pOther = ""
     Set tAt = pN + 1
     Set tOperator = $Get(pTok(tAt))
     If '$ListFind($ListBuild("=", "<", ">", "!"), tOperator) Quit 0
@@ -207,17 +234,19 @@ ClassMethod JoinAt(ByRef pTok, pN As %Integer) As %Boolean [ Private ]
     If (tOperator '= "=") && ((tSecond = "=") || ((tOperator = "<") && (tSecond = ">"))) Set tAt = tAt + 1
     Set tRight = $Get(pTok(tAt))
     If '..IsColumn(tRight) || ($Piece(tRight, ".", 1) = $Piece(pTok(pN), ".", 1)) Quit 0
+    Set pOther = $Piece(tRight, ".", 1)
     Quit ..Conjunct(.pTok, pN, tAt)
 }
 
 /// <p>Whether the comparison from token <var>pLeft</var> to token <var>pRight</var> stands as a conjunct: the token before it and the one after it are
-/// boundaries, and scanning outward at its own level and then each enclosing one, to the WHERE or ON that opens the clause, meets no OR and no
-/// <code>!</code>; an enclosing parenthesis must itself follow WHERE, ON, AND, <code>&amp;</code> or another parenthesis. A closing parenthesis or a clause
+/// boundaries, and scanning outward at its own level and then each enclosing one, to the WHERE or ON that opens the clause, meets no OR, no
+/// <code>!</code> and no other clause or CASE keyword (a HAVING or a WHEN is not a join); an enclosing parenthesis must itself follow WHERE, ON, AND, <code>&amp;</code> or another parenthesis. A closing parenthesis or a clause
 /// end after the comparison ends the scan forward.</p>
 ClassMethod Conjunct(ByRef pTok, pLeft As %Integer, pRight As %Integer) As %Boolean [ Private ]
 {
     Set tOpeners = $ListBuild("WHERE", "ON", "AND", "&", "(")
     Set tStops = $ListFromString(..#CLAUSEENDS) _ $ListFromString(..#JOINENDS) _ $ListBuild(",")
+    Set tCase = $ListBuild("CASE", "WHEN", "THEN", "ELSE", "END")
     Set tNext = $Get(pTok(pRight + 1))
     If '$ListFind(tOpeners, $Get(pTok(pLeft - 1))) Quit 0
     If (tNext '= "") && (tNext '= "AND") && (tNext '= "&") && (tNext '= ")") && '$ListFind(tStops, tNext) Quit 0
@@ -242,6 +271,7 @@ ClassMethod Conjunct(ByRef pTok, pLeft As %Integer, pRight As %Integer) As %Bool
                 Set tBound = 1
                 Quit
             }
+            If $ListFind(tStops, tWord) || $ListFind(tCase, tWord) Return 0
         }
         Set tAt = tAt - 1
     }
