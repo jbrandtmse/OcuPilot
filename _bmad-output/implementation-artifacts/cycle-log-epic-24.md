@@ -954,3 +954,4 @@
 2026-11-26T20:50:34Z	Story 24.17	note	story_end_spine: AD-7 shapes sentence read six while the wallet use row (Story 18.41) had made seven; U-181 corrected it to eight with the metrics bullet; marker trimmed to the standard form (orchestrator)
 2026-11-26T21:23:39Z	Story 24.17	ci_resolved	story=24.17-batch5 sha=de6eef2d0 runs=45892451647 result=success failed=none resolved_at=story_end
 2026-11-26T21:23:39Z	Story 24.17	story_complete	batches=1,2,3a,3b,4,5 code_head=de6eef2d0 spine=4d53ca0f0,944b294d0(+marker_trim) tracker=done
+2026-11-26T21:24:28Z	Story 24.18	stage_spawned	stage=plan spawn_at=2026-11-26T21:24:28Z model=opus agent_name=24-18-plan cycle_iteration=1 story_base=d861e4ec3
