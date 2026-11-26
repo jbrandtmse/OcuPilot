@@ -1,6 +1,6 @@
 /// <p>Pins Story 24.17 Batch 3b's failures (AD-6, AD-15, AD-39, AD-62), for the workflow roles and their members: a vendor error status or fault on a role's add, edit and remove and a member's add and
 /// remove is 500 <code>INTERNAL</code>, never 200, even where the vendor saved the membership first, and its audit row reads not completed; a member remove that deletes nothing and answers OK, as the
-/// vendor's <code>RemoveUserFromRole</code> does when its delete fails, is 500 too; no line the port logs carries a description, a title or a vendor's text, and none is written while the namespace is
+/// vendor's <code>RemoveUserFromRole</code> does when its delete fails, is 500 too, and so is a role remove whose leftover memberships cannot be taken; no line the port logs carries a description, a title or a vendor's text, and none is written while the namespace is
 /// switched; an edit that moves no field calls no vendor, and a role another process holds locked is 503.</p>
 /// <p><b>What it needs from the environment:</b> what <class>OcuPilot.Test.InteropWorkflowCase</class> needs.</p>
 Class OcuPilot.Test.InteropWorkflowRoleFailures Extends OcuPilot.Test.InteropWorkflowCase
@@ -132,6 +132,29 @@ Method TestAVendorErrorOnAMemberWriteIsNeverA200AndARemoveThatDeletesNothingIsNo
         Do $$$AssertEquals($ClassMethod(tFx, "MemberText", ..#SOURCE, tRole, tHeld) _ "|" _ $ClassMethod(tFx, "MemberText", ..#SOURCE, tRole, tFree), $Case(tMode, "status": "<absent>|3|OcuSecretTitle2417", "fault": "2|" _ ..#SECRETTEXT _ "|<absent>", : "2|" _ ..#SECRETTEXT _ "|<absent>"), tMode _ ": the memberships are as the vendor left them")
     }
     Kill ^IRIS.Temp.OcuProbe2417wMode
+}
+
+/// <p>AC3, AC6: where the namespace lacks the vendor's registry, so the vendor's delete of a role leaves its memberships, and the port cannot take them, the remove is 500 <code>INTERNAL</code>, never
+/// 200, and its audit row reads not completed. <code>USER</code>'s registry entry is taken out for the test and put back after it.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.PerformWorkflowRole</method> ignore <method>OcuPilot.Port.InteropPort.WorkflowMembersGone</method>'s status -- this goes red.</p>
+Method TestARemoveWhoseLeftoverMembershipsStayIsNeverA200()
+{
+    Set tFx = ..#FIXTURE
+    Set tSeam = ..#SEAM
+    Set tFound = $ClassMethod(tFx, "RoleCascadeHeld", ..#SOURCE)
+    Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeRole", ..#ROLEA), "a role is stored")
+    Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeUser", ..#USERA, "Ann", 0), "and a workflow user")
+    Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeMember", ..#ROLEA, ..#USERA), "who is its member")
+    Do $$$AssertTrue($ClassMethod(tFx, "HideRoleCascade", ..#SOURCE), "USER holds no registry for the test, so the vendor's delete leaves the membership")
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Kill ^IRIS.Temp.OcuProbe2417wMode
+    Set ^IRIS.Temp.OcuProbe2417wMode = "gone"
+    Do $$$AssertEquals(..Put("REMOVEWORKFLOWROLE", ..#ROLEA, "", .tResult, .tFault, ..#SOURCE, tSeam), "500 INTERNAL", "the remove whose leftover membership stays answers 500 INTERNAL, never 200")
+    Kill ^IRIS.Temp.OcuProbe2417wMode
+    Do $$$AssertEquals(..Audit(tSince, ..#ENTITY, """" _ ..#ROLEA _ """"), "1|false", "its audit row reads not completed")
+    Do $$$AssertEquals($ClassMethod(tFx, "MemberText", ..#SOURCE, ..#ROLEA, ..#USERA), "1|", "the membership the vendor's delete left is still there")
+    Do $ClassMethod(tFx, "RestoreCascade")
+    Do $$$AssertEquals($ClassMethod(tFx, "RoleCascadeHeld", ..#SOURCE), tFound, "USER holds the registry as the test found it")
 }
 
 /// <p>AC6, AC8: nothing is logged while the namespace is switched: a fault raised inside the switched block of a role write, a one-role read, a member write or a one-member read is logged once the

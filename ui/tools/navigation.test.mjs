@@ -2296,3 +2296,27 @@ test("Story 24.17 Batch 3b: Workflow roles opens Role members on the role, and a
     'a role change opens the roles list on that role'
   );
 });
+
+// Mutation (Rule 19): empty the Workflow users descriptor's `secondaryEntityTypes` -> the users row goes red.
+test('Story 24.17 Batch 3b: each workflow list re-reads on the other two lists\' changes, which move its counts and rows', () => {
+  const users = screenForRoute('interoperability/workflow-users');
+  const roles = screenForRoute('interoperability/workflow-roles');
+  const members = screenForRoute('interoperability/workflow-roles/members');
+  assert.ok(users && roles && members, 'the three screens are declared');
+  const shows = (screen, type) => screenShowsEntity(screen, { type, scope: 'USER' }, 'USER');
+  assert.deepEqual(
+    [shows(users, 'interop-workflow-role'), shows(users, 'interop-workflow-member')],
+    [true, true],
+    'a role or member change moves a workflow user\'s Roles'
+  );
+  assert.deepEqual(
+    [shows(roles, 'interop-workflow-member'), shows(roles, 'interop-workflow-user')],
+    [true, true],
+    'a member or workflow user change moves a role\'s Members'
+  );
+  assert.deepEqual(
+    [shows(members, 'interop-workflow-role'), shows(members, 'interop-workflow-user')],
+    [true, true],
+    'a role or workflow user change moves the members rows'
+  );
+});

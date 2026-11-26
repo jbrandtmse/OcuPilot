@@ -114,6 +114,28 @@ Anchors are at plan (HEAD `2ded140f53041a5f6efcaf25fc283fe030e28823`) and Batch 
 
 ## Review Triage Log
 
+### 2026-11-26, code review (Opus; four layers; `53fa4b2c7..eeba0def0`, patched on HEAD `92d7ae38f`)
+
+No HIGH. Runs are on `ocupilot-b-ci` (Auto Run Result).
+
+- **R1 MED, patched (Rule 2).** `InteropWorkflowRoleAction` and `InteropWorkflowMemberAction` repeated 3a's `InteropWorkflowUserAction` with no stated reason; the three extend `InteropWorkflowAction` (Decided in-stage (review) 1).
+- **R2 MED, patched (lead ruling).** The port's `user` criterion had no caller but a test; removed with its legs (Decided in-stage (review) 2).
+- **R3 MED, patched.** The three workflow lists did not re-read on each other's changes, so `Roles`, `Members` and the member rows went stale (Decided in-stage (review) 3; `navigation.test.mjs`).
+- **R4-R6 MED, patched (tests).** R4: the remove script's `IDDelete` loop never ran with a membership left; a registry-hidden leg added. R5: the no-audit-row checks for refused role names could not fail (window opened after the held-name loop, needles missing the refused spellings) and the member refusals had none; both cover every refused name now. R6: a remove whose leftover memberships cannot be taken had no test; the seam's `gone` mode and `TestARemoveWhoseLeftoverMembershipsStayIsNeverA200`.
+- **R7 MED, patched.** The structural walk could not open Role members on a fresh instance; it seeds a probe role (Decided in-stage (review) 5).
+- **R8-R10 LOW, patched.** R8: the member remove's mint under source control was unasserted. R9: docs: the member remove's fingerprint named `FullName` and `IsActive`, which it does not hold; "a removal is undone by adding the member again" (the tasks are not); `WorkflowNameOK` and `WorkflowFullNameOK` named users only. R10: `capacityValue` read `0x10` and `1e1` as numbers (Decided in-stage (review) 4).
+- **Escalated (ledger candidates):**
+  - R11 MED: the agent can mint a member add to a role the namespace does not hold. The add's read answers 404, which a create reads as free (AD-54), so a card is made and only the confirm answers 404. A refusal at the mint needs a new code and sentence (a new user-facing string).
+  - R12 MED: the role and member stores and dialogs are per-family copies of 3a's, as 3a's were of the schedule family (3a R20); five interop form stores repeat about 120 lines of form state. A shared base spans families outside this batch.
+- **Deferred (ledger occurrences):** R13 = 3a R9 (the Save and the tools' arguments judge fields before source control and the taken test). R14 = 3a R10 (a capacity sent as text answers `PORT.FIELD.SHAPE` or `TOOL.ARGUMENTS`, not `ROLECAPACITY`). R15 = 3a R11 (a remove of a locked role 500, not 503, inference; a concurrent add 500, not 409; a role removed between the facts read and the edit's open 503, not 404). R16 = 3a R13 (the Add member choices stop at the users list's 1,000 default rows; no loading or empty state). R17 LOW: Role members borrows the roles' "Which workflow role has the most members?" as its third prompt (veto item 1 gave two; a third is a new string).
+- **Closed:**
+  - R18 `false`: the roles list's member count and the members join ignore letter case. Measured: roles `OcuP2417wQa` and `ocup2417wqa` counted 1 and 0, and users `OcuP2417wQu` and `ocup2417wqu` joined one row; the reference columns compare exactly.
+  - R19 `wontfix-accepted`: in a namespace without the registry, memberships a classic delete left cannot be removed (404) and a new role of that name starts with them. reopen_if a members row's Remove answers 404.
+  - R20 `wontfix-accepted`: the agent's update of a role whose stored capacity is over 100 (the vendor API allows it) is refused `ROLECAPACITY`, since the merge resends the stored value; a name holding `||` passes `ROLENAME` and answers 500 at the vendor's save (inference). reopen_if either is reported.
+  - R21 `by-design`: the member remove is not destructive (V5); a membership whose user is gone reads inactive, as the classic query; AC10 walks no Edit (jsdom pins it); the edit script's unchecked `%OpenId(..., 4)` (3a R19); the blank user's `MEMBERUSER` sentence; the choices compare in any letter case, as the dialog states; the role remove's `IDDelete` and `WorkflowMembersGone` beside 3a's `WorkflowMembershipsGone` (Decided in-stage (implement) 2: a different vendor call); the remove's audit `members` read before the delete ("the members the role held").
+  - R22 `dropped`: `shell/screen-action-dialogs.ts` is not in this batch's diff; a screen-action capacity sent as a JSON number is dropped, but the client sends text.
+  - R23 `wontfix-accepted`: the two workflow browser specs and the walk's probe role leave the vendor's `sdd` timestamps set in `USER` and `HSCUSTOM` (measured after this pass's runs); they run only on throwaways. reopen_if a test reads those timestamps.
+
 ## Veto items
 
 Each is the lead's to take to the veto gate; the recommended option is first.
@@ -162,7 +184,7 @@ No new dependency; nothing is written into another namespace. A workflow role is
 
 **Decided in-stage (implement).**
 
-1. The members list's screen declares the one criterion `role`, not `role` and `user`: the descriptor registry refuses a parent-scoped read with other than exactly one criterion (AD-5). The port's `LIST` still answers one user's roles for `user`, and its tests read both; no agent read tool or screen reaches the `user` criterion (Clarification Needed).
+1. The members list's screen declares the one criterion `role`, not `role` and `user`: the descriptor registry refuses a parent-scoped read with other than exactly one criterion (AD-5).
 2. The role remove takes the memberships the vendor's foreign key leaves behind through the vendor's own `RoleMembership.IDDelete`, not through `RemoveUserFromRole`: where the namespace's database lacks the registry entry `^rINDEXEXT("F","EnsLib.Workflow.RoleDefinition","ID","f","EnsLib.Workflow.RoleMembership","RoleKey")` the vendor's `%DeleteId` leaves every membership (measured), and `RemoveUserFromRole` after the role is gone raised `<INVALID OREF>` in the engine for a member who held a task (measured). `IDDelete` leaves the tasks and worklist items as they were, as the cascade does (measured). The audit row counts the members the role held (`members`).
 3. `PermittedCreateFields` for `interop-workflow-member` is `User,Ranking,Title`, not the spec's `Role,User,Ranking,Title`: the role is the id's first part and the add's settable fields carry no role, and `Prohibited`'s test pins the two lists equal.
 4. The add member tool's payload carries the user (the kernel leaves a create's id argument out of the payload) so `Consequence` can tell an active user from an inactive one.
@@ -178,6 +200,16 @@ No new dependency; nothing is written into another namespace. A workflow role is
 - (c) A role remove deleted its memberships through the cascade and left a task sent through the role and its worklist items as they were (USER and HSCUSTOM); with the registry entry out of USER it left every membership, and `RoleMembership.IDDelete` of each left the tasks and items as they were. A member remove deleted the member's worklist items in the role and unassigned the task they owned (a task they hold through another role stayed theirs). An add of an active user sent the role's unassigned tasks (each got a worklist item), of an inactive user none. `RemoveUserFromRole` of a non-member, and of a role that does not exist, answered OK. An add of a member already held answered `ERROR #5805`. The three consequences are true.
 - (d) `AddUserToRole` with rank 0 answered a datatype error; 6 and 1.5 stored (6 and 1); `"x"` answered a datatype error; `""` stored an empty rank; absent stored 3; a title of 129 characters answered a datatype error, 128 stored. A role add with capacity 0 answered a datatype error, 101 stored, 1.5 stored 1, `"x"` answered a datatype error; a description of 2,001 characters and a name of 129 answered datatype errors, 2,000 and 128 stored; a name with a tab stored; a name differing only in letter case stored a second role.
 - (e) The roles list at 2,000 / 5,000 / 10,000 roles with three members each, `%ExecDirectNoPriv` with the rows built: 0.0087 / 0.019 / 0.039 s (the classic query 0.007 / 0.017 / 0.034 s). The members list of one role at 1,000 / 2,000 / 10,000 members: 0.004 / 0.008 / 0.040 s; one user's roles at 10,000: 0.013 s. `WORKFLOWROLESMAX` and `WORKFLOWMEMBERSMAX` are 10,000 (never above the classic table's `maxRows`), with boundary tests through the cap seam.
+
+**Lead ruling (2026-11-25, U7 step 1, comply with AD-5).** The Role members screen and its derived agent read take `role` alone; a user's roles are read from Batch 3a's Workflow users list (`Roles`), and the port's members list takes no `user` criterion (removed at review, Decided in-stage (review) 2).
+
+**Decided in-stage (review).**
+
+1. Rule 2: `InteropWorkflowRoleAction` and `InteropWorkflowMemberAction` were near-copies of 3a's `InteropWorkflowUserAction`. The three now extend one abstract `InteropWorkflowAction` (the privileges, `PortQuery`, `TargetName` by `TARGETFIELD`, `InputSchema`, `ArgumentProblem` by `VIOLATIONSMETHOD`, `ConfirmProblem`, the mint); each keeps its screen, read, endpoint, field rows and name sentence. The member action overrides the mint, the id argument and `ArgumentProblem` (a composite id).
+2. The port's `user` criterion and its test legs are removed: no screen, tool or client store reached it, and no test of the port's contract needs it. A call that names no role, or a user alone, is 400 `PORT.VALIDATION`.
+3. The three workflow lists re-read on each other's change events (`secondaryEntityTypes`): Workflow users on a role or member change (its `Roles`), Workflow roles on a member or user change (`Members`), Role members on a role or user change. The shared-surfaces line names the users list's `Roles`.
+4. The client's `capacityValue` reads only a plain decimal as a number; `0x10` and `1e1` go to the server as text.
+5. The structural walk seeds one probe workflow role in HSCUSTOM (`seedWorkflowRole`, removed on every exit path), so Role members is walked at `workflow-roles/members/<role>`; no screen is skipped.
 
 **Governing ADs (Rule 6):** 3a's list.
 
@@ -195,7 +227,7 @@ No new dependency; nothing is written into another namespace. A workflow role is
 - `(once)` The full ObjectScript sweep, `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --shard k/17` for k = 1 to 17, one call each. Expected: green. The full browser suite is left to CI.
 - `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py` and `bash scripts/lint-docs.sh`. Expected: clean.
 
-**Shared surfaces:** 3a's list, plus the Workflow users list's `Roles` count, which this batch's member writes change.
+**Shared surfaces:** 3a's list, plus the Workflow users list's `Roles` count, which this batch's member writes change, and the structural walk's seeds.
 
 **Hermeticity:** as 3a's.
 
@@ -203,13 +235,17 @@ No new dependency; nothing is written into another namespace. A workflow role is
 
 Mutations run (implement stage), each on `ocupilot-b-ci` with `src` reloaded and the port's subclasses recompiled, reverted by Edit, `cmp`-identical to a copy taken before and the class green again:
 
-- AC1 mutation: `ListWorkflowMembers` reads the `user` criterion as empty -> `OcuPilot.Test.InteropWorkflowRoleList.TestTheMembersListAnswersByRoleAndByUserAndRefusesTheOtherCalls` red (the by-user and both-criteria legs).
+- AC1 mutation (review): `ListWorkflowMembers` reads every role whose name sorts at or after the one named (`>=`) -> `OcuPilot.Test.InteropWorkflowRoleList.TestTheMembersListAnswersOneRolesMembersAndRefusesTheOtherCalls` red alone (run 1036).
+- Re-read mutation (review): the Workflow users descriptor's `secondaryEntityTypes` emptied in the mirror -> `node --test tools/navigation.test.mjs` red ("a role or member change moves a workflow user's Roles"); reverted, `cmp`-identical.
 - AC2 mutation: `PerformWorkflowRole`'s edit marks each body field changed without comparing it to the held value -> `OcuPilot.Test.InteropWorkflowRoleControl.TestThePersonsNewEditAndRemoveReadBackAsSent` and `TestTheAgentsUpdateAndRemoveConfirmOverHttp` red (the one-field audit legs and the unchanged-edit row count).
 - AC3 mutation: the role remove skips `WorkflowMembersGone` -> `OcuPilot.Test.InteropWorkflowRoleControl.TestTheRemoveTakesTheMembershipsWithOrWithoutTheVendorsRegistry` red alone (the USER leg, with the registry entry out).
+- AC3 mutation (review, script): the remove script's `IDDelete` loop runs no pass -> `OcuPilot.Test.InteropWorkflowRoleControl.TestTheScriptFormsRenderTheGuardsAndRunNothingForABadValue` red alone (the registry-hidden membership leg, run 1037).
+- AC3/AC6 mutation (review): `PerformWorkflowRole` ignores `WorkflowMembersGone`'s status -> `OcuPilot.Test.InteropWorkflowRoleFailures.TestARemoveWhoseLeftoverMembershipsStayIsNeverA200` red alone (run 1039).
 - AC4 mutation: `WorkflowMemberVendor` passes an empty rank when none was sent -> `OcuPilot.Test.InteropWorkflowMemberControl.TestThePersonsAddMemberAndRemoveReadBackAsSent` red (the default-rank leg).
 - AC5 mutation (taken test): `WorkflowRoleWriteToken` tests `pExists` alone -> `OcuPilot.Test.InteropWorkflowRoleRefusals.TestARoleNameTheNamespaceHoldsInAnyCaseOrCannotTakeIsRefused` red. AC5 mutation (gate): `Pairs` drops the write pair for the member writes -> `OcuPilot.Test.InteropWorkflowRoleGate.TestTheGateRefusesEachPrincipalBeforeAnyVendorCall` and `TestThePairSetsAreTheClassicPagesAndTheToolsAddTheWritePair` red.
+- AC5 mutation (review, audit): `PerformWorkflowRole` and `PerformWorkflowMember` start with `tAttempted` 1 -> `OcuPilot.Test.InteropWorkflowRoleRefusals` red in the two name-refusal methods, on the new no-audit-row legs alone (run 1038).
 - AC6 mutation: the member remove's re-read skipped -> `OcuPilot.Test.InteropWorkflowRoleFailures.TestAVendorErrorOnAMemberWriteIsNeverA200AndARemoveThatDeletesNothingIsNot` red alone (the `keep` leg).
-- AC7 mutation: `InteropWorkflowRoleAction.PortQuery` kills the namespace key the superclass set -> `OcuPilot.Test.InteropWorkflowRoleElsewhere` red in the add, the edit and the remove methods (each closed `PROPOSAL.TARGETCHANGED`).
+- AC7 mutation (review, on the shared base): `InteropWorkflowAction.PortQuery` kills the namespace key the superclass set -> `OcuPilot.Test.InteropWorkflowRoleElsewhere` red in all four methods, the member's too (run 1040).
 - AC8 mutation (draft): `interop-workflow-member` removed from `DraftRegistry.SPLITTARGETS` -> `OcuPilot.Test.DraftRegistry.TestNoSecretReachesAnyRenderedScript` red. AC8 mutation (confirm namespace): `InteropWorkflowRoleAdd.ComposeCreate` stops storing the namespace -> `OcuPilot.Test.ConfirmNamespaceRoster.TestEveryWriteToolAsksItsPortInTheNamespaceItsProposalRead` red. AC8 mutation (switched log): a `LogFault` inside `WorkflowFactsOf`'s switched block -> `OcuPilot.Test.InteropWorkflowRoleFailures.TestNothingIsLoggedWhileTheNamespaceIsSwitched` red. AC8 mutation (reviewed set): `Capacity` dropped from the role's change fields -> `OcuPilot.Test.Prohibited.TestTheWorkflowRoleAndMemberArmsLeaveEarlierTypesTheirOwnVerdicts` and `TestNoWriteToolAdmitsAnAlwaysProhibitedField` red. The arm-order mutation was not run: the reviewed-few arm of the new types is placed after every earlier arm and the earlier types' own verdicts are pinned by the new test's first four cases.
 - AC9 mutation: the README's count of the actions that ship switched off one lower -> `node --test tools/interop.test.mjs` red (the README count test), green after the revert, `cmp`-identical.
 - AC10 mutation (client): the member dialog's rank select records nothing, bundle rebuilt and redeployed -> `ui/browser/interop-workflow-roles.browser-spec.mjs` AC10 red (the Save carries no rank); reverted, `cmp`-identical, rebuilt, redeployed, both browser specs green.
@@ -218,12 +254,14 @@ Mutations run (implement stage), each on `ocupilot-b-ci` with `src` reloaded and
 ## Auto Run Result
 
 Status: in-review
-Blocking condition: Clarification Needed (below), one item; nothing else blocks.
+Blocking condition: none.
 
-**Built.** Workflow roles and Role members through `InteropPort`: list, add, edit and remove of a role, add and remove of a member, reached by the screen and the agent. Task 0 found no HALT (Design Notes, Measured); V1 and V2 held. Decided in-stage: Design Notes.
+The implement pass built the batch (`eeba0def0`); its full sweep's one foreign red, `InteropMessageExportElsewhere`, is DW-2887.
 
-**Verified (`ocupilot-b-ci`).** New and touched classes green one at a time; the full sweep, 17 shards, 915 classes: shard 1 53 classes / 443 tests / 1 failed, 2 52 / 321 / 0, 3 54 / 366 / 0, 4 53 / 469 / 0, 5 53 / 410 / 0, 6 55 / 396 / 0, 7 54 / 381 / 1 failed, 8 54 / 367 / 0, 9 54 / 457 / 0, 10 54 / 381 / 0, 11 54 / 405 / 0, 12 55 / 415 / 0, 13 54 / 403 / 0, 14 54 / 391 / 0, 15 54 / 421 / 0, 16 54 / 460 / 0, 17 54 / 386 / 0. Shard 7's red was `CompositeMintSweep`'s roster lacking the new member mint, fixed by a row and the class run green. Shard 1's red, `InteropMessageExportElsewhere`, is a class this batch does not touch: its test needs HSCUSTOM's next message-body id to differ from every id USER holds, and the instance's counters stood at 89 (HSCUSTOM) and 252 (USER) (inference: a header id minted in HSCUSTOM then falls inside USER's range); reported, not re-run. `npm run build` green, `npm test` 2,418 tool tests and 4,066 component tests green, `ci.test.mjs` 109/109, the two browser specs 4/4 on a rebuilt and redeployed bundle, smoke 50/50, `check-objectscript` 0 problems, `lint-docs` clean. No probe row, instance user or production remains in USER or HSCUSTOM.
+**Review pass (Opus, four layers).** Patched: the shared `InteropWorkflowAction` (Rule 2), the port's `user` criterion removed (lead ruling), the three lists' re-reads, four test gaps (the remove script with a leftover membership, the no-audit-row checks, the leftover-cleanup failure, the member remove's mint under source control), the walk's probe role, `capacityValue`, three docs. Triage R1-R22 under Review Triage Log; mutation lines under Verification (runs 1036-1040 on the instance before the rebuild).
 
-## Clarification Needed
+**Verified on `ocupilot-b-ci`, rebuilt 2026-11-26 05:41:34 UTC from HEAD `92d7ae38f` with these patches** (one doc sentence in `ListWorkflowMembers` edited after):
 
-The spec gives the Role members list the criteria `role` and `user`. The descriptor registry (AD-5) refuses a parent-scoped screen that declares other than exactly one criterion, so the members screen declares `role` alone and the by-user read has no screen or derived read tool, though the port answers it (`LIST` with `user`) and its tests pin it. Decision needed: amend AD-5 so a parent-scoped screen may declare a second optional criterion, or accept the by-user read as port-only. This batch ships the second.
+- `InteropWorkflowRoleList` 5, `RoleControl` 6, `MemberControl` 5, `RoleRefusals` 5, `RoleGate` 2, `RoleElsewhere` 4, `RoleFailures` 5: 0 failed forward and reversed. Then `InteropWorkflowUserControl` 9, `Elsewhere` 3, `Gate` 3, `List` 5, `Refusals` 7; `InteropLogList` 6, `InteropLogPurgeControl` 5, `Refusals` 4, `Elsewhere` 2, `Gate` 2. Rosters `ReadTool` 28, `ReadDescriptions` 9, `Descriptor` 60, `SurfaceCoverage` 4, `EndpointCoverage` 2, `ToolDispatch` 19, `ToolEmit` 11, `ToolRoundTrip` 2, `ToolWrite` 33, `StageTwoTools` 4, `Governance` 14, `GovernanceBaseline` 5, `ClassicPageGate` 9, `ConfirmNamespaceRoster` 3, `DraftRegistry` 9, `CompositeMintSweep` 5, `Prohibited` 25, `Navigation` 14, `MappingDescriptor` 6, `InteropDescriptor` 12, `InteropFloor` 8, `SaveHoldCoverage` 2. All 0 failed. The registry reads held in both namespaces after; no probe row and no production in `USER` at the end.
+- Browser, rebuilt and redeployed bundle: `interop-workflow-roles` 2 of 2, `interop-workflow-users` 2 of 2, `a11y-structural-invariants` 13 of 13 (252 walked, 30 skipped, 0 unresolved). Smoke 49 of 49 executed, one skipped (`agentswitches`).
+- Client: `npm run build`; `npm test` (tools 2,419, components 348 files and 4,066 tests); `node --test tools/ci.test.mjs` 109 of 109; `check-objectscript` 0 problems; `lint-docs` 0 issues.

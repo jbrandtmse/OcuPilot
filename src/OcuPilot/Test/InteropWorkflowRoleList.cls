@@ -1,5 +1,5 @@
-/// <p>Pins Story 24.17 Batch 3b's reads (AD-5, AD-29, AD-36, AD-62): the Workflow roles list and its one-role read, and the Role members list by one role and by one user, through the port, the
-/// screens' read route and the agent's read tools, which answer the same rows; the lists' caps and one over; and the refusals of a members read that names neither or both of its criteria. The
+/// <p>Pins Story 24.17 Batch 3b's reads (AD-5, AD-29, AD-36, AD-62): the Workflow roles list and its one-role read, and the Role members list of one role, through the port, the screens' read
+/// route and the agent's read tools, which answer the same rows; the lists' caps and one over; and the refusals of a members read that names no role. The
 /// probes are <code>EnsLib.Workflow.RoleDefinition</code>, <code>UserDefinition</code> and <code>RoleMembership</code> rows in <code>USER</code>, saved through the vendor's own calls.</p>
 /// <p><b>What it needs from the environment:</b> what <class>OcuPilot.Test.InteropWorkflowCase</class> needs.</p>
 Class OcuPilot.Test.InteropWorkflowRoleList Extends OcuPilot.Test.InteropWorkflowCase
@@ -41,8 +41,8 @@ ClassMethod Arrange() As %Status
     Quit tSC
 }
 
-/// <p>The port's members list in <var>pNamespace</var> for the criteria <var>pRole</var> and <var>pUser</var> (each named only when not empty), as <code>status code</code>, with the rows in
-/// <var>pRows</var>.</p>
+/// <p>The port's members list in <var>pNamespace</var> for the criterion <var>pRole</var>, with <var>pUser</var> sent under the name <code>user</code>, which the list does not take (each named only
+/// when not empty), as <code>status code</code>, with the rows in <var>pRows</var>.</p>
 ClassMethod Members(pRole As %String, pUser As %String, Output pRows, Output pFault, pNamespace As %String = {..#SOURCE}, pClass As %String = {..#PORT}, pMax As %Integer = 0) As %String
 {
     Kill tQuery
@@ -103,10 +103,11 @@ Method TestTheRolesListAnswersEveryProbeByNameWithItsFacts()
     Do $$$AssertEquals(..Read("OcuP2417wNobody", "", .tRow, .tFault), "404 PORT.NOTFOUND", "and a name no one holds")
 }
 
-/// <p>AC1: the members list answers one role's members by user name and one user's roles by role name, each row with the role, user, the user's full name, rank, title, active state and namespace; a
-/// call that names neither criterion, both, or a name this port does not read is 400 <code>PORT.VALIDATION</code>; and a role with no members answers an empty list.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.ListWorkflowMembers</method> ignore the <code>user</code> criterion -- the by-user leg goes red.</p>
-Method TestTheMembersListAnswersByRoleAndByUserAndRefusesTheOtherCalls()
+/// <p>AC1: the members list answers one role's members by user name, each row with the role, user, the user's full name, rank, title, active state and namespace, and none of another role's
+/// members; a call that names no role, or a role name this port does not read, is 400 <code>PORT.VALIDATION</code>, and the list takes no <code>user</code> criterion; and a role with no members answers an empty list.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.ListWorkflowMembers</method> read the members of every role whose name sorts at or after the one named -- the third-role leg goes
+/// red.</p>
+Method TestTheMembersListAnswersOneRolesMembersAndRefusesTheOtherCalls()
 {
     Do $$$AssertStatusOK(..Arrange(), "two users and two roles are stored")
     Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "ProbeRole", ..#ROLEB _ "x"), "and a third role")
@@ -119,13 +120,12 @@ Method TestTheMembersListAnswersByRoleAndByUserAndRefusesTheOtherCalls()
         Set tText = tText _ tRow.Role _ "|" _ tRow.FullName _ "|" _ tRow.Ranking _ "|" _ tRow.Title _ "|" _ tRow.IsActive _ "|" _ tRow.Namespace _ ";"
     }
     Do $$$AssertEquals(tText, ..#ROLEA _ "|Ada Lovelace|2|Lead|1|USER;" _ ..#ROLEA _ "||4||0|USER;", "each row carries its role, full name, rank, title, active state and namespace")
-    Do $$$AssertEquals(..Members("", ..#USERA, .tRows, .tFault), "200 ", "the roles of the first user answer 200")
-    Do $$$AssertEquals(..Names(tRows, "Role"), ..#ROLEA _ "," _ ..#ROLEB _ "x", "its two roles, by role name")
+    Do $$$AssertEquals(..Members(..#ROLEB _ "x", "", .tRows, .tFault) _ "|" _ ..Names(tRows, "User"), "200 |" _ ..#USERA, "the third role's one member, and not the first role's")
     Do $$$AssertEquals(..Members(..#ROLEB, "", .tRows, .tFault) _ "|" _ tRows.%Size(), "200 |0", "a role with no members answers an empty list")
-    Do $$$AssertEquals(..Members("", "", .tRows, .tFault), "400 PORT.VALIDATION", "a call that names neither criterion is refused")
-    Do $$$AssertEquals(..Members(..#ROLEA, ..#USERA, .tRows, .tFault), "400 PORT.VALIDATION", "and one that names both")
+    Do $$$AssertEquals(..Members("", "", .tRows, .tFault), "400 PORT.VALIDATION", "a call that names no role is refused")
+    Do $$$AssertEquals(..Members("", ..#USERA, .tRows, .tFault), "400 PORT.VALIDATION", "and so is one that names a user alone: the list takes no user criterion")
     Do $$$AssertEquals(..Members($Translate($Justify("", 129), " ", "x"), "", .tRows, .tFault), "400 PORT.VALIDATION", "and a role name of 129 characters")
-    Do $$$AssertEquals(..Members("", "a" _ $Char(9) _ "b", .tRows, .tFault), "400 PORT.VALIDATION", "and a user name holding a control character")
+    Do $$$AssertEquals(..Members("a" _ $Char(9) _ "b", "", .tRows, .tFault), "400 PORT.VALIDATION", "and a role name holding a control character")
     Do $$$AssertEquals(..Members($ZConvert(..#ROLEA, "L"), "", .tRows, .tFault) _ "|" _ tRows.%Size(), "200 |0", "a role name in another letter case holds no members")
     Kill tQuery
     Set tQuery("maxRows") = "0"

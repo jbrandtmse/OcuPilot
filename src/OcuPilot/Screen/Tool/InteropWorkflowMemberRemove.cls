@@ -1,7 +1,7 @@
 /// <p>Interoperability's workflow member remove (AD-6, AD-51, AD-53, AD-62, Story 24.17 Batch 3b): remove one member from one workflow role of the request's namespace. Their worklist for the role is
 /// deleted and each task they hold through it is left unassigned (<code>INTEROP.WORKFLOW.MEMBERREMOVE</code>); the workflow user and the role stay, and adding the member again restores the
-/// membership.</p>
-/// <p><b>It is not destructive</b>: the card shows the member's rank and title and the consequence sentence, and a removal is undone by adding the member again. Its read-back reads the
+/// membership, though not the tasks they held.</p>
+/// <p><b>It is not destructive</b>: the card shows the member's rank and title and the consequence sentence, and adding the member again restores the membership. Its read-back reads the
 /// membership gone on the port's 404. The vendor answers the removal of a user who is not a member as a success, so the port refuses it by name.</p>
 /// <p>Two callers reach it: the members list's row action Remove through <class>OcuPilot.Api.ScreenAction</class> and the agent's proposal and confirmation. Its state, fingerprint and refusals are
 /// <class>OcuPilot.Screen.Tool.InteropWorkflowMemberAction</class>'s.</p>
@@ -21,7 +21,7 @@ Parameter CHANGEACTION = "deleted";
 /// <p>One static sentence.</p>
 Parameter CONSEQUENCECODE = "INTEROP.WORKFLOW.MEMBERREMOVE";
 
-/// <p>The membership's role, user, full name, rank, title and active state: what the removal reviewed, so a member edited, deactivated or renamed since the review closes the proposal
+/// <p>The membership's role, user, rank and title: what the removal reviewed, so a member removed and added again with another rank or title since the review closes the proposal
 /// target-changed; and its namespace, which the stored payload keeps so the confirm and the script form act where the proposal read.</p>
 Parameter FINGERPRINTSUBJECT = "Role,User,Ranking,Title,Namespace";
 

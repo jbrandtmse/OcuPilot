@@ -100,7 +100,7 @@ ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0,
     Quit ..#CONSEQUENCECODE
 }
 
-/// <p>The add always asks its read for the add (<method>OcuPilot.Screen.Tool.InteropWorkflowMemberAction.PortQuery</method>): a user who is not a workflow user is refused, a membership held
+/// <p>The add always asks its read for the add (<method>OcuPilot.Screen.Tool.InteropWorkflowAction.PortQuery</method>): a user who is not a workflow user is refused, a membership held
 /// is <code>TAKEN</code> and absent is the 404 a create expects (AD-54), at the mint and at the confirm alike.</p>
 Parameter READASKSACTION As BOOLEAN = 1;
 

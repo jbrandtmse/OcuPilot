@@ -240,8 +240,10 @@ Method TestTheAgentsUpdateAndRemoveConfirmOverHttp()
 
 /// <p>AC8: the script form of each write renders the switch to the namespace, each refusal as one guard and the vendor call, with the role's name and values as string literals, runs nothing, and
 /// renders no draft for a name or a value the port would refuse by shape. Run line by line, an add's script stores a free name and only sets the refusal for a name held in another letter case; an
-/// edit's and a remove's scripts act on a held role and refuse a missing one, and the remove's takes the memberships left after the delete.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.WorkflowRoleSnippet</method> drop the held-name guard from an add -- the held-in-another-case run goes red.</p>
+/// edit's and a remove's scripts act on a held role and refuse a missing one, and the remove's takes the memberships the vendor's delete leaves where <code>USER</code>'s registry is taken
+/// out for the run and put back after it.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.WorkflowRoleSnippet</method> drop the held-name guard from an add -- the held-in-another-case run goes red; drop the remove's
+/// <code>IDDelete</code> loop -- the membership leg goes red.</p>
 Method TestTheScriptFormsRenderTheGuardsAndRunNothingForABadValue()
 {
     Set tFx = ..#FIXTURE
@@ -286,8 +288,12 @@ Method TestTheScriptFormsRenderTheGuardsAndRunNothingForABadValue()
     Set tQuery("id") = ..#ROLEA
     Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeUser", ..#USERA, "Ann"), "a user is stored")
     Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeMember", ..#ROLEA, ..#USERA), "and joins the held role")
+    Set tFound = $ClassMethod(tFx, "RoleCascadeHeld", ..#SOURCE)
+    Do $$$AssertTrue($ClassMethod(tFx, "HideRoleCascade", ..#SOURCE), "USER holds no registry for the run, so the vendor's delete leaves the membership to the script")
     Do $$$AssertEquals(..RunScript($ClassMethod(..#PORT, "Snippet", ..#ENDPOINT, "REMOVEWORKFLOWROLE", .tQuery, "")), 1, "and removes one that is")
     Do $$$AssertEquals($ClassMethod(tFx, "RoleText", ..#SOURCE, ..#ROLEA) _ "|" _ $Piece(..Facts(..#ROLEA), "|", 1), "<absent>|0", "which is gone, with its membership")
+    Do $ClassMethod(tFx, "RestoreCascade")
+    Do $$$AssertEquals($ClassMethod(tFx, "RoleCascadeHeld", ..#SOURCE), tFound, "USER holds the registry as the test found it")
 }
 
 }

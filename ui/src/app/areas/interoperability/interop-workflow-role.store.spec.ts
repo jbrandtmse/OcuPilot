@@ -174,5 +174,7 @@ describe('capacityValue', () => {
     expect(capacityValue(' 7 ')).toBe(7);
     expect(capacityValue('1.5')).toBe(1.5);
     expect(capacityValue('many')).toBe('many');
+    expect(capacityValue('0x10')).toBe('0x10');
+    expect(capacityValue('1e1')).toBe('1e1');
   });
 });

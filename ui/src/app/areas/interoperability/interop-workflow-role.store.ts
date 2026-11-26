@@ -39,13 +39,12 @@ function emptyValues(): WorkflowRoleValues {
 }
 
 /**
- * `capacity` as the JSON value the server judges: a number for text that reads as one, else the text as typed, which the server refuses with its own
- * sentence rather than the client composing one.
+ * `capacity` as the JSON value the server judges: a number for text written as a plain decimal number, else the text as typed, which the server refuses
+ * with its own sentence rather than the client composing one. Hexadecimal and exponent forms are text.
  */
 export function capacityValue(capacity: string): number | string {
   const text = capacity.trim();
-  const number = Number(text);
-  return text !== '' && Number.isFinite(number) ? number : text;
+  return /^-?\d+(\.\d+)?$/.test(text) ? Number(text) : text;
 }
 
 /**

@@ -68,7 +68,7 @@ ClassMethod MemberHere(pTool As %String, pArgs As %DynamicObject, Output pStatus
 
 /// <p>AC7: a role add minted in <code>USER</code> and confirmed from <code>HSCUSTOM</code> is made in <code>USER</code>, where the name is free, though <code>HSCUSTOM</code> holds a role of that name:
 /// it is not refused as taken, <code>HSCUSTOM</code>'s role is unchanged, and the audit row names <code>USER</code>.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.InteropWorkflowRoleAction.PortQuery</method> drop the payload's namespace -- the add is read in <code>HSCUSTOM</code>, refused as taken, and this
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.InteropWorkflowAction.PortQuery</method> drop the payload's namespace -- the add is read in <code>HSCUSTOM</code>, refused as taken, and this
 /// goes red.</p>
 Method TestARoleAddConfirmedFromAnotherNamespaceIsJudgedAndMadeWhereItRead()
 {
@@ -128,7 +128,7 @@ Method TestARoleRemoveConfirmedFromAnotherNamespaceActsWhereItRead()
 
 /// <p>AC7: a member add minted in <code>USER</code> and confirmed from <code>HSCUSTOM</code> is made in <code>USER</code>, where the user is not yet a member, though <code>HSCUSTOM</code> holds a
 /// membership of the same names, and the member remove acts on <code>USER</code>'s membership alone.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.InteropWorkflowMemberAction.PortQuery</method> drop the payload's namespace -- the add is read in <code>HSCUSTOM</code>, refused as taken, and
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.InteropWorkflowAction.PortQuery</method> drop the payload's namespace -- the add is read in <code>HSCUSTOM</code>, refused as taken, and
 /// this goes red.</p>
 Method TestAMemberAddAndRemoveConfirmedFromAnotherNamespaceActWhereTheyRead()
 {

@@ -123,6 +123,7 @@ Method TestARoleNameTheNamespaceHoldsInAnyCaseOrCannotTakeIsRefused()
     Set tFx = ..#FIXTURE
     Set tSeam = ..#SEAM
     Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeRole", ..#ROLEA, ..#SOURCE, "held", 20), "a role is held")
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tName = "INTEROP.WORKFLOW.ROLENAME"
     Set tLong = $Translate($Justify("", 129), " ", "n")
     For tCase = $ListBuild("the empty name", ""), $ListBuild("129 characters", tLong), $ListBuild("a tab", "a" _ $Char(9) _ "b"), $ListBuild("a bell", "a" _ $Char(7)) {
@@ -144,7 +145,6 @@ Method TestARoleNameTheNamespaceHoldsInAnyCaseOrCannotTakeIsRefused()
         Do $$$AssertEquals(..Read(tHeld, "ADDWORKFLOWROLE", .tRow, .tFault, ..#SOURCE, tSeam), "409 " _ tTaken, tHeld _ ": and the read composed for an add")
         Do $$$AssertEquals(..MintCode("Add", tHeld, {}, .tReason), tTaken, tHeld _ ": and the agent's mint")
     }
-    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     For tMissing = "OcuP2417wMissing", $ZConvert(..#ROLEA, "L") {
         Do $$$AssertEquals(..Put("SETWORKFLOWROLE", tMissing, {"Description": "x"}, .tResult, .tFault), "404 PORT.NOTFOUND", "a set of '" _ tMissing _ "' is 404")
         Do $$$AssertEquals(..Put("REMOVEWORKFLOWROLE", tMissing, "", .tResult, .tFault), "404 PORT.NOTFOUND", "and a remove")
@@ -154,7 +154,9 @@ Method TestARoleNameTheNamespaceHoldsInAnyCaseOrCannotTakeIsRefused()
         Do $$$AssertEquals(..MintCode("Remove", tMissing, {}, .tReason), "TOOL.ARGUMENTS", "and its remove: " _ tReason)
     }
     Do $$$AssertEquals($ClassMethod(tFx, "RoleText", ..#SOURCE, ..#ROLEA) _ "|" _ $ClassMethod(tFx, "RoleCount", ..#SOURCE), "held|20|1", "the held role is unchanged and nothing was stored")
-    Do $$$AssertEquals(..Audit(tSince, ..#ENTITY, """" _ ..#ROLEA _ """", .tData, 0, 1), "0|?", "and no audit row names it")
+    For tRefused = ..#ROLEA, $ZConvert(..#ROLEA, "U"), $ZConvert(..#ROLEA, "L"), "OcuP2417wMissing", tLong {
+        Do $$$AssertEquals(..Audit(tSince, ..#ENTITY, """" _ tRefused _ """", .tData, 0, 1), "0|?", "no audit row names the refused '" _ $Extract(tRefused, 1, 20) _ "'")
+    }
     Do $$$AssertEquals($ClassMethod(tSeam, "Logged"), 0, "no refusal logged a line")
 }
 
@@ -210,6 +212,7 @@ Method TestAMemberWriteTheNamespaceCannotMakeIsRefusedByName()
     Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeUser", ..#USERA, "Ann", 0), "a workflow user is stored, inactive so the engine sends it no task")
     Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeUser", ..#USERB, "Bob", 0), "and a second")
     Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeMember", ..#ROLEA, ..#USERB, ..#SOURCE, 2, "held"), "which is a member")
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tAbsent = ..#ROLEB
     Do $$$AssertEquals(..PutMember("ADDWORKFLOWMEMBER", tAbsent, ..#USERA, {}, .tResult, .tFault, ..#SOURCE, tSeam), "404 PORT.NOTFOUND", "an add to a role the namespace does not hold is 404")
     Do $$$AssertEquals(..SaveMember({"Role": (tAbsent), "User": (..#USERA)}, .tAnswer), "404 PORT.NOTFOUND", "from the Save too")
@@ -245,6 +248,9 @@ Method TestAMemberWriteTheNamespaceCannotMakeIsRefusedByName()
         Do $$$AssertEquals(..PutMember("REMOVEWORKFLOWMEMBER", $List(tMissing, 1), $List(tMissing, 2), "", .tResult, .tFault, ..#SOURCE, tSeam), "404 PORT.NOTFOUND", "a remove of " _ $List(tMissing, 2) _ " from " _ $List(tMissing, 1) _ ", who is no member, is 404")
         Do $$$AssertEquals(..ActMember("remove", $List(tMissing, 1), $List(tMissing, 2), .tAnswer), "404 PORT.NOTFOUND", "the person's Remove is 404 too")
         Do $$$AssertEquals(..MemberMintCode("Remove", $List(tMissing, 1), $List(tMissing, 2), {}, .tReason), "TOOL.ARGUMENTS", "and the agent's remove is refused at the mint")
+    }
+    For tRefused = ..#USERA, ..#USERB, $ZConvert(..#USERA, "L"), $ZConvert(..#USERB, "L"), "OcuP2417wNobody" {
+        Do $$$AssertEquals(..Audit(tSince, "interop-workflow-member", """user"":""" _ tRefused _ """", .tData, 0, 1), "0|?", "no audit row names the refused member '" _ tRefused _ "'")
     }
     Do $$$AssertEquals(..PutMember("ADDWORKFLOWMEMBER", ..#ROLEA, ..#USERA, {"Ranking": 5, "Title": ($Extract(tLong, 1, 128))}, .tResult, .tFault, ..#SOURCE, tSeam), "200 ", "a rank of 5 and a title of 128 characters are accepted")
     Do $$$AssertEquals(..Text(..#USERA), "5|" _ $Extract(tLong, 1, 128), "and stored as sent")
@@ -329,6 +335,8 @@ Method TestEveryShippedWritePathIsRefusedUnderSourceControl()
         }
         Set tVerdict = ..MemberMintCode("Add", ..#ROLEA, ..#USERB, {}, .tMintReason)
         Do $$$AssertEquals(tVerdict _ "|" _ tMintReason, tRefusal _ "|" _ tReason, "the agent's member add is refused at the mint")
+        Set tVerdict = ..MemberMintCode("Remove", ..#ROLEA, ..#USERA, {}, .tMintReason)
+        Do $$$AssertEquals(tVerdict _ "|" _ tMintReason, tRefusal _ "|" _ tReason, "and so is its member remove")
         Set tWant("update") = "PROPOSAL.TARGETCHANGED"
         Set tWant("remove") = tRefusal
         Set tWant("member") = tRefusal

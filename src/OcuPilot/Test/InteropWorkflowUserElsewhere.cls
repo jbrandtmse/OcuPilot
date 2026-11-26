@@ -24,7 +24,7 @@ ClassMethod MintHere(pTool As %String, pArgs As %DynamicObject, Output pStatus A
 
 /// <p>AC6: an add minted in <code>USER</code> and confirmed from <code>HSCUSTOM</code> is made in <code>USER</code>, where the name is free, though <code>HSCUSTOM</code> holds a user of that name:
 /// it is not refused as taken, <code>HSCUSTOM</code>'s user is unchanged, and the audit row names <code>USER</code>.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.InteropWorkflowUserAction.PortQuery</method> drop the payload's namespace -- the add is read in <code>HSCUSTOM</code>, refused as taken, and
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.InteropWorkflowAction.PortQuery</method> drop the payload's namespace -- the add is read in <code>HSCUSTOM</code>, refused as taken, and
 /// this goes red.</p>
 Method TestAnAddConfirmedFromAnotherNamespaceIsJudgedAndMadeWhereItRead()
 {

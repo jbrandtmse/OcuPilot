@@ -1191,7 +1191,7 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   },
   // Story 21.26: a purge removes the namespace's collected statistics, so it warns first.
   [EXPLORER_SQL_RUNTIME_STATS]: { [SQL_RUNTIME_STATS_PURGE]: STRINGS.sqlRuntimeStatsPurgeConsequence },
-  // Story 24.17 Batch 3b: a member's Remove deletes their worklist for the role and leaves each task they hold through it unassigned, and adding them again restores the membership, so it warns first.
+  // Story 24.17 Batch 3b: a member's Remove deletes their worklist for the role and leaves each task they hold through it unassigned, and adding them again restores the membership but not those tasks, so it warns first.
   'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList': { remove: STRINGS.interopWorkflowMemberRemoveConsequence },
   // Story 21.25: a rebuild locks the table against changes while it runs, so each rebuild warns.
   [EXPLORER_SQL_TABLE]: {

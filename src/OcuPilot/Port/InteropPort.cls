@@ -10117,13 +10117,14 @@ ClassMethod WorkflowCap(pMax As %Integer, pLimit As %Integer) As %Integer
     Quit $Select(pMax > 0: pMax, 1: pLimit)
 }
 
-/// <p>Whether <var>pName</var> is a name this port reads or writes for a workflow user: 1 to <parameter>WORKFLOWNAMEMAX</parameter> characters with no control character. Pure.</p>
+/// <p>Whether <var>pName</var> is a name this port reads or writes for a workflow user or a workflow role: 1 to <parameter>WORKFLOWNAMEMAX</parameter> characters with no control character.
+/// Pure.</p>
 ClassMethod WorkflowNameOK(pName As %String) As %Boolean
 {
     Quit (pName '= "") && ($Length(pName) <= ..#WORKFLOWNAMEMAX) && ($ZStrip(pName, "*C") = pName)
 }
 
-/// <p>Whether <var>pFullName</var> is a full name this port writes: at most <parameter>WORKFLOWNAMEMAX</parameter> characters with no control character; the empty one clears it. Pure.</p>
+/// <p>Whether <var>pFullName</var> is a full name or a member's title this port writes: at most <parameter>WORKFLOWNAMEMAX</parameter> characters with no control character; the empty one clears it. Pure.</p>
 ClassMethod WorkflowFullNameOK(pFullName As %String) As %Boolean
 {
     Quit ($Length(pFullName) <= ..#WORKFLOWNAMEMAX) && ($ZStrip(pFullName, "*C") = pFullName)
@@ -10621,8 +10622,8 @@ ClassMethod WorkflowSnippet(pType As %String, pName As %String, pBody As %Dynami
 /// Workflow Roles page performs them.</p>
 Parameter ENDPOINTWORKFLOWROLES = "WorkflowRoles";
 
-/// <p>The Workflow role members endpoint (Story 24.17 Batch 3b): <code>LIST</code> (the <code>EnsLib.Workflow.RoleMembership</code> rows of one role or of one user, by the one criterion
-/// <parameter>WORKFLOWROLECRITERION</parameter> or <parameter>WORKFLOWUSERCRITERION</parameter>), <code>WORKFLOWMEMBER</code> (one membership, fresh, by the composite id <code>[Role, User]</code>)
+/// <p>The Workflow role members endpoint (Story 24.17 Batch 3b): <code>LIST</code> (the <code>EnsLib.Workflow.RoleMembership</code> rows of one role, by the one criterion
+/// <parameter>WORKFLOWROLECRITERION</parameter>), <code>WORKFLOWMEMBER</code> (one membership, fresh, by the composite id <code>[Role, User]</code>)
 /// and the writes <code>ADDWORKFLOWMEMBER</code> and <code>REMOVEWORKFLOWMEMBER</code>, the vendor's own <code>AddUserToRole</code> and <code>RemoveUserFromRole</code> as the classic
 /// dialogs call them.</p>
 Parameter ENDPOINTWORKFLOWMEMBERS = "WorkflowMembers";
@@ -10656,10 +10657,8 @@ Parameter WORKFLOWCAPACITYMAX As INTEGER = 100;
 
 Parameter WORKFLOWRANKMAX As INTEGER = 5;
 
-/// <p>The two criteria of the members list, exactly one of which a call names.</p>
+/// <p>The one criterion of the members list, which a call names.</p>
 Parameter WORKFLOWROLECRITERION = "role";
-
-Parameter WORKFLOWUSERCRITERION = "user";
 
 /// <p>The entity types the audit rows of a workflow role write and a member write name.</p>
 Parameter ENTITYWORKFLOWROLE = "interop-workflow-role";
@@ -11009,22 +11008,15 @@ ClassMethod ListWorkflowRoles(pNamespace As %String, pMax As %Integer, Output pR
     Quit $$$OK
 }
 
-/// <p>The memberships of one role or of one user in <var>pNamespace</var>, at most <var>pMax</var> (<parameter>WORKFLOWMEMBERSMAX</parameter> when that is not above zero): <code>{Role, User,
-/// FullName, Ranking, Title, IsActive, Namespace}</code>, by user name for a role and by role name for a user. The call names exactly one of <parameter>WORKFLOWROLECRITERION</parameter> and
-/// <parameter>WORKFLOWUSERCRITERION</parameter>, a name this port reads; any other is 400 <code>PORT.VALIDATION</code>. Nothing is written.</p>
+/// <p>The members of one role in <var>pNamespace</var>, at most <var>pMax</var> (<parameter>WORKFLOWMEMBERSMAX</parameter> when that is not above zero): <code>{Role, User, FullName, Ranking,
+/// Title, IsActive, Namespace}</code>, by user name. The call names the role under <parameter>WORKFLOWROLECRITERION</parameter>; a call that names no role, or a role name this port does not
+/// read, is 400 <code>PORT.VALIDATION</code>. Nothing is written.</p>
 ClassMethod ListWorkflowMembers(pNamespace As %String, ByRef pQuery, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pRows = ""
     Set tRole = $Get(pQuery(..#WORKFLOWROLECRITERION))
-    Set tUser = $Get(pQuery(..#WORKFLOWUSERCRITERION))
-    If (tRole = "") = (tUser = "") Quit ..RefuseCriterion(..#WORKFLOWROLECRITERION, .pHttpStatus, .pFault)
-    If (tRole '= "") && '..WorkflowNameOK(tRole) Quit ..RefuseCriterion(..#WORKFLOWROLECRITERION, .pHttpStatus, .pFault)
-    If (tUser '= "") && '..WorkflowNameOK(tUser) Quit ..RefuseCriterion(..#WORKFLOWUSERCRITERION, .pHttpStatus, .pFault)
-    If tRole '= "" {
-        Set tSC = ..SqlRows(pNamespace, "SELECT TOP ? " _ ..#WORKFLOWMEMBERCOLUMNS _ " WHERE %EXACT(M.RoleName) = ? ORDER BY M.UserName", .tFound, .tCaught, ..WorkflowCap(pMax, ..#WORKFLOWMEMBERSMAX), tRole)
-    } Else {
-        Set tSC = ..SqlRows(pNamespace, "SELECT TOP ? " _ ..#WORKFLOWMEMBERCOLUMNS _ " WHERE %EXACT(M.UserName) = ? ORDER BY M.RoleName", .tFound, .tCaught, ..WorkflowCap(pMax, ..#WORKFLOWMEMBERSMAX), tUser)
-    }
+    If '..WorkflowNameOK(tRole) Quit ..RefuseCriterion(..#WORKFLOWROLECRITERION, .pHttpStatus, .pFault)
+    Set tSC = ..SqlRows(pNamespace, "SELECT TOP ? " _ ..#WORKFLOWMEMBERCOLUMNS _ " WHERE %EXACT(M.RoleName) = ? ORDER BY M.UserName", .tFound, .tCaught, ..WorkflowCap(pMax, ..#WORKFLOWMEMBERSMAX), tRole)
     If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow members list failed", .pHttpStatus, .pFault)
     Set pRows = []
     For tI = 1:1:tFound {

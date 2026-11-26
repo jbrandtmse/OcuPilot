@@ -6,7 +6,7 @@
 /// Edit open one dialog; Edit shows the name read-only, because a name cannot be changed. Remove types the role's name.</p>
 /// <p><b>Its id is the workflow role's name</b>, kept exactly (AD-13), and its scope is <code>namespace</code>. A name, a description and a member count are untrusted content (AD-11, AD-60), and
 /// none is a credential, so <code>secretFields</code> is empty. Its pairs are the classic page's: <code>%Ens_Portal:USE</code> and, as its own, <code>%Ens_WorkflowConfig:READ</code>; the three
-/// tools add <code>%Ens_WorkflowConfig:WRITE</code> and WRITE on the namespace's globals database (AD-8, AD-62). It does not refresh (AD-43); a member write re-reads it through
+/// tools add <code>%Ens_WorkflowConfig:WRITE</code> and WRITE on the namespace's globals database (AD-8, AD-62). It does not refresh (AD-43); a member write or a workflow user write re-reads it through
 /// <code>secondaryEntityTypes</code> (AD-14).</p>
 Class OcuPilot.Screen.Descriptor.InteropWorkflowRoleList Extends OcuPilot.Screen.Descriptor.Base
 {
@@ -25,7 +25,7 @@ XData Declaration
   "privileges": [{"resource": "%Ens_Portal", "permission": "USE"}, {"resource": "%Ens_WorkflowConfig", "permission": "READ"}],
   "ownPrivileges": [{"resource": "%Ens_WorkflowConfig", "permission": "READ"}],
   "entityType": "interop-workflow-role",
-  "secondaryEntityTypes": ["interop-workflow-member"],
+  "secondaryEntityTypes": ["interop-workflow-member", "interop-workflow-user"],
   "scope": "namespace",
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["Name"]},

@@ -3,13 +3,13 @@
 /// Story 24.17 Batch 3b). Each row is the user, their full name, their rank and title in the role and whether they are active.</p>
 /// <p><b>It is a sub-resource of the Workflow roles list and never listed</b> (<code>sideBarPosition</code> 0): it declares <code>parentScope</code> <code>interoperability/workflow-roles</code> and
 /// is reached from that list's name cell at <code>interoperability/workflow-roles/members/&lt;role&gt;</code>. Its one declared criterion, <code>role</code>, is the route id, which AD-5 requires
-/// of a parent-scoped read. The port's list also answers one workflow user's roles for the criterion <code>user</code>; no screen declares it.</p>
+/// of a parent-scoped read. How many roles a workflow user holds is the Workflow users list's <code>Roles</code>.</p>
 /// <p><b>Its id is the composite <code>[Role, User]</code></b>, each part kept exactly (AD-13), and its scope is <code>namespace</code>. A user name, a full name and a title are untrusted content
 /// (AD-11, AD-60), and none is a credential, so <code>secretFields</code> is empty.</p>
 /// <p><b>Its primary action</b> Add member and <b>its row action</b> Remove are the screen's callers of <class>OcuPilot.Screen.Tool.InteropWorkflowMemberAdd</class> and
 /// <class>OcuPilot.Screen.Tool.InteropWorkflowMemberRemove</class> (AD-53, AD-55); each is stored at once. There is no edit: a rank or a title is changed by removing the member and adding them
 /// again. Its pairs are the Workflow roles list's; the two tools add <code>%Ens_WorkflowConfig:WRITE</code> and WRITE on the namespace's globals database (AD-8, AD-62). It does not refresh
-/// (AD-43); a role's change event re-reads it, through <code>secondaryEntityTypes</code> (AD-14).</p>
+/// (AD-43); a role's or a workflow user's change event re-reads it, through <code>secondaryEntityTypes</code> (AD-14).</p>
 Class OcuPilot.Screen.Descriptor.InteropWorkflowMemberList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -27,7 +27,7 @@ XData Declaration
   "privileges": [{"resource": "%Ens_Portal", "permission": "USE"}, {"resource": "%Ens_WorkflowConfig", "permission": "READ"}],
   "ownPrivileges": [{"resource": "%Ens_WorkflowConfig", "permission": "READ"}],
   "entityType": "interop-workflow-member",
-  "secondaryEntityTypes": ["interop-workflow-role"],
+  "secondaryEntityTypes": ["interop-workflow-role", "interop-workflow-user"],
   "scope": "namespace",
   "parentScope": "interoperability/workflow-roles",
   "id": {"kind": "composite", "parts": ["Role", "User"]},

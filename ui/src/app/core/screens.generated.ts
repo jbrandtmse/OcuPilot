@@ -26409,7 +26409,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     ],
     "entityType": "interop-workflow-member",
     "secondaryEntityTypes": [
-      "interop-workflow-role"
+      "interop-workflow-role",
+      "interop-workflow-user"
     ],
     "scope": "namespace",
     "parentScope": "interoperability/workflow-roles",
@@ -26577,7 +26578,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     ],
     "entityType": "interop-workflow-role",
     "secondaryEntityTypes": [
-      "interop-workflow-member"
+      "interop-workflow-member",
+      "interop-workflow-user"
     ],
     "scope": "namespace",
     "parentScope": "",
@@ -26727,7 +26729,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "interop-workflow-user",
-    "secondaryEntityTypes": [],
+    "secondaryEntityTypes": [
+      "interop-workflow-role",
+      "interop-workflow-member"
+    ],
     "scope": "namespace",
     "parentScope": "",
     "id": {

@@ -106,6 +106,14 @@ ClassMethod WorkflowMemberVendor(pType As %String, pRole As %String, pUser As %S
     Quit tSC
 }
 
+/// <p>The probe's answer for the mode in <code>^IRIS.Temp.OcuProbe2417wMode</code> to the take of the memberships a role's delete left behind (Story 24.17 Batch 3b): <code>gone</code> takes none
+/// and answers an error status, as a membership that could not be removed; anything else is the port's own.</p>
+ClassMethod WorkflowMembersGone(pRole As %String) As %Status
+{
+    If $Get(^IRIS.Temp.OcuProbe2417wMode) = "gone" Quit $$$ERROR($$$GeneralError, ..#MARKER _ " kept the memberships of " _ pRole)
+    Quit ##super(pRole)
+}
+
 /// <p>Raise inside each namespace-switched block when the mode is <code>here</code>.</p>
 ClassMethod WorkflowHere() [ Private ]
 {
