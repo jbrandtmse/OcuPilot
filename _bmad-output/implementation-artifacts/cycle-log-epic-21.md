@@ -1220,3 +1220,5 @@
 2026-11-26T20:15:10Z	Epic 21	spine_updated	ad=AD-21,AD-44 reason=DW-2899(ruled_U-166/U-178_as_built) by=runner story=21-28-alternate-show-plans lint=preexisting_low_placeholder_only
 2026-11-26T20:17:24Z	Story 21.28	rework_opened	cycle_iteration=4 iteration=1 trigger=med_first_review(ruling_U-180) items=compare_note_pin,filter-only_residual_measure scope_baseline=c74e95342
 2026-11-26T20:17:28Z	Story 21.28	stage_spawned	stage=implement spawn_at=2026-11-26T20:17:28Z model=sonnet agent_name=21-28-rework1 cycle_iteration=4 prompt=e21-kit/21-28/rework1/prompt.md
+2026-11-26T20:50:20Z	Story 21.28	dev_complete	agent=a4c87fb4f model=sonnet build_sha=bbcf5e1da baseline_revision=2b7c190bf review_loop_iteration=1 followup_review_recommended=false deferred=0 cycle_iteration=4 measured=filter-only_compare_>110s(killed)->join-count_branch(EXPLORER.SQL.ALTJOIN,refuse_when_unsure) residual=per-comparison_not_per-connected-table
+2026-11-26T20:50:21Z	Story 21.28	stage_spawned	stage=code-review spawn_at=2026-11-26T20:50:20Z model=opus agent_name=21-28-cr-rework1 cycle_iteration=2 baseline=2b7c190bf prompt=e21-kit/21-28/cr/prompt-rework1.md
