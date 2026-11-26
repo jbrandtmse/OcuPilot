@@ -310,6 +310,16 @@ Parameter ADVICECLASSQUERY = "SELECT Name FROM %Dictionary.CompiledClass WHERE S
 
 Parameter ADVICEINDEXQUERY = "SELECT Name, Properties, Type, PrimaryKey, IdKey FROM %Dictionary.CompiledIndex WHERE parent = ? ORDER BY Name";
 
+/// <p>The tables each fixed read above names, comma-separated, as the sentence of a refused read lists them
+/// (<method>SelectRefusal</method>): the port's own list, kept equal to each statement's text by a test and never read from the instance's error.</p>
+Parameter STATSTABLES = "%SYS_PTools.StatsSQL";
+
+Parameter ANALYSISTABLES = "%SYS_PTools.UtilSQLStatements,%SYS_PTools.UtilSQLAnalysisDB";
+
+Parameter ADVICECLASSTABLES = "%Dictionary.CompiledClass";
+
+Parameter ADVICEINDEXTABLES = "%Dictionary.CompiledIndex";
+
 /// <p>The save's query keys: the table's schema and name, and its staged changes as JSON array
 /// text.</p>
 Parameter SCHEMAKEY = "schema";
@@ -916,8 +926,8 @@ ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %Dyn
 /// Class}</code>, with <code>Class</code> the compiled class the dictionary holds for it or <code>""</code>; <code>findings</code> are
 /// <method>OcuPilot.Port.SqlAdvice.Findings</method>'s, read from the plan and those tables' indices. A plan the advice does not recognize answers no
 /// tables and no findings. The dictionary is read through <parameter>ADVICECLASSQUERY</parameter> and <parameter>ADVICEINDEXQUERY</parameter> alone, with the
-/// schema, table and class bound, and nothing is composed from the statement or the plan into SQL text. A failed dictionary read is the internal
-/// fault.</p>
+/// schema, table and class bound, and nothing is composed from the statement or the plan into SQL text. A caller without the SQL SELECT privilege on a
+/// dictionary table is the 403 of <method>SelectRefusal</method>; any other failed dictionary read is the internal fault.</p>
 ClassMethod Advised(pNamespace As %String, pPlan As %String, Output pAdvice As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pAdvice = ""
@@ -979,11 +989,11 @@ ClassMethod Indexed(pNamespace As %String, pSchema As %String, pTable As %String
     Set tSC = ..Gate(pNamespace, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     If ($Extract(pSchema, 1) = "%") || ($ZConvert(pSchema, "U") = "INFORMATION_SCHEMA") Quit $$$OK
-    Set tSC = ..CheckedRows(pNamespace, ..#ADVICECLASSQUERY, [(pSchema), (pTable)], 1, "the class of an advised table", .tClasses, .pHttpStatus, .pFault)
+    Set tSC = ..CheckedRows(pNamespace, ..#ADVICECLASSQUERY, [(pSchema), (pTable)], 1, "the class of an advised table", ..#ADVICECLASSTABLES, .tClasses, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     If tClasses.%Size() = 0 Quit $$$OK
     Set pClass = tClasses.%Get(0).%Get(0)
-    Set tSC = ..CheckedRows(pNamespace, ..#ADVICEINDEXQUERY, [(pClass)], ..#MAXROWS, "the indices of an advised table", .tIndices, .pHttpStatus, .pFault)
+    Set tSC = ..CheckedRows(pNamespace, ..#ADVICEINDEXQUERY, [(pClass)], ..#MAXROWS, "the indices of an advised table", ..#ADVICEINDEXTABLES, .tIndices, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     Set pRows = []
     Set tIterator = tIndices.%GetIterator()
@@ -1001,20 +1011,25 @@ ClassMethod Indexed(pNamespace As %String, pSchema As %String, pTable As %String
 
 /// <p>The rows of the fixed statement <var>pText</var> run in <var>pNamespace</var> with <var>pValues</var> bound, at most <var>pMax</var>, as
 /// <var>pRows</var>, an array of arrays of text cells; prepared with SQL privilege checks on, after the gate has admitted the caller. A statement the
-/// instance refuses or a failed read is the internal fault, named by <var>pWhat</var>. The switched region calls vendor classes only.</p>
-ClassMethod CheckedRows(pNamespace As %String, pText As %String, pValues As %DynamicArray, pMax As %Integer, pWhat As %String, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// instance refuses for want of the SQL SELECT privilege is the 403 of <method>SelectRefusal</method> naming <var>pTables</var>, the fixed statement's own
+/// tables; any other refusal or a failed read is the internal fault, named by <var>pWhat</var>. The switched region calls vendor classes only.</p>
+ClassMethod CheckedRows(pNamespace As %String, pText As %String, pValues As %DynamicArray, pMax As %Integer, pWhat As %String, pTables As %String, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pRows = []
     Set tCode = 0
+    Set tRefused = 0
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
         Set tStatement = ##class(%SQL.Statement).%New()
         Set tSC = tStatement.%Prepare(pText, 1)
-        If $$$ISOK(tSC) {
+        If $$$ISERR(tSC) {
+            Set tRefused = ($System.Status.StatusToSQLCODE(tSC) = ..#PRIVILEGESQLCODE)
+        } Else {
             Set tResult = $Case(pValues.%Size(), 1: tStatement.%Execute(pValues.%Get(0)), 2: tStatement.%Execute(pValues.%Get(0), pValues.%Get(1)), : tStatement.%Execute())
             Set tCode = tResult.%SQLCODE
+            Set tRefused = (tCode = ..#PRIVILEGESQLCODE)
             While (tCode >= 0) && (pRows.%Size() < pMax) && tResult.%Next() {
                 Set tRow = []
                 For tI = 1:1:tResult.%ResultColumnCount Do tRow.%Push(tResult.%GetData(tI), "string")
@@ -1027,9 +1042,25 @@ ClassMethod CheckedRows(pNamespace As %String, pText As %String, pValues As %Dyn
         Set $NAMESPACE = tOrigNS
         Set tSC = $$$ERROR($$$GeneralError, pWhat _ " raised " _ ex.Name)
     }
+    If tRefused Quit ..SelectRefusal(pTables, .pHttpStatus, .pFault)
     If $$$ISOK(tSC) && (tCode < 0) Set tSC = $$$ERROR($$$GeneralError, pWhat _ " answered SQLCODE " _ tCode)
     If $$$ISERR(tSC) Quit ..Fail(pWhat _ " failed", tSC, .pHttpStatus, .pFault)
     Quit $$$OK
+}
+
+/// <p>The 403 of a fixed read the instance refused the caller for want of the SQL SELECT privilege (SQLCODE <parameter>PRIVILEGESQLCODE</parameter>):
+/// <code>SQL.SELECT.PRIVILEGE</code> with the sentence <method>OcuPilot.Api.AtelierError.SelectPrivilegeReason</method> composes naming
+/// <var>pTables</var>, the read's own tables from this port's list, comma-separated, listed in order joined by <code>and</code>. The same sentence is
+/// <code>detail.reason</code>, beside <code>detail.tables</code>, which is what an agent's tool result carries. Nothing of the instance's error text
+/// reaches the answer.</p>
+ClassMethod SelectRefusal(pTables As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tNames = $Replace(pTables, ",", " and ")
+    Set tReason = ##class(OcuPilot.Api.AtelierError).SelectPrivilegeReason(tNames)
+    Set tDetail = {}
+    Do tDetail.%Set("tables", tNames, "string")
+    Do tDetail.%Set("reason", tReason, "string")
+    Quit ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.AtelierError).#SQLSELECTPRIVILEGE, tReason, .pHttpStatus, .pFault, tDetail)
 }
 
 /// <p>Serve <var>pEndpoint</var> (<parameter>ENDPOINTSQL</parameter> or
@@ -1320,12 +1351,12 @@ ClassMethod RuntimeStatsRead(pNamespace As %String, Output pAnswer As %DynamicOb
 }
 
 /// <p>How many runtime statistics rows <var>pNamespace</var> holds, as <var>pCount</var>, from <parameter>STATSCOUNTQUERY</parameter> with the
-/// namespace bound, prepared with SQL privilege checks on and run in <var>pNamespace</var>. A statement the instance refuses or a failed read is
-/// the internal fault. The switched region calls vendor classes only.</p>
+/// namespace bound, prepared with SQL privilege checks on and run in <var>pNamespace</var>. A caller without the SQL SELECT privilege on the table is the
+/// 403 of <method>SelectRefusal</method>; any other refusal or a failed read is the internal fault. The switched region calls vendor classes only.</p>
 ClassMethod StatsCount(pNamespace As %String, Output pCount As %Integer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pCount = 0
-    Set tSC = ..CheckedRow(pNamespace, ..#STATSCOUNTQUERY, 1, "the runtime statistics count", .tRow, .pHttpStatus, .pFault)
+    Set tSC = ..CheckedRow(pNamespace, ..#STATSCOUNTQUERY, 1, "the runtime statistics count", ..#STATSTABLES, .tRow, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     Set pCount = +$ListGet(tRow, 1)
     Quit $$$OK
@@ -1333,25 +1364,30 @@ ClassMethod StatsCount(pNamespace As %String, Output pCount As %Integer, Output 
 
 /// <p>The first row of the fixed statement <var>pText</var> as a list of its column values, <var>pRow</var>, run in <var>pNamespace</var>, prepared
 /// with SQL privilege checks on (after the gate has admitted the caller) and with the namespace's upper-case name bound when
-/// <var>pBindNamespace</var> is 1. <var>pRow</var> is <code>""</code> for a statement that answers none. A statement the instance refuses or a failed
-/// read is the internal fault, named by <var>pWhat</var>. The switched region calls vendor classes only.</p>
-ClassMethod CheckedRow(pNamespace As %String, pText As %String, pBindNamespace As %Boolean, pWhat As %String, Output pRow As %List, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <var>pBindNamespace</var> is 1. <var>pRow</var> is <code>""</code> for a statement that answers none. A statement the instance refuses for want of the
+/// SQL SELECT privilege is the 403 of <method>SelectRefusal</method> naming <var>pTables</var>, the fixed statement's own tables; any other refusal or a
+/// failed read is the internal fault, named by <var>pWhat</var>. The switched region calls vendor classes only.</p>
+ClassMethod CheckedRow(pNamespace As %String, pText As %String, pBindNamespace As %Boolean, pWhat As %String, pTables As %String, Output pRow As %List, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pRow = ""
     Set tCode = 0
+    Set tRefused = 0
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
         Set tStatement = ##class(%SQL.Statement).%New()
         Set tSC = tStatement.%Prepare(pText, 1)
-        If $$$ISOK(tSC) {
+        If $$$ISERR(tSC) {
+            Set tRefused = ($System.Status.StatusToSQLCODE(tSC) = ..#PRIVILEGESQLCODE)
+        } Else {
             If pBindNamespace {
                 Set tResult = tStatement.%Execute($ZConvert(pNamespace, "U"))
             } Else {
                 Set tResult = tStatement.%Execute()
             }
             Set tCode = tResult.%SQLCODE
+            Set tRefused = (tCode = ..#PRIVILEGESQLCODE)
             If (tCode >= 0) && tResult.%Next() {
                 Set tColumns = tResult.%ResultColumnCount
                 For tI = 1:1:tColumns Set pRow = pRow _ $ListBuild(tResult.%GetData(tI))
@@ -1363,6 +1399,7 @@ ClassMethod CheckedRow(pNamespace As %String, pText As %String, pBindNamespace A
         Set $NAMESPACE = tOrigNS
         Set tSC = $$$ERROR($$$GeneralError, pWhat _ " raised " _ ex.Name)
     }
+    If tRefused Quit ..SelectRefusal(pTables, .pHttpStatus, .pFault)
     If $$$ISOK(tSC) && (tCode < 0) Set tSC = $$$ERROR($$$GeneralError, pWhat _ " answered SQLCODE " _ tCode)
     If $$$ISERR(tSC) Quit ..Fail(pWhat _ " failed", tSC, .pHttpStatus, .pFault)
     Quit $$$OK
@@ -1375,7 +1412,7 @@ ClassMethod CheckedRow(pNamespace As %String, pText As %String, pBindNamespace A
 ClassMethod AnalysisRead(pNamespace As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pAnswer = ""
-    Set tSC = ..CheckedRow(pNamespace, ..#ANALYSISCOUNTQUERY, 0, "the index analysis count", .tRow, .pHttpStatus, .pFault)
+    Set tSC = ..CheckedRow(pNamespace, ..#ANALYSISCOUNTQUERY, 0, "the index analysis count", ..#ANALYSISTABLES, .tRow, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     Set pAnswer = {}
     Do pAnswer.%Set("Namespace", pNamespace, "string")

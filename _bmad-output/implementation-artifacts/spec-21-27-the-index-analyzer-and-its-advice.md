@@ -2,11 +2,11 @@
 title: 'Story 21.27: The index analyzer and its advice'
 type: 'feature'
 created: '2026-11-25'
-status: 'in-progress'
-baseline_revision: '4d260ca241a41ad831f556168768303b21101fcb'
+status: 'done'
+baseline_revision: '6dff77cdfa9a3a4ed71f1251f422b0736c714070'
 baseline_commit: '23762d9606527ff542274e0d939ba0e17b3b0c6e'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-26-runtime-statistics.md'
@@ -219,15 +219,15 @@ deferred:
 **Rework 1** (gate red; orchestrator ruling 2026-11-26, veto U-174; DW-2892):
 
 - [x] [Gate] `SqlPort.TestThePortNamesNoSourceCodeApiClass` red (sweep shard 19, run 903): `UncheckedRow`/`UncheckedRows` prepare with `%Prepare(pText, 0)`. Every `SqlPort` catalog read prepares with privilege checks ON (`%Prepare(text, 1)`), Story 21.26's `StatsCount` included (it has `%Prepare(tText, 0)`). Never turn checks off.
-- [ ] [Gate] Measure on `ocupilot-ci` with the least-privileged principal the gate admits (`%Development:USE` + `AtelierPort.WritePairs(ns)`; 21.26's settings gate where it applies) that each checked read still answers; record the principal and the result per read under Verification. If a checked prepare refuses that principal, HALT `blocked` (intent gap) for that part with options (for example a gate that also requires SELECT on the `%SYS_PTools` views, or a narrower read); the rest of the rework may still land.
+- [x] [Gate] Measure on `ocupilot-ci` with the least-privileged principal the gate admits (`%Development:USE` + `AtelierPort.WritePairs(ns)`; 21.26's settings gate where it applies) that each checked read still answers; record the principal and the result per read under Verification. If a checked prepare refuses that principal, HALT `blocked` (intent gap) for that part with options (for example a gate that also requires SELECT on the `%SYS_PTools` views, or a narrower read); the rest of the rework may still land. Measured under Verification, "Rework 1 results"; the orchestrator's ruling (option 1, veto U-175) replaces the HALT with the items below.
 - [x] [Gate] Strengthen `SqlPort.TestThePortNamesNoSourceCodeApiClass` to refuse any `%Prepare(<expr>, 0)`, `%ExecDirectNoPriv` or similar no-privilege form anywhere in `SqlPort`, whatever the variable's name; `mutation:` reintroduce `StatsCount`'s old `%Prepare(tText, 0)` -> the test red.
 
 **Rework 1, continued** (orchestrator ruling 2026-11-26, option 1, veto U-175):
 
-- [ ] [Gate] Checks stay on. A checked read the instance refuses with SQLCODE -99 answers 403 with "Reading this needs the SQL SELECT privilege on %1." (measure-first), never 500; every other SQLCODE keeps today's path. Tests pin both: the -99 path (probe principal or an equivalent seam) and one other negative SQLCODE answering as before.
-- [ ] [Gate] `%1` is a table the port's own fixed statement names, taken from the port's own list and never parsed from the error text; for a read over several tables, name the first refused or list them -- state the choice here.
-- [ ] [Gate] The model-facing tool result carries the same sentence, so the agent tells the person which grant to ask for and never retries around it.
-- [ ] [Gate] Security note in Design Notes: the four reads (STATS, ANALYSIS, advice class read, advice index read) and their tables (`%SYS_PTools.StatsSQL`, `%SYS_PTools.UtilSQLStatements`, `%SYS_PTools.UtilSQLAnalysisDB`, `%Dictionary.CompiledClass`, `%Dictionary.CompiledIndex`), each with its measured -99 and its measured success after the grant. If the project has a per-screen permissions reference (EXPERIENCE.md or docs), add one line per screen there; otherwise no README text.
+- [x] [Gate] Checks stay on. A checked read the instance refuses with SQLCODE -99 answers 403 with "Reading this needs the SQL SELECT privilege on %1." (measure-first), never 500; every other SQLCODE keeps today's path. Tests pin both: the -99 path (probe principal or an equivalent seam) and one other negative SQLCODE answering as before. Done: `SQL.SELECT.PRIVILEGE` (`AtelierError`), `SqlPort.SelectRefusal`; the -99 path is pinned against a real principal by `SqlSelectPrivilege` (armed `OCUPILOT_ALLOW_PRINCIPALS`), the other SQLCODE by `SqlIndexAnalysisRead`.
+- [x] [Gate] `%1` is a table the port's own fixed statement names, taken from the port's own list and never parsed from the error text; for a read over several tables, name the first refused or list them -- state the choice here. Choice: list them, in the statement's order, joined by "and" (only `ANALYSIS` selects from two). The port's lists are `STATSTABLES`, `ANALYSISTABLES`, `ADVICECLASSTABLES` and `ADVICEINDEXTABLES`, each pinned equal to the tables its statement selects from; no probe of the instance runs to find which of two is the refused one.
+- [x] [Gate] The model-facing tool result carries the same sentence, so the agent tells the person which grant to ask for and never retries around it. Done: the fault's `detail` is `{tables, reason}`, which the dispatcher's error content carries; pinned for the advice read and for the proposal of a report run.
+- [x] [Gate] Security note in Design Notes: the four reads (STATS, ANALYSIS, advice class read, advice index read) and their tables (`%SYS_PTools.StatsSQL`, `%SYS_PTools.UtilSQLStatements`, `%SYS_PTools.UtilSQLAnalysisDB`, `%Dictionary.CompiledClass`, `%Dictionary.CompiledIndex`), each with its measured -99 and its measured success after the grant. If the project has a per-screen permissions reference (EXPERIENCE.md or docs), add one line per screen there; otherwise no README text. Done: Design Notes, "Security note". No per-screen permissions reference exists in EXPERIENCE.md or `docs/` (the Screen permissions list is a live screen derived from the descriptors, which carry no SQL privilege), so no line was added there and no README text.
 
 **Acceptance Criteria:**
 
@@ -298,6 +298,23 @@ Rejected:
   - `[false]` `[reject]` intent audit item 6: advice is an independent reimplementation. The intent says SQL rebound from the MCP suite's advisor, which `SqlAdvice` is.
   - `[false]` `[reject]` intent audit item 7: gate pairs unchecked. `ClassicPageGate` and `PortGate` pin them.
 
+### 2026-11-26 -- Review pass (rework 1, continued)
+
+- verdicts: 12 findings -- high 0, medium 1, low 11, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` verification-gap: the advice index read's refusal and its table list are unpinned; the unprivileged test always fails on the class read and the granted test grants both. Patched: `TestTheIndexReadIsRefusedNamingTheIndexTable`, mutation line under Verification.
+  - `[low]` `[reject]` verification-gap: the execute-time -99 branch is unpinned. The measured refusal is at prepare; an execute-time refusal has not been observed, and a seam for it would add a path no caller reaches.
+  - `[low]` `[patch]` verification-gap: the new sentence is not in `strings.ts` or `EXPERIENCE.md` like its siblings. Patched: `sqlSelectPrivilegeRefusal` and the Fixed strings row; `test:tools` pins the pair.
+  - `[low]` `[patch]` verification-gap: two test-header mutation claims had no observed line. Observed the `READTABLES` one; the screen test's claim is the drop-the-refusal-line mutation already recorded.
+  - `[low]` `[reject]` verification-gap: `Revoke` reports OK for a revoke that failed. A revoke of a privilege the principal does not hold is the normal case; a leaked grant shows as an unexpected 200 in the next test.
+  - `[low]` `[reject]` verification-gap: the table-list equality loop is partly circular. It pins each list to its statement's tables; which list each call site passes is pinned by the armed class.
+  - `[low]` `[reject]` intent audit 1: the list's own row read is not among the tests. The ruled reads are the four through `CheckedRow`/`CheckedRows` (the only callers); the list's rows come through the generated copy-out script path, unchanged.
+  - `[low]` `[reject]` intent audit 2, 3, 5: the agent surface driven is the advice read and the report-run mint; the confirm and the fixture seams are not driven as the principal. The mint's fresh read is the analysis count, and the shape tests pin the same path.
+  - `[low]` `[reject]` intent audit 4: the model sees the sentence in `detail.reason`, the envelope's reason is the same sentence. The dispatcher already passes `detail`; the armed class reads the content the model gets.
+  - `[low]` `[reject]` intent audit 6: the analysis read names two tables. The spec states the choice (all of the statement's tables, joined by "and").
+  - `[low]` `[reject]` intent audit (descriptive): the unit tests use fixture seams. The armed class drives the public paths.
+  - `[low]` `[reject]` verification-gap: the granted test's mint assertion passes on any outcome but the refusal. The 200 legs beside it carry the positive control.
+
 ## Design Notes
 
 **Governing ADs (spine line ranges):**
@@ -342,6 +359,17 @@ Rejected:
   - Purge analysis stays a declared row action, reachable when a row exists: a purge acts on stored rows, and the instance refuses one with nothing recorded, so a slot without rows is a shell change for no gain (the simpler of the two).
   - The shipped label strings are reused and no new sentence is added.
 - **Epic context reuse.** The spine and EXPERIENCE.md are newer than `epic-21-context.md` only by 21.26's add-only lines. Those were read here directly, so the context was not recompiled (the plan block's instruction).
+
+**Security note (Rework 1, continued; ruling U-175 option 1).** The gate admits `%Development:USE` plus the namespace's database pairs; it does not grant SQL privileges, and every `SqlPort` catalog read prepares with privilege checks on, so a caller needs SELECT on the tables below, as a classic SQL user does. A caller without it is refused 403 `SQL.SELECT.PRIVILEGE`, "Reading this needs the SQL SELECT privilege on %1.", naming the table or tables, and nothing is read. A grant is an administrator's act and OcuPilot never makes one.
+
+| Read | Tables | Measured refusal (principal with the gate's pairs, no SELECT) | Measured after `GRANT SELECT` |
+| ---- | ------ | ------------------------------------------------------------ | ----------------------------- |
+| `STATS` | `%SYS_PTools.StatsSQL` | SQLCODE -99 at prepare, `USER` and `HSCUSTOM`; port 403 (`USER`) | port 200 (`USER`, `HSCUSTOM`) |
+| `ANALYSIS` | `%SYS_PTools.UtilSQLStatements` and `%SYS_PTools.UtilSQLAnalysisDB` | SQLCODE -99, `USER` and `HSCUSTOM`; port, screen action and proposal 403 (`USER`) | port 200 (`USER`, `HSCUSTOM`) |
+| advice class read | `%Dictionary.CompiledClass` | SQLCODE -99, `USER` and `HSCUSTOM`; plan route, port and agent read 403 (`USER`) | checked prepare ok (`USER`, `HSCUSTOM`); plan with findings 200 (`USER`) |
+| advice index read | `%Dictionary.CompiledIndex` | SQLCODE -99, `USER` and `HSCUSTOM`; it runs behind the class read, so no leg reaches it alone | checked prepare ok (`USER`, `HSCUSTOM`); plan with findings 200 (`USER`) |
+
+The `USER` results after the grant are this pass's (`SqlSelectPrivilege`); the `HSCUSTOM` ones are Rework 1 results'. The principal's `%CHECKPRIV SELECT ON` answers 100 (not held) for all five tables in both namespaces. Plan with advice also needs SELECT on the advised statement's own tables, as Plan does. The list read `Catalog.IndexAnalysis` goes through the catalog route's unchecked prepare and is not one of the four.
 
 **Strings, escalated as one batch** (none is in EXPERIENCE.md). *Measure-first* clauses ship only as measured, and any correction is reported verbatim.
 
@@ -576,13 +604,27 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
 - **Loop.** `LOADERRORS=0`. Green, one class per call: `SqlPort` 11, `SqlPortLive` 16, `SqlRuntimeStatsRead` 10, `SqlRuntimeStatsWrite` 8, `SqlIndexAnalysisRead` 7, `SqlIndexAnalysisWrite` 11 (armed), `SqlAdviceRead` 11, `SqlStatementRead` 5, `SqlConsoleRoutes` 8, `PortGate` 4, `ClassicPageGate` 9. `check-objectscript` 0 problems; `npm run test:tools` 2420/2420.
 - mutation: `StatsCount` prepares its own text with `%Prepare(tText, 0)` -> `SqlPort.TestThePortNamesNoSourceCodeApiClass` red on the literal-0 count alone. Reverted (md5 of `SqlPort.cls` equal to before), reloaded, class 11/11 green.
 
+### Rework 1, continued results (2026-11-26, `ocupilot-ci`; every line observed unless marked (inference))
+
+- **Change.** `SqlPort.CheckedRow`/`CheckedRows` take the read's table list (`STATSTABLES`, `ANALYSISTABLES`, `ADVICECLASSTABLES`, `ADVICEINDEXTABLES`) and answer a prepare or execute SQLCODE -99 as `SelectRefusal`: 403 `SQL.SELECT.PRIVILEGE` (`AtelierError`), the ruled sentence naming the tables, `detail` `{tables, reason}`. Any other negative SQLCODE keeps the internal fault. No other caller of either method.
+- **Principal.** `OcuP2127Reader` holding role `%Development:U,%DB_USER:RW,%DB_ENSLIB:R,%DB_IRISLIB:R` and the install database's READ (the gate's pairs for `USER`), created and removed by `SqlSelectPrivilege` through `InteropTestGate.CreatePrincipals`; a hand-made principal for the first probe was removed and read back absent. Measured with it: `%CHECKPRIV SELECT ON` each of the five tables answers 100 in `USER` and `HSCUSTOM`; the checked prepare of each of the four fixed reads answers an error status whose SQLCODE is -99 ("User ... is not privileged for the operation") in both.
+- **Armed class `SqlSelectPrivilege`** (`OCUPILOT_ALLOW_PRINCIPALS`, registered in `scripts/ci-throwaway.sh`), 3/3: without SELECT, the port's `STATS` and `ANALYSIS`, the plan with advice, the agent's `explorer.sqladvice.read` and its proposal of a report run answer `403|SQL.SELECT.PRIVILEGE|<sentence>`, and the dispatcher's error content for the two agent legs carries the sentence in `detail.reason`; over HTTP the plan route and the report run's screen action answer 403 with the sentence as the envelope's reason; after `GRANT SELECT` on the five tables `STATS` and `ANALYSIS` answer 200, the plan with advice 200 with findings, the advice read 200, and the proposal is no longer refused for the privilege. The principal, its role, its grants and the probe table read back absent.
+- **Live-safe `SqlIndexAnalysisRead`**, 9/9 (two new): each table list equals the tables its statement selects from, the sentence and code are the ruled ones, several tables are joined by "and", `detail` holds the two members; an unknown table (SQLCODE -30) answers 500 `INTERNAL` with no `detail` and nothing of the statement, through `CheckedRows` and `CheckedRow`.
+- **Loop.** `LOADERRORS=0`. Green, one class per call: `SqlPort` 11, `SqlPortLive` 16, `SqlRuntimeStatsRead` 10, `SqlRuntimeStatsWrite` 8, `SqlIndexAnalysisRead` 9, `SqlIndexAnalysisWrite` 11 (armed), `SqlAdviceRead` 11, `SqlStatementRead` 5, `SqlConsoleRoutes` 8, `PortGate` 4, `ClassicPageGate` 9, `AsTheUser` 3. `check-objectscript` 0 problems; `npm run test:tools` 2420/2420.
+- mutation: `CheckedRows` and `CheckedRow` drop the `If tRefused Quit ..SelectRefusal(...)` line -> `SqlSelectPrivilege` red: the four port and tool legs and both HTTP legs answer 500 `INTERNAL`. Reverted (diff of `SqlPort.cls` against the copy taken before: identical), reloaded.
+- mutation: `SelectRefusal` leaves `reason` out of `detail` -> `SqlIndexAnalysisRead.TestARefusedReadNamesItsOwnTablesInTheRuledSentence` red on the `detail` legs. mutation: `ANALYSISTABLES` drops `%SYS_PTools.UtilSQLAnalysisDB` -> the same test red on the list leg and the sentence leg. mutation: `CheckedRow` takes every negative prepare SQLCODE as a refusal -> `TestAnotherNegativeSqlcodeStaysTheInternalFault` red on its `RowOf` legs (applied together, each leg's failures read separately). Reverted (diff identical), reloaded, 9/9 green.
+- **Review patches (this pass).** `SqlSelectPrivilege.TestTheIndexReadIsRefusedNamingTheIndexTable` (4/4 with the class): a principal granted SELECT on `%Dictionary.CompiledClass` only is refused the advice's second read naming `%Dictionary.CompiledIndex`, through the port and the agent's read. The sentence is published as `sqlSelectPrivilegeRefusal` (`strings.ts`) and in the 21.27 Fixed strings row (`EXPERIENCE.md`). Green after the patches: `SqlSelectPrivilege` 4, `test:tools` 2420/2420, `test:components` 349 files and 4084 tests, `check-objectscript` 0 problems.
+- mutation: `SqlPort.Indexed` passes `ADVICECLASSTABLES` to its index read -> `SqlSelectPrivilege.TestTheIndexReadIsRefusedNamingTheIndexTable` red alone (run 997). Reverted (`SqlPort.cls` identical to the copy taken before), reloaded, 4/4 green (run 998).
+- mutation: `READTABLES` drops `%Dictionary.CompiledIndex` -> `SqlSelectPrivilege.TestTheSameReadsAnswerOnceTheSelectPrivilegeIsGranted` red alone (run 999). Reverted (identical), reloaded, 4/4 green (run 1000).
+
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap -- the privilege-checked catalog reads (`%Prepare(text, 1)`) are refused for the least-privileged principal the gate admits.
+Status: done
+Blocking condition: none
 
-Rework 1 (baseline 4d260ca241a41ad831f556168768303b21101fcb), this pass only:
+Rework 1, continued (baseline 6dff77cdfa9a3a4ed71f1251f422b0736c714070), this pass only:
 
-- **Changed (uncommitted, no review layers run).** `SqlPort.UncheckedRow`/`UncheckedRows` are now `CheckedRow`/`CheckedRows` and prepare with privilege checks on, `StatsCount` and the `ANALYSIS`, class and index reads included; `Test/SqlPort.TestThePortNamesNoSourceCodeApiClass` refuses a literal-0 prepare flag on any `%Prepare` line and `%ExecDirectNoPriv`. Mutation line under Verification, "Rework 1 results".
-- **Verified.** `LOADERRORS=0`; green one class per call: `SqlPort` 11, `SqlPortLive` 16, `SqlRuntimeStatsRead` 10, `SqlRuntimeStatsWrite` 8, `SqlIndexAnalysisRead` 7, `SqlIndexAnalysisWrite` 11, `SqlAdviceRead` 11, `SqlStatementRead` 5, `SqlConsoleRoutes` 8, `PortGate` 4, `ClassicPageGate` 9; `test:tools` 2420/2420; `check-objectscript` 0 problems.
-- **Blocked.** The principal `%Development:USE` plus the gate's pairs gets SQLCODE -99 on all four checked reads in `USER` and `HSCUSTOM`, and the port answers 500 `INTERNAL`; with SELECT on `%SYS_PTools.StatsSQL`, `UtilSQLStatements`, `UtilSQLAnalysisDB`, `%Dictionary.CompiledClass` and `CompiledIndex` all four answer. Options: (1) keep the checks and state those SELECT grants as a prerequisite (a 403 naming the privilege instead of the 500 is a separate decision); (2) the gate also requires that SELECT; (3) narrow a read to what a `%Development` principal may select.
+- **Changed.** A checked `SqlPort` read the instance refuses with SQLCODE -99 answers 403 `SQL.SELECT.PRIVILEGE` with "Reading this needs the SQL SELECT privilege on %1.", `%1` from the port's own table list for that read (the analysis read names both its tables, joined by "and"); every other SQLCODE keeps the 500. The sentence is also `detail.reason`, so the agent's tool result carries it. Files: `Api/AtelierError.cls` (code, sentence, composer), `Port/SqlPort.cls` (table lists, `SelectRefusal`, the two checked helpers), new armed `Test/SqlSelectPrivilege.cls` (registered in `scripts/ci-throwaway.sh`), `Test/SqlIndexAnalysisRead.cls`, `Test/SqlTuningPortFixture.cls`, `Test/SqlTuningProbe.cls`, `strings.ts` and the 21.27 row of `EXPERIENCE.md` (the sentence, add-only), and this spec (security note under Design Notes, results under Verification). No per-screen permissions reference exists, so no line there and no README text.
+- **Review.** Verification-gap and intent-alignment layers: 12 findings, 1 medium and 11 low; patched 2 low and 1 medium (the index read's refusal pinned, the sentence published, a mutation line observed), rejected 9, deferred none (Review Triage Log).
+- **Verified.** `LOADERRORS=0`; green one class per call: `SqlPort` 11, `SqlPortLive` 16, `SqlRuntimeStatsRead` 10, `SqlRuntimeStatsWrite` 8, `SqlIndexAnalysisRead` 9, `SqlIndexAnalysisWrite` 11, `SqlAdviceRead` 11, `SqlStatementRead` 5, `SqlConsoleRoutes` 8, `PortGate` 4, `ClassicPageGate` 9, `SqlSelectPrivilege` 4 (armed), `AsTheUser` 3 (run before the review patches; the patches changed only `SqlSelectPrivilege`, `strings.ts` and `EXPERIENCE.md`); `test:tools` 2420/2420; `test:components` 349 files, 4084 tests; `check-objectscript` 0 problems. Mutations under Verification, "Rework 1, continued results".
+- **Residual risk.** A privilege refusal raised only at execute time is mapped like the prepare one but has no test (a seam for it adds a path no caller reaches; measured refusals are at prepare). Follow-up review: `false` (no high patched).

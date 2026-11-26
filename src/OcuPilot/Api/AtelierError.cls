@@ -460,6 +460,13 @@ Parameter SQLADVICE = "EXPLORER.SQL.ADVICE";
 
 Parameter REASONSQLADVICE = "Advice reads a query's plan, so it takes a query only.";
 
+/// <p>Envelope code: a read OcuPilot makes of a fixed system table was refused the caller for want of the SQL SELECT privilege on it. Rendered on the
+/// <parameter>OcuPilot.Api.Error.FORBIDDEN</parameter> slug with 403, naming the table or tables the read uses in the sentence and in <code>detail</code>.
+/// <code>%1</code> is the table list <method>SelectPrivilegeReason</method> fills in.</p>
+Parameter SQLSELECTPRIVILEGE = "SQL.SELECT.PRIVILEGE";
+
+Parameter REASONSQLSELECTPRIVILEGE = "Reading this needs the SQL SELECT privilege on %1.";
+
 /// <p>The consequence codes the proposal card and the dialog of the analyzer's writes carry (Story 21.27). A gather states the first sentence, and the
 /// second too when it includes system classes and routines, which take longer than the page waits.</p>
 Parameter INDEXANALYSISGATHER = "SQL.INDEXANALYSIS.GATHER";
@@ -596,7 +603,14 @@ ClassMethod SqlReasonFor(pCode As %String) As %String
     If pCode = ..#INDEXANALYSISGATHERSYSTEM Quit ..#REASONINDEXANALYSISGATHERSYSTEM
     If pCode = ..#INDEXANALYSISRUN Quit ..#REASONINDEXANALYSISRUN
     If pCode = ..#INDEXANALYSISPURGE Quit ..#REASONINDEXANALYSISPURGE
+    If pCode = ..#SQLSELECTPRIVILEGE Quit ..#REASONSQLSELECTPRIVILEGE
     Quit ""
+}
+
+/// <p>The sentence of <parameter>SQLSELECTPRIVILEGE</parameter> naming <var>pTables</var>, the table or tables a read needs the SQL SELECT privilege on.</p>
+ClassMethod SelectPrivilegeReason(pTables As %String) As %String
+{
+    Quit $Replace(..#REASONSQLSELECTPRIVILEGE, "%1", pTables)
 }
 
 /// <p>The sentence <var>pCode</var>, one of the seven <code>EXPLORER.UNITTEST.*</code> codes above or one of the five

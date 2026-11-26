@@ -1,7 +1,9 @@
 /// <p>Pins Story 21.27's reads and the shapes its writes refuse before any call (AC1, AC2; AD-5, AD-21, AD-29, AD-35, AD-36, AD-51): the SQL index
 /// analyzer list's declaration, the three tools' names, ports, request types, values and consequence codes, the fixed statement behind the list and its
 /// row map, the rows it maps, the cap it reports, <class>OcuPilot.Port.SqlPort</class>'s <code>ANALYSIS</code> read, the gates and every id and value shape on
-/// both callers, the copy-out scripts, and that a vendor call made under the null device leaves the process's device and namespace as it found them.</p>
+/// both callers, the copy-out scripts, that a vendor call made under the null device leaves the process's device and namespace as it found them, and the
+/// shape of a checked read's refusal for want of the SQL SELECT privilege and of any other refusal (the refusal against a real principal is
+/// <class>OcuPilot.Test.SqlSelectPrivilege</class>'s).</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, the calling account holding <code>%Development:USE</code> and READ and WRITE on
 /// <code>USER</code>'s code databases, and a <code>USER</code> namespace. Live-safe: it changes no store, gathers nothing and runs no report; the rows it
 /// maps are canned through <class>OcuPilot.Test.AtelierPortFixture</class>.</p>
@@ -323,6 +325,57 @@ Method TestAVendorCallUnderTheNullDeviceLeavesTheProcessAsItWasFound()
     Do $$$AssertEquals(tRaisedMnemonic, tMnemonic, "and the caller's device keeps its mnemonic space")
     Do $$$AssertTrue(tMnemonic '= "", "which the caller's device was given: " _ tMnemonic)
     Do $$$AssertEquals($NAMESPACE _ "|" _ $IO, tOrigNS _ "|" _ tCurrent, "the process ends where it began")
+}
+
+/// <p>The tables a refused read names are the port's own list, equal to the tables its fixed statement selects from; the refusal is 403
+/// <code>SQL.SELECT.PRIVILEGE</code> with the ruled sentence, listing several tables joined by <code>and</code>, the same sentence in
+/// <code>detail.reason</code> beside <code>detail.tables</code>, and nothing of the instance's own error.</p>
+/// <p>Mutation (Rule 19): <parameter>OcuPilot.Port.SqlPort.ANALYSISTABLES</parameter> drops <code>%SYS_PTools.UtilSQLAnalysisDB</code> -> the list leg goes
+/// red; <method>OcuPilot.Port.SqlPort.SelectRefusal</method> answers 500 -> the refusal leg goes red.</p>
+Method TestARefusedReadNamesItsOwnTablesInTheRuledSentence()
+{
+    For tCase = $ListBuild("STATSCOUNTQUERY", "STATSTABLES"), $ListBuild("ANALYSISCOUNTQUERY", "ANALYSISTABLES"), $ListBuild("ADVICECLASSQUERY", "ADVICECLASSTABLES"), $ListBuild("ADVICEINDEXQUERY", "ADVICEINDEXTABLES") {
+        Set tText = $Parameter(..#PORT, $List(tCase, 1))
+        Set tFrom = ""
+        Set tPosition = 1
+        While $Locate(tText, "FROM [^ )]+", tPosition, tEnd, tMatch) {
+            Set tFrom = tFrom _ $Select(tFrom = "": "", 1: ",") _ $Piece(tMatch, " ", 2)
+            Set tPosition = tEnd
+        }
+        Set tTables = $Parameter(..#PORT, $List(tCase, 2))
+        Do $$$AssertEquals($ListToString($ListFromString(tFrom)), tTables, $List(tCase, 2) _ " lists the tables " _ $List(tCase, 1) _ " selects from")
+    }
+    Set tSentence = "Reading this needs the SQL SELECT privilege on %1."
+    Do $$$AssertEquals($ClassMethod(..#PORT, "ReasonFor", ##class(OcuPilot.Api.AtelierError).#SQLSELECTPRIVILEGE), tSentence, "the sentence is the ruled one")
+    Do $$$AssertEquals(##class(OcuPilot.Api.AtelierError).#SQLSELECTPRIVILEGE, "SQL.SELECT.PRIVILEGE", "under the ruled code")
+    Set tSC = $ClassMethod(..#FIXTURE, "RefusalOf", $Parameter(..#PORT, "ANALYSISTABLES"), .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "a refusal is an error status")
+    Do $$$AssertEquals(tHttp, 403, "answered 403")
+    Do $$$AssertEquals(tFault.%Get("code"), "SQL.SELECT.PRIVILEGE", "with the ruled code")
+    Do $$$AssertEquals(tFault.%Get("error"), ##class(OcuPilot.Api.Error).#FORBIDDEN, "on the forbidden slug")
+    Set tReason = "Reading this needs the SQL SELECT privilege on %SYS_PTools.UtilSQLStatements and %SYS_PTools.UtilSQLAnalysisDB."
+    Do $$$AssertEquals(tFault.%Get("reason"), tReason, "naming both tables, joined by and")
+    Do $$$AssertEquals(tFault.detail.%Get("reason") _ "|" _ tFault.detail.%Get("tables"), tReason _ "|%SYS_PTools.UtilSQLStatements and %SYS_PTools.UtilSQLAnalysisDB", "and the tool result's detail carries the same sentence and the tables")
+    Do $$$AssertEquals(tFault.detail.%Size(), 2, "and nothing else")
+    Set tSC = $ClassMethod(..#FIXTURE, "RefusalOf", $Parameter(..#PORT, "STATSTABLES"), .tHttp, .tFault)
+    Do $$$AssertEquals(tFault.%Get("reason"), "Reading this needs the SQL SELECT privilege on %SYS_PTools.StatsSQL.", "one table is named alone")
+}
+
+/// <p>A checked read the instance refuses with any other negative SQLCODE is the internal fault as before: 500 with the generic code and reason, no
+/// <code>detail</code>, and nothing of the statement or the instance's message in the answer.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.SqlPort.CheckedRows</method> and <method>CheckedRow</method> treat every negative SQLCODE as a privilege
+/// refusal -> both legs go red answering 403.</p>
+Method TestAnotherNegativeSqlcodeStaysTheInternalFault()
+{
+    Set tText = "SELECT A FROM OcuProbe2127Missing.Nothing"
+    For tMethod = "RowsOf", "RowOf" {
+        Kill tFault
+        Set tSC = $ClassMethod(..#FIXTURE, tMethod, ..#NAMESPACE, tText, "%SYS_PTools.StatsSQL", .tHttp, .tFault)
+        Do $$$AssertStatusNotOK(tSC, tMethod _ ": a refused read is an error status")
+        Do $$$AssertEquals(tHttp _ "|" _ tFault.%Get("code") _ "|" _ tFault.%Get("reason"), "500|" _ ##class(OcuPilot.Api.Error).#INTERNAL _ "|" _ ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, tMethod _ ": an unknown table is the internal fault")
+        Do $$$AssertEquals(tFault.%GetTypeOf("detail"), "unassigned", tMethod _ ": with no detail")
+        Do $$$AssertTrue(tFault.%ToJSON() '[ "Nothing", tMethod _ ": and nothing of the statement")
+    }
 }
 
 }

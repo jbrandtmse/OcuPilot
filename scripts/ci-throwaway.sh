@@ -739,6 +739,9 @@ services:
       # classes: PageResourceFixture, PageResourceRead, PageResourceWrite
       # SourceControlFollowUp signs one account in to prove the answer's WRITE gate, and removes it (Story 21.38).
       # classes: SourceControlFollowUp
+      # SqlSelectPrivilege signs in as an account without the SQL SELECT privilege on the tables the SQL tuning reads name, grants it and revokes it, and
+      # creates and drops one probe table (Story 21.27).
+      # classes: SqlSelectPrivilege
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

@@ -478,6 +478,21 @@ ClassMethod Run(pText As %String) As %Status
     Quit $$$OK
 }
 
+/// <p>Run <var>pText</var> in <var>pNamespace</var>, to its end, and come back to the namespace the caller was in.</p>
+ClassMethod RunIn(pNamespace As %String, pText As %String) As %Status
+{
+    Set tOrigNS = $NAMESPACE
+    Set tSC = $$$OK
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ..Run(pText)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
 /// <p>The hash of the statement of <var>pNamespace</var>'s index whose text holds <var>pToken</var> and that reads <var>pRelation</var>, or
 /// <code>""</code>. The index keeps a statement's text normalized, so <code>SELECT A , B FROM</code> reads the one that selects two columns.</p>
 ClassMethod HashOf(pNamespace As %String, pToken As %String, pRelation As %String = "OCUPROBE216.T1") As %String

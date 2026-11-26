@@ -60,6 +60,25 @@ ClassMethod AdvisorClass() As %String
     Quit $Get(^||OcuPilotSqlTuningAdvisor, ##super())
 }
 
+/// <p>One checked read of the fixed text <var>pText</var> a test supplies, with the tables <var>pTables</var> a refusal would name: the port's
+/// <method>CheckedRows</method> with no value bound and one row. Its status and fault are the port's.</p>
+ClassMethod RowsOf(pNamespace As %String, pText As %String, pTables As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Quit ..CheckedRows(pNamespace, pText, [], 1, "a probe read", pTables, .tRows, .pHttpStatus, .pFault)
+}
+
+/// <p>The same for the port's <method>CheckedRow</method>.</p>
+ClassMethod RowOf(pNamespace As %String, pText As %String, pTables As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Quit ..CheckedRow(pNamespace, pText, 0, "a probe read", pTables, .tRow, .pHttpStatus, .pFault)
+}
+
+/// <p>The privilege refusal the port answers for <var>pTables</var>.</p>
+ClassMethod RefusalOf(pTables As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Quit ..SelectRefusal(pTables, .pHttpStatus, .pFault)
+}
+
 /// <p>The field's read, which raises while a table call runs where <method>OcuPilot.Test.SqlTuningGateSeam.Throw</method> armed it: the one read a
 /// selectivity's setter makes inside its guarded block, after the collected statistics were saved.</p>
 ClassMethod FieldRead(pSchema As %String, pTable As %String, pField As %String, Output pRow As %DynamicObject) As %Status [ Private ]

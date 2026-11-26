@@ -5613,6 +5613,8 @@ export const STRINGS = {
   sqlAdviceUnrecognized: 'OcuPilot did not recognize this plan\'s format, so it offers no advice.',
   // The numbers are OcuPilot.Port.SqlAdvice's MAXFINDINGS and MAXTABLES; self-protection.test.mjs holds them equal.
   sqlAdviceTruncated: 'Only the first 200 findings, from at most 20 tables, are shown.',
+  // OcuPilot.Api.AtelierError's REASONSQLSELECTPRIVILEGE, with %1 the table or tables the refused read names; the server fills it in.
+  sqlSelectPrivilegeRefusal: 'Reading this needs the SQL SELECT privilege on %1.',
   sqlRuntimeStatsPurgeAction: 'Purge statistics',
   explorerSqlPlanWithStatistics: 'Plan with statistics',
   sqlRuntimeStatsPurgeConsequence: 'This namespace\'s runtime statistics are removed. New statistics are recorded only while collection is on.',
