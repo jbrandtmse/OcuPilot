@@ -129,6 +129,15 @@ Each is the lead's to take to the veto gate; the recommended option is first.
 
 No new dependency; nothing is written into another namespace (a cancel's response is queued in the task's own namespace).
 
+**Lead rulings at the spec gate (2026-11-26; filed as an INBOX veto item, binding unless the orchestrator reverses them).** Every veto item is kept as recommended:
+
+- **V1:** kept. If Task 0 (c) measures a consequence sentence untrue, HALT with `## Clarification Needed`; never reword it in-stage. The README count is derived from the Baseline on the tree you commit, never typed from this plan.
+- **V2:** kept: reads equal to the classic pages (`%Ens_Portal:USE` and READ on the namespace's globals database). Its condition is ruled now: if Task 0 (b) finds a classic list query refused (`#5580`), that **list** takes Batch 2's SQL SELECT check (the vendor's `CheckPrivilege` in the target namespace, `AUTH.NOPRIVILEGE`, an equality table and a pinning test), never a write or a write's fresh read. No HALT for it. Writes: plus `%Ens_WorkflowConfig:WRITE` and WRITE on the namespace's globals database.
+- **V3:** kept. Assign and unassign are ordinary writes behind the confirmation the person sees.
+- **V4:** kept, the classic dialog's values with the stricter refusals; priority offered.
+- **V5:** kept. Cancel ships `false`, destructive, typed task ID; assign ships `true`.
+- **V6:** kept for story end; the lead writes the lines.
+
 ## Design Notes
 
 **Batch split.** As 3a's: this spec is Batch 4 (`-5.md`), not split; Batch 5, the System Monitor, keeps `-6.md`.

@@ -909,3 +909,7 @@
 2026-11-26T06:24:48Z	Story 24.17	fresh_check_passed	scope=batch3b basis=review_rebuild_05:41:34Z classes+browser+smoke_as_cr_complete feature=092ab356b_ancestor
 2026-11-26T06:25:26Z	Story 24.17	code_head_pushed	scope=batch3b sha=d1fbfd002 runs=45768023682 ci=pending
 2026-11-26T06:25:26Z	Story 24.17	stage_spawned	stage=plan spawn_at=2026-11-26T06:25:26Z model=opus agent_name=24-17-plan-batch4 cycle_iteration=5 scope=batch4_workflow_tasks_worklist
+2026-11-26T06:41:03Z	Story 24.17	story_created	scope=batch4_workflow_tasks_worklist path=..-5.md commit=51a8f7cd5 build_status=ready-for-dev warning=oversized epic_context=recompiled
+2026-11-26T06:41:03Z	Story 24.17	ruling	question=batch4_veto_set choice=keep_all(V1-V6;V2_SQL_check_list_only_if_#5580) category=veto inbox=U-172 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-26T06:41:03Z	Story 24.17	spec_validated	scope=batch4 ledger_inbox=empty mutates_shared_runtime=false(throwaway_only)
+2026-11-26T06:41:03Z	Story 24.17	stage_spawned	stage=implement spawn_at=2026-11-26T06:41:03Z model=sonnet agent_name=24-17-implement-batch4 cycle_iteration=5 story_base=51a8f7cd5 scope=batch4
