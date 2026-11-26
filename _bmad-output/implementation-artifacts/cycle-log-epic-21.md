@@ -1225,3 +1225,4 @@
 2026-11-26T21:06:54Z	Story 21.28	cr_complete	agent=a7088ff71 model=opus iteration=rework1 high=0 med=6 low=6 rows=31 unresolved_high_med=2(DW-2905->resolved_by_runner_AD-7_in_place,DW-2906_escalated_decision_sheet) patched=8(union-find_connectivity,USING_one_join,HAVING,CASE,relations_floor) wontfix=DW-2907,DW-2908 final=done
 2026-11-26T21:06:54Z	Story 21.28	ledger_adjudicated	owned=1 resolved=1(DW-2905) reowned=0 terminal=0 note=DW-2906_escalated_to_decision_sheet
 2026-11-26T21:06:54Z	Epic 21	spine_updated	ad=AD-7 reason=DW-2905(U-180_as_built;in-place) by=runner story=21-28-alternate-show-plans lint=preexisting_low_placeholder_only
+2026-11-26T21:08:56Z	Story 21.28	gate_step	step=fresh_check+full_sweep+smoke head=a4000b244 started=2026-11-26T21:08:56Z dir=e21-kit/21-28/gate1
