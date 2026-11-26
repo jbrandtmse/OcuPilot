@@ -2,16 +2,23 @@
 title: 'Story 21.27: The index analyzer and its advice'
 type: 'feature'
 created: '2026-11-25'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '23762d9606527ff542274e0d939ba0e17b3b0c6e'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-26-runtime-statistics.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-25-index-rebuild-and-tune-table.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The SQL query screen does not show that the advice list was cut at its cap.
+    evidence: |-
+      `SqlPort.Advised` sets `advice.truncated` when 200 findings or 20 tables are reached and the agent's schema declares it; `sql-answer.ts` and `sql-query.page.ts` carry no member for it. A note needs a person-facing string that no one has ruled.
+    location: >-
+      ui/src/app/core/sql-answer.ts
+    severity: low
 ---
 
 <intent-contract>
@@ -199,6 +206,15 @@ deferred: []
 
   The `after` hook purges and removes the probe.
 
+**Review patches (pass 1):** test and comment fixes only, no product code unless a patch needs a seam.
+
+- P1. `Test/SqlIndexAnalysisWrite.cls` (armed): observe the skip flags' mapping to the vendor's positional arguments. `AnalysisCall` (`SqlPort.cls`) maps `SkipSystem`, `SkipInserts` and `SkipIdKeys` into `getAllSQLStmts(1,sys,ins,0,0)` and `indexUsage(1,1,0,sys,idk,ins,0)` and the other four reports' vectors; every live leg sends all true. Add (a) a live pair on the probe: a probe method holding an embedded `INSERT`, gather with `SkipInserts` false reads more statements than with true, and Index usage with `SkipIdKeys` false reads more probe rows than with true (`SkipSystem` false takes 45 s, so it is covered by (b)); (b) a recording seam on the vendor call (`AnalysisVendor` or the smallest equivalent already there) asserting the exact argument vector for gather and each of the five reports with one flag false at a time, including `SkipSystem` false without running it. Rule 19: mutation `swap tInserts and tIdKeys` and `swap tSystem and tInserts` -> the new legs red.
+- P2. `ui/browser/system-explorer-sql-index-analysis.browser-spec.mjs`: each test creates its own precondition (gather, or seed) and passes alone (`--test-name-pattern`) and in any order. Rebuild and redeploy before reading any result.
+- P3. Rule 19 for the bound dictionary reads: splice a name into the class read's text, observe `SqlAdviceRead`'s quote legs red, revert, record the `mutation:` line under Verification.
+- P4. `Test/SqlIndexAnalysisRead.cls`: assert `ReasonFor` of the GATHER, GATHERSYSTEM, RUN and PURGE codes equals each ruled sentence literally (the sentences as `AtelierError` carries them), replacing the `[` containment check. Mutation: drop the GATHER row -> red.
+- P5. `sql-index-analysis.page.spec.ts` refused-send leg: stub a reason that differs from the client constant and assert the dialog shows the stub.
+- P6. `Test/SqlIndexAnalysisWrite.cls` header: remove the claim no assertion makes.
+
 **Acceptance Criteria:**
 
 - AC1. Given the probe's gathered statements and a report run on the throwaway, when the person opens SQL index analyzer and the agent calls `explorer.sqlindexanalysis.read`, then both answer the same rows with the matrix's columns.
@@ -220,6 +236,24 @@ deferred: []
   8. **Null-device helper:** hoisted from `AdvisorPort.SetFlag` into `Kernel/Utils` as a behavior-keeping refactor, add-only (new helper, call site switched); `AdvisorPort`'s own tests rerun green before the push, in the same code head.
 
 ## Review Triage Log
+
+### 2026-11-25 -- Review pass 1
+
+- verdicts: 13 findings -- high 0, medium 2, low 7, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` verification-gap: the skip flags' mapping to the vendor's positional arguments (`AnalysisCall`) is never observed with a false flag -- every live leg sends all true, so a permutation is invisible. Patch P1.
+  - `[medium]` `[patch]` verification-gap, and intent audit item 3: the browser spec's Run report and second Gather tests rely on the earlier tests' rows and on declaration order. Patch P2.
+  - `[low]` `[patch]` verification-gap: no observed `mutation:` line for the bound dictionary reads (`Indexed`/`UncheckedRows`). Patch P3.
+  - `[low]` `[patch]` verification-gap: `ReasonFor(GATHERSYSTEM) [ ReasonFor(GATHER)` passes when the GATHER row is absent. Patch P4.
+  - `[low]` `[patch]` verification-gap: the page spec's refused-send leg stubs and asserts the same client constant. Patch P5.
+  - `[low]` `[patch]` verification-gap: the `SqlIndexAnalysisWrite` header claims a leg no assertion makes. Patch P6.
+  - `[low]` `[defer]` verification-gap: `advice.truncated` is not shown by the screen. The cap (200 findings, 20 tables) is not reachable by a plan of ordinary size, and a note needs a person-facing string no one has ruled. Recorded in `deferred:`.
+  - `[low]` `[reject]` intent audit item 1: Purge analysis is a row action, so a namespace holding only gathered statements cannot be purged from the screen until a report row exists. Reachable in two steps (run a report, select its row); the fix adds a third screen-level slot to the shell beyond a direct correction, and Batch 3b chose it. Residual risk.
+  - `[low]` `[reject]` intent audit item 4: the advice refusal runs after `Classify`, which prepares the statement. The instance types a statement only by preparing it, and the intent requires that typing; nothing is run or explained. Residual risk.
+  - `[false]` `[reject]` intent audit item 2: no run of `system-explorer-sql-runtime-stats.browser-spec.mjs` is shown. Batch 3 and 3b each ran it forward and in reverse with the new spec (Verification).
+  - `[false]` `[reject]` intent audit item 5: tests sit below the screen. The browser spec drives the screens and the unit classes drive both callers, as the matrix asks.
+  - `[false]` `[reject]` intent audit item 6: advice is an independent reimplementation. The intent says SQL rebound from the MCP suite's advisor, which `SqlAdvice` is.
+  - `[false]` `[reject]` intent audit item 7: gate pairs unchecked. `ClassicPageGate` and `PortGate` pin them.
 
 ## Design Notes
 
@@ -466,13 +500,28 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
   - AC5, client: mutation: the mirror's `primaryAction` for the screen is empty -> `sql-index-analysis.page.spec.ts` "offers Gather statements as the primary action and Run report at screen level" red. A descriptor with no primary draws Gather statements as a row action held by "Select a row first", which the spec's AC1 reads as `aria-disabled` (not run in the browser: a hand-edited mirror fails the build's own `--check`).
   - AC5, client: mutation: `actionCandidates` never lists the index analysis line -> `command-box.spec.ts` "Story 21.27: SQL index analyzer's Run report is listed at screen level and runs on a click" red.
 
+### Review patches pass 1 results
+
+- P1 done. `SqlTuningPortFixture.AnalysisVendor` records `method(arguments)` while `^||OcuPilotSqlTuningVendorArmed` is set (else the production call); `SqlIndexAnalysisWrite` adds `TestEachSkipFlagReachesItsPositionOfTheVendorCall` (gather and the five reports, each flag false in turn, `SkipSystem` false without running) and `TestAFlagSentFalseChangesWhatTheInstanceReads` (the probe class gains an `Add` method holding an `INSERT`; gather 30 statements skipping inserts, more including them; Index usage more probe rows with `SkipIdKeys` false). No product code changed. Class 11/11 green.
+  - mutation: `AnalysisCall` swaps the `tInserts` and `tIdKeys` keys -> both new tests red (recording: SkipInserts and SkipIdKeys legs; live: both comparisons 30 then 30, 3 then 3). mutation: swaps `tSystem` and `tInserts` -> recording test red (SkipSystem and SkipInserts legs). Each reverted (md5 of `SqlPort.cls` equal to before), reloaded, green.
+- P2 done. The browser spec's `fresh()` and `seed(run)` give each test its own start; every test passes alone (`--test-name-pattern`), the file passes whole, and `system-explorer-sql-runtime-stats` then this spec as separate runs and the two in one run pass. `SeedAnalysis` takes an optional `pRun` (default 1, behavior unchanged).
+  - mutation: the Run report test starts from `fresh()` instead of `seed(false)` -> that test alone red (the run is refused with nothing gathered). Reverted.
+- P3 done. mutation: `Indexed` splices the schema and table into the class read's text instead of binding them -> `SqlAdviceRead.TestTheDictionaryReadsBindTheNamesTheyAreGiven` red on the three quote legs. Reverted (md5 equal), reloaded, class 10/10 green.
+- P4 done. `SqlIndexAnalysisRead` compares `ReasonFor` of GATHER, GATHERSYSTEM, RUN and PURGE with the ruled sentences literally. mutation: `AtelierError.SqlReasonFor` drops the GATHER row -> "the gather's sentence is the ruled one" alone red. Reverted (md5 equal); class 7/7 green.
+- P5 done. The refused-send test stubs a sentence no client string holds and asserts the dialog shows it. mutation: the page sets a client sentence on a refusal -> that test red. Reverted (md5 equal); file 11/11 green.
+- P6 done. The `SqlIndexAnalysisWrite` header no longer claims a value outside its shape, and now names the skip flag mapping.
+
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap -- Task 0 measured two results the AD-7/AD-51 ruling does not cover (no code written, no batch committed; baseline adba0163090595157c60cccce50739acee74e496).
+Status: done
+Blocking condition: none
 
-- Task 0 (a)-(i) is measured and recorded under Verification, "Task 0 results".
-- Gap 1, Gather's duration: on HSCUSTOM, Gather with `SkipSystem` false takes 45.5-46.3 s (x1.5 = 68-69 s, over the 60 s gateway bound); with `SkipSystem` true 2.6-3.0 s. The ruling sends such an operation to "Story 24.16's background-run form", but the spine records 24.16's purge, export and archive as running in their confirm or action request (named limit: the answer is lost when the gateway times out), and `Kernel/Shell/BackgroundRun` is read-kind only (AD-7: background runs never mutate). No mutating background form exists to use.
-- Gap 2, Gather's extra write: every gather kills and sets `^oddDEP` (class dependency data) in the namespace's code database (USER `SkipSystem` true 542 kills + 1,084 sets; `SkipSystem` false 107,329 + 214,658). Reports write only `^%sqlcq` PTools nodes. The AD-51 and AD-7 texts name neither. Advise (Explain and the two dictionary reads) wrote nothing, so the AD-7 clause "its only side effect is the statement-index row" is unsupported; no other write was measured for Advise.
-- Recommended amendment: (1) Gather runs in its confirm or action request as 24.16's writes do, with the named limit "a gather that outlasts the Web Gateway's response timeout runs to its end in that request's process and its answer is lost"; the Gather consequence names the cost of unchecking Skip system classes and routines only if a string is ruled for it. Alternative the orchestrator may prefer: refuse `SkipSystem` false on Gather (narrows the classic page; owner-class scope call). (2) AD-51/AD-7 text for Gather adds "and rewrites the namespace's class dependency data (`^oddDEP`), as the classic Gather does". (3) AD-7's advice clause becomes "writes nothing (measured)". Measured decisions that need no ruling: Run precondition on `Statements` for all five reports, Run consequence as ruled, `.BUSY` is needed (a report holds `^%sqlcq(ns,"PTools","util","SQLAnlsys")`; a Gather or Purge during a report empties its input), Match names as ruled, least-privileged pairs are `%Development:USE` + `WritePairs(ns)`.
-- Resume: re-dispatch on this spec with the rulings; Task 0 need not be repeated (fixtures are in `.coordination/e21-kit/21-27/impl/plans/`).
+This pass (re-dispatch after the Task 0 rulings, baseline 23762d9606527ff542274e0d939ba0e17b3b0c6e):
+
+- **Implemented.** The two new measurements (the classic dialog's default; the gather finishing after the gateway gave up, with the `.BUSY` half on the real endpoint) are under Verification. Batch 1 (analyzer list, Gather, Run report and Purge analysis under the namespace lock, null-device helper in `Kernel/Utils`, three tools, descriptor, entity type, governance, rosters), Batch 2 (`SqlAdvice`, `Plan` with advise on both callers, `explorer.sqladvice.read`, `slowquery` step naming both reads), Batch 3 (the page, the dialog, Advise on SQL query, strings, browser spec) and Batch 3b (Gather statements as the primary action, Run report as a screen-level action) are committed as 519defe98, e25a5b351, f67156f5d and 0d0bb32fd; review patches P1-P6 ride the finalize commit.
+- **Review.** Pass 1, 13 findings (Review Triage Log): patched 2 medium and 4 low (test and comment fixes), deferred 1 low (`advice.truncated` not shown), rejected 2 low and 4 false, each with its reason in the log.
+- **Verification.** On `ocupilot-ci`: `LOADERRORS=0`; `SqlIndexAnalysisWrite` 11, `SqlIndexAnalysisRead` 7, `SqlAdviceRead` 10, `AdvisorWrite` 5, `AdvisorRead` 9, `ConfirmNamespaceRoster` 3, `PortGate` 4, `SqlTuningWrite` 4, `SqlConsoleRoutes` 8, `WorkflowCatalog` 10, `SqlRuntimeStatsRead` 10, `Prohibited` 22, all green; `npm run build` clean, `test:components` 3982, `test:tools` 2415, the six node files 395, `check-objectscript` 0 problems; browser `system-explorer-sql-index-analysis` 6 and `system-explorer-sql-runtime-stats` 4, both orders. The runner owns the full sweep, the smoke and the fresh check.
+- **Follow-up review recommended: true.** Two medium findings were patched. The unverified risk: `SkipSystem` false reaches the vendor's first positional argument only through the recording seam, never against the vendor, because that gather takes 45 s.
+- **Residual risks.** Purge analysis is a row action, so a namespace holding only gathered statements is purged after a report row exists. The advice refusal for a non-query runs after the console's typing prepare. The second agent invitation, "run an index analyzer report", has no place in the descriptor. The Gather consequence is one joined sentence (Batch 1 results).
+
+The Task 0 gaps of the first pass closed at the Spec Change Log's ruling item 2 (veto U-169).

@@ -1,7 +1,7 @@
 /// <p>Pins Story 21.27's three writes on both permitted callers (AC1, AC2; AD-4, AD-6, AD-7, AD-21, AD-51, AD-53, AD-58): the namespace's statements gathered
 /// by the list's Gather statements and by the agent's confirmed proposal, each of the five reports run by both, the list's rows equal to the agent's read
 /// and to a bound read of the vendor's own table, a report replacing only its own rows, a purge removing both stores of the namespace and no other's, the
-/// refusals before any call (a report with nothing gathered, a purge with nothing to purge, a value outside its shape), a proposal whose analysis changed
+/// refusals before any call (a report with nothing gathered, a purge with nothing to purge), each skip flag reaching its position of the vendor's call, a proposal whose analysis changed
 /// after it was minted closed target-changed, the instance's own refusal answered 409 <code>SQL.INDEXANALYSIS.VENDOR</code> with its message in
 /// <code>detail</code> alone, a namespace whose analysis lock another process holds answered 409 <code>SQL.INDEXANALYSIS.BUSY</code> with nothing called,
 /// and the lock released on every exit.</p>
@@ -98,7 +98,7 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAnalysis", ..#OTHERNAMESPACE), "and the analysis of " _ ..#OTHERNAMESPACE)
     Set tCounts = $ClassMethod(..#PROBE, "AnalysisCounts", ..#NAMESPACE)
     Do $$$AssertEquals(tCounts.%Get("IU") + tCounts.%Get("TS") + tCounts.%Get("TI") + tCounts.%Get("JI") + tCounts.%Get("OI"), 0, "none of the probe table's report rows is left")
-    Kill ^||OcuPilotDatabaseWritePort
+    Kill ^||OcuPilotDatabaseWritePort, ^||OcuPilotSqlTuningVendorArmed, ^||OcuPilotSqlTuningVendor
     Kill ^OcuPilotTestAnalysisLock
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Do $ClassMethod(..#SEAM, "Reset")
@@ -213,6 +213,63 @@ Method TestTheAgentGathersAndRunsEachReportAndAnAbsentFlagIsTrue()
     Set tQuery("Report") = "TS"
     Set tSC = $ClassMethod(..#FIXTURE, "Invoke", "IndexAnalysis", "RUNREPORT", .tQuery, "", .tAnswer, .tHttp, .tFault)
     Do $$$AssertEquals($ClassMethod(..#SEAM, "StatementCalls"), "GATHER|{""SkipSystem"":1,""SkipInserts"":1};RUNREPORT|{""Report"":""TS"",""SkipSystem"":0,""SkipInserts"":1,""SkipIdKeys"":1}", "an absent flag is sent as 1 and a flag sent false as 0")
+}
+
+/// <p>AC2. Each skip flag sent false, the other two true, reaches the vendor's positional argument the classic page gives it, for the gather and each of the
+/// five reports, observed on the vendor call without making it (so <code>SkipSystem</code> false, which takes a minute to gather, is covered too).</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.AnalysisCall</code> reads <code>tInserts</code> from the <code>SkipIdKeys</code> key and
+/// <code>tIdKeys</code> from the <code>SkipInserts</code> key -> the inserts and ID key legs go red; it swaps <code>tSystem</code> and <code>tInserts</code>
+/// the same way -> the system and inserts legs go red.</p>
+Method TestEachSkipFlagReachesItsPositionOfTheVendorCall()
+{
+    Set tClears = "clearSQLStatements(USER);clearSQLAnalysisDB(USER)"
+    Set ^||OcuPilotSqlTuningVendorArmed = 1
+    For tFlag = "SkipSystem", "SkipInserts", "SkipIdKeys" {
+        Set tS = (tFlag '= "SkipSystem")
+        Set tI = (tFlag '= "SkipInserts")
+        Set tK = (tFlag '= "SkipIdKeys")
+        Kill ^||OcuPilotSqlTuningVendor
+        Set tValues = {"SkipSystem": (tS), "SkipInserts": (tI), "SkipIdKeys": (tK)}
+        Set tSC = $ClassMethod(..#FIXTURE, "StatementCall", "GATHER", "", ..#NAMESPACE, tValues.%ToJSON())
+        Do $$$AssertEquals(..Recorded(), tClears _ ";getAllSQLStmts(1," _ tS _ "," _ tI _ ",0,0)", tFlag _ " false: the gather's vendor calls")
+        For tCase = $ListBuild("IU", "indexUsage(1,1,0," _ tS _ "," _ tK _ "," _ tI _ ",0)"), $ListBuild("TS", "tableScans(1,0," _ tS _ "," _ tI _ ",0)"), $ListBuild("TI", "tempIndices(1,0," _ tS _ "," _ tI _ ",0)"), $ListBuild("JI", "joinIndices(1,0," _ tS _ "," _ tI _ ",0)"), $ListBuild("OI", "outlierIndices(1,0," _ tS _ "," _ tI _ ",0)") {
+            Kill ^||OcuPilotSqlTuningVendor
+            Do tValues.%Set("Report", $List(tCase, 1), "string")
+            Set tSC = $ClassMethod(..#FIXTURE, "StatementCall", "RUNREPORT", "", ..#NAMESPACE, tValues.%ToJSON())
+            Do $$$AssertEquals(..Recorded(), $List(tCase, 2), tFlag _ " false: the " _ $List(tCase, 1) _ " report's vendor call")
+        }
+    }
+    Kill ^||OcuPilotSqlTuningVendorArmed, ^||OcuPilotSqlTuningVendor
+}
+
+/// <p>The vendor calls recorded since the last <code>Kill</code> of <code>^||OcuPilotSqlTuningVendor</code>, in order, joined by <code>;</code>.</p>
+ClassMethod Recorded() As %String
+{
+    Set tText = ""
+    For tIndex = 1:1:+$Get(^||OcuPilotSqlTuningVendor) Set tText = tText _ $Select(tIndex > 1: ";", 1: "") _ $Get(^||OcuPilotSqlTuningVendor(tIndex))
+    Quit tText
+}
+
+/// <p>AC2. The same two flags sent false to the instance itself: a gather that includes INSERT statements reads more statements than one that skips them,
+/// and an index usage report that includes the IDKEY indices holds more of the probe table's rows than one that skips them.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.AnalysisCall</code> reads <code>tInserts</code> from the <code>SkipIdKeys</code> key and
+/// <code>tIdKeys</code> from the <code>SkipInserts</code> key -> both comparisons go red.</p>
+Method TestAFlagSentFalseChangesWhatTheInstanceReads()
+{
+    Set tStatus = ..Act("gather", {"SkipSystem": "true", "SkipInserts": "true"})
+    Set tSkipped = +$Piece(..Counts(), "|", 1)
+    Set tStatus = tStatus _ "|" _ ..Act("gather", {"SkipSystem": "true", "SkipInserts": "false"})
+    Set tIncluded = +$Piece(..Counts(), "|", 1)
+    Do $$$AssertEquals(tStatus, "200|200", "both gathers answer")
+    Do $$$AssertTrue((tSkipped > 0) && (tIncluded > tSkipped), "a gather that includes INSERT statements reads more: " _ tSkipped _ " then " _ tIncluded)
+    Set tStatus = ..Act("run", ..RunValues("IU"))
+    Set tWithout = +$Piece(..Counts(), "|", 2)
+    Set tValues = ..RunValues("IU")
+    Do tValues.%Set("SkipIdKeys", "false", "string")
+    Set tStatus = tStatus _ "|" _ ..Act("run", tValues)
+    Set tWith = +$Piece(..Counts(), "|", 2)
+    Do $$$AssertEquals(tStatus, "200|200", "both index usage reports answer")
+    Do $$$AssertTrue((tWithout > 0) && (tWith > tWithout), "a report that includes the IDKEY indices holds more of the probe table's rows: " _ tWithout _ " then " _ tWith)
 }
 
 /// <p>AC1. The list's rows are the agent's <code>explorer.sqlindexanalysis.read</code> rows under the same view and the instance's own: the rows of the probe

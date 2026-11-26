@@ -62,7 +62,7 @@ ClassMethod Declaration(pClass As %String) As %DynamicObject
 /// actions and the classic page it replaces. The three tools name their port, endpoint and request types, take the values they declare and state their
 /// consequence codes, the gather's naming the system classes when they are included.</p>
 /// <p>Mutation (Rule 19): <code>OcuPilot.Screen.Tool.ExplorerSqlIndexAnalysisGather.Consequence</code> ignores <code>SkipSystem</code> -> the system-classes
-/// consequence assertion goes red.</p>
+/// consequence assertion goes red; <code>OcuPilot.Api.AtelierError.ReasonFor</code> drops the gather's row -> the gather's sentence assertion goes red.</p>
 Method TestTheScreenAndTheToolsDeclareTheirShape()
 {
     Set tList = ..Declaration(..#LIST)
@@ -86,8 +86,11 @@ Method TestTheScreenAndTheToolsDeclareTheirShape()
     Do $$$AssertEquals($ListToString($ClassMethod(..#GATHER, "SettableFields")) _ "|" _ $ListToString($ClassMethod(..#RUN, "SettableFields")) _ "|" _ ($ClassMethod(..#PURGE, "SettableFields") = ""), "SkipSystem,SkipInserts|Report,SkipSystem,SkipInserts,SkipIdKeys|1", "each tool declares the values it takes, and the purge none")
     Do $$$AssertEquals($ListToString($ClassMethod(..#GATHER, "RequiredFields")) _ "|" _ $ListToString($ClassMethod(..#RUN, "RequiredFields")), "|Report", "no gather value is required and the run requires its report")
     Do $$$AssertEquals($ClassMethod(..#GATHER, "Consequence", {}) _ "|" _ $ClassMethod(..#GATHER, "Consequence", {"SkipSystem": true}) _ "|" _ $ClassMethod(..#GATHER, "Consequence", {"SkipSystem": false}) _ "|" _ $ClassMethod(..#RUN, "Consequence", {}) _ "|" _ $ClassMethod(..#PURGE, "Consequence", {}), "SQL.INDEXANALYSIS.GATHER|SQL.INDEXANALYSIS.GATHER|SQL.INDEXANALYSIS.GATHERSYSTEM|SQL.INDEXANALYSIS.RUN|SQL.INDEXANALYSIS.PURGE", "a gather states the system classes' sentence only when they are included")
-    Do $$$AssertEquals($ClassMethod(..#PORT, "ReasonFor", "SQL.INDEXANALYSIS.GATHERSYSTEM") [ $ClassMethod(..#PORT, "ReasonFor", "SQL.INDEXANALYSIS.GATHER"), 1, "and that sentence is the plain one with the system classes' sentence after it")
-    Do $$$AssertTrue($ClassMethod(..#PORT, "ReasonFor", "SQL.INDEXANALYSIS.GATHERSYSTEM") [ "Gathering system classes and routines takes longer than the page waits; the list shows the result when it finishes.", "it names that the gathering outlasts the page")
+    Set tGather = "A new gathering of this namespace's cached queries, class methods, class queries and routines replaces its gathered statements and every report's results, and rebuilds its class dependency data."
+    Do $$$AssertEquals($ClassMethod(..#PORT, "ReasonFor", "SQL.INDEXANALYSIS.GATHER"), tGather, "the gather's sentence is the ruled one")
+    Do $$$AssertEquals($ClassMethod(..#PORT, "ReasonFor", "SQL.INDEXANALYSIS.GATHERSYSTEM"), tGather _ " Gathering system classes and routines takes longer than the page waits; the list shows the result when it finishes.", "the system classes' sentence is the plain one with the gathering outlasting the page said after it")
+    Do $$$AssertEquals($ClassMethod(..#PORT, "ReasonFor", "SQL.INDEXANALYSIS.RUN"), "This report's earlier results in this namespace are replaced.", "the run's sentence is the ruled one")
+    Do $$$AssertEquals($ClassMethod(..#PORT, "ReasonFor", "SQL.INDEXANALYSIS.PURGE"), "This namespace's gathered statements and every report's results are removed. Gather statements again before running a report.", "the purge's sentence is the ruled one")
 }
 
 /// <p>AD-35, AD-61 rule 7. The statement the list sends reads the vendor's result table with its statement joined through the pointer, binds nothing,

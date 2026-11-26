@@ -56,11 +56,26 @@ function count(code) {
   return probe(`A${code}`, `##class(${PROBE}).AnalysisCounts("${NS}").%Get("${code}")`).value;
 }
 
-/** Gather the namespace's statements and run Index usage over them, as the vendor does, so the list has rows for Purge analysis to select. */
-function seed() {
-  const seeded = probe('ASEED', `$System.Status.IsOK(##class(${PROBE}).SeedAnalysis("${NS}"))`);
+const CODES = ['Statements', 'IU', 'TS', 'TI', 'JI', 'OI'];
+
+/** Put the probe back as `MakeAnalysis` leaves it: its table and class made, and no gathered statement or analysis row in the namespace. */
+function fresh() {
+  const made = probe('AMADE', `$System.Status.IsOK(##class(${PROBE}).MakeAnalysis("${NS}"))`);
+  assert.equal(made.value, '1', `the probe objects are created: ${made.output}`);
+  for (const code of CODES) assert.equal(count(code), '0', `the namespace starts with no ${code} analysis, as MakeAnalysis leaves it`);
+}
+
+/**
+ * Start from `fresh`, then gather the namespace's statements, and run Index usage over them when `run` is true, as the vendor does, so the list has the
+ * state the test needs.
+ */
+function seed(run = true) {
+  fresh();
+  const seeded = probe('ASEED', `$System.Status.IsOK(##class(${PROBE}).SeedAnalysis("${NS}", ${run ? 1 : 0}))`);
   assert.equal(seeded.value, '1', `the probe's analysis is seeded: ${seeded.output}`);
-  assert.notEqual(count('IU'), '0', 'the probe table has Index usage rows');
+  assert.notEqual(count('Statements'), '0', 'the namespace holds gathered statements');
+  if (run) assert.notEqual(count('IU'), '0', 'the probe table has Index usage rows');
+  else assert.equal(count('IU'), '0', 'and no report row');
 }
 
 before(async () => {
@@ -68,11 +83,7 @@ before(async () => {
   await assertThrowaway(config);
   assert.match(config.container, /-ci$/, `this spec gathers and purges the index analysis on the instance, so it runs only in a throwaway; ${config.container} is not one`);
   touched = true; // from here on, `after` removes what MakeAnalysis created, even when it fails part-way
-  const made = probe('AMADE', `$System.Status.IsOK(##class(${PROBE}).MakeAnalysis("${NS}"))`);
-  assert.equal(made.value, '1', `the probe objects are created: ${made.output}`);
-  for (const code of ['Statements', 'IU', 'TS', 'TI', 'JI', 'OI']) {
-    assert.equal(count(code), '0', `the namespace starts with no ${code} analysis, as MakeAnalysis leaves it`);
-  }
+  fresh();
   browser = await puppeteer.launch(launchOptions(config));
 });
 
@@ -83,9 +94,7 @@ after(async () => {
     if (touched && /-ci$/.test(config.container)) {
       const removed = probe('AGONE', `$System.Status.IsOK(##class(${PROBE}).RemoveAnalysis("${NS}"))`);
       assert.equal(removed.value, '1', `the probe objects are removed: ${removed.output}`);
-      for (const code of ['Statements', 'IU', 'TS', 'TI', 'JI', 'OI']) {
-        assert.equal(count(code), '0', `no ${code} row of the probe's analysis is left`);
-      }
+      for (const code of CODES) assert.equal(count(code), '0', `no ${code} row of the probe's analysis is left`);
     }
   }
 });
@@ -185,6 +194,7 @@ async function confirmWarning(page, consequence) {
 }
 
 test('AC1: on a namespace with no analysis the screen offers Gather statements and Run report with no row selected', async () => {
+  fresh();
   const { context, page } = await signedInAt(browser, config, LIST_ROUTE, VIEWPORTS.wide);
   try {
     await answeredEmpty(page);
@@ -204,6 +214,7 @@ test('AC1: on a namespace with no analysis the screen offers Gather statements a
 });
 
 test('AC2: Gather statements, with no row selected, asks, confirms and gathers the namespace\'s statements', async () => {
+  fresh();
   const { context, page } = await signedInAt(browser, config, LIST_ROUTE, VIEWPORTS.wide);
   try {
     await answeredEmpty(page);
@@ -240,10 +251,10 @@ async function runReport(page, code, name) {
 }
 
 test('AC2: Run report, with no row selected, asks for the report, confirms and lists the probe\'s Index usage and Table scan rows', async () => {
+  seed(false);
   const { context, page } = await signedInAt(browser, config, LIST_ROUTE, VIEWPORTS.wide);
   try {
     await answeredEmpty(page);
-    assert.notEqual(count('Statements'), '0', 'the statements the earlier test gathered are still there, which a report is run over');
     await runReport(page, 'IU', STRINGS.sqlIndexAnalysisReportIU);
     const shown = await probeRows(page);
     assert.ok(shown.every((cells) => cells[COLUMN.report] === STRINGS.sqlIndexAnalysisReportIU), `each reads Index usage: ${JSON.stringify(shown)}`);
@@ -256,6 +267,7 @@ test('AC2: Run report, with no row selected, asks for the report, confirms and l
 });
 
 test('AC3: Advise on SQL query shows Missing index for the probe\'s condition, and the note', async () => {
+  fresh();
   const { context, page } = await signedInAt(browser, config, QUERY_ROUTE, VIEWPORTS.wide);
   try {
     await waitForMapAnswered(page, config.navigationTimeoutMs);
@@ -283,10 +295,10 @@ test('AC3: Advise on SQL query shows Missing index for the probe\'s condition, a
 });
 
 test('AC2: a second Gather statements replaces the statements and every report\'s results', async () => {
+  seed();
   const { context, page } = await signedInAt(browser, config, LIST_ROUTE, VIEWPORTS.wide);
   try {
     await answered(page);
-    assert.notEqual(count('IU'), '0', 'the reports the earlier test ran are still there to be replaced');
     await bar(page, STRINGS.sqlIndexAnalysisGatherAction);
     const consequence = await openedDialog(page, STRINGS.sqlIndexAnalysisGatherAction);
     assert.equal(consequence, STRINGS.sqlIndexAnalysisGatherConsequence, 'the dialog states what the gathering does, with system classes and routines skipped');

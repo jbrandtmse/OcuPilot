@@ -215,16 +215,15 @@ describe('the SQL index analyzer page', () => {
 
   // Mutation (Rule 19): close the dialog on a refused send -> the dialog assertions go red, and the refusal is lost.
   it('keeps a refused send in the dialog as the instance\'s own sentence, and sends again on Proceed', async () => {
-    const { fixture, host, actions, calls } = mount([
-      refused('SQL.INDEXANALYSIS.NOSTATEMENTS', STRINGS.sqlIndexAnalysisRefusalNoStatements),
-      applied(SQL_TUNING_ALL_TARGET),
-    ]);
+    const sentence = 'The instance answered this sentence, which no client string holds.';
+    expect(sentence).not.toBe(STRINGS.sqlIndexAnalysisRefusalNoStatements);
+    const { fixture, host, actions, calls } = mount([refused('SQL.INDEXANALYSIS.NOSTATEMENTS', sentence), applied(SQL_TUNING_ALL_TARGET)]);
     actions.run(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_RUN_ACTION_ID);
     await settle(fixture);
     (slot(host, 'proceed') as HTMLButtonElement).click();
     await settle(fixture);
     expect(slot(host, 'refusal')?.getAttribute('role')).toBe('alert');
-    expect(slot(host, 'refusal')?.textContent?.trim()).toBe(STRINGS.sqlIndexAnalysisRefusalNoStatements);
+    expect(slot(host, 'refusal')?.textContent?.trim()).toBe(sentence);
     expect(slot(host, 'consequence')).not.toBeNull();
     (slot(host, 'proceed') as HTMLButtonElement).click();
     await settle(fixture);

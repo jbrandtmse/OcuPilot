@@ -41,6 +41,17 @@ ClassMethod TableCall(pType As %String, pTarget As %String, pValues As %String, 
     Quit tStatus
 }
 
+/// <p>The index analysis vendor call (Story 21.27), recorded as <code>method(arguments)</code>, in order, in <code>^||OcuPilotSqlTuningVendor</code> while
+/// <code>^||OcuPilotSqlTuningVendorArmed</code> is set, and then answered <code>$$$OK</code> without calling the instance; the production call otherwise.</p>
+ClassMethod AnalysisVendor(pNamespace As %String, pMethod As %String, pArgs...) As %Status [ Private ]
+{
+    If '$Get(^||OcuPilotSqlTuningVendorArmed) Quit ##super(pNamespace, pMethod, pArgs...)
+    Set tText = ""
+    For tIndex = 1:1:pArgs Set tText = tText _ $Select(tIndex > 1: ",", 1: "") _ pArgs(tIndex)
+    Set ^||OcuPilotSqlTuningVendor($Increment(^||OcuPilotSqlTuningVendor)) = pMethod _ "(" _ tText _ ")"
+    Quit $$$OK
+}
+
 /// <p>The field's read, which raises while a table call runs where <method>OcuPilot.Test.SqlTuningGateSeam.Throw</method> armed it: the one read a
 /// selectivity's setter makes inside its guarded block, after the collected statistics were saved.</p>
 ClassMethod FieldRead(pSchema As %String, pTable As %String, pField As %String, Output pRow As %DynamicObject) As %Status [ Private ]

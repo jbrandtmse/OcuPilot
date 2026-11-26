@@ -660,7 +660,7 @@ ClassMethod RemoveStats(pNamespace As %String, pToken As %String = {..#STATSTOKE
 /// <p>Story 21.27's probe: the table <parameter>ANALYSISTABLE</parameter>, with two indexed columns (<code>A</code> and <code>C</code>), one unindexed
 /// column (<code>B</code>) and one row, and the class <parameter>ANALYSISCLASS</parameter>, whose methods hold the embedded SQL the index analyzer
 /// gathers: a scan of the table on the unindexed column, a join of the table with itself on the indexed column <code>C</code>, which the join report finds
-/// an exact index for, and a join on the unindexed column.</p>
+/// an exact index for, a join on the unindexed column, and an <code>INSERT</code> that a gathering skips only when asked to skip inserts.</p>
 Parameter ANALYSISSCHEMA = "OcuProbe227";
 
 Parameter ANALYSISTABLE = "OcuProbe227.T";
@@ -686,14 +686,14 @@ ClassMethod MakeAnalysis(pNamespace As %String) As %Status
         If $$$ISERR(tSC) Quit
         Set tClass = ##class(%Dictionary.ClassDefinition).%New(..#ANALYSISCLASS)
         Set tClass.Super = "%RegisteredObject"
-        For tMethod = $ListBuild("Scan", "SELECT COUNT(*) INTO :c FROM " _ ..#ANALYSISTABLE _ " WHERE B = 'x'"), $ListBuild("Join", "SELECT COUNT(*) INTO :c FROM " _ ..#ANALYSISTABLE _ " a, " _ ..#ANALYSISTABLE _ " b WHERE a.C = b.C"), $ListBuild("JoinB", "SELECT COUNT(*) INTO :c FROM " _ ..#ANALYSISTABLE _ " a, " _ ..#ANALYSISTABLE _ " b WHERE a.B = b.B") {
+        For tMethod = $ListBuild("Scan", "SELECT COUNT(*) INTO :c FROM " _ ..#ANALYSISTABLE _ " WHERE B = 'x'"), $ListBuild("Join", "SELECT COUNT(*) INTO :c FROM " _ ..#ANALYSISTABLE _ " a, " _ ..#ANALYSISTABLE _ " b WHERE a.C = b.C"), $ListBuild("JoinB", "SELECT COUNT(*) INTO :c FROM " _ ..#ANALYSISTABLE _ " a, " _ ..#ANALYSISTABLE _ " b WHERE a.B = b.B"), $ListBuild("Add", "INSERT INTO " _ ..#ANALYSISTABLE _ " (A, B, C) VALUES (2, 'z', 'w')", 0) {
             Set tDefinition = ##class(%Dictionary.MethodDefinition).%New(..#ANALYSISCLASS _ "||" _ $List(tMethod, 1))
             Set tDefinition.parent = tClass
             Set tDefinition.Name = $List(tMethod, 1)
             Set tDefinition.ClassMethod = 1
             Set tDefinition.ReturnType = "%Integer"
             Do tDefinition.Implementation.WriteLine(" &sql(" _ $List(tMethod, 2) _ ")")
-            Do tDefinition.Implementation.WriteLine(" Quit c")
+            Do tDefinition.Implementation.WriteLine(" Quit " _ $Select($ListLength(tMethod) > 2: $List(tMethod, 3), 1: "c"))
         }
         Set tSC = tClass.%Save()
         If $$$ISERR(tSC) Quit
@@ -727,9 +727,10 @@ ClassMethod RemoveAnalysis(pNamespace As %String) As %Status
     Quit tSC
 }
 
-/// <p>Gather <var>pNamespace</var>'s statements, system classes and INSERT statements skipped, and run the index usage report over them, as the vendor's own
-/// calls do, so a screen opened afterwards lists the probe table's rows. A process that is not serving a request writes nothing to its device.</p>
-ClassMethod SeedAnalysis(pNamespace As %String) As %Status
+/// <p>Gather <var>pNamespace</var>'s statements, system classes and INSERT statements skipped, and, when <var>pRun</var> is 1, run the index usage report
+/// over them, as the vendor's own calls do, so a screen opened afterwards lists the probe table's rows. A process that is not serving a request writes
+/// nothing to its device.</p>
+ClassMethod SeedAnalysis(pNamespace As %String, pRun As %Boolean = 1) As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
@@ -740,7 +741,7 @@ ClassMethod SeedAnalysis(pNamespace As %String) As %Status
         Do ##class(%SYS.PTools.UtilSQLAnalysis).clearSQLAnalysisDB(tName)
         Set tResult = ##class(%SYS.PTools.UtilSQLAnalysis).getAllSQLStmts(1, 1, 1, 0, 0)
         If (tResult '= "") && $$$ISERR(tResult) Set tSC = tResult
-        If $$$ISOK(tSC) {
+        If $$$ISOK(tSC) && pRun {
             Set tResult = ##class(%SYS.PTools.UtilSQLAnalysis).indexUsage(1, 1, 0, 1, 1, 1, 0)
             If (tResult '= "") && $$$ISERR(tResult) Set tSC = tResult
         }
