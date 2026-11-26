@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:678 */
+  /** EXPERIENCE.md:679 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5572,6 +5572,45 @@ export const STRINGS = {
   explorerSqlIndexAnalysisPrompt1: 'Which indices are never used?',
   explorerSqlIndexAnalysisPrompt2: 'Which queries scan a whole table?',
   explorerSqlIndexAnalysisPrompt3: 'Which queries need an index for a join?',
+  // Story 21.27: the analyzer's three page actions, the dialog fields, the five report names, the consequences and refusals the actions state, and Advise on
+  // SQL query with its findings. Each consequence and refusal is the sentence the server sends. The High and Low confidence names are taskPriorityHigh and
+  // taskPriorityLow, and the Recommendation header is securityAdvisorColumnRecommendation.
+  sqlIndexAnalysisGatherAction: 'Gather statements',
+  sqlIndexAnalysisRunAction: 'Run report',
+  sqlIndexAnalysisPurgeAction: 'Purge analysis',
+  sqlIndexAnalysisSkipSystemLabel: 'Skip system classes and routines',
+  sqlIndexAnalysisSkipInsertsLabel: 'Skip INSERT statements',
+  sqlIndexAnalysisSkipIdKeysLabel: 'Skip IDKEY indices (Index usage only)',
+  sqlIndexAnalysisReportIU: 'Index usage',
+  sqlIndexAnalysisReportTS: 'Table scan',
+  sqlIndexAnalysisReportTI: 'Temporary index',
+  sqlIndexAnalysisReportJI: 'Missing join index',
+  sqlIndexAnalysisReportOI: 'Outlier index',
+  sqlIndexAnalysisGatherConsequence:
+    'A new gathering of this namespace\'s cached queries, class methods, class queries and routines replaces its gathered statements and every report\'s results, and rebuilds its class dependency data.',
+  sqlIndexAnalysisGatherSystemConsequence:
+    'A new gathering of this namespace\'s cached queries, class methods, class queries and routines replaces its gathered statements and every report\'s results, and rebuilds its class dependency data. Gathering system classes and routines takes longer than the page waits; the list shows the result when it finishes.',
+  sqlIndexAnalysisRunConsequence: 'This report\'s earlier results in this namespace are replaced.',
+  sqlIndexAnalysisPurgeConsequence:
+    'This namespace\'s gathered statements and every report\'s results are removed. Gather statements again before running a report.',
+  sqlIndexAnalysisRefusalNoRows: 'This namespace holds no index analysis.',
+  sqlIndexAnalysisRefusalNoStatements: 'Gather this namespace\'s statements before running this report.',
+  sqlIndexAnalysisRefusalReport: 'Choose Index usage, Table scan, Temporary index, Missing join index or Outlier index.',
+  sqlIndexAnalysisRefusalBusy: 'An index analysis is already running in this namespace.',
+  sqlIndexAnalysisRefusalVendor: 'The instance did not complete this index analysis.',
+  sqlAdviceAction: 'Advise',
+  sqlAdviceRefusal: 'Advice reads a query\'s plan, so it takes a query only.',
+  sqlAdviceKindFullScan: 'Full table scan',
+  sqlAdviceKindMissingIndex: 'Missing index',
+  sqlAdviceKindNotTuned: 'Table not tuned',
+  sqlAdviceKindTempFile: 'Temporary file',
+  sqlAdviceKindUnusedIndex: 'Unused index',
+  sqlAdviceConfidenceMedium: 'Medium',
+  sqlAdviceColumnFinding: 'Finding',
+  sqlAdviceColumnConfidence: 'Confidence',
+  sqlAdviceNote: 'Advice is read from this one plan and its tables\' indices. Check it against the real workload.',
+  sqlAdviceEmpty: 'OcuPilot found nothing to advise for this plan.',
+  sqlAdviceUnrecognized: 'OcuPilot did not recognize this plan\'s format, so it offers no advice.',
   sqlRuntimeStatsPurgeAction: 'Purge statistics',
   explorerSqlPlanWithStatistics: 'Plan with statistics',
   sqlRuntimeStatsPurgeConsequence: 'This namespace\'s runtime statistics are removed. New statistics are recorded only while collection is on.',

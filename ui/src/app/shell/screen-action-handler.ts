@@ -179,6 +179,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 21.26: SQL runtime statistics, whose Purge statistics warns first, and Runtime statistics collection, whose Set value its settings page's dialog sends.
   'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStats',
   'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStatsSettings',
+  // Story 21.27: SQL index analyzer, whose Purge analysis warns first and whose Gather statements and Run report send the choices their dialogs ask for.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlIndexAnalysis',
   'OcuPilot.Screen.Descriptor.ExplorerSqlTable',
   'OcuPilot.Screen.Descriptor.ExplorerSqlIndices',
   'OcuPilot.Screen.Descriptor.ExplorerSqlSchema',
@@ -362,6 +364,16 @@ export const SQL_RUNTIME_STATS_PURGE = 'purge';
 export const SQL_CACHED_QUERY_PURGE_TABLE = 'purge-table';
 export const SQL_CACHED_QUERY_PURGE_NAMESPACE = 'purge-namespace';
 export const SQL_TUNING_ALL_TARGET = '*';
+
+/**
+ * SQL index analyzer (Story 21.27): its three page actions, each on `SQL_TUNING_ALL_TARGET`. Purge analysis warns first. Gather statements and Run report
+ * are the page's own: its dialog asks for the choices they declare (`SkipSystem`, `SkipInserts`, and for the run `Report` and `SkipIdKeys`) and sends them
+ * through the handler's `sendFor`.
+ */
+export const EXPLORER_SQL_INDEX_ANALYSIS = 'OcuPilot.Screen.Descriptor.ExplorerSqlIndexAnalysis';
+export const SQL_INDEX_ANALYSIS_GATHER = 'gather';
+export const SQL_INDEX_ANALYSIS_RUN = 'run';
+export const SQL_INDEX_ANALYSIS_PURGE = 'purge';
 
 /**
  * A SQL table's Table info and Indices tabs (Story 21.25). The Indices tab's Rebuild index is a row action on the selected index's composite id,
@@ -653,6 +665,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // SQL runtime statistics' page registers Purge statistics itself, on the namespace's whole store, and the Runtime statistics collection page Set value (Story 21.26).
   [EXPLORER_SQL_RUNTIME_STATS]: [SQL_RUNTIME_STATS_PURGE],
   'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStatsSettings': ['set'],
+  // SQL index analyzer's page registers its three actions itself, each on the namespace's whole analysis (Story 21.27).
+  [EXPLORER_SQL_INDEX_ANALYSIS]: [SQL_INDEX_ANALYSIS_GATHER, SQL_INDEX_ANALYSIS_RUN, SQL_INDEX_ANALYSIS_PURGE],
   // The Table info tab's page registers Rebuild all indices, Collect statistics and Clear fixed statistics itself, on the table the route names, and
   // the schema's Tables tab Tune all tables on the schema the route names (Story 21.25).
   [EXPLORER_SQL_TABLE]: [SQL_TABLE_REBUILD_INDICES, SQL_TABLE_TUNE, SQL_TABLE_CLEAR_STATISTICS, SQL_TABLE_SET_EXTENT_SIZE],
@@ -1163,6 +1177,8 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   },
   // Story 21.26: a purge removes the namespace's collected statistics, so it warns first.
   [EXPLORER_SQL_RUNTIME_STATS]: { [SQL_RUNTIME_STATS_PURGE]: STRINGS.sqlRuntimeStatsPurgeConsequence },
+  // Story 21.27: a purge removes the namespace's gathered statements and every report's results, so it warns first.
+  [EXPLORER_SQL_INDEX_ANALYSIS]: { [SQL_INDEX_ANALYSIS_PURGE]: STRINGS.sqlIndexAnalysisPurgeConsequence },
   // Story 21.25: a rebuild locks the table against changes while it runs, so each rebuild warns.
   [EXPLORER_SQL_TABLE]: {
     [SQL_TABLE_REBUILD_INDICES]: STRINGS.sqlTableRebuildAllConsequence,

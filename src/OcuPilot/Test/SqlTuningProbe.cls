@@ -727,6 +727,31 @@ ClassMethod RemoveAnalysis(pNamespace As %String) As %Status
     Quit tSC
 }
 
+/// <p>Gather <var>pNamespace</var>'s statements, system classes and INSERT statements skipped, and run the index usage report over them, as the vendor's own
+/// calls do, so a screen opened afterwards lists the probe table's rows. A process that is not serving a request writes nothing to its device.</p>
+ClassMethod SeedAnalysis(pNamespace As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tName = $ZConvert(pNamespace, "U")
+        Do ##class(%SYS.PTools.UtilSQLAnalysis).clearSQLStatements(tName)
+        Do ##class(%SYS.PTools.UtilSQLAnalysis).clearSQLAnalysisDB(tName)
+        Set tResult = ##class(%SYS.PTools.UtilSQLAnalysis).getAllSQLStmts(1, 1, 1, 0, 0)
+        If (tResult '= "") && $$$ISERR(tResult) Set tSC = tResult
+        If $$$ISOK(tSC) {
+            Set tResult = ##class(%SYS.PTools.UtilSQLAnalysis).indexUsage(1, 1, 0, 1, 1, 1, 0)
+            If (tResult '= "") && $$$ISERR(tResult) Set tSC = tResult
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>The rows of the vendor's own result table in <var>pNamespace</var> for the probe table, counted directly, by report code, and the namespace's gathered
 /// statements: <code>{Statements, IU, TS, TI, JI, OI}</code>, or <code>-1</code> for a count that could not be read.</p>
 ClassMethod AnalysisCounts(pNamespace As %String) As %DynamicObject

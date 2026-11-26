@@ -784,6 +784,17 @@ const ATELIER_REFUSALS = [
   ['REASONSQLPLANSTATS', 'sqlPlanStatisticsRefusal'],
   ['REASONRUNTIMESTATSPURGE', 'sqlRuntimeStatsPurgeConsequence'],
   ['REASONRUNTIMESTATSSET', 'sqlRuntimeStatsSetConsequence'],
+  // Story 21.27: the index analyzer's refusals, the Advise refusal and the sentences the three actions' cards and dialogs state.
+  ['REASONINDEXANALYSISNOROWS', 'sqlIndexAnalysisRefusalNoRows'],
+  ['REASONINDEXANALYSISNOSTATEMENTS', 'sqlIndexAnalysisRefusalNoStatements'],
+  ['REASONINDEXANALYSISREPORT', 'sqlIndexAnalysisRefusalReport'],
+  ['REASONINDEXANALYSISBUSY', 'sqlIndexAnalysisRefusalBusy'],
+  ['REASONINDEXANALYSISVENDOR', 'sqlIndexAnalysisRefusalVendor'],
+  ['REASONSQLADVICE', 'sqlAdviceRefusal'],
+  ['REASONINDEXANALYSISGATHER', 'sqlIndexAnalysisGatherConsequence'],
+  ['REASONINDEXANALYSISGATHERSYSTEM', 'sqlIndexAnalysisGatherSystemConsequence'],
+  ['REASONINDEXANALYSISRUN', 'sqlIndexAnalysisRunConsequence'],
+  ['REASONINDEXANALYSISPURGE', 'sqlIndexAnalysisPurgeConsequence'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {

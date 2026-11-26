@@ -497,6 +497,11 @@ export const CONSEQUENCE_SQLCACHEDQUERYPURGE = 'SQL.CACHEDQUERY.PURGE';
 /** Story 21.26: the runtime statistics purge's and the collection setting's cards; each is one published sentence. */
 export const CONSEQUENCE_SQLRUNTIMESTATSPURGE = 'SQL.RUNTIMESTATS.PURGE';
 export const CONSEQUENCE_SQLRUNTIMESTATSSET = 'SQL.RUNTIMESTATS.SET';
+/** Story 21.27: the index analyzer's gather (with and without system classes), run and purge cards; each is one published sentence. */
+export const CONSEQUENCE_SQLINDEXANALYSISGATHER = 'SQL.INDEXANALYSIS.GATHER';
+export const CONSEQUENCE_SQLINDEXANALYSISGATHERSYSTEM = 'SQL.INDEXANALYSIS.GATHERSYSTEM';
+export const CONSEQUENCE_SQLINDEXANALYSISRUN = 'SQL.INDEXANALYSIS.RUN';
+export const CONSEQUENCE_SQLINDEXANALYSISPURGE = 'SQL.INDEXANALYSIS.PURGE';
 /** Story 21.25: the table maintenance rebuilds' and statistics writes' cards; each is one published sentence. */
 export const CONSEQUENCE_SQLTABLEREBUILD = 'SQL.TABLE.REBUILD';
 export const CONSEQUENCE_SQLTABLEREBUILDALL = 'SQL.TABLE.REBUILDALL';
@@ -790,6 +795,10 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_SQLCACHEDQUERYPURGE) return STRINGS.sqlCachedQueryPurgeConsequence;
   if (code === CONSEQUENCE_SQLRUNTIMESTATSPURGE) return STRINGS.sqlRuntimeStatsPurgeConsequence;
   if (code === CONSEQUENCE_SQLRUNTIMESTATSSET) return STRINGS.sqlRuntimeStatsSetConsequence;
+  if (code === CONSEQUENCE_SQLINDEXANALYSISGATHER) return STRINGS.sqlIndexAnalysisGatherConsequence;
+  if (code === CONSEQUENCE_SQLINDEXANALYSISGATHERSYSTEM) return STRINGS.sqlIndexAnalysisGatherSystemConsequence;
+  if (code === CONSEQUENCE_SQLINDEXANALYSISRUN) return STRINGS.sqlIndexAnalysisRunConsequence;
+  if (code === CONSEQUENCE_SQLINDEXANALYSISPURGE) return STRINGS.sqlIndexAnalysisPurgeConsequence;
   if (code === CONSEQUENCE_SQLTABLEREBUILD) return STRINGS.sqlTableRebuildConsequence;
   if (code === CONSEQUENCE_SQLTABLEREBUILDALL) return STRINGS.sqlTableRebuildAllConsequence;
   if (code === CONSEQUENCE_SQLTABLETUNE) return STRINGS.sqlTableTuneConsequence;

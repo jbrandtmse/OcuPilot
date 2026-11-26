@@ -33,6 +33,21 @@ export interface SqlRows {
   readonly truncated: boolean;
 }
 
+/** One finding of a plan's advice (Story 21.27), its sentences composed on the instance and shown as sent. */
+export interface SqlAdviceFinding {
+  readonly kind: string;
+  readonly confidence: string;
+  readonly table: string;
+  readonly detail: string;
+  readonly recommendation: string;
+}
+
+/** The advice a plan answer carries when Advise asked for it: whether the plan was recognized, and its findings. */
+export interface SqlAdvice {
+  readonly recognized: boolean;
+  readonly findings: readonly SqlAdviceFinding[];
+}
+
 /** What the instance last answered, as the page draws it. */
 export type SqlAnswer =
   | { readonly outcome: 'rows'; readonly kind: string; readonly result: SqlRows }
@@ -40,8 +55,28 @@ export type SqlAnswer =
   | { readonly outcome: 'error'; readonly kind: string; readonly sqlcode: number | null; readonly message: string; readonly rolledBack: boolean }
   | { readonly outcome: 'stopped'; readonly kind: string; readonly seconds: number }
   | { readonly outcome: 'parameters'; readonly count: number }
-  | { readonly outcome: 'plan'; readonly plan: string; readonly truncated: boolean }
+  | { readonly outcome: 'plan'; readonly plan: string; readonly truncated: boolean; readonly advice?: SqlAdvice }
   | { readonly outcome: 'noplan' };
+
+/** The advice of a plan answer, or `undefined` when it carries none. */
+function adviceOf(record: Readonly<Record<string, unknown>>): SqlAdvice | undefined {
+  const advice = record['advice'];
+  if (advice === null || typeof advice !== 'object') return undefined;
+  const body = advice as Readonly<Record<string, unknown>>;
+  const findings = Array.isArray(body['findings']) ? body['findings'] : [];
+  return {
+    recognized: body['recognized'] === true,
+    findings: findings
+      .filter((entry): entry is Readonly<Record<string, unknown>> => entry !== null && typeof entry === 'object')
+      .map((entry) => ({
+        kind: text(entry['Kind']),
+        confidence: text(entry['Confidence']),
+        table: text(entry['Table']),
+        detail: text(entry['Detail']),
+        recommendation: text(entry['Recommendation']),
+      })),
+  };
+}
 
 /** The rows of an answer, each a list of text cells, or `null`. */
 function rowsOf(record: Readonly<Record<string, unknown>>): SqlRows | null {
@@ -78,8 +113,15 @@ export function answerOf(body: unknown): SqlAnswer | null {
       return { outcome: 'stopped', kind, seconds: typeof record['seconds'] === 'number' ? record['seconds'] : 0 };
     case 'parameters':
       return { outcome: 'parameters', count: typeof record['count'] === 'number' ? record['count'] : 0 };
-    case 'plan':
-      return { outcome: 'plan', plan: text(record['plan']), truncated: record['truncated'] === true };
+    case 'plan': {
+      const advice = adviceOf(record);
+      return {
+        outcome: 'plan',
+        plan: text(record['plan']),
+        truncated: record['truncated'] === true,
+        ...(advice === undefined ? {} : { advice }),
+      };
+    }
     case 'noplan':
       return { outcome: 'noplan' };
     default:

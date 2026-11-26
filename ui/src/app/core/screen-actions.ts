@@ -209,6 +209,12 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   // Story 21.26: SQL runtime statistics' Purge statistics, and Runtime statistics collection's Set value, which opens the settings page's dialog.
   'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStats': { purge: STRINGS.sqlRuntimeStatsPurgeAction },
   'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStatsSettings': { set: STRINGS.interopItemSettingSetAction },
+  // Story 21.27: SQL index analyzer's Gather statements, Run report and Purge analysis, each also the title of the dialog it opens.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlIndexAnalysis': {
+    gather: STRINGS.sqlIndexAnalysisGatherAction,
+    run: STRINGS.sqlIndexAnalysisRunAction,
+    purge: STRINGS.sqlIndexAnalysisPurgeAction,
+  },
   // Story 21.25: a table's Rebuild all indices, and one index's Rebuild index.
   'OcuPilot.Screen.Descriptor.ExplorerSqlTable': {
     'rebuild-indices': STRINGS.sqlTableRebuildAllAction,

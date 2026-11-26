@@ -81,6 +81,10 @@ const {
   CONSEQUENCE_SQLCACHEDQUERYPURGE,
   CONSEQUENCE_SQLRUNTIMESTATSPURGE,
   CONSEQUENCE_SQLRUNTIMESTATSSET,
+  CONSEQUENCE_SQLINDEXANALYSISGATHER,
+  CONSEQUENCE_SQLINDEXANALYSISGATHERSYSTEM,
+  CONSEQUENCE_SQLINDEXANALYSISRUN,
+  CONSEQUENCE_SQLINDEXANALYSISPURGE,
   CONSEQUENCE_CONFIGSETTINGRESTART,
   CONSEQUENCE_CONFIGMAPPINGDELETE,
   CONSEQUENCE_CONFIGNLSRELOAD,
@@ -1417,6 +1421,10 @@ test('Story 21.6: the SQL statement writes and the cached-query purges state the
     // Story 21.26: the runtime statistics purge and the collection setting's set.
     ['ExplorerSqlRuntimeStatsPurge', 'SQL.RUNTIMESTATS.PURGE', CONSEQUENCE_SQLRUNTIMESTATSPURGE, STRINGS.sqlRuntimeStatsPurgeConsequence],
     ['ExplorerSqlRuntimeStatsSettingSet', 'SQL.RUNTIMESTATS.SET', CONSEQUENCE_SQLRUNTIMESTATSSET, STRINGS.sqlRuntimeStatsSetConsequence],
+    // Story 21.27: the index analyzer's gather, run and purge; a gather that includes system classes states its own sentence, pinned below.
+    ['ExplorerSqlIndexAnalysisGather', 'SQL.INDEXANALYSIS.GATHER', CONSEQUENCE_SQLINDEXANALYSISGATHER, STRINGS.sqlIndexAnalysisGatherConsequence],
+    ['ExplorerSqlIndexAnalysisRun', 'SQL.INDEXANALYSIS.RUN', CONSEQUENCE_SQLINDEXANALYSISRUN, STRINGS.sqlIndexAnalysisRunConsequence],
+    ['ExplorerSqlIndexAnalysisPurge', 'SQL.INDEXANALYSIS.PURGE', CONSEQUENCE_SQLINDEXANALYSISPURGE, STRINGS.sqlIndexAnalysisPurgeConsequence],
   ];
   for (const [name, code, constant, sentence] of rows) {
     assert.equal(constant, code, `${name}'s code is the constant the card reads`);
@@ -1427,6 +1435,11 @@ test('Story 21.6: the SQL statement writes and the cached-query purges state the
   for (const name of ['ExplorerSqlCachedQueryPurge', 'ExplorerSqlCachedQueryPurgeTable', 'ExplorerSqlCachedQueryPurgeNamespace']) {
     assert.ok(/Extends OcuPilot\.Screen\.Tool\.SqlCachedQueryPurge\b/.test(tool(name)), `${name} inherits the purge code`);
   }
+  // Story 21.27: the gathering that includes system classes and routines answers its own code, with the sentence beside the other.
+  // Mutation (Rule 19): drop the GATHERSYSTEM line from `consequenceSentence` -> this goes red on ''.
+  assert.equal(CONSEQUENCE_SQLINDEXANALYSISGATHERSYSTEM, 'SQL.INDEXANALYSIS.GATHERSYSTEM');
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLINDEXANALYSISGATHERSYSTEM), STRINGS.sqlIndexAnalysisGatherSystemConsequence);
+  assert.ok(tool('ExplorerSqlIndexAnalysisGather').includes(`"${CONSEQUENCE_SQLINDEXANALYSISGATHERSYSTEM}"`), 'Gather.cls answers the code the card reads');
 });
 
 // Story 21.3: a startup, memory or compatibility setting that takes effect only at the next restart states the reused restart sentence on the
