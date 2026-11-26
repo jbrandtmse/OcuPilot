@@ -603,6 +603,11 @@ services:
       # callers, the refusals class meets every refusal and signs in as probe principals each holding its own set of pairs, and the elsewhere class confirms the
       # agent's update from another namespace. The four extend one case class, which declares the variable they all refuse on.
       # classes: InteropAlertCase
+      # The business rule log and business process log classes store probe rule log entries and business processes in USER and HSCUSTOM and purge them (Story 24.17 Batch 2), and start no
+      # production: the list class reads both logs through the port, the screen's route and the agent's tool, the control class purges from both callers, the refusals class meets every
+      # refusal, the gate class signs in as probe principals each missing one pair or the SQL grant, and the elsewhere class confirms the agent's purge from another namespace. The five extend one
+      # case class, which declares the variable they all refuse on.
+      # classes: InteropLogPurgeCase
       # The host test classes compile and run the same probe production in USER, with a request class of their own and an
       # operation that echoes it (Story 20.6): the test class reads an item's Test tab and sends a request from both callers,
       # the refusals class meets every refusal and violation, a production started without testing and a disabled item, and

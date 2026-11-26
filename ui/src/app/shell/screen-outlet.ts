@@ -301,6 +301,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 24.17 Batch 1: Managed alerts, the list with its Update alert dialog. Alert history is the shared list page.
   'OcuPilot.Screen.Descriptor.InteropManagedAlertList': () =>
     import('../areas/interoperability/interop-managed-alert-list.page').then((m) => m.InteropManagedAlertListPage),
+  // Story 24.17 Batch 2: Business rule log and Business process log, the lists with their Purge dialog.
+  'OcuPilot.Screen.Descriptor.InteropRuleLogList': () => import('../areas/interoperability/interop-log-purge-list.page').then((m) => m.InteropLogPurgeListPage),
+  'OcuPilot.Screen.Descriptor.InteropProcessLogList': () => import('../areas/interoperability/interop-log-purge-list.page').then((m) => m.InteropLogPurgeListPage),
   // Story 24.16 Batch 3: Messages, the search with its Export dialog.
   'OcuPilot.Screen.Descriptor.InteropMessageList': () => import('../areas/interoperability/interop-message-list.page').then((m) => m.InteropMessageListPage),
   // Story 24.16: Suspended messages, the list with its Edit and resubmit form.

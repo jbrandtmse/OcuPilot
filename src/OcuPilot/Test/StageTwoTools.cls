@@ -247,6 +247,8 @@ XData Elsewhere
 <screen name="InteropArchiveErrorList"/>
 <screen name="InteropManagedAlertList"/>
 <screen name="InteropManagedAlertHistory"/>
+<screen name="InteropRuleLogList"/>
+<screen name="InteropProcessLogList"/>
 <screen name="InteropSuspendedMessageList"/>
 <screen name="InteropItemClassTab"/>
 <screen name="InteropItemJobTab"/>

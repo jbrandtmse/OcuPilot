@@ -160,6 +160,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropArchiveSettingList',
   // Story 24.17 Batch 1: Managed alerts, whose Update alert its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropManagedAlertList',
+  // Story 24.17 Batch 2: Business rule log and Business process log, whose Purge their own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropRuleLogList',
+  'OcuPilot.Screen.Descriptor.InteropProcessLogList',
   // Story 20.23: Queues, whose Abort all types the queue's name; Queue messages and an item's Queue tab, whose Abort types the
   // message id; and Jobs and an item's Jobs tab, whose Abort message types the job's process id and whose Suspend message and
   // Stop job warn first.
@@ -575,6 +578,9 @@ const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropArchiveList': ['archive'],
   // Story 24.17 Batch 1: Managed alerts' Update alert reads the alert's owner, state and level and the owners it may be given to before its dialog opens.
   'OcuPilot.Screen.Descriptor.InteropManagedAlertList': ['update'],
+  // Story 24.17 Batch 2: the two logs' Purge reads the log's record count before its dialog opens.
+  'OcuPilot.Screen.Descriptor.InteropRuleLogList': ['purge'],
+  'OcuPilot.Screen.Descriptor.InteropProcessLogList': ['purge'],
   // Story 24.16: Suspended messages' four actions list what each message would do before the dialog opens, and Edit and resubmit answers its form.
   [INTEROP_SUSPENDED_LIST]: [SUSPENDED_RESUBMIT, SUSPENDED_EDIT_RESUBMIT, SUSPENDED_DISCARD, SUSPENDED_DELETE],
 };
@@ -734,6 +740,9 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropArchiveSettingList': ['set'],
   // Managed alerts' page registers Update alert itself, whose dialog takes the owner, state, level, next action time and reason (Story 24.17 Batch 1).
   'OcuPilot.Screen.Descriptor.InteropManagedAlertList': ['update'],
+  // The two logs' page registers Purge itself, whose dialog types the namespace (Story 24.17 Batch 2).
+  'OcuPilot.Screen.Descriptor.InteropRuleLogList': ['purge'],
+  'OcuPilot.Screen.Descriptor.InteropProcessLogList': ['purge'],
   // Suspended messages' page registers Edit and resubmit itself, whose form takes the fields and is reviewed before it is sent (Story 24.16).
   [INTEROP_SUSPENDED_LIST]: [SUSPENDED_EDIT_RESUBMIT],
   // An item's Test tab's page registers Send test itself, whose dialog sends the request class and its fields (Story 20.6).

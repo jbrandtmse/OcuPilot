@@ -362,6 +362,8 @@ XData Keys [ MimeType = application/json ]
   "interop.archive.run": false,
   "interop.archivesettings.set": true,
   "interop.managedalerts.update": true,
+  "interop.processlog.purge": false,
+  "interop.rulelog.purge": false,
   "osmgmt.backuptasks.run": false,
   "osmgmt.backuptasks.freeze": false,
   "osmgmt.backuptasks.thaw": false,
