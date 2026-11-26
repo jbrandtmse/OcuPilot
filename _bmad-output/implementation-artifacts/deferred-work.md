@@ -14812,3 +14812,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AD-51's Story 21.26 and 21.27 cases describe the STATS and ANALYSIS fresh reads without the checks-on prerequisite, which now refuses a gated principal without SELECT the purge, gather, run and purge-analysis writes; the rule lives only in the 21.27 spec's Security note.
 - 2026-11-26T09:11:34Z status=escalated owner=burndown by=cr note=lead Rule 20: amend AD-51 (veto window) or decline
 - 2026-11-26T09:14:23Z status=resolved-by:21-27-the-index-analyzer-and-its-advice owner=21-27-the-index-analyzer-and-its-advice by=runner note=AD-51 Story 21.27 case amended in place (runner's own line, U-174/U-175): checks on, -99 answers 403 naming the port's tables
+
+### DW-2902: System monitor's Upcoming tasks drill-down sorts ScheduledFor as text, so a list crossing midnight is misordered
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-6.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.17 B5 review; descriptor default sort Registry.cls:1809, Read.cls:1804
+- 2026-11-26T20:37:48Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=the drill-down shows a task after midnight ahead of an earlier one
+
+### DW-2903: InteropSystemMonitorFrame's started-no-process check compares the instance's whole process list
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-6.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.17 B5 review
+- 2026-11-26T20:37:48Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=it goes red naming a process that is not a child of the test process
+
+### DW-2904: InteropSystemMonitorRead expects literal production counts (0 or 1), so a production running outside USER turns it red
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-6.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.17 B5 review
+- 2026-11-26T20:37:48Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=a red shows another production running
