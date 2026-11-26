@@ -2,7 +2,8 @@
 title: 'Story 21.27: The index analyzer and its advice'
 type: 'feature'
 created: '2026-11-25'
-status: 'ready-for-dev'
+status: 'blocked'
+baseline_revision: 'adba0163090595157c60cccce50739acee74e496'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -354,6 +355,30 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
 - `(once)` `cd ui && npm run test:tools` -- expected: green (EXPERIENCE.md changes).
 - `(once)`, runner-owned: the full ObjectScript sweep one class per call, `smoke.sh --container ocupilot-ci`, and Rule 30's fresh check. The full browser suite is left to CI.
 
+**Task 0 results (measured on ocupilot-ci)** -- 2026-11-25, IRIS 2026.2 build 221U, `USER` and `HSCUSTOM`; every line observed unless marked (inference). Probe schema, users, roles and rows are removed and read back absent (statement index cleaned with `$SYSTEM.SQL.Statement.Clean()`).
+
+- **Gate.** The classic page's compiled `RESOURCE` is `%Development:USE`, with no `EDITRESOURCE`.
+- **(a) Pairs.** A principal holding `%Development:USE` and `WritePairs(ns)` (USER: `%DB_USER` RW, `%DB_ENSLIB` R, `%DB_IRISLIB` R; HSCUSTOM adds `%DB_HSCUSTOM` RW, `%DB_HSLIB` R) gathered, ran all five reports and purged in both namespaces with no `<PROTECT>`, status error or no-op, and read both tables and `%Dictionary.CompiledClass`/`CompiledIndex` (bound `?`) through an unchecked `%Prepare(text, 0)`.
+  - The same reads through a checked prepare answer SQLCODE -99, and so does Explain on a table the principal holds no SQL privilege on (as the console).
+  - `^%sqlcq(ns,"PTools","util")` lives in database `IRISLOCALDATA` (`%DB_IRISLOCALDATA`, public Read). A principal holding `%Development:USE` and READ pairs only (USER) ran the same seven calls; its direct `Set` of `^%sqlcq` and `^oddDEP` raised `<PROTECT>`, so the vendor writes under its own elevation.
+  - No pair beyond `%Development:USE` + `WritePairs(ns)` is needed; the WRITE pair is policy, not a vendor demand. A principal without `%Development` could not open a session, so that arm is unmeasured.
+- **(b) Durations (HSCUSTOM, 1,130 statements gathered).** Gather `SkipSystem` false 45.5 / 45.7 / 46.3 s (x1.5 = 68-69 s, over 60 s); `SkipSystem` true 2.6-3.0 s; USER `SkipSystem` false 24-25 s.
+  - Each report 7.7-8.8 s (x1.5 = 13 s). A report on an empty store with `SkipSystem` false 53.7 s (x1.5 = 81 s, over 60 s). Purge under 0.01 s.
+  - `SkipInserts` does not move gather time (46.3 s with it true, 2.7 s with `SkipSystem` true).
+- **(c) Clear scope.** A report's `clearData` removes only its own report's rows (a second Table scan left Index usage, Missing join index and Outlier rows). `getAllSQLStmts` clears no analysis rows and `clearSQLStatements` clears none either; only `clearSQLAnalysisDB` does, so Gather must call both clears as the classic page does.
+- **(d) Empty store.** All five reports answer rows with no statements gathered (`getSQLStmts` 0): each gathers statements itself with its own skip flags and leaves them stored (USER 0 -> 19 statements; HSCUSTOM `SkipSystem` false 0 -> 1,130, `SkipSystem` true 0 -> 69). The self-gather is real for all five, not only `indexUsage`; the vendor never refuses.
+  - Index usage with `SkipSystem` false returns an error status (`SQLCODE=100 ... Failed to UPDATE ... UtilSQLAnalysisDB`) in both namespaces and leaves partial rows; with `SkipSystem` true it is clean. That is the real 409 `SQL.INDEXANALYSIS.VENDOR` path.
+- **(e) Device output.** With `%request` an object, `getAllSQLStmts` and each of the five reports (display 0) write 43 bytes (`<pre style="font-family: 'Courier New'; ">`) to the current device; both clears write nothing; with `%request` not an object nothing is written. The null device swallowed all of it (0 bytes captured), self-gather and error paths included.
+- **(f) Concurrency.** A report holds `^%sqlcq(ns,"PTools","util","SQLAnlsys")` for its whole run (held from t=0 to 7.5 s); Gather holds nothing (free for all 45.7 s).
+  - Two concurrent reports: the second waits 5 s, then returns an error status ("database lock could not be acquired"), and the first finishes intact (303 rows). Two concurrent gathers serialize (2.6 s and 5.2 s) and leave 69 statements.
+  - A Gather started during a running report wiped its input: the report ended OK 1.5 s into an 8 s run with 0 rows. Purge during a report not observed (inference: same).
+- **(g) Side effects.** Gather, the five reports, and Explain add no statement-index rows and no cached queries (counts constant); Explain of two new statements plus the dictionary reads wrote nothing at all (zero journal records, USER and HSCUSTOM), so Advise has no side effect, and the AD-7 clause "its only side effect is the fifth shape's statement-index row" is unsupported.
+  - **Loud: Gather writes beyond the vendor's result stores.** Journal records (process-attributed) show it kills and sets `^oddDEP` (class dependency data) in the namespace's code database on every gather: USER `SkipSystem` true 542 kills + 1,084 sets; `SkipSystem` false 107,329 + 214,658. The reports write only `^%sqlcq` PTools nodes.
+- **(h) Plan fixtures.** Ten captured plans (verbatim, CR LF lines) with an index of markers are in `.coordination/e21-kit/21-27/impl/plans/` (README.txt): full scan with `Read master map ... looping on` and `Test the ... condition on`, `Warning:` / `Table ... is not tuned.` (and the plural `Tables ... and ... are not tuned.`), index map reads, temp-file lines and the tuned counterparts. An unrecognized plan is not captured.
+- **(i) Match flags (`PT_getIndexFlagInfo`, join and outlier alike).** 0 No Match, 1 Partial Match, 2 Contains Match, 3 Leading Match, 4 Exact Match; 5 answers empty. The ruled names (No match, Partial, Contains, Leading) are flags 0-3, with 4 excluded.
+
+**Decisions that follow.** Run precondition (d): the vendor never refuses, so the refusal is OcuPilot's, on `Statements`, for all five reports (recommendation: it keeps a report from self-gathering, 81 s worst case); "Gather this namespace's statements before running this report." ships as an instruction. Run consequence (c): "This report's earlier results in this namespace are replaced." ships as ruled. `BUSY` (f): needed; the port takes the lock with timeout 0 around Gather, Run and Purge. Match names (i): ship as ruled. In the request (b): reports and Purge yes; Gather only with `SkipSystem` true, since `SkipSystem` false x1.5 is 68-69 s, so that Gather needs 24.16's background-run form or a ruling on the flag (open for the orchestrator). Advise writes nothing (g). **Gather writes `^oddDEP` in the namespace's code database besides the PTools stores (g): the stage halts as a blocked intent gap on the AD-7 wording unless the orchestrator rules the clause.**
+
 **Mutations (Rule 19), one per AC, each recorded here as `mutation: … -> …` when observed:**
 
 - AC1: `Catalog.IndexAnalysis` drops the `sqltext` kind, or keeps flag-4 rows -> `SqlIndexAnalysisWrite`'s list leg red.
@@ -364,5 +389,11 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap -- Task 0 measured two results the AD-7/AD-51 ruling does not cover (no code written, no batch committed; baseline adba0163090595157c60cccce50739acee74e496).
+
+- Task 0 (a)-(i) is measured and recorded under Verification, "Task 0 results".
+- Gap 1, Gather's duration: on HSCUSTOM, Gather with `SkipSystem` false takes 45.5-46.3 s (x1.5 = 68-69 s, over the 60 s gateway bound); with `SkipSystem` true 2.6-3.0 s. The ruling sends such an operation to "Story 24.16's background-run form", but the spine records 24.16's purge, export and archive as running in their confirm or action request (named limit: the answer is lost when the gateway times out), and `Kernel/Shell/BackgroundRun` is read-kind only (AD-7: background runs never mutate). No mutating background form exists to use.
+- Gap 2, Gather's extra write: every gather kills and sets `^oddDEP` (class dependency data) in the namespace's code database (USER `SkipSystem` true 542 kills + 1,084 sets; `SkipSystem` false 107,329 + 214,658). Reports write only `^%sqlcq` PTools nodes. The AD-51 and AD-7 texts name neither. Advise (Explain and the two dictionary reads) wrote nothing, so the AD-7 clause "its only side effect is the statement-index row" is unsupported; no other write was measured for Advise.
+- Recommended amendment: (1) Gather runs in its confirm or action request as 24.16's writes do, with the named limit "a gather that outlasts the Web Gateway's response timeout runs to its end in that request's process and its answer is lost"; the Gather consequence names the cost of unchecking Skip system classes and routines only if a string is ruled for it. Alternative the orchestrator may prefer: refuse `SkipSystem` false on Gather (narrows the classic page; owner-class scope call). (2) AD-51/AD-7 text for Gather adds "and rewrites the namespace's class dependency data (`^oddDEP`), as the classic Gather does". (3) AD-7's advice clause becomes "writes nothing (measured)". Measured decisions that need no ruling: Run precondition on `Statements` for all five reports, Run consequence as ruled, `.BUSY` is needed (a report holds `^%sqlcq(ns,"PTools","util","SQLAnlsys")`; a Gather or Purge during a report empties its input), Match names as ruled, least-privileged pairs are `%Development:USE` + `WritePairs(ns)`.
+- Resume: re-dispatch on this spec with the rulings; Task 0 need not be repeated (fixtures are in `.coordination/e21-kit/21-27/impl/plans/`).
