@@ -115,7 +115,7 @@
 /// <method>StopSeconds</method>, <method>RoutineResource</method>, <method>SourceControlled</method>,
 /// <method>VendorAbortItem</method>, <method>VendorJob</method>, <method>LockTable</method>, <method>VendorSendTest</method>,
 /// <method>TestWait</method>, <method>AllNamespacesReadable</method>, <method>DefaultReadOnly</method>,
-/// <method>VendorSetAutoStart</method>, <method>VendorSetShutdownGroup</method>, <method>VendorLogPurge</method> and <method>LogHere</method>, and the parameters <parameter>ABORTMAX</parameter>, <parameter>RULELOGMAX</parameter> and <parameter>PROCESSLOGMAX</parameter>. Production overrides none.</p>
+/// <method>VendorSetAutoStart</method>, <method>VendorSetShutdownGroup</method>, <method>VendorLogPurge</method>, <method>LogHere</method> and <method>VendorMetrics</method>, and the parameters <parameter>ABORTMAX</parameter>, <parameter>RULELOGMAX</parameter>, <parameter>PROCESSLOGMAX</parameter> and <parameter>SYSTEMMONITORROWSMAX</parameter>. Production overrides none.</p>
 Class OcuPilot.Port.InteropPort Extends %RegisteredObject
 {
 
@@ -125,7 +125,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules,PurgeSettings,Purge,SuspendedMessages,ArchiveSettings,Archive,ArchiveErrors,ManagedAlerts,ManagedAlertActions,RuleLog,ProcessLog,WorkflowUsers,WorkflowRoles,WorkflowMembers,WorkflowTasks,WorkflowWorklist";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules,PurgeSettings,Purge,SuspendedMessages,ArchiveSettings,Archive,ArchiveErrors,ManagedAlerts,ManagedAlertActions,RuleLog,ProcessLog,WorkflowUsers,WorkflowRoles,WorkflowMembers,WorkflowTasks,WorkflowWorklist,SystemMonitor,SystemMonitorProcesses,SystemMonitorQueues,SystemMonitorTasks";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -1276,6 +1276,8 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
         Set tSpec = ..#WORKFLOWPAIRS
     } ElseIf (pEndpoint = ..#ENDPOINTWORKFLOWTASKS) || (pEndpoint = ..#ENDPOINTWORKFLOWWORKLIST) {
         Set tSpec = ..#WORKFLOWTASKPAIRS
+    } ElseIf $ListFind(..SystemMonitorEndpoints(), pEndpoint) {
+        Set tSpec = ..#SYSTEMMONITORPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTRULELOG {
         Set tSpec = ..#RULELOGPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTPROCESSLOG {
@@ -1486,6 +1488,11 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Try {
         If '..Serves(pEndpoint, pType) {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        ; The system monitor is instance-wide: it judges its pairs alone and never reads the request's namespace (Story 24.17 Batch 5).
+        If $ListFind(..SystemMonitorEndpoints(), pEndpoint) {
+            Set tSC = ..InvokeSystemMonitor(pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         Set tWrite = ..IsAnyWrite(pType)
@@ -12344,10 +12351,13 @@ ClassMethod VendorCodesStatus(pStatus As %Status, pWhat As %String = "the call")
 /// every exit, a thrown error included (<method>VendorPurge</method>). The vendor's bitmap cleanup adds <code>%All</code> in a frame of its own and drops it when it
 /// returns; this frame keeps any vendor path that does not from reaching the request's later code or the pooled process's next request. With <var>pKind</var>
 /// <parameter>LOGKINDRULE</parameter> or <parameter>LOGKINDPROCESS</parameter> the frame runs that log's purge (<method>VendorLogPurge</method>, Story 24.17 Batch 2) and
-/// the other arguments are not used; <code>""</code> is the full purge.</p>
+/// the other arguments are not used; <code>""</code> is the full purge. With <var>pKind</var> <parameter>LOGKINDMETRICS</parameter> the frame runs the Interoperability system monitor's read
+/// (<method>VendorMetrics</method>, Story 24.17 Batch 5): the frame is entered in the caller's namespace, <var>pDeleted</var> receives the vendor's meter values, and the vendor's
+/// own escalation to <code>%All</code> is given back with the frame.</p>
 ClassMethod PurgeFrame(pDays As %Integer, pKeepIntegrity As %Boolean, pBodiesToo As %Boolean, pBitmap As %Boolean, Output pDeleted, pKind As %String = "") As %Status
 {
     New $ROLES
+    If pKind = ..#LOGKINDMETRICS Quit ..VendorMetrics(.pDeleted)
     If pKind '= "" Quit ..VendorLogPurge(pKind, pDays, .pDeleted)
     Quit ..VendorPurge(pDays, pKeepIntegrity, pBodiesToo, pBitmap, .pDeleted)
 }
@@ -16212,6 +16222,183 @@ ClassMethod LogPurgeSnippet(pEndpoint As %String, pNamespace As %String, pDays A
     Set tDaysText = $Select(+pDays > (+$Horolog - 2): "+$Horolog - 2", 1: +pDays)
     If pEndpoint = ..#ENDPOINTRULELOG Quit tNL _ " Set tSC = ##class(Ens.Purge).PurgeRuleLogsByDate(" _ tDaysText _ ", .tDeleted)"
     Quit tNL _ " Set tSC = ##class(Ens.Purge).PurgeBusinessProcessesByDate(" _ tDaysText _ ", .tDeleted, 1)"
+}
+
+/// <p>The pairs the four system monitor endpoints require (Story 24.17 Batch 5): the Production monitor's (<parameter>MONITORPAIRS</parameter>), which are the classic Interoperability
+/// System Monitor's resource, and READ on the system database, since the vendor call is made in <code>%SYS</code>. The read is instance-wide, so there is no namespace test.</p>
+Parameter SYSTEMMONITORPAIRS = "%Ens_Portal:USE,%Ens_Dashboard:USE,%DB_IRISSYS:READ";
+
+/// <p>The System monitor endpoint: <code>LIST</code> alone, one row of the vendor's scalar meters.</p>
+Parameter ENDPOINTSYSTEMMONITOR = "SystemMonitor";
+
+/// <p>The three drill-down endpoints: <code>LIST</code> alone, each one of the vendor's table meters as rows.</p>
+Parameter ENDPOINTSYSTEMMONITORPROCESSES = "SystemMonitorProcesses";
+
+Parameter ENDPOINTSYSTEMMONITORQUEUES = "SystemMonitorQueues";
+
+Parameter ENDPOINTSYSTEMMONITORTASKS = "SystemMonitorTasks";
+
+/// <p>The most rows a system monitor drill-down answers to a call that names no cap of its own: a named bound on the vendor's three tables, which measured at two, four and five rows with the probe production running (a bound none of them reaches).</p>
+Parameter SYSTEMMONITORROWSMAX As INTEGER = 100;
+
+/// <p>The kind <method>PurgeFrame</method> takes to run the system monitor's read.</p>
+Parameter LOGKINDMETRICS = "metrics";
+
+/// <p>The id of the unsaved session a caller without a web request gives the vendor's call (<method>VendorMetrics</method>); no session of this id is ever stored.</p>
+Parameter METRICSSESSIONID = "OcuPilotSystemMonitor";
+
+/// <p>The vendor's scalar meters the System monitor row carries, named as the vendor names them, in the classic page's order.</p>
+Parameter SYSTEMMONITORMETERS = "EnsNamespace,EnsProductionsRunning,EnsProductionsTroubled,EnsIncomingRequests,EnsLastIncomingRequest,EnsOutgoingRequests,EnsLastOutgoingRequest,Processes,EnsJobs,EnsVisitingJobs,UpTime,LastBackup,DatabaseSpace,DatabaseJournal,JournalSpace,JournalEntries,LockTable,WriteDaemon,EnsActiveQueues,SeriousAlerts,EnsAlerts,EnsErrors,LicenseLimit,LicenseUse,LicenseUseHigh";
+
+/// <p>The four system monitor endpoints as a <class>%List</class>.</p>
+ClassMethod SystemMonitorEndpoints() As %List
+{
+    Quit $ListBuild(..#ENDPOINTSYSTEMMONITOR, ..#ENDPOINTSYSTEMMONITORPROCESSES, ..#ENDPOINTSYSTEMMONITORQUEUES, ..#ENDPOINTSYSTEMMONITORTASKS)
+}
+
+/// <p>The vendor's meter that <var>pEndpoint</var> draws as a table and that table's columns, as <code>meter|Column,Column</code>; <code>""</code> for the System monitor row. Pure.</p>
+ClassMethod SystemMonitorTable(pEndpoint As %String) As %String [ Private ]
+{
+    If pEndpoint = ..#ENDPOINTSYSTEMMONITORPROCESSES Quit "EnsBusyProcesses|Namespace,Item,Pid,Commands"
+    If pEndpoint = ..#ENDPOINTSYSTEMMONITORQUEUES Quit "EnsBusyQueues|Namespace,Queue,Messages"
+    If pEndpoint = ..#ENDPOINTSYSTEMMONITORTASKS Quit "UpcomingTasks|Task,ScheduledFor,Status"
+    Quit ""
+}
+
+/// <p>The pairs gate of the four system monitor endpoints, before any vendor call and never cached (AD-8, AD-29): only the pairs, since the read takes no namespace.</p>
+ClassMethod AdmitInstance(pEndpoint As %String, pType As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tFailedPair = ""
+    If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(pEndpoint, pType), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The vendor's meters, read as the classic Interoperability System Monitor reads them: <code>%SYS.Ensemble.GetEnsMetrics</code> with no id, a count of 0 and the vendor's default interval, called in
+/// <code>%SYS</code>, where OcuPilot is not compiled, so nothing of OcuPilot's runs while switched. <var>pValues</var> is the vendor's value for each meter; the vendor's per-meter status and message
+/// are not carried. The vendor adds <code>%All</code> for itself in a frame of its own and drops it. Overridable so a fixture can answer a fault; production never overrides it. Reached only through
+/// <method>PurgeFrame</method>. A raise leaves the process in <code>%SYS</code>: the caller restores its namespace first.</p>
+ClassMethod VendorMetrics(Output pValues) As %Status
+{
+    ; With a production running the vendor builds links through the web request, response and session, which a background job (the agent's turn) does not have: the call then answers an error
+    ; status. Such a caller gets a minimal context of the vendor's own classes for the call, unsaved and given back when this method ends; a web request keeps its own.
+    If '$IsObject($Get(%request)) {
+        New %request, %response, %session
+        Set %request = ##class(%CSP.Request).%New()
+        Set %response = ##class(%CSP.Response).%New()
+        Set %session = ##class(%CSP.Session).%New(..#METRICSSESSIONID, 0)
+    }
+    Set tOrigNS = $NAMESPACE
+    Set tCaught = ""
+    Set $NAMESPACE = "%SYS"
+    Try {
+        Set tSC = ##class(%SYS.Ensemble).GetEnsMetrics("", 0, .tValues, .tStatus, .tMsg)
+    } Catch ex {
+        Set tCaught = ex
+    }
+    ; Each call leaves one exclusive and one shared lock on the vendor's metrics global that only the end of a web request lets go of, and while they are held every other process reads the instance as idle.
+    ; A background job lives for a whole turn, so the call's own locks are given back here, on every exit.
+    Lock -^SYS.EnsMetrics
+    Lock -^SYS.EnsMetrics#"S"
+    Set $NAMESPACE = tOrigNS
+    If $IsObject(tCaught) Throw tCaught
+    Merge pValues = tValues
+    Quit tSC
+}
+
+/// <p>The vendor's meters through the containment frame (<method>PurgeFrame</method>). The namespace is saved before the frame and restored first on every path, a raise included; a fault is logged after the
+/// restore, with a fixed message and the vendor's codes alone. A vendor error status is never a 200: 500 <code>INTERNAL</code>, or 403 <code>PORT.ACCESSDENIED</code> for a privilege refusal.</p>
+ClassMethod ReadMetrics(Output pValues, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tVendorSC = ..PurgeFrame(0, 0, 0, 0, .pValues, ..#LOGKINDMETRICS)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..LogMapped(tCaught, "the system monitor read failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the system monitor read"), "the system monitor read failed", .pHttpStatus, .pFault)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One cell of a vendor table as a value: a whole number the vendor writes with thousands separators is a number, any other text stays text. Pure.</p>
+ClassMethod MonitorCell(pText As %String, pNumeric As %Boolean) As %String [ Private ]
+{
+    Set tPlain = $Translate(pText, ",")
+    Quit $Select(pNumeric && $Match(tPlain, "^[0-9]+$"): +tPlain, 1: pText)
+}
+
+/// <p>The rows of the vendor's table meter text <var>pText</var>, which the classic table meter encodes with <code>^</code> between rows and <code>;</code> between columns, as an array of objects keyed by
+/// <var>pColumns</var>, in the vendor's order, at most <var>pMax</var> of them; a row whose columns are all empty is padding and is dropped. The columns named <code>Pid</code>, <code>Commands</code> and
+/// <code>Messages</code> are numbers where the vendor writes a whole number. Pure.</p>
+ClassMethod MonitorTableRows(pText As %String, pColumns As %List, pMax As %Integer) As %DynamicArray [ Private ]
+{
+    Set tRows = []
+    Set tCount = $ListLength(pColumns)
+    For tI = 1:1:$Length(pText, "^") {
+        Set tLine = $Piece(pText, "^", tI)
+        If $Translate(tLine, ";") = "" Continue
+        If tRows.%Size() '< pMax Quit
+        Set tRow = {}
+        For tJ = 1:1:tCount {
+            Set tName = $List(pColumns, tJ)
+            Set tCell = $Piece(tLine, ";", tJ)
+            Set tNumeric = (tName = "Pid") || (tName = "Commands") || (tName = "Messages")
+            Set tValue = ..MonitorCell(tCell, tNumeric)
+            Do tRow.%Set(tName, tValue, $Select($IsValidNum(tValue) && tNumeric && (tValue '= ""): "number", 1: "string"))
+        }
+        Do tRows.%Push(tRow)
+    }
+    Quit tRows
+}
+
+/// <p>The System monitor row: one object of <parameter>SYSTEMMONITORMETERS</parameter>, each the vendor's value as text, from <var>pValues</var>. Pure.</p>
+ClassMethod SystemMonitorRow(ByRef pValues) As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Set tNames = $ListFromString(..#SYSTEMMONITORMETERS)
+    For tI = 1:1:$ListLength(tNames) {
+        Set tName = $List(tNames, tI)
+        Do tRow.%Set(tName, $Get(pValues(tName)) _ "", "string")
+    }
+    Quit tRow
+}
+
+/// <p>Serve the four system monitor endpoints (Story 24.17 Batch 5): the pairs gate, then one vendor call (<method>ReadMetrics</method>), then the row or the table the endpoint draws from it. The list takes
+/// <parameter>MAXROWSKEY</parameter> alone; no criterion, no namespace. Nothing is written.</p>
+ClassMethod InvokeSystemMonitor(pEndpoint As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Set tSC = ..AdmitInstance(pEndpoint, pType, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+        If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tSC = ..ReadMetrics(.tValues, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tTable = ..SystemMonitorTable(pEndpoint)
+        If tTable = "" {
+            Set pResult = []
+            Do pResult.%Push(..SystemMonitorRow(.tValues))
+        } Else {
+            Set pResult = ..MonitorTableRows($Get(tValues($Piece(tTable, "|", 1))), $ListFromString($Piece(tTable, "|", 2)), ..AlertCap(+tMaxText, ..#SYSTEMMONITORROWSMAX))
+        }
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..LogMapped(ex, "the system monitor call failed inside the port", .pHttpStatus, .pFault)
+    }
+    Quit tSC
 }
 
 }

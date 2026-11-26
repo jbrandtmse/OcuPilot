@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:681 */
+  /** EXPERIENCE.md:682 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -10019,6 +10019,59 @@ export const STRINGS = {
   interopWorkflowWorklistPrompt1: 'Which workflow users have the most items on their worklist?',
   /** EXPERIENCE.md:639 */
   interopWorkflowWorklistPrompt2: 'Which worklist items are more than a day old?',
+  // Story 24.17 Batch 5: the System monitor screen, its Most active queues drill-down, the four groups, the twelve meters, the three empty states and the prompts.
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorLabel: 'System monitor',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorQueuesLabel: 'Most active queues',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorGroupThroughput: 'Production throughput',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorGroupJobs: 'Production jobs',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorGroupTime: 'System time',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorGroupQueues: 'Production queues',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorMeterScopes: 'Namespaces running productions',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorMeterProductionsRunning: 'Productions running',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorMeterProductionsTroubled: 'Productions suspended or troubled',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorMeterIncoming: 'Incoming messages in the last 30 seconds',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorMeterLastIncoming: 'Last incoming message',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorMeterOutgoing: 'Outgoing messages in the last 30 seconds',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorMeterLastOutgoing: 'Last outgoing message',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorMeterJobs: 'Active production jobs',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorMeterVisitingJobs: 'Visiting production jobs',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorMeterActiveQueues: 'Active queues',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorMeterAlerts: 'Production alerts',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorMeterErrors: 'Production errors',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorEmpty: 'The system monitor is unavailable.',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorQueuesEmpty: 'No production queue holds messages.',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorTasksEmpty: 'No tasks are scheduled to run.',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorPrompt1: 'Is any production suspended or troubled?',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorPrompt2: 'How many messages came in and went out in the last 30 seconds?',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorPrompt3: 'Which production queues hold the most messages?',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorQueuesPrompt2: 'Is one queue holding far more messages than the others?',
+  /** EXPERIENCE.md:640 */
+  interopSystemMonitorQueuesPrompt3: 'Which namespace\'s queues hold the most messages?',
 } as const;
 
 /**

@@ -2,16 +2,23 @@
 title: 'Story 24.17: Managed alerts, logs, the system monitor and workflow (Batch 5: the Interoperability System Monitor and the README)'
 type: 'feature'
 created: '2026-11-26'
-status: 'ready-for-dev'
-baseline_revision: 'aeb9826d5a0c0dac22d426e6f7a44aef73093272'
+status: 'in-review'
+baseline_revision: 'ee5bdb591f41c253c9ecc2f1e7059977d218d075'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 owned_ledger: ''
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-2.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-5.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The System monitor page issues the row read and three table reads together on each tick, and overlapping vendor calls may answer an idle instance.
+    evidence: |-
+      The vendor answers other processes as idle while one call holds its locks; the page's four reads are separate web requests (inference). No test issues overlapping reads with a production running.
+    location: >-
+      ui/src/app/areas/interoperability/interop-system-monitor.page.ts (tick)
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -97,6 +104,28 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `bf1dcdf71`).
 
 ## Review Triage Log
 
+### 2026-11-26 — Review pass
+
+- verdicts: 17 findings — high 0, medium 4, low 9, false 2, maybe-false 2
+- findings:
+  - `[medium]` `[patch]` The vendor's `^SYS.EnsMetrics` lock release in `VendorMetrics` is unpinned — a second process now reads the running production while a first reader lives (`Frame.TestAnotherProcessStillReadsTheProductionWhileTheFirstReaderLives`, child mode `hold`); mutation run.
+  - `[medium]` `[patch]` The page's own table store and its stale-answer and destroyed guards had no test — three page-spec cases added, each mutation run.
+  - `[medium]` `[patch]` Thirteen of the 25 meter names were never compared with the vendor — `Read` now asserts each is a subscript of the vendor's own array; mutation run.
+  - `[medium]` `[patch]` Nineteen label and kind bindings were unpinned on the client — the store test pins all 25 against the spec's labels; mutation run.
+  - `[maybe-false]` `[defer]` Four vendor calls per refresh from the page may overlap and read idle — unverified; settled by four concurrent web reads with a production running.
+  - `[low]` `[patch]` Header mutation lines naming runs that were not made, one that cannot hold — removed from the test headers and the browser spec; the spec's Verification carries the runs.
+  - `[low]` `[reject]` A pending meter's value assertion passes when the element is absent — a status meter draws none before its answer by design, and the skeleton assertion beside it pins the state; the stricter form was tried and went red on value meters.
+  - `[low]` `[reject]` `TestEveryNamespaceAnswersTheSame` makes three reads without waiting — the three answer from one snapshot (inference), so equality holds either way; a wait adds 33 seconds for no new failure.
+  - `[low]` `[reject]` The case checks USER alone for a foreign production — the throwaway holds none elsewhere and the guard would add a namespace walk for no reachable case.
+  - `[low]` `[reject]` Readiness is a fixed 11-second wait — the vendor's interval is a fixed 10 seconds, so a signal has nothing to wait on.
+  - `[low]` `[reject]` The journal window can roll over during the call — one red in 6,900 tests, already recorded and handled by a rerun.
+  - `[false]` `[reject]` The screen declares 60 seconds against the contract's 5/10/30/60 — the orchestrator's ruling, condition 2, replaces the contract's rates.
+  - `[false]` `[reject]` The port carries no truncation signal — the family's convention is a caller asking one row beyond its cap, which `Read.TestEachDrillDownStopsAtItsNamedLimit` pins.
+  - `[low]` `[reject]` Live equality covers 12 of 25 meters and the tables against the seam — the 13 names are now pinned against the vendor and the rest move between calls.
+  - `[low]` `[reject]` The real web-request path with a production running is exercised by no test — measured over HTTP on 52777 and recorded under Measured; the in-process route test adds nothing the measurement does not show.
+  - `[low]` `[reject]` The browser spec runs on an idle instance — the field-level pins are in the component and store tests.
+  - `[maybe-false]` `[defer]` Four reads per refresh against one call per reader — grouped with the overlap entry above.
+
 ## Veto items
 
 Each is the lead's to take to the veto gate; the recommended option is first.
@@ -144,7 +173,28 @@ No new dependency; no destructive act; no governance key; nothing is written int
 9. No write, so no key, entity type, `Prohibited.cls` term or README count change.
 10. Siblings (Rule 31): the log purge family (`PurgeFrame`, `VendorLogPurge`, `LogMapped`), `MONITORPAIRS`, `Dashboard`/`DashboardProcesses` (descriptors), `dashboard.page.ts`/`dashboard.store.ts`/`meter.ts` (client), Batch 2's `InteropLogPurgeSeam` (seam modes) and `ProductionProbe` (the probe production).
 
+**Decided in-stage (implement).**
+
+1. System monitor offers the one refresh rate 60 seconds, default off, in place of 5, 10, 30 and 60 (the orchestrator's condition 2; the classic page's own rate, `EnsembleMonitor.cls:227`). EXPERIENCE.md's auto-refresh bullet names System monitor and says it offers 60 s alone.
+2. The vendor leaves an exclusive and a shared lock on `^SYS.EnsMetrics` after each call, and the vendor answers from its last call's counts inside 10 seconds (Measured). `VendorMetrics` gives both locks back unconditionally on every exit, with no read of `^$LOCK` (a principal without `%All` may not read it, inference), and the tests wait 11 seconds (`AgeSnapshot`) after any change of the production a read must see.
+3. A caller with no web request gets a minimal `%request`, `%response` and unsaved `%session` for the call, made in `VendorMetrics` before the switch (condition 3). `PurgeFrame`'s kind is `metrics` (`LOGKINDMETRICS`); the frame and the checker's rule 6 entry are otherwise unchanged.
+4. Both readers and the tests use the values only: no `status` or `msg` is carried. The page reads the row and each table once per read, four vendor calls, never at a rate above one per 60 seconds.
+5. Existing strings are reused where the spec's quoted new one already exists: "Which queues hold the most messages?" is `interopQueuesPrompt1` (a duplicate value is refused by `strings.test.mjs`), and "Item", "Messages" and "Task" are `interopItemSettingsCriterionItem`, `interopItemTabMessages` and `proposalEntityTask`. The meter key naming the namespaces is `interopSystemMonitorMeterScopes`, since a key with "Namespace" in its name joins `strings.test.mjs`'s namespace-key roster.
+6. The drill-downs' default sorts are Commands, Messages and Scheduled for (the text of the time, ascending), so a task list that crosses midnight is re-ordered by its text (inference: the vendor lists tasks by time to run).
+7. `InteropSystemMonitorCapSeam` carries the lowered limit, since the one seam's `values` mode is also read at the shipped limit. The arming roster takes one add-only `# classes:` line naming the case class alone.
+8. `ui/tools/screen-mirror.mjs` regenerated the mirror and `Titles.cls`; every other file was written with Edit or Write, except two in-place `sed` calls on a repo file (identical text) and `ui/tools/navigation.test.mjs` (a one-number change), which the report names.
+
 **Measured at plan (`ocupilot-b-ci`, read-only).** `SYS.EnsMetrics` and `SYS.Metrics` are deployed (no source); OcuPilot is not compiled in `%SYS`; `/csp/sys` has no resource and no matching roles; `%DB_IRISSYS` and `%Ens_Dashboard` have no public permission; the roles listing `%Ens_Dashboard` are `%EnsRole_Monitor` (`%Ens_Dashboard:U,%Ens_MsgBank_Dashboard:U,%Ens_Portal:U`) and `%EnsRole_Operator`; IRISTEMP holds `^IRIS.Temp.SysMetrics` and `^IRIS.Temp.Ens*` globals. `node --test --test-name-pattern="README states the count" tools/interop.test.mjs` passes at "One hundred and five" (116 `false` keys less 11 person-only).
+
+**Measured (Task 0, `ocupilot-b-ci`, 2026-11-26, auditing on; the idle legs by the first pass, the running and background-job legs by this one, and the footprint legs again by `InteropSystemMonitorFrame`).**
+
+- (a) Frame as the plan shapes it: `$ROLES`, `$USERNAME` and `$NAMESPACE` equal before and after for `irisowner` and for a principal holding `%Ens_Portal:U,%Ens_Dashboard:U,%DB_IRISSYS:R,%DB_HSCUSTOM:R` and no `%All`, idle and with the probe production running (the principal's legs run in a child job through the port). The call starts no process, writes no audit row (positive control: a security resource created and deleted by the same process is seen by the same query) and leaves IRISTEMP's `^IRIS.Temp.SysMetrics*` and `^IRIS.Temp.Ens*` as found. Journal: every record the process wrote is a `^SYS.EnsMetrics` record, idle 5 and with the production running 31 in the test's run (the first idle call of a process writes none).
+- The vendor's maintenance records are the ruled ones (U-177). **Two more findings, not in the plan:** each call leaves an exclusive and a shared lock on `^SYS.EnsMetrics` that only the end of a web request lets go of, and while a process holds them every other process reads the instance as idle (running 0, empty tables); and the vendor answers a call made within 10 seconds of its last one from the last one's counts, so a read that must see a production start or stop waits 10 seconds after the last call. The port gives its locks back on every exit and the tests wait.
+- (b) Pairs: without `%DB_IRISSYS:R` the switch to `%SYS` raises `<PROTECT>`; without `%Ens_Dashboard:U` the vendor's own check answers `#940`; without `%Ens_Portal:U` (holding the other two) the vendor answers, so the portal's pair is the stricter posture the ruling accepts. No further pair. The classic page over HTTP was not tried (inference: its `RESOURCE` is `%Ens_Dashboard:USE`, `EnsembleMonitor.cls:21`, which the gate also asks).
+- (c) The call answers the same 51 `values` members for `pCount` 0 and 1, idle and running; the 25 meters the row names are all present, each as text. Table meters: `EnsBusyProcesses` is `Namespace;Item;Pid;Commands` (`;[System];1879;712`, a system process has no namespace; counts may carry thousands separators, `1,200`), `EnsBusyQueues` is `Namespace;Queue;Messages` (`USER;OcuPilotProbeOp;0`, empty while no production runs) and `UpcomingTasks` is `Task;Time;Status` (`Mirror OAuth2 config sync task;13:55;Scheduled`); each has `^` between rows and no padding row in either state (the older `BusyProcesses` meter pads with `;0`, which the port does not read). Idle the call answers an empty `EnsBusyQueues`; running it answered the four queues of USER's probe production, five tasks, and the processes the vendor counts. The vendor's per-meter `status` and `msg` carry `LastBackup`, `Transactions` and six message names, and the port carries neither.
+- (d) Time: 0.013 to 0.016 s per call idle (in process), and a whole route read, request to answer, in 0.05 s with the production running. Well within 5 s here and 7.5 s on CI.
+- **Condition 3 (the agent's turn job):** with a production running, the call made in a background job (no web request) answers an error status naming `<UNDEFINED>cspLink ... %request`, then `%response`, then `%session`, with the tables empty. The port gives such a caller a minimal context of the vendor's own classes (`%CSP.Request`, `%CSP.Response` and an unsaved `%CSP.Session` made with no lock and no stored row), and the call answers 200 with the production counted and the probe queue listed; the context is dropped when the method ends and no session is stored. `InteropSystemMonitorFrame.TestABackgroundJobReadsWithAProductionRunning` pins it.
+- **Condition 2 (refresh):** the classic System Monitor's own rate is 60 seconds: `Set tPane.RefreshRate = 60000` (`EnsembleMonitor.cls:227`, the page); its 10-second timer runs only when the portal's auto-refresh setting is on (`enableAutoRefresh`, `abstractRefreshable.cls:12`), which is not the default. System monitor therefore offers the 60-second rate alone, default off.
 
 **Governing ADs (Rule 6):** AD-5, AD-8, AD-9, AD-16, AD-29, AD-36, AD-43, AD-44, AD-62. Not engaged: AD-3, AD-6, AD-7 (a read in its request), AD-10, AD-15, AD-22, AD-51 to AD-53, AD-56, AD-58, AD-59 (no write).
 
@@ -166,13 +216,31 @@ No new dependency; no destructive act; no governance key; nothing is written int
 
 **Hermeticity:** every test added or changed passes on its first run on a fresh instance, in either order; a test that starts the probe production stops it and restores its items; principals are removed.
 
-**Mutations** (as Batch 2's procedure). Planned: AC1 `VendorMetrics` answers the previous call's values -> `InteropSystemMonitorRead` red (stopped leg); AC2 the padding rows kept -> `InteropSystemMonitorRead` red; AC3 `%Ens_Dashboard:USE` dropped from the pairs -> `InteropSystemMonitorGate` red; AC4 the vendor called outside `PurgeFrame` -> `InteropSystemMonitorFrame` red (role legs); AC5 the restore moved after the log -> `InteropSystemMonitorFrame` red; AC6 a tool's `ReadTool` row removed -> red; AC7 a README clause dropped -> `interop.test.mjs` red; AC8 the meter bound to `EnsJobs` -> the browser spec red; AC9 the probe production left running -> the case's after-all check red.
+**Mutations** (as Batch 2's procedure). Each was applied on `ocupilot-b-ci`, run, reverted and compared with a copy taken before (`cmp`), and the tree reloaded with every subclass; the client one on a rebuilt, redeployed bundle.
+
+- mutation: the row's Productions running read from `EnsJobs` in `SystemMonitorRow` -> `InteropSystemMonitorRead.TestTheRowEqualsTheVendorBesideItWithTheProbeProductionRunningAndStopped` and `TestTheDrillDownsListTheVendorsRowsInOrderWithoutPadding` red (AC1; the previous-call mutation the plan named does not exist in the port, so this is its equivalent on the row).
+- mutation: the padding rows kept in `MonitorTableRows` -> `InteropSystemMonitorRead.TestTheDrillDownsListTheVendorsRowsInOrderWithoutPadding` red on all three tables (AC2).
+- mutation: `%Ens_Dashboard:USE` dropped from `SYSTEMMONITORPAIRS` -> `InteropSystemMonitorGate.TestTheGateRefusesEachPrincipalBeforeAnyVendorCall` red on the principal without it, its four legs and the vendor-call count (AC3).
+- mutation: `VendorMetrics` called outside `PurgeFrame` in `ReadMetrics` -> `InteropSystemMonitorFrame.TestTheRolesUserAndNamespaceAreTheSameAfterEveryExit` red on the administrator's two role legs and on the roles the later legs saw (AC4).
+- mutation: the namespace restore moved after the log in `ReadMetrics` -> `InteropSystemMonitorFrame.TestAFaultIsLoggedAfterTheRestoreWithNoVendorText` red (the log line is written in `%SYS`, where OcuPilot is not compiled, and raises) (AC5).
+- mutation: `interop.systemmonitortasks.read` removed from `ReadTool`'s roster -> `ReadTool.TestTheRegistryListsDescriptorReadsAndInheritedKinds` red (AC6).
+- mutation: the system monitor clause dropped from the README -> `interop.test.mjs` "the README states the count" red (AC7).
+- mutation: the Productions running meter bound to `Processes` in `interop-system-monitor.store.ts`, on a rebuilt and redeployed bundle -> `interop-system-monitor.browser-spec.mjs` first test red, and `interop-system-monitor-store.test.mjs` red (AC8; `EnsJobs`, the plan's field, reads 0 as does Productions running on an idle instance).
+- mutation: the case's `OnAfterOneTest` no longer removes the probe production -> `InteropSystemMonitorRead` red on its after-test assertion and on the next test's start (AC9).
+- mutation (review patches, run the same way): the two `Lock -` lines of `VendorMetrics` removed -> `InteropSystemMonitorFrame.TestAnotherProcessStillReadsTheProductionWhileTheFirstReaderLives` red; `EnsOutgoingRequests` misspelt in `SYSTEMMONITORMETERS` -> `InteropSystemMonitorRead.TestTheRowEqualsTheVendorBesideItWithTheProbeProductionRunningAndStopped` red; two meters' labels swapped in `interop-system-monitor.store.ts` -> `interop-system-monitor-store.test.mjs` "each meter shows the label and kind the spec places it under" red; the latest-read check, the destroyed check and the page's own table store each dropped in `interop-system-monitor.page.ts` -> the matching page-spec case red, one at a time, each reverted and `cmp`-identical.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: Task 0 (a) HALT, `## Clarification Needed`: `%SYS.Ensemble.GetEnsMetrics` journals records. No product code was written.
+Status: in-review
+Blocking condition: none.
 
-**Task 0 (implement stage, `ocupilot-b-ci`, auditing on, scratch class `Scratch2417.Probe` since deleted, principals `OcuP2417m*` since deleted, probe production stopped, USER holds none).** (a) The frame as the plan shapes it (`New $ROLES`, switch to `%SYS`, call, restore): `$ROLES`, `$USERNAME` and `$NAMESPACE` equal before and after for `irisowner` (`%All,OcuPilotAdmin`) and for a principal holding `%Ens_Portal:U,%Ens_Dashboard:U,%DB_IRISSYS:R,%DB_HSCUSTOM:R` (role `OcuP2417mFullRole` only), idle; no process started (process list before and after equal); `^IRIS.Temp.SysMetrics*` and `^IRIS.Temp.Ens*` unchanged by the call (node counts and a checksum). **Journal: the call journals records.** Idle, the third of three calls from one process wrote 3 SETs of `^SYS.EnsMetrics`, `^SYS.EnsMetrics("BusyProcesses")` and `^SYS.EnsMetrics("BusyProcesses",<pid>)` into the IRISSYS database (`/durable/iris/mgr/`), the first of one call wrote none; with the probe production running, each call wrote 28 to 34 SETs of `^SYS.EnsMetrics(...)` (`Productions`, `Queues`, `JobCount`, `Count`, `Errors`, `Alerts`, `Previous`, `BusyProcesses`) into the USER database (`/durable/iris/mgr/user/`), for `irisowner` and for the principal alike. A control run with the same scratch code and no call journaled none. The call wrote no audit row (journal of `^IRIS.AuditD` by the process: none for `irisowner`; the principal's rows are its own login, the positive control). (b) Without `%DB_IRISSYS:R`: `<PROTECT>` at the switch to `%SYS`; without `%Ens_Dashboard:U`: `#940` from the vendor's own check; without `%Ens_Portal:U` (holding `%Ens_Dashboard:U,%DB_IRISSYS:R`): the vendor answers. The classic page over HTTP was not tried. (c) With no production running the call answers all of the 25 meters; the three tables read `EnsBusyProcesses` `;[System];1879;712`, `EnsBusyQueues` empty, `UpcomingTasks` `<task>;<time>;<status>^...`; `status` holds `LastBackup` and `Transactions`, `msg` six names. With the probe production running the call raised `<UNDEFINED>cspLink+9^%SYS.cspServer *%request` from a process with no web context (and the same for `%response`, `%session` once each was defined), after `EnsProductionsRunning` read 1, so the running leg's meters were not read here. (d) 0.013 to 0.016 s per call, cold and warm, idle and running. The run stopped at the journal finding.
+**Implement pass (2026-11-26, after the orchestrator's ruling U-177).** Task 0's running-production leg through the HTTP route on 52777 and condition 3's background job are measured and recorded under Design Notes, Measured. Two things beyond the spec came of them: the port gives back the exclusive and shared lock the vendor leaves on `^SYS.EnsMetrics`, and a caller with no web request gets a minimal request context for the call. Built to the spec:
+
+- **Port:** `InteropPort` gains the four endpoints, the instance gate of pairs alone, `SystemMonitorRow`, `MonitorTableRows`, `ReadMetrics`, the overridable `VendorMetrics` and `PurgeFrame`'s kind `metrics`; descriptors `InteropSystemMonitor` (side bar 29, `meters`, one 60-second rate) and the three drill-downs; mirror and `Titles.cls` regenerated.
+- **Client:** `interop-system-monitor.page.ts` and `.store.ts` with specs, the outlet registration, 27 strings and EXPERIENCE.md's row and auto-refresh bullet; README's Interoperability paragraph and `interop.test.mjs`'s assertion, count unchanged.
+- **Tests:** `InteropSystemMonitorCase`, `Seam`, `CapSeam`, `Child`, `Read` (7 tests), `Frame` (4), `Gate` (2); the browser spec; the rosters `ReadTool` (647 tools), `SurfaceCoverage`, `StageTwoTools`, `Descriptor`, `InteropDescriptor`, `InteropHostDescriptor`, `Navigation`, `screen-mirror.test.mjs`, `navigation.test.mjs` and one `# classes:` line.
+- **Verified on `ocupilot-b-ci`:** the three new classes green in both orders; the full sweep, shards 1 to 17, 924 classes and 6,907 tests, green (shard 15 once red on the Frame class's own journal window, fixed and run again green); smoke 49 of 49; the browser spec and `dashboard-drill-downs` green on a rebuilt bundle; `npm test` (2,426 tool tests and 4,094 component tests), `npm run build`, `check-objectscript.py`, its harness and `lint-docs.sh` clean. Each AC has one mutation (Verification). USER holds no production and no `OcuP2417*` principal or role remains.
+
+**Review pass (2026-11-26).** Seventeen findings, none high: four medium patched (lock release pinned by a second reader beside a living first one, the page's own-store and stale-answer guards, the 25 meter names against the vendor's array, the 25 label and kind bindings), one low patched (unrun mutation lines removed from test headers), two maybe-false deferred as one entry (overlapping vendor calls from the page's four reads), two false and seven low rejected with their reasons in the Review Triage Log. Re-verified after the patches: `InteropSystemMonitorFrame` (5 tests), `Read` (7), `Gate` (2), each green with one mutation red and reverted `cmp`-identical; `interop-system-monitor.page.spec.ts` (11) and the store test (7); `npm test` tools 2,427 and components 4,097 green; `check-objectscript.py` clean. Follow-up review recommended: four medium patches, and the new lock case depends on a second process's timing.
 
 **Plan.** Batch 5: System monitor and its three drill-downs through `InteropPort`, one instance-wide `GetEnsMetrics` call each in `%SYS` inside `PurgeFrame`, and the README's Interoperability clauses for the five batches. Veto items 1 to 4; decided-in-stage list under Design Notes. Read-only check on `ocupilot-b-ci` (52777, 2026.2 build 221U); nothing was written to the instance.
