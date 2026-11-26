@@ -10141,17 +10141,48 @@ ClassMethod WorkflowVendor(pType As %String, pObject As %RegisteredObject, pName
     Quit pObject.%Save()
 }
 
-/// <p>A vendor exception <var>pException</var> in this port's own words: the status it logs carries the vendor's error codes alone, never a name or a value, and a lock the vendor could not
-/// take is 503, <code>&lt;PROTECT&gt;</code> 403, anything else 500 <code>INTERNAL</code>.</p>
+/// <p>Take the removed workflow user <var>pName</var> out of each workflow role the current namespace, which the caller has already switched, still records it in, through the vendor's own
+/// <code>EnsLib.Workflow.RoleDefinition.RemoveUserFromRole</code> as the classic Remove User From This Role dialog does, and answer how many in <var>pRemoved</var>. The vendor's
+/// <code>%DeleteId</code> of the user takes the memberships only where the namespace's own database holds the foreign-key registry a compile of
+/// <code>EnsLib.Workflow.RoleMembership</code> writes; elsewhere they stay behind, so this runs after every remove. A membership the vendor already took is not read, so it is not an error. It names
+/// no other OcuPilot class.</p>
+ClassMethod WorkflowMembershipsGone(pName As %String, Output pRemoved As %Integer) As %Status
+{
+    Set tSC = $$$OK
+    Set pRemoved = 0
+    Set tRoles = ""
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(, "SELECT RoleName FROM EnsLib_Workflow.RoleMembership WHERE %EXACT(UserName) = ?", pName)
+    If '$IsObject(tResult) Quit $$$ERROR($$$GeneralError, "the statement answered no result")
+    If tResult.%SQLCODE < 0 Quit $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
+    While tResult.%Next() {
+        Set tRoles = tRoles _ $ListBuild(tResult.%GetData(1))
+    }
+    Set tResult = ""
+    For tI = 1:1:$ListLength(tRoles) {
+        Set tRole = $List(tRoles, tI)
+        Set tSC = ##class(EnsLib.Workflow.RoleDefinition).RemoveUserFromRole(tRole, pName)
+        If $$$ISERR(tSC) Quit
+        ; RemoveUserFromRole answers the engine's status, not the delete's, so the membership is read again.
+        If ##class(EnsLib.Workflow.RoleMembership).IDExists(tRole, pName) {
+            Set tSC = $$$ERROR($$$GeneralError, "a workflow role membership was not removed")
+            Quit
+        }
+        Set pRemoved = pRemoved + 1
+    }
+    Quit tSC
+}
+
+/// <p>A vendor exception <var>pException</var> in this port's own words: the status it logs carries the vendor's error codes alone, never a name or a value, and the interoperability runtime
+/// lock the vendor could not take is 503, <code>&lt;PROTECT&gt;</code> 403, anything else 500 <code>INTERNAL</code>.</p>
 ClassMethod WorkflowMapped(pException As %Exception.AbstractException, pMessage As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Quit ..Statused(..VendorCodesStatus(pException.AsStatus(), "the workflow user call"), pMessage, .pHttpStatus, .pFault)
 }
 
-/// <p>Whether <var>pFirst</var> and <var>pSecond</var> are the same string, letter case included and compared as text, so two numeric-looking names that differ as text differ. Pure.</p>
+/// <p>Whether <var>pFirst</var> and <var>pSecond</var> are the same string, letter case included. Pure.</p>
 ClassMethod WorkflowSame(pFirst As %String, pSecond As %String) As %Boolean
 {
-    Quit '(pFirst ] pSecond) && '(pSecond ] pFirst)
+    Quit (pFirst = pSecond)
 }
 
 /// <p>A count of the rows the statement <var>pSql</var> answers for the value <var>pValue</var>, in the current namespace, read with <code>%ExecDirectNoPriv</code> after the gate. A fault is raised.</p>
@@ -10408,10 +10439,11 @@ ClassMethod InvokeWorkflowUser(pNamespace As %String, pType As %String, ByRef pQ
 /// <li>In the namespace the user is read again with the instance's user choices (an add) and judged by <method>WorkflowWriteToken</method>, so a state that moved since the review is refused by its
 /// own code with no vendor call: <code>USERNAME</code>, <code>TAKEN</code> or a 404; then the fields are judged (<method>WorkflowViolations</method>, 422).</li>
 /// <li>The vendor's <code>%Save</code> of a new user, <code>%Save</code> of the opened user (concurrency 4, the reference dropped right after) with each field that differs, or
-/// <code>%DeleteId</code> (<method>WorkflowVendor</method>). An edit that moves no field calls nothing. A user another process holds locked is 503. The vendor's own engine deletes the worklist of a
-/// user who is removed or made inactive and leaves the tasks they held unassigned.</li>
+/// <code>%DeleteId</code> (<method>WorkflowVendor</method>), a remove then taking the user out of each workflow role the namespace still records (<method>WorkflowMembershipsGone</method>). An edit
+/// that moves no field calls nothing. A user another process holds locked is 503. The vendor's own engine deletes the worklist of a user who is removed or made inactive and leaves the tasks they held
+/// unassigned.</li>
 /// <li>The namespace is restored, then OcuPilot's own audit row is recorded (<method>AuditRuntime</method>) whatever the vendor answered, because the vendor records none: the namespace, the names of
-/// the fields written and whether it completed, never a value.</li>
+/// the fields written (a remove: how many memberships it took after the vendor's delete) and whether it completed, never a value.</li>
 /// </ol>
 /// <p>A vendor error status or a fault is 500 <code>INTERNAL</code>, never 200. A vendor refusal reaches the log as its error codes alone. The answer is the user's row read again
 /// (<method>ReadWorkflowUser</method>); after a remove <code>{Name, Namespace}</code>.</p>
@@ -10448,6 +10480,7 @@ ClassMethod PerformWorkflowUser(pNamespace As %String, pType As %String, pName A
             } ElseIf pType = ..#TYPEREMOVEWORKFLOWUSER {
                 Set tAttempted = 1
                 Set tVendorSC = ..WorkflowVendor(pType, "", pName)
+                If $$$ISOK(tVendorSC) Set tVendorSC = ..WorkflowMembershipsGone(pName, .tMembers)
             } Else {
                 Set tObject = ##class(EnsLib.Workflow.UserDefinition).%OpenId(pName, 4)
                 If '$IsObject(tObject) {
@@ -10490,6 +10523,7 @@ ClassMethod PerformWorkflowUser(pNamespace As %String, pType As %String, pName A
             If (pBody.%GetTypeOf("IsActive") = "boolean") && 'pBody.%Get("IsActive") Set tChanged = tChanged _ $ListBuild("IsActive")
         }
         If pType '= ..#TYPEREMOVEWORKFLOWUSER Do tEffects.%Set("fields", $ListToString(tChanged, ","), "string")
+        If pType = ..#TYPEREMOVEWORKFLOWUSER Do tEffects.%Set("memberships", +$Get(tMembers), "number")
         Do tEffects.%Set("completed", ($$$ISOK(tVendorSC) && '$IsObject(tCaught)), "boolean")
         Do ..AuditRuntime($Case(pType, ..#TYPEADDWORKFLOWUSER: ..#VERBADD, ..#TYPEREMOVEWORKFLOWUSER: ..#VERBREMOVE, : ..#VERBSET), ..#ENTITYWORKFLOWUSER, pName, tEffects)
     }
@@ -10524,7 +10558,8 @@ ClassMethod PerformWorkflowUser(pNamespace As %String, pType As %String, pName A
 
 /// <p>The lines <method>Snippet</method> adds for the workflow user write <var>pType</var> of the user named <var>pName</var> (Story 24.17 Batch 3a): the source control guard, each refusal as one
 /// guard that stops the write (an add's name the instance's user choices answer exactly and a name the namespace holds in any letter case; an edit's and a remove's user held), and the vendor's
-/// <code>%Save</code> of a new user, <code>%Save</code> of the user opened at concurrency 4 with the fields <var>pBody</var> carries, or <code>%DeleteId</code>. Names and values are string
+/// <code>%Save</code> of a new user, <code>%Save</code> of the user opened at concurrency 4 with the fields <var>pBody</var> carries, or <code>%DeleteId</code> and then
+/// <code>RemoveUserFromRole</code> for each workflow role the namespace still records the user in (<method>WorkflowMembershipsGone</method>). Names and values are string
 /// literals, so nothing the query carries runs as code. <code>""</code> for a name or a value the port would refuse by shape, which renders no draft. Nothing here runs; a person runs it.</p>
 ClassMethod WorkflowSnippet(pType As %String, pName As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
 {
@@ -10540,7 +10575,7 @@ ClassMethod WorkflowSnippet(pType As %String, pName As %String, pBody As %Dynami
     Set tText = tNL _ " Set tGo = '##class(%CSP.Portal.SourceControl.Util).IsEnabled($Namespace), tSC = $System.Status.OK()"
     Set tText = tText _ tNL _ " If 'tGo Set tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWSOURCECONTROL) _ ")"
     If tAdd {
-        Set tText = tText _ tNL _ " If tGo Do ##class(Ens.ContextSearch).ListEnsembleUsers(.tCaption, .tTop, .tUsers, .tParms) Set tChosen = 0 For tI = 1:1:+$Get(tUsers) { If '(tUsers(tI) ] " _ tName _ "), '(" _ tName _ " ] tUsers(tI)) Set tChosen = 1 }"
+        Set tText = tText _ tNL _ " If tGo Do ##class(Ens.ContextSearch).ListEnsembleUsers(.tCaption, .tTop, .tUsers, .tParms) Set tChosen = 0 For tI = 1:1:+$Get(tUsers) { If tUsers(tI) = " _ tName _ " Set tChosen = 1 }"
         Set tText = tText _ tNL _ " If tGo, 'tChosen Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWUSERNAME) _ ")"
         Set tCount = ..Literal("SELECT COUNT(*) FROM EnsLib_Workflow.UserDefinition WHERE LOWER(Name) = ?")
         Set tText = tText _ tNL _ " If tGo Set tRS = ##class(%SQL.Statement).%ExecDirect(, " _ tCount _ ", $ZConvert(" _ tName _ ", ""L"")), tHeld = $Select(tRS.%Next(): ''tRS.%GetData(1), 1: 1), tRS = """""
@@ -10548,7 +10583,11 @@ ClassMethod WorkflowSnippet(pType As %String, pName As %String, pBody As %Dynami
         Set tText = tText _ tNL _ " If tGo Set tUser = ##class(EnsLib.Workflow.UserDefinition).%New(), tUser.Name = " _ tName
     } Else {
         Set tText = tText _ tNL _ " If tGo, '##class(EnsLib.Workflow.UserDefinition).%ExistsId(" _ tName _ ") Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.Error).#PORTNOTFOUND) _ ")"
-        If pType = ..#TYPEREMOVEWORKFLOWUSER Quit tText _ tNL _ " If tGo Set tSC = ##class(EnsLib.Workflow.UserDefinition).%DeleteId(" _ tName _ ")"
+        If pType = ..#TYPEREMOVEWORKFLOWUSER {
+            Set tText = tText _ tNL _ " If tGo Set tSC = ##class(EnsLib.Workflow.UserDefinition).%DeleteId(" _ tName _ ")"
+            Set tMembers = ..Literal("SELECT RoleName FROM EnsLib_Workflow.RoleMembership WHERE %EXACT(UserName) = ?")
+            Quit tText _ tNL _ " If tGo, $System.Status.IsOK(tSC) { Set tRoles = """", tRS = ##class(%SQL.Statement).%ExecDirect(, " _ tMembers _ ", " _ tName _ ") While tRS.%Next() { Set tRoles = tRoles _ $ListBuild(tRS.%GetData(1)) } Set tRS = """" For tI = 1:1:$ListLength(tRoles) { If $System.Status.IsOK(tSC) Set tSC = ##class(EnsLib.Workflow.RoleDefinition).RemoveUserFromRole($List(tRoles, tI), " _ tName _ ") } }"
+        }
         Set tText = tText _ tNL _ " If tGo Set tUser = ##class(EnsLib.Workflow.UserDefinition).%OpenId(" _ tName _ ", 4)"
     }
     If $IsObject(pBody) && (pBody.%GetTypeOf("FullName") = "string") Set tText = tText _ tNL _ " If tGo Set tUser.FullName = " _ ..Literal(pBody.%Get("FullName"))

@@ -39,6 +39,7 @@ Method OnBeforeAllTests() As %Status
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, ..%ClassName(1) _ " stores probe workflow users, roles, memberships and tasks in USER and HSCUSTOM, removes them and creates instance users and principals on this instance, and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was changed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
+    Do $ClassMethod(..#FIXTURE, "KeepStamps")
     Do $ClassMethod(..#FIXTURE, "DropProbes")
     Set tForeign = 0
     For tNamespace = ..#SOURCE, ..#OTHER {
@@ -46,11 +47,6 @@ Method OnBeforeAllTests() As %Status
         If tForeign '= 0 Quit
     }
     If tForeign '= 0 Quit $$$ERROR($$$GeneralError, ..%ClassName(1) _ " lists and counts every workflow user, role, membership, worklist item and task a namespace holds, and " _ tNamespace _ " holds " _ tForeign _ " that are not its probes, so nothing was run. A class that ran before it left them.")
-    Set tMissing = ""
-    For tNamespace = ..#SOURCE, ..#OTHER {
-        If '$ClassMethod(..#FIXTURE, "EnsureCascade", tNamespace) Set tMissing = tNamespace Quit
-    }
-    If tMissing '= "" Quit $$$ERROR($$$GeneralError, ..%ClassName(1) _ " needs the vendor's foreign-key registry for workflow memberships in " _ ..#SOURCE _ " and " _ ..#OTHER _ ", and " _ tMissing _ " would not hold it.")
     Quit $$$OK
 }
 
@@ -58,6 +54,7 @@ Method OnAfterAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$OK
     Do $ClassMethod(..#FIXTURE, "DropProbes")
+    Do $ClassMethod(..#FIXTURE, "RestoreStamps")
     Quit $$$OK
 }
 
@@ -73,6 +70,7 @@ Method OnBeforeOneTest() As %Status
 
 Method OnAfterOneTest() As %Status
 {
+    Do $ClassMethod(..#FIXTURE, "RestoreCascade")
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
     Do $ClassMethod(..#SEAM, "ClearLog")

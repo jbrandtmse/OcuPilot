@@ -38,7 +38,7 @@ let dialogCount = 0;
       <p class="ocu-banner ocu-banner-warning" role="alert" data-interop-workflow-user-reason>{{ reason }}</p>
     }
     @if (inactiveNotice) {
-      <p class="ocu-banner ocu-banner-warning" data-interop-workflow-user-inactive>{{ STRINGS.interopWorkflowUserInactiveConsequence }}</p>
+      <p class="ocu-banner ocu-banner-warning" role="status" data-interop-workflow-user-inactive>{{ STRINGS.interopWorkflowUserInactiveConsequence }}</p>
     }
     <div class="ocu-form-fields">
       <div class="ocu-field">
@@ -105,6 +105,8 @@ let dialogCount = 0;
             [id]="fieldId(activeField)"
             [attr.data-interop-workflow-user-field]="activeField"
             [checked]="active"
+            [attr.aria-invalid]="violation(activeField) ? 'true' : null"
+            [attr.aria-describedby]="reasonOnly(activeField)"
             (change)="onActive($event)"
           />
           <span>{{ STRINGS.interopColumnActive }}</span>

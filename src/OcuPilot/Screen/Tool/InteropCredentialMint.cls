@@ -1,5 +1,5 @@
-/// <p>The mint every credential tool and every schedule spec tool declares as its <method>OcuPilot.Screen.Tool.Write.MintClass</method> (AD-6, AD-52,
-/// Story 24.15): the kernel's own mint, whose target is the credential's or the schedule spec's name. For a tool that creates its target or sends a body (the add and the edit), the
+/// <p>The mint every credential, schedule spec and workflow user tool declares as its <method>OcuPilot.Screen.Tool.Write.MintClass</method> (AD-6, AD-52,
+/// Story 24.15): the kernel's own mint, whose target is the credential's, the schedule spec's or the workflow user's name. For a tool that creates its target or sends a body (the add and the edit), the
 /// arguments it stores also carry the namespace the request is scoped to, under <parameter>NAMESPACEFIELD</parameter>, replacing any the agent
 /// sent, so the credential's field rules (a business partner the namespace holds, a user name the instance accepts) are asked again at the
 /// confirm in the namespace the proposal read (<method>OcuPilot.Screen.Tool.InteropAction.ArgumentNamespace</method>), whichever namespace the

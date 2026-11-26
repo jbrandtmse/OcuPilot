@@ -147,6 +147,41 @@ Method TestTheDeactivationAndTheRemoveDeleteTheWorklistAndUnassignTheTasks()
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "RoleCount", ..#SOURCE), 2, "and the two roles stay")
 }
 
+/// <p>AC3: a remove takes the user out of every workflow role both where the vendor's delete leaves the memberships behind (<code>USER</code> with the vendor's foreign-key registry for them
+/// taken out for the test and put back after it, shown by a positive control: the vendor's own delete of another user leaves its membership) and where the vendor's delete has already taken
+/// them (<code>HSCUSTOM</code>), which is no error; each audit row counts the memberships the remove took after the vendor's delete.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.PerformWorkflowUser</method> skip <method>OcuPilot.Port.InteropPort.WorkflowMembershipsGone</method> -- the <code>USER</code> leg
+/// goes red.</p>
+Method TestTheRemoveTakesEveryMembershipWithOrWithoutTheVendorsRegistry()
+{
+    Set tFx = ..#FIXTURE
+    Do $$$AssertEquals($ClassMethod(tFx, "CascadeHeld", ..#OTHER), 1, "HSCUSTOM holds the registry the vendor's delete takes memberships by")
+    Set tFound = $ClassMethod(tFx, "CascadeHeld", ..#SOURCE)
+    Do $$$AssertStatusOK(..Busy(..#NAMEA), "an active user in two roles with a task and a worklist item is stored in USER")
+    Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeUser", "OcuP2417wCc", "Control", 1), "and a user for the positive control")
+    Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeMember", ..#ROLEA, "OcuP2417wCc"), "in one of the roles")
+    Do $$$AssertTrue($ClassMethod(tFx, "HideCascade", ..#SOURCE), "USER holds no registry for the test, which puts back what it held")
+    Do $$$AssertStatusOK($ClassMethod(tFx, "VendorDelete", ..#SOURCE, "OcuP2417wCc"), "the vendor's own delete of the control user succeeds")
+    Do $$$AssertEquals($Piece($ClassMethod(tFx, "Facts", ..#SOURCE, "OcuP2417wCc"), "|", 1), 1, "and leaves its membership behind, so USER is in the state the remove must handle")
+    Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeUser", ..#NAMEB, "Other User", 1, ..#OTHER), "a user is stored in HSCUSTOM")
+    Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeRole", ..#ROLEA, ..#OTHER), "with a role")
+    Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeMember", ..#ROLEA, ..#NAMEB, ..#OTHER), "that it belongs to")
+    Do $$$AssertEquals($Piece($ClassMethod(tFx, "Facts", ..#OTHER, ..#NAMEB), "|", 1), 1, "the HSCUSTOM user holds one membership")
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Do $$$AssertEquals(..Put("REMOVEWORKFLOWUSER", ..#NAMEA, {}, .tResult, .tFault), "200 ", "the remove answers 200 in USER")
+    Do $$$AssertEquals($ClassMethod(tFx, "UserText", ..#SOURCE, ..#NAMEA) _ "|" _ ..Facts(..#NAMEA), "<absent>|0|0|0", "the user, both its memberships and its worklist item are gone and its task is unassigned")
+    Do $$$AssertEquals($ClassMethod(tFx, "RoleCount", ..#SOURCE), 2, "and the two roles stay")
+    Do $$$AssertEquals(..OwnRows(tSince, ..#NAMEA, .tData, 1, 1), 1, "the remove records one ConfigChange")
+    Do $$$AssertTrue((tData [ """memberships"":2") && (tData [ "USER"), "naming the namespace and the two memberships it took after the vendor's delete: " _ tData)
+    Do $ClassMethod(tFx, "RestoreCascade")
+    Do $$$AssertEquals($ClassMethod(tFx, "CascadeHeld", ..#SOURCE), tFound, "USER holds the registry as the test found it")
+    Do $$$AssertEquals(..Put("REMOVEWORKFLOWUSER", ..#NAMEB, {}, .tResult, .tFault, ..#OTHER), "200 ", "the remove answers 200 in HSCUSTOM, where the vendor's delete took the membership")
+    Do $$$AssertEquals($ClassMethod(tFx, "UserText", ..#OTHER, ..#NAMEB) _ "|" _ $ClassMethod(tFx, "Facts", ..#OTHER, ..#NAMEB), "<absent>|0|0|0", "the user and its membership are gone")
+    Do $$$AssertEquals($ClassMethod(tFx, "RoleCount", ..#OTHER), 1, "and its role stays")
+    Do $$$AssertEquals(..OwnRows(tSince, ..#NAMEB, .tData, 1, 1), 1, "the remove records one ConfigChange")
+    Do $$$AssertTrue((tData [ """memberships"":0") && (tData [ "HSCUSTOM") && (tData [ """completed"":true"), "completed, with no membership left for it to take: " _ tData)
+}
+
 /// <p>AC2, AC3: the agent's add of a workflow user, minted for the HTTP account and confirmed over HTTP, creates a user that did not exist with the active state it proposed, answers one envelope with a
 /// read-back that matches, is ledgered once and marked (AD-15), and records one <code>ConfigChange</code> carrying no value; a name taken after the mint, in another letter case, closes the confirm
 /// target-changed.</p>
@@ -168,7 +203,7 @@ Method TestTheAgentsAddConfirmsOverHttp()
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "UserText", ..#SOURCE, ..#NAMEA), "Agent Ann|0", "the class holds what the proposal reviewed, the active state included")
     Do $$$AssertEquals(##class(OcuPilot.Test.InteropScheduleControl).VendorRows(tSince, ..#NAMEA), 0, "the vendor records no row")
-    Do $$$AssertEquals(..OwnRows(tSince, ..#NAMEA, .tData), 1, "OcuPilot records one ConfigChange")
+    Do $$$AssertEquals(..OwnRows(tSince, ..#NAMEA, .tData, 1, 1), 1, "OcuPilot records one ConfigChange")
     Do $$$AssertTrue((tData [ "FullName,IsActive") && (tData '[ "Agent Ann"), "naming the fields and carrying no value: " _ tData)
     Set tCode = ..Mint("Add", ..#NAMEB, {"FullName": "Agent Bea"}, .tReason, .tSecond, .tSecondTurn)
     Do $$$AssertEquals(tCode, "minted", "a second add mints: " _ tReason)
@@ -178,6 +213,21 @@ Method TestTheAgentsAddConfirmsOverHttp()
     Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: tHttp), "PROPOSAL.TARGETCHANGED", "the proposal is closed target-changed: " _ $Extract($Get(tRaw), 1, 300))
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "UserText", ..#SOURCE, ..#NAMEB), "<absent>", "and nothing was written under the name the agent proposed")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tSecondTurn))
+}
+
+/// <p>AC4: an add whose instance user is deleted after the mint, so the instance no longer offers the name, closes the confirm target-changed and stores nothing.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.WorkflowWriteToken</method> stop refusing a name the choices do not answer -- this goes red.</p>
+Method TestAnAddWhoseInstanceUserIsGoneAtTheConfirmClosesTargetChanged()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "InstanceUser", ..#NAMEA), "the probe instance user is created")
+    Set tCode = ..Mint("Add", ..#NAMEA, {"FullName": "Gone Ann"}, .tReason, .tProposal, .tTurn)
+    Do $$$AssertEquals(tCode, "minted", "the add mints: " _ tReason)
+    If '$IsObject($Get(tProposal)) Quit
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "DropInstanceUser", ..#NAMEA), "the instance user is deleted after the mint")
+    Set tStatus = ..Confirm(tProposal.proposalId, .tHttp, .tRaw, .tAnswer)
+    Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: tHttp), "PROPOSAL.TARGETCHANGED", "the proposal is closed target-changed: " _ $Extract($Get(tRaw), 1, 300))
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "UserText", ..#SOURCE, ..#NAMEA), "<absent>", "and no workflow user was stored")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tTurn))
 }
 
 /// <p>AC2, AC3: the agent's update changes the full name or the active state and keeps the other, and the agent's remove is destructive and ships off: it is refused while the tool's key is off, closes
@@ -207,7 +257,7 @@ Method TestTheAgentsUpdateAndRemoveConfirmOverHttp()
         Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("auditMarked") _ "|" _ tAnswer.action _ "|" _ tAnswer.readBack.verdict, 1: ""), "1|updated|" _ ##class(OcuPilot.Kernel.Proposal.ReadBack).#MATCHES, "marked (AD-15), whose read-back matches")
         Do $$$AssertEquals($ClassMethod(..#FIXTURE, "UserText", ..#SOURCE, ..#NAMEA), "Busy User|0", "the user is inactive and keeps its full name")
         Do $$$AssertEquals(..Facts(..#NAMEA), "2|0|0", "its worklist item is gone and its task is unassigned")
-        Do $$$AssertEquals(..OwnRows(tSince, ..#NAMEA, .tData), 1, "the update records one ConfigChange")
+        Do $$$AssertEquals(..OwnRows(tSince, ..#NAMEA, .tData, 1, 1), 1, "the update records one ConfigChange")
         Do $$$AssertTrue((tData [ "IsActive") && (tData '[ "FullName"), "naming the one field it changed and no value: " _ tData)
         Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tUpdateTurn)
         Set tCode = ..Mint("Update", ..#NAMEA, {"IsActive": true}, .tReason, .tActivate, .tActivateTurn)
@@ -237,7 +287,7 @@ Method TestTheAgentsUpdateAndRemoveConfirmOverHttp()
         Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("auditMarked") _ "|" _ tAnswer.action _ "|" _ tAnswer.readBack.verdict, 1: ""), "1|deleted|" _ ##class(OcuPilot.Kernel.Proposal.ReadBack).#NOTFOUND, "as a deletion, marked (AD-15), whose read-back finds the user gone")
         Do $$$AssertEquals(..LedgerCount(tRemoveTurn, "interop.workflowusers.remove"), 1, "ledgered once")
         Do $$$AssertEquals($ClassMethod(..#FIXTURE, "UserText", ..#SOURCE, ..#NAMEA) _ "|" _ ..Facts(..#NAMEA), "<absent>|0|0|0", "the user and its memberships and worklist are gone")
-        Do $$$AssertEquals(..OwnRows(tSince, ..#NAMEA, .tData, 2), 2, "the remove records its own ConfigChange and the refused confirms record none")
+        Do $$$AssertEquals(..OwnRows(tSince, ..#NAMEA, .tData, 2, 1), 2, "the remove records its own ConfigChange and the refused confirms record none")
     } Catch ex {
         Do $$$AssertStatusOK(ex.AsStatus(), "the agent leg raised")
     }
@@ -266,6 +316,7 @@ Method TestTheScriptFormsRenderTheGuardsAndRunNothingForABadValue()
         Do $$$AssertTrue((tText [ "Set $NAMESPACE = ""USER""") && (tText [ "EnsLib.Workflow.UserDefinition") && (tText [ ..#NAMEA) && (tText [ "IsEnabled($Namespace)"), tType _ ": it switches the namespace, guards source control and names the user and the vendor's class: " _ tText)
         If tType '= "REMOVEWORKFLOWUSER" Do $$$AssertTrue((tText [ "Script Ann") && (tText [ "IsActive = 0"), tType _ ": and carries the values as the body had them")
         If tType = "ADDWORKFLOWUSER" Do $$$AssertTrue((tText [ "ListEnsembleUsers") && (tText [ "LOWER(Name)"), "the add guards the instance's user choices and a name held in any letter case")
+        If tType = "REMOVEWORKFLOWUSER" Do $$$AssertTrue(tText [ "RemoveUserFromRole", "the remove takes the user out of each workflow role left after the delete: " _ tText)
     }
     Set tLong = $Translate($Justify("", 129), " ", "x")
     For tBad = $ListBuild("ADDWORKFLOWUSER", "", "{}"), $ListBuild("ADDWORKFLOWUSER", ..#NAMEA, "{""FullName"":5}"), $ListBuild("SETWORKFLOWUSER", ..#NAMEA, "{""IsActive"":""yes""}"), $ListBuild("SETWORKFLOWUSER", ..#NAMEA, "{""FullName"":""" _ tLong _ """}"), $ListBuild("ADDWORKFLOWUSER", ..#NAMEA, "{""FullName"":""a\tb""}"), $ListBuild("REMOVEWORKFLOWUSER", tLong, "{}") {
@@ -296,8 +347,10 @@ Method TestTheScriptFormsRenderTheGuardsAndRunNothingForABadValue()
     Set tQuery("id") = "OcuP2417wNobody"
     Do $$$AssertEquals(..RunScript($ClassMethod(..#PORT, "Snippet", ..#ENDPOINT, "REMOVEWORKFLOWUSER", .tQuery, "")), 0, "a remove's script refuses a user that is not held")
     Set tQuery("id") = ..#NAMEA
+    Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeRole", ..#ROLEA), "a role is stored")
+    Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeMember", ..#ROLEA, ..#NAMEA), "and the held user joins it")
     Do $$$AssertEquals(..RunScript($ClassMethod(..#PORT, "Snippet", ..#ENDPOINT, "REMOVEWORKFLOWUSER", .tQuery, "")), 1, "and removes one that is")
-    Do $$$AssertEquals($ClassMethod(tFx, "UserText", ..#SOURCE, ..#NAMEA), "<absent>", "which is gone")
+    Do $$$AssertEquals($ClassMethod(tFx, "UserText", ..#SOURCE, ..#NAMEA) _ "|" _ $Piece(..Facts(..#NAMEA), "|", 1), "<absent>|0", "which is gone, out of its role as well")
 }
 
 }

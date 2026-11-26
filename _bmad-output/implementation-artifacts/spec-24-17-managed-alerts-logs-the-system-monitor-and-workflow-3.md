@@ -112,6 +112,35 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `2ded140f5304
 
 ## Review Triage Log
 
+### 2026-11-25, code review (Opus; four layers; `757c13965..e46da42b2`, patched on HEAD `8c346eff0`)
+
+No HIGH. Runs are on `ocupilot-b-ci`, rebuilt 2026-11-26 00:04:46 UTC.
+
+- **R1 MED, patched (U-168).** A remove left the user's memberships where the namespace lacks the vendor's registry, so `WORKFLOWUSERREMOVE` was untrue there. `WorkflowMembershipsGone` (Decided in-stage (review) 1); `InteropWorkflowUserControl.TestTheRemoveTakesEveryMembershipWithOrWithoutTheVendorsRegistry`.
+- **R2 MED, patched (U-168).** `EnsureCascade` wrote vendor metadata into both namespaces, never removed it, and arranged the state that hid R1. Removed (Decided in-stage (review) 2).
+- **R3-R8 LOW, patched.**
+  - R3: the classes left the vendor's `sdd` timestamps in both namespaces (Decided in-stage (review) 3).
+  - R4: the agent paths' exact-once audit counts read without the settle; five sites now settle.
+  - R5: `WorkflowSame`'s doc and Decided (server) 1 said `=` compares numeric names as numbers (measured false); it is `=` now, the script's choices guard too.
+  - R6: an add whose instance user is deleted after the mint had no confirm test; added. The layer's claim that it fails as an error for want of `USERNAME` in `PRECONDITIONCODES` was measured false: with the code added and then removed, the confirm closes `PROPOSAL.TARGETCHANGED` both ways, so the code is not added.
+  - R7: the Active checkbox now names its refusal (`aria-invalid`, `aria-describedby`); the deactivation notice is `role="status"`.
+  - R8: stale docs: `WorkflowMapped`'s lock claim, `InteropCredentialMint`'s tool list.
+- **Deferred (ledger candidates):**
+  - R9: the Save route (`ItemSave.Create`) and the tools' argument judgment judge `FULLNAME` and shape before source control and the name refusals; the port keeps the spec's order. Family-wide (`ScheduleSave`).
+  - R10: the screen Edit with `IsActive` `"yes"` answers 400 `TOOL.ARGUMENTS` with the sibling's "'IsActive' is true or false", not the matrix's `PORT.FIELD.SHAPE`; the client never sends it. Family-wide (`InteropScheduleUpdate`).
+  - R11: a remove of a user another process holds locked answers 500, not 503 (inference); a concurrent add of the same name 500, not 409; a user removed between the facts read and the edit's open 503, not 404. Family-wide.
+  - R12: a full-name edit of an inactive user re-runs the vendor's inactivation, deleting a worklist item an explicit `SendTask` put there, with no consequence shown (a new string).
+  - R13: the choices route reports no truncation at 10,000, offers a name over 128 characters the add refuses, and the dialog has no loading or empty state (a new string).
+  - R14: AC5 is pinned through the port's seam only, not from the Save route, the screen or the confirm; the add legs rely on the stock test account listing every user. Family-wide.
+  - R15: something in the sweep removes `USER`'s `RoleMembership` registry (a fresh throwaway holds it; the implement saw it gone after shard 11). Not found here.
+- **Closed:**
+  - R16 `wontfix-accepted`: the add's read with `ACTIONKEY` runs the choices behind the read pairs; the vendor answers as the caller, so it reveals nothing the caller's own `ListEnsembleUsers` would not.
+  - R17 `wontfix-theoretical`: `<PROTECT>` text can reach the log (Batch 2 R14).
+  - R18 `by-design`: the snippet keeps its own taken-name line, because its guards chain on `tGo` after the name guard, which `FoldedFreeLines` does not.
+  - R19 `by-design`: narrower values than the classic page (V4); the alias `workflow` (3b may share it); `WorkflowPreconditionCodes` unused, as `SchedulePreconditionCodes`; the edit script's unchecked `%OpenId(..., 4)`, as the schedule script's.
+  - R20 `by-design`: the dialog is a copy of the schedule dialog, not an extension: the two share no field but the flag, and the name control, the choices load and the deactivation notice differ, so a flag would not cover it.
+  - R21 clean: the implement stage edited this spec through Bash; its diff over `757c13965..e46da42b2` changes the frontmatter's status and baseline, adds the implement's Decided lists, mutation lines and Clarification, and replaces the Auto Run Result; no other section or ruling block was touched.
+
 ## Veto items
 
 Each is the lead's to take to the veto gate; the recommended option is first.
@@ -167,7 +196,7 @@ No new dependency; nothing is written into another namespace. A workflow user is
 
 **Decided in-stage (implement, server slice).**
 
-1. The name is compared as text with `]` both ways (`WorkflowSame`), because `$Compare` does not exist on this build and `=` compares numeric-looking names as numbers. The vendor keys a workflow user's name exactly, so the facts read opens the row at concurrency 0 (a user another process holds locked is still read; the edit's own open at concurrency 4 meets the lock).
+1. The name is compared exactly, letter case included (`WorkflowSame`, `=`, which compares as text: `"01"="1"` reads 0, measured). The vendor keys a workflow user's name exactly, so the facts read opens the row at concurrency 0 (a user another process holds locked is still read; the edit's own open at concurrency 4 meets the lock).
 2. The violations are judged by `WorkflowBad`, which names no other class, so the write judges them inside its switched block (a `##class(...).#PARAM` of another class resolves at run time in the switched namespace); `WorkflowViolations` maps its tokens to codes outside it.
 3. The write's order is: source control, the name's shape, then in the namespace the facts and the token (`USERNAME`, `TAKEN`, `ABSENT`), then the fields (`FULLNAME`, shape). The fresh read for an add refuses `USERNAME` and `TAKEN` the same way, so the mint refuses a name the instance does not offer.
 4. An add's audit row names `FullName` when it is not empty and `IsActive` when the body sets it false, the vendor's default being true; a write the vendor or a fault refused is audited with `completed` false.
@@ -185,8 +214,14 @@ No new dependency; nothing is written into another namespace. A workflow user is
 
 **Decided in-stage (implement, final pass).**
 
-1. Measured on `ocupilot-b-ci` after the sweep's shard 11: the vendor's delete cascades a workflow user's or role's memberships only through `^rINDEXEXT("F", ...)` entries that the compile of `EnsLib.Workflow.RoleMembership` writes in a namespace's own database. `HSCUSTOM`, `HSLIB` and `HSSYS` hold them; `USER` held none at that point and the image's own `USER` database holds no `F` entry at all, so a user removed in `USER` left its memberships behind (the worklist item and task effects ran, being the engine's own code). The probe fixture's `EnsureCascade` writes the two entries a compile writes, and `InteropWorkflowCase.OnBeforeAllTests` calls it for both namespaces, so the tests arrange the state they depend on. Whether a namespace that only maps the package behaves this way in a customer's instance is not measured here (open question, see Auto Run Result).
+1. The vendor's delete takes a workflow user's memberships only through the `^rINDEXEXT("F", ...)` entries a compile of `EnsLib.Workflow.RoleMembership` writes in a namespace's own database. A fresh throwaway's `USER` and `HSCUSTOM` hold them (measured at review); `USER` had lost them by the sweep's shard 11, and there a removed user kept its memberships. Ruled U-168: the remove takes the remaining ones itself (Decided in-stage (review) 1).
 2. The four review patches (the person's `IsActive` `"yes"` leg, the reading-writes-nothing footprint, the audit settle, the governance restore) are in the test classes only.
+
+**Decided in-stage (review).**
+
+1. U-168: after the vendor's `%DeleteId` succeeds, `WorkflowMembershipsGone` reads the user's remaining memberships (`%EXACT(UserName)`) and calls `EnsLib.Workflow.RoleDefinition.RemoveUserFromRole` for each, as the classic Remove User From This Role dialog does (`EnsPortal.Dialog.WorkflowRoleRemoveUser.RemoveData`), then re-reads each with `IDExists`, because that method answers the engine's status and drops the delete's. A membership the vendor already took is never read. The audit row of a remove carries `memberships`, the count it took; the script form renders the same loop.
+2. `EnsureCascade` is removed (the preferred option). The one test that needs the registry absent takes the single `UserKey` entry out of `USER`, proves the condition with a positive control (the vendor's own delete of another user leaves its membership), and puts back exactly what it took, in the test and again in `OnAfterOneTest`.
+3. The case keeps each namespace's `^Ens.Configuration("sdd", <workflow class>, "time")` before its first test and puts it back after its last, since every vendor save writes it.
 
 **Measured (Task 0, `ocupilot-b-ci`, 2026-11-25, USER and HSCUSTOM, auditing on, probes `OcuP2417w*`; every probe row, instance user, role, class and the vendor's `^Ens.Configuration("sdd")` timestamps removed after; HALT at (c)).** Principals ran in a child job after `$System.Security.Login`. Raw evidence: `.worktrees/.coordination/e24-kit/24-17/b3a/impl/task0-evidence.md`.
 
@@ -235,21 +270,25 @@ Mutations run (implement stage), each on `ocupilot-b-ci` with `src` reloaded and
 - AC9 mutation: the dialog's full-name handler drops the typed value -> `ui/browser/interop-workflow-users.browser-spec.mjs` "AC9: New workflow user adds an instance user, Edit changes its full name, and Remove types its name" red (the Save body lacked `FullName`).
 - AC10 mutation: `InteropWorkflowFixture.DropProbes` skips deleting the instance users -> `OcuPilot.Test.InteropWorkflowUserList` red, every method, at the case's `OnAfterOneTest` assertion that nothing survives. `OnBeforeAllTests`' refusal to start counts workflow rows only, not instance users.
 
+Mutations run (review), on `ocupilot-b-ci` after the rebuild, reverted byte-identical (`cmp`) and the classes green again:
+
+- AC3 mutation: `PerformWorkflowUser` skips `WorkflowMembershipsGone` -> `OcuPilot.Test.InteropWorkflowUserControl.TestTheRemoveTakesEveryMembershipWithOrWithoutTheVendorsRegistry` red alone (memberships and audit legs).
+- AC4 mutation (name rule): `WorkflowWriteToken` drops `If 'pChosen Quit "USERNAME"` -> `InteropWorkflowUserGate.TestTheGateRefusesEachPrincipalBeforeAnyVendorCall` red (the plain principal's add of another's name), and `InteropWorkflowUserControl.TestAnAddWhoseInstanceUserIsGoneAtTheConfirmClosesTargetChanged` and `TestTheSaveRouteAnswersJsonOverTheWire` red.
+
 ## Auto Run Result
 
 Status: in-review
 
-**Implement pass 2 (Task 0 done in pass 1).** Batch 3a is built to the spec and the lead rulings: `InteropPort` gains `WorkflowUsers` (list, one-user read, choices read as the vendor answers the caller, add, edit, remove), the four codes and two consequences, the three tools, `WorkflowUserSave` and its choices route, the list descriptor, the entity type, three baseline keys (add and update `true`, remove `false`), the appended `Prohibited` terms, the client page, dialog and store, the strings the spec quotes, the README count and off-list clause, the EXPERIENCE.md row, the browser spec and the test classes. One addition outside the spec's list: `GET /interop/workflow-users/choices`, so the add dialog can read the choices (Design Notes, client slice item 1).
+Implement pass 2 built the batch and closed its own layers' findings (commit `e46da42b2`).
 
-**Verified on `ocupilot-b-ci`.**
+**Review pass (Opus, four layers).** U-168 patched: a remove takes the user out of each workflow role the vendor's delete left (`WorkflowMembershipsGone`, the audit row's `memberships`, the script form), and `EnsureCascade` is gone. Also patched: the vendor's `sdd` timestamps put back, five audit counts settled, `WorkflowSame` as `=`, a confirm test for an add whose instance user is gone, the Active checkbox's refusal wiring, two stale docs. Triage R1-R21 under Review Triage Log; two mutation lines under Verification.
 
-- ObjectScript sweep, 17 shards, every class once: shard totals (classes, tests, failed) 1: 52, 366, 0; 2: 52, 368, 0; 3: 53, 459, 0; 4: 52, 377, 0; 5: 53, 349, 0; 6: 53, 389, 0; 7: 53, 364, 0; 8: 54, 423, 0; 9: 53, 391, 0; 10: 54, 369, 0; 11: 54, 411, 2 (rerun: 54, 411, 0); 12: 54, 451, 0; 13: 53, 435, 0; 14: 54, 427, 0; 15: 54, 440, 0; 16: 54, 407, 0; 17: 54, 390, 0. The shard 11 red was `InteropWorkflowUserControl`'s two remove legs; cause and fix under Design Notes, final pass item 1. After that edit `InteropWorkflowUserControl`, `Gate`, `Elsewhere`, `List` and `Refusals` each ran green.
-- Browser: `interop-workflow-users` 2 of 2 and `interop-schedules` 2 of 2 on a rebuilt, redeployed bundle. Smoke 50 of 50. `npm run build`, `npm test` (341 component files, 4,010 tests; the tools tier green), `node --test tools/ci.test.mjs` 109 of 109, `check-objectscript` 0 problems, `lint-docs` 0 issues.
-- Mutations: one per AC, recorded under Verification (14 lines), each reverted byte-identical.
-- Review layers (verification-gap, intent-alignment): four findings patched in the test classes; the rest closed as below.
+**Verified on `ocupilot-b-ci`, rebuilt 2026-11-26 00:04:46 UTC from HEAD `8c346eff0` with these patches** (three test classes re-synced and compiled after the first run):
 
-**Review findings.** Patched: the person's `IsActive` text leg; the reading-writes-nothing footprint; the audit absence settle; the governance restore. Rejected as low: mutation lines for the legs beyond one per AC (Rule 19 asks one per AC); the shipped caps asserted by parameter read (the boundary legs run through the seam); two tests that rely on the image's `irisowner` user and a `%Admin_Secure` runner (a stock throwaway). `WorkflowCap` takes the caller's own `maxRows` unbounded, as the sibling families do.
+- `InteropWorkflowUserControl` 9, `Elsewhere` 3, `Gate` 3, `List` 5, `Refusals` 7: 0 failed forward and reversed. Then `InteropLogList` 6, `InteropLogPurgeControl` 5, `InteropLogPurgeRefusals` 4, `InteropLogPurgeElsewhere` 2, `InteropLogPurgeGate` 2. Rosters `ReadTool` 28, `ReadDescriptions` 9, `Descriptor` 60, `SurfaceCoverage` 4, `EndpointCoverage` 2, `ToolDispatch` 19, `ToolEmit` 11, `ToolRoundTrip` 2, `ToolWrite` 33, `StageTwoTools` 4, `Governance` 14, `GovernanceBaseline` 5, `ClassicPageGate` 9, `ConfirmNamespaceRoster` 3, `DraftRegistry` 9, `Prohibited` 24, `Navigation` 14, `MappingDescriptor` 6, `InteropDescriptor` 12, `InteropFloor` 8. All 0 failed. Until R6's measurement the instance's add carried `USERNAME` in `PRECONDITIONCODES`; after its revert `Control`, `Gate` and `Refusals` ran green again on the final tree. The registry and `sdd` timestamps read as found after the classes; no production in `USER` at the end.
+- Browser, rebuilt and redeployed bundle: `interop-workflow-users` 2 of 2, `interop-schedules` 2 of 2, `a11y-structural-invariants` 13 of 13.
+- Client: `npm run build`; `npm test` (tools 2,416, components 342 files and 4,018 tests); `node --test tools/ci.test.mjs` 109 of 109; `check-objectscript` 0 problems; `lint-docs` 0 issues.
 
 ## Clarification Needed
 
-The remove's consequence sentence says a removed workflow user leaves every workflow role. That holds only where the vendor's foreign-key registry for `EnsLib.Workflow.RoleMembership` is in the namespace's own database: it was in `HSCUSTOM`, and it was missing from `USER` on `ocupilot-b-ci` when the shard 11 red showed it (and from the image's `USER`). Where it is missing, the vendor's `%DeleteId` and the classic page's delete alike remove the worklist item and unassign the task but leave the memberships. The tests now arrange the registry (`EnsureCascade`). Question for the lead: does the sentence stand as written, or should the remove read the user's memberships after the delete and answer a refusal or a note when any remain (a new string, so not decided here)? I did not measure a customer instance whose interoperability namespace only maps the package.
+None open. The remove's question closed by U-168 (Review Triage Log R1, R2).

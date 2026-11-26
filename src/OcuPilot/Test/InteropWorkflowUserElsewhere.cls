@@ -36,7 +36,7 @@ Method TestAnAddConfirmedFromAnotherNamespaceIsJudgedAndMadeWhereItRead()
     Do $$$AssertEquals(tStatus, 200, "and confirms from HSCUSTOM: " _ $Select($IsObject($Get(tAnswer)): tAnswer.%ToJSON(), 1: ""))
     Do $$$AssertEquals($ClassMethod(tFx, "UserText", ..#SOURCE, ..#NAME), "agent|1", "the user is created in USER, where the proposal read")
     Do $$$AssertEquals($ClassMethod(tFx, "UserText", ..#OTHER, ..#NAME), "hsc|1", "and HSCUSTOM's is as it was")
-    Do $$$AssertEquals(..OwnRows(tSince, ..#NAME, .tData), 1, "one ConfigChange was recorded")
+    Do $$$AssertEquals(..OwnRows(tSince, ..#NAME, .tData, 1, 1), 1, "one ConfigChange was recorded")
     Do $$$AssertTrue(tData [ "USER", "naming the namespace the write was made in: " _ tData)
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tTurn))
 }

@@ -30,6 +30,9 @@ Parameter CASE = "OcuPilot.Test.InteropWorkflowCase";
 /// <p>The tables a namespace's workflow rows live in, and the column each is matched by, in the order they are removed.</p>
 Parameter TABLES = "EnsLib_Workflow.Worklist|UserName|RoleName,EnsLib_Workflow.RoleMembership|UserName|RoleName,EnsLib_Workflow.TaskResponse|%Subject|,EnsLib_Workflow.TaskRequest|%Subject|,EnsLib_Workflow.UserDefinition|Name|,EnsLib_Workflow.RoleDefinition|Name|";
 
+/// <p>The workflow classes whose vendor save writes a source-control timestamp in the namespace.</p>
+Parameter STAMPED = "EnsLib.Workflow.UserDefinition,EnsLib.Workflow.RoleDefinition,EnsLib.Workflow.RoleMembership";
+
 /// <p>Create the instance user <var>pName</var> in <code>%SYS</code> when it is not there: no role, a password no one reads.</p>
 ClassMethod InstanceUser(pName As %String) As %Status
 {
@@ -41,6 +44,23 @@ ClassMethod InstanceUser(pName As %String) As %Status
             Set tPassword = "OcuP2417w" _ $Translate($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(18), 1), "+/=", "") _ "!Aa9"
             Set tSC = ##class(Security.Users).Create(pName, "", tPassword, "OcuPilot test workflow probe (throwaway)", "", "", "", 0, 1, "Created by an OcuPilot workflow test; deleted when it ends")
         }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Delete the probe instance user <var>pName</var> from <code>%SYS</code>.</p>
+ClassMethod DropInstanceUser(pName As %String) As %Status
+{
+    If $Extract(pName, 1, $Length(..#MARKER)) '= ..#MARKER Quit $$$ERROR($$$GeneralError, "only a probe instance user is deleted")
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ##class(Security.Users).Delete(pName)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -289,28 +309,122 @@ ClassMethod InstanceLeft() As %String
     Quit tText
 }
 
-/// <p>Make <var>pNamespace</var> hold the registry entries the vendor's delete reads to cascade a workflow user's or role's removal to its memberships. A namespace holds them only once
-/// <class>EnsLib.Workflow.RoleMembership</class> was compiled in it, which a namespace that merely maps the package has not done: without them a vendor delete leaves the memberships
-/// behind. The two entries are the ones that compile writes. Answer <code>1</code> when both are there.</p>
-ClassMethod EnsureCascade(pNamespace As %String) As %Boolean
+/// <p>Whether <var>pNamespace</var> holds the registry entry the vendor's delete of a workflow user reads to take the user's memberships with it, which a compile of
+/// <class>EnsLib.Workflow.RoleMembership</class> in that namespace writes; -1 when unreadable. Nothing is written.</p>
+ClassMethod CascadeHeld(pNamespace As %String) As %Integer
 {
     Set tOrigNS = $NAMESPACE
-    Set tHeld = 0
+    Set tHeld = -1
     Try {
         Set $NAMESPACE = pNamespace
-        If '$Data(^rINDEXEXT("F", "EnsLib.Workflow.UserDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "UserKey")) {
-            Set ^rINDEXEXT("F", "EnsLib.Workflow.UserDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "UserKey") = ""
-        }
-        If '$Data(^rINDEXEXT("F", "EnsLib.Workflow.RoleDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "RoleKey")) {
-            Set ^rINDEXEXT("F", "EnsLib.Workflow.RoleDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "RoleKey") = ""
-        }
-        Set tHeld = ''$Data(^rINDEXEXT("F", "EnsLib.Workflow.UserDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "UserKey")) && ''$Data(^rINDEXEXT("F", "EnsLib.Workflow.RoleDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "RoleKey"))
+        Set tHeld = ''$Data(^rINDEXEXT("F", "EnsLib.Workflow.UserDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "UserKey"))
         Set $NAMESPACE = tOrigNS
     } Catch {
         Set $NAMESPACE = tOrigNS
-        Set tHeld = 0
+        Set tHeld = -1
     }
     Quit tHeld
+}
+
+/// <p>Take the registry entry <method>CascadeHeld</method> reads out of <var>pNamespace</var>, keeping what it held so <method>RestoreCascade</method> puts it back exactly, and answer whether the
+/// namespace then holds none. A namespace already without it is left alone.</p>
+ClassMethod HideCascade(pNamespace As %String) As %Boolean
+{
+    Set tOrigNS = $NAMESPACE
+    Set tGone = 0
+    Try {
+        Set $NAMESPACE = pNamespace
+        If $Data(^rINDEXEXT("F", "EnsLib.Workflow.UserDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "UserKey")) && '$Data(^||OcuPilotWorkflowCascade(pNamespace)) {
+            Merge ^||OcuPilotWorkflowCascade(pNamespace) = ^rINDEXEXT("F", "EnsLib.Workflow.UserDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "UserKey")
+            Kill ^rINDEXEXT("F", "EnsLib.Workflow.UserDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "UserKey")
+        }
+        Set tGone = '$Data(^rINDEXEXT("F", "EnsLib.Workflow.UserDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "UserKey"))
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tGone = 0
+    }
+    Quit tGone
+}
+
+/// <p>Put back every registry entry <method>HideCascade</method> took, in the namespace it took it from, and forget it. Nothing is written when none was taken.</p>
+ClassMethod RestoreCascade()
+{
+    Set tOrigNS = $NAMESPACE
+    Set tNamespace = ""
+    For {
+        Set tNamespace = $Order(^||OcuPilotWorkflowCascade(tNamespace))
+        If tNamespace = "" Quit
+        Try {
+            Set $NAMESPACE = tNamespace
+            Merge ^rINDEXEXT("F", "EnsLib.Workflow.UserDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "UserKey") = ^||OcuPilotWorkflowCascade(tNamespace)
+            Set $NAMESPACE = tOrigNS
+        } Catch {
+            Set $NAMESPACE = tOrigNS
+        }
+    }
+    Kill ^||OcuPilotWorkflowCascade
+}
+
+/// <p>The vendor's own <code>%DeleteId</code> of the workflow user <var>pName</var> in <var>pNamespace</var>, as a positive control of what the vendor's delete takes with it.</p>
+ClassMethod VendorDelete(pNamespace As %String, pName As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(EnsLib.Workflow.UserDefinition).%DeleteId(pName)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Keep, for both namespaces, the source-control timestamp each <parameter>STAMPED</parameter> class's vendor save writes under <code>^Ens.Configuration("sdd")</code>, or that it had none, so
+/// <method>RestoreStamps</method> leaves them as a class found them.</p>
+ClassMethod KeepStamps()
+{
+    Kill ^||OcuPilotWorkflowStamps
+    Set tOrigNS = $NAMESPACE
+    For tNamespace = ..#SOURCE, ..#OTHER {
+        Try {
+            Set $NAMESPACE = tNamespace
+            For tI = 1:1:$Length(..#STAMPED, ",") {
+                Set tClass = $Piece(..#STAMPED, ",", tI)
+                Set ^||OcuPilotWorkflowStamps(tNamespace, tClass) = $ListBuild($Data(^Ens.Configuration("sdd", tClass, "time")) # 2, $Get(^Ens.Configuration("sdd", tClass, "time")))
+            }
+            Set $NAMESPACE = tOrigNS
+        } Catch {
+            Set $NAMESPACE = tOrigNS
+        }
+    }
+}
+
+/// <p>Put back the timestamps <method>KeepStamps</method> kept, removing one a namespace did not hold, and forget them.</p>
+ClassMethod RestoreStamps()
+{
+    Set tOrigNS = $NAMESPACE
+    For tNamespace = ..#SOURCE, ..#OTHER {
+        Try {
+            Set $NAMESPACE = tNamespace
+            Set tClass = ""
+            For {
+                Set tClass = $Order(^||OcuPilotWorkflowStamps(tNamespace, tClass), 1, tKept)
+                If tClass = "" Quit
+                If $List(tKept, 1) {
+                    Set ^Ens.Configuration("sdd", tClass, "time") = $List(tKept, 2)
+                } Else {
+                    Kill ^Ens.Configuration("sdd", tClass, "time")
+                }
+            }
+            Set $NAMESPACE = tOrigNS
+        } Catch {
+            Set $NAMESPACE = tOrigNS
+        }
+    }
+    Kill ^||OcuPilotWorkflowStamps
 }
 
 /// <p>Remove every probe from both namespaces and from the instance: each workflow table's probe rows (the worklist and memberships first, then tasks, users and roles), the probe instance users and
