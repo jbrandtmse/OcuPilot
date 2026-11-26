@@ -88,7 +88,7 @@ Method TestTheScreenAndTheToolsDeclareTheirShape()
     Do $$$AssertEquals($ClassMethod(..#GATHER, "Consequence", {}) _ "|" _ $ClassMethod(..#GATHER, "Consequence", {"SkipSystem": true}) _ "|" _ $ClassMethod(..#GATHER, "Consequence", {"SkipSystem": false}) _ "|" _ $ClassMethod(..#RUN, "Consequence", {}) _ "|" _ $ClassMethod(..#PURGE, "Consequence", {}), "SQL.INDEXANALYSIS.GATHER|SQL.INDEXANALYSIS.GATHER|SQL.INDEXANALYSIS.GATHERSYSTEM|SQL.INDEXANALYSIS.RUN|SQL.INDEXANALYSIS.PURGE", "a gather states the system classes' sentence only when they are included")
     Set tGather = "A new gathering of this namespace's cached queries, class methods, class queries and routines replaces its gathered statements and every report's results, and rebuilds its class dependency data."
     Do $$$AssertEquals($ClassMethod(..#PORT, "ReasonFor", "SQL.INDEXANALYSIS.GATHER"), tGather, "the gather's sentence is the ruled one")
-    Do $$$AssertEquals($ClassMethod(..#PORT, "ReasonFor", "SQL.INDEXANALYSIS.GATHERSYSTEM"), tGather _ " Gathering system classes and routines takes longer than the page waits; the list shows the result when it finishes.", "the system classes' sentence is the plain one with the gathering outlasting the page said after it")
+    Do $$$AssertEquals($ClassMethod(..#PORT, "ReasonFor", "SQL.INDEXANALYSIS.GATHERSYSTEM"), tGather _ " Gathering system classes and routines can take longer than the page waits; the list shows the result when it finishes.", "the system classes' sentence is the plain one with the gathering outlasting the page said after it")
     Do $$$AssertEquals($ClassMethod(..#PORT, "ReasonFor", "SQL.INDEXANALYSIS.RUN"), "This report's earlier results in this namespace are replaced.", "the run's sentence is the ruled one")
     Do $$$AssertEquals($ClassMethod(..#PORT, "ReasonFor", "SQL.INDEXANALYSIS.PURGE"), "This namespace's gathered statements and every report's results are removed. Gather statements again before running a report.", "the purge's sentence is the ruled one")
 }
@@ -297,13 +297,15 @@ Method TestAVendorCallUnderTheNullDeviceLeavesTheProcessAsItWasFound()
     Set tOpened = $Test
     Do $$$AssertTrue(tOpened, "a file is opened to stand for the caller's device")
     If 'tOpened Quit
-    Use tFile
+    Use tFile::("^%X364")
+    Set tMnemonic = ##class(%Library.Device).GetMnemonicRoutine()
     Set tSC = ##class(OcuPilot.Kernel.Utils).CallWithNullDevice(..#NAMESPACE, "%SYSTEM.OBJ", "ShowFlags", 0, .tResult)
     Set tAfterDevice = $IO
     Set tAfterNS = $NAMESPACE
     Set tSC2 = ##class(OcuPilot.Kernel.Utils).CallWithNullDevice(..#NAMESPACE, "%SYSTEM.Process", "NameSpace", 1, .tValue)
     Set tSC3 = ##class(OcuPilot.Kernel.Utils).CallWithNullDevice(..#NAMESPACE, "%SYSTEM.Process", "NoSuchMethod", 1, .tRaised)
     Set tRaisedDevice = $IO
+    Set tRaisedMnemonic = ##class(%Library.Device).GetMnemonicRoutine()
     Set tRaisedNS = $NAMESPACE
     Set tRaisedNullOpen = ##class(OcuPilot.Kernel.Utils).DeviceIsOpen(tNull)
     Use tCurrent
@@ -318,6 +320,8 @@ Method TestAVendorCallUnderTheNullDeviceLeavesTheProcessAsItWasFound()
     Do $$$AssertEquals($$$ISERR(tSC3) _ "|" _ tRaised, "1|", "a call that raises answers its failure and no value")
     Do $$$AssertEquals(tRaisedDevice _ "|" _ tRaisedNS, tFile _ "|" _ tOrigNS, "with the device and the namespace as the caller left them")
     Do $$$AssertEquals(tRaisedNullOpen, tNullOpenBefore, "and the null device as it was found")
+    Do $$$AssertEquals(tRaisedMnemonic, tMnemonic, "and the caller's device keeps its mnemonic space")
+    Do $$$AssertTrue(tMnemonic '= "", "which the caller's device was given: " _ tMnemonic)
     Do $$$AssertEquals($NAMESPACE _ "|" _ $IO, tOrigNS _ "|" _ tCurrent, "the process ends where it began")
 }
 

@@ -1,7 +1,8 @@
 /// <p>The agent's advice on one query's plan (Story 21.27, AD-3, AD-21, AD-36, AD-60): the plan the instance gives the statement and the findings
 /// <class>OcuPilot.Port.SqlAdvice</class> computes from that plan and the indices of the tables it reads, the answer SQL query's Advise
-/// button shows. It runs nothing and writes nothing: <method>OcuPilot.Port.SqlPort.Plan</method> asks the instance for the plan alone, and a statement the
-/// instance does not type as a query is refused 422 <code>EXPLORER.SQL.ADVICE</code> before the plan is read.</p>
+/// button shows. It runs nothing: <method>OcuPilot.Port.SqlPort.Plan</method> asks the instance for the plan alone, its typing prepare records the statement
+/// in the namespace's statement index as Plan's does, and a statement the instance does not type as a query is refused 422 <code>EXPLORER.SQL.ADVICE</code>
+/// before the plan is read.</p>
 /// <p><b>It runs the console's own checks</b> as <class>OcuPilot.Screen.Tool.ExplorerSqlRead</class> does, in order: the screen's pairs,
 /// <method>OcuPilot.Port.SqlPort.InputProblem</method> and <method>OcuPilot.Area.Explorer.SqlConsole.Check</method>, whose self-protection set
 /// refuses OcuPilot's own tables. The statement reaches the instance only as the value <code>$SYSTEM.SQL.Explain</code> is given, and the two dictionary

@@ -231,6 +231,19 @@ describe('the SQL index analyzer page', () => {
     expect(slot(host, 'consequence')).toBeNull();
   });
 
+  // Mutation (Rule 19): keep the dialog open on a send with no sentence -> the consequence assertion goes red.
+  it('closes the dialog when the page stops waiting for a gathering, an answer with no sentence', async () => {
+    const lost: JsonResult<unknown> = { kind: 'error', status: 504, code: null, reason: null, detail: null };
+    const { fixture, host, actions, calls } = mount([lost]);
+    actions.run(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_GATHER);
+    await settle(fixture);
+    (slot(host, 'proceed') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(calls).toHaveLength(1);
+    expect(slot(host, 'consequence')).toBeNull();
+    expect(slot(host, 'refusal')).toBeNull();
+  });
+
   it('cancelling a dialog sends nothing, and no second dialog opens over one', async () => {
     const { fixture, host, actions, calls } = mount([]);
     actions.run(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_GATHER);

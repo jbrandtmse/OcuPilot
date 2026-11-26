@@ -34,6 +34,7 @@ Method OnBeforeOneTest() As %Status
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Kill ^||OcuPilotSqlTuningAdvisor
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAdvice", ..#NAMESPACE), "the advice probe's table is removed")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "AdviceState", ..#NAMESPACE), "0|", "and reads back absent")
     Quit $$$OK
@@ -238,6 +239,10 @@ Method TestTemporaryFilesAndJoinsAreRead()
     Do $$$AssertTrue(..Find(tFindings, "tempfile").Excerpt [ "Call Module-C once, which populates temp-file A.", "a temporary file the plan builds once is read")
     Set tTables = ##class(OcuPilot.Port.SqlAdvice).Tables(tJoin)
     Do $$$AssertEquals(tTables.%ToJSON(), "[{""Schema"":""ZZProbe227"",""Table"":""Tbl""},{""Schema"":""ZZProbe227"",""Table"":""Tbl2""}]", "a join's alias is dropped from each table")
+    Set tAliased = $Replace($Replace(tJoin, "(A)", "(A_1)"), "(B)", "(B_2)")
+    Do $$$AssertTrue(tAliased '= tJoin, "the join fixture carries the aliases A and B")
+    Do $$$AssertEquals(##class(OcuPilot.Port.SqlAdvice).Tables(tAliased).%ToJSON(), tTables.%ToJSON(), "an alias holding an underscore is dropped as well")
+    Do $$$AssertEquals(..Kinds($ClassMethod(..#ADVISOR, "Findings", tAliased, [{"Schema": "ZZProbe227", "Table": "Tbl", "Rows": []}, {"Schema": "ZZProbe227", "Table": "Tbl2", "Rows": []}])), "fullscan,fullscan,nottuned,nottuned,tempfile", "and both of its tables' scans are still findings")
     Set tFindings = $ClassMethod(..#ADVISOR, "Findings", ..Fixture("join-onetuned"), [])
     Do $$$AssertEquals(..Find(tFindings, "nottuned").Table, "ZZProbe227.Tbl2", "of the two tables only the one the plan names as not tuned is a finding")
 }
@@ -249,10 +254,14 @@ Method TestSystemTablesAreNeverAdvisedAnIndexAndTheFindingsAreCapped()
     Set tPlan = ..Shaped("SELECT 1 FROM INFORMATION_SCHEMA.TABLES", "", "1", $ListBuild("     Module-B:", "     Read master map INFORMATION_SCHEMA.TABLES.Master, looping on SchemaExact and TableExact.", "     For each row:", "         Test the = condition on %SQLUPPER(TABLE_NAME).", "         Output the row."))
     Set tFindings = $ClassMethod(..#ADVISOR, "Findings", tPlan, [{"Schema": "INFORMATION_SCHEMA", "Table": "TABLES", "Rows": [{"Name": "Idx", "Properties": "Other", "Type": "index", "PrimaryKey": false, "IdKey": false}]}])
     Do $$$AssertEquals(..Kinds(tFindings), "fullscan", "a scan of a system table is a finding and no index is advised on it")
+    Set tMax = $Parameter(..#ADVISOR, "MAXFINDINGS")
     Set tRows = []
-    For tI = 1:1:250 Do tRows.%Push({"Name": ("Idx" _ tI), "Properties": "Amt", "Type": "index", "PrimaryKey": false, "IdKey": false})
+    For tI = 1:1:tMax Do tRows.%Push({"Name": ("Idx" _ tI), "Properties": "Amt", "Type": "index", "PrimaryKey": false, "IdKey": false})
     Set tFindings = $ClassMethod(..#ADVISOR, "Findings", ..Fixture("indexmap-tuned"), [{"Schema": "ZZProbe227", "Table": "Tbl", "Rows": (tRows)}], .tCut)
-    Do $$$AssertEquals(tFindings.%Size() _ "|" _ tCut _ "|" _ $Parameter(..#ADVISOR, "MAXFINDINGS"), "200|1|200", "250 unused indices answer 200 findings and report the cut")
+    Do $$$AssertEquals(tFindings.%Size() _ "|" _ tCut, tMax _ "|0", "exactly the cap's unused indices answer every finding and no cut")
+    Do tRows.%Push({"Name": ("Idx" _ (tMax + 1)), "Properties": "Amt", "Type": "index", "PrimaryKey": false, "IdKey": false})
+    Set tFindings = $ClassMethod(..#ADVISOR, "Findings", ..Fixture("indexmap-tuned"), [{"Schema": "ZZProbe227", "Table": "Tbl", "Rows": (tRows)}], .tCut)
+    Do $$$AssertEquals(tFindings.%Size() _ "|" _ tCut, tMax _ "|1", "one unused index past the cap answers the cap's findings and reports the cut")
 }
 
 /// <p>The tool declares its name, kind and statement alone, ends its description with the ruled note, and answers a result its schema admits. Its screen is
@@ -297,6 +306,25 @@ Method TestTheProbeTableAnswersTheSameFindingsOnBothCallers()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "AdviceState", ..#NAMESPACE), "1|x", "the table is there and its row is unchanged")
     Do ..Post({"statement": (..#QUERY)}, .tStatus, .tPlain)
     Do $$$AssertTrue(tPlain.%GetTypeOf("advice") = "unassigned", "a plan asked without advise carries none")
+}
+
+/// <p>The advice answer says when its tables were cut at the table cap: a plan over two tables answers both and no cut, and the same plan under a cap of one
+/// answers the first table alone and the cut, which SQL query states.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.Advised</code> answers <code>truncated</code> from the findings' cut alone -> the cap leg goes red.</p>
+Method TestTheAdviceSaysWhenItsTablesAreCut()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeAdvice", ..#NAMESPACE), "the advice probe's table is made")
+    Set tQuery = "SELECT T.ID FROM OcuProbe227Advice.T T, %Dictionary.ClassDefinition C WHERE C.Description = T.B"
+    Set tFixture = "OcuPilot.Test.SqlTuningPortFixture"
+    Set tSC = $ClassMethod(tFixture, "Plan", ..#NAMESPACE, tQuery, .tAnswer, .tHttp, .tFault, 0, 1)
+    Do $$$AssertStatusOK(tSC, "the two-table plan is advised")
+    If '$IsObject($Get(tAnswer)) Quit
+    Do $$$AssertEquals(tAnswer.advice.tables.%Size() _ "|" _ tAnswer.advice.truncated, "2|0", "two tables under the production cap, and no cut")
+    Set ^||OcuPilotSqlTuningAdvisor = "OcuPilot.Test.SqlAdviceOneTable"
+    Set tSC = $ClassMethod(tFixture, "Plan", ..#NAMESPACE, tQuery, .tAnswer, .tHttp, .tFault, 0, 1)
+    Do $$$AssertStatusOK(tSC, "and advised again under a cap of one")
+    If '$IsObject($Get(tAnswer)) Quit
+    Do $$$AssertEquals(tAnswer.advice.tables.%Size() _ "|" _ tAnswer.advice.truncated, "1|1", "one table past the cap is cut and the answer says so")
 }
 
 /// <p>A statement that is not a query is refused 422 <code>EXPLORER.SQL.ADVICE</code> with the published sentence on both callers, and the data it would have

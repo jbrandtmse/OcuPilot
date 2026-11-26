@@ -922,7 +922,7 @@ ClassMethod Advised(pNamespace As %String, pPlan As %String, Output pAdvice As %
 {
     Set pAdvice = ""
     Set tSC = $$$OK
-    Set tAdvisor = "OcuPilot.Port.SqlAdvice"
+    Set tAdvisor = ..AdvisorClass()
     Set tRecognized = $ClassMethod(tAdvisor, "Recognized", pPlan)
     Set tAdvice = {}
     Do tAdvice.%Set("recognized", tRecognized, "boolean")
@@ -957,6 +957,13 @@ ClassMethod Advised(pNamespace As %String, pPlan As %String, Output pAdvice As %
     Do tAdvice.%Set("truncated", ''(tTruncated || tCut), "boolean")
     Set pAdvice = tAdvice
     Quit $$$OK
+}
+
+/// <p>The class whose heuristics and caps <method>Advised</method> applies, <class>OcuPilot.Port.SqlAdvice</class>. Overridable so a fixture can lower
+/// a cap; production overrides none.</p>
+ClassMethod AdvisorClass() As %String
+{
+    Quit "OcuPilot.Port.SqlAdvice"
 }
 
 /// <p>The compiled class and the indices of the table <var>pSchema</var>.<var>pTable</var> in <var>pNamespace</var>, as <var>pClass</var> (<code>""</code>

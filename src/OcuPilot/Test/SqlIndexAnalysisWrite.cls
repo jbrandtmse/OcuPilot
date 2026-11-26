@@ -98,7 +98,11 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAnalysis", ..#OTHERNAMESPACE), "and the analysis of " _ ..#OTHERNAMESPACE)
     Set tCounts = $ClassMethod(..#PROBE, "AnalysisCounts", ..#NAMESPACE)
     Do $$$AssertEquals(tCounts.%Get("IU") + tCounts.%Get("TS") + tCounts.%Get("TI") + tCounts.%Get("JI") + tCounts.%Get("OI"), 0, "none of the probe table's report rows is left")
-    Kill ^||OcuPilotDatabaseWritePort, ^||OcuPilotSqlTuningVendorArmed, ^||OcuPilotSqlTuningVendor
+    Kill ^||OcuPilotDatabaseWritePort, ^||OcuPilotSqlTuningVendorArmed, ^||OcuPilotSqlTuningVendor, ^||OcuPilotSqlTuningVendorFail
+    If $Data(^OcuPilotTestAnalysisLock("held")) && '$Data(^OcuPilotTestAnalysisLock("release")) {
+        Set ^OcuPilotTestAnalysisLock("release") = 1
+        Hang 0.5
+    }
     Kill ^OcuPilotTestAnalysisLock
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Do $ClassMethod(..#SEAM, "Reset")
@@ -134,10 +138,11 @@ ClassMethod Agent(pTool As %String, pArgs As %DynamicObject, pConfirm As %Boolea
     Quit $ClassMethod(..#AGENT, "Confirm", pProposal, .pResult)
 }
 
-/// <p>The vendor's own counts for the probe table, and the namespace's gathered statements, as <code>statements|IU|TS|TI|JI|OI</code>.</p>
-ClassMethod Counts(pNamespace As %String = {..#NAMESPACE}) As %String
+/// <p>The vendor's own counts for the probe table, or for every table when <var>pAllTables</var> is 1, and the namespace's gathered statements, as
+/// <code>statements|IU|TS|TI|JI|OI</code>.</p>
+ClassMethod Counts(pNamespace As %String = {..#NAMESPACE}, pAllTables As %Boolean = 0) As %String
 {
-    Set tCounts = $ClassMethod(..#PROBE, "AnalysisCounts", pNamespace)
+    Set tCounts = $ClassMethod(..#PROBE, "AnalysisCounts", pNamespace, pAllTables)
     Quit tCounts.%Get("Statements") _ "|" _ tCounts.%Get("IU") _ "|" _ tCounts.%Get("TS") _ "|" _ tCounts.%Get("TI") _ "|" _ tCounts.%Get("JI") _ "|" _ tCounts.%Get("OI")
 }
 
@@ -162,8 +167,7 @@ ClassMethod RunValues(pCode As %String) As %DynamicObject
 
 /// <p>AC1, AC2. The list's Gather statements gathers the namespace's statements, which the port reads back as a count, and the list's Run report runs
 /// each of the five reports, each answering 200 and, for the four the probe's statements feed, rows for the probe table; a report replaces its own rows alone,
-/// so the index usage rows read after the table scan report ran are still there, and a report names its own method: the second run of the table scans, after
-/// the index usage rows were removed by a gather, leaves the other reports empty.</p>
+/// so the index usage rows read after the other reports ran are still there, and a table scan report run again leaves the same rows.</p>
 /// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.AnalysisCall</code> calls <code>tableScans</code> for every report -> the index usage leg goes red.</p>
 Method TestTheScreenGathersAndRunsEachReport()
 {
@@ -172,7 +176,7 @@ Method TestTheScreenGathersAndRunsEachReport()
     Set tCounts = ..Counts()
     Do $$$AssertTrue(+$Piece(tCounts, "|", 1) > 0, "the namespace holds gathered statements: " _ tCounts)
     Do $$$AssertEquals($Piece(tCounts, "|", 2, 6), "0|0|0|0|0", "and no report row of the probe table")
-    Do $$$AssertEquals(..Read(), $Piece(tCounts, "|", 1) _ "|0|0|0|0|0", "the port's read answers the gathered statements and no report row")
+    Do $$$AssertEquals(..Read(), ..Counts(, 1), "the port's read answers the namespace's gathered statements and report rows as the vendor's tables hold them")
     Set tStatus = ..Act("run", ..RunValues("IU"), , .tAnswer)
     Do $$$AssertEquals(tStatus, 200, "the index usage report answers")
     Set tAfterIU = ..Counts()
@@ -184,7 +188,7 @@ Method TestTheScreenGathersAndRunsEachReport()
     Set tAll = ..Counts()
     Do $$$AssertEquals($Piece(tAll, "|", 2), $Piece(tAfterIU, "|", 2), "a report replaces its own rows alone: the index usage rows are still there")
     Do $$$AssertTrue(($Piece(tAll, "|", 3) > 0) && ($Piece(tAll, "|", 4) > 0) && ($Piece(tAll, "|", 5) > 0), "and the table scan, temporary index and join reports hold the probe table's rows: " _ tAll)
-    Do $$$AssertEquals(..Read(), $Piece(tAll, "|", 1) _ "|" _ $Piece(tAll, "|", 2) _ "|" _ $Piece(tAll, "|", 3) _ "|" _ $Piece(tAll, "|", 4) _ "|" _ $Piece(tAll, "|", 5) _ "|" _ $Piece(tAll, "|", 6), "and the port's read answers each report's rows")
+    Do $$$AssertEquals(..Read(), ..Counts(, 1), "and the port's read answers each report's rows in the namespace")
     Set tStatus = ..Act("run", ..RunValues("TS"), , .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ ..Counts(), "200|" _ tAll, "a report run again leaves the same rows")
 }
@@ -420,13 +424,14 @@ ClassMethod GatherAndRun(pNamespace As %String)
 }
 
 /// <p>The index usage report run in <var>pNamespace</var> through the vendor's own call, outside the product's write path, so the namespace's analysis moves
-/// under a proposal already minted.</p>
+/// under a proposal already minted. It includes the IDKEY indices, which a proposed index usage run skips, so a confirm that ran anyway would leave fewer
+/// rows than this run did.</p>
 ClassMethod RunOutOfBand(pNamespace As %String)
 {
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
-        Do ##class(%SYS.PTools.UtilSQLAnalysis).indexUsage(1, 1, 0, 1, 1, 1, 0)
+        Do ##class(%SYS.PTools.UtilSQLAnalysis).indexUsage(1, 1, 0, 1, 0, 1, 0)
         Set $NAMESPACE = tOrigNS
     } Catch {
         Set $NAMESPACE = tOrigNS
@@ -458,10 +463,10 @@ Method TestAChangedTargetRefusesTheConfirmAndTheMintCallsNothing()
 }
 
 /// <p>AC2. The instance's own refusal of each write is 409 <code>SQL.INDEXANALYSIS.VENDOR</code>, its ruled sentence on the wire and the instance's message in
-/// <code>detail</code> alone, with one call made for each, and a call that raises is the internal fault; the lock is released after each, so the next call
-/// goes through.</p>
+/// <code>detail</code> alone, with one call made for each, and a call that raises is the internal fault; an error status from the vendor's own method is the
+/// same refusal and no vendor call follows it; the lock is released after each, so the next call goes through.</p>
 /// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.StatementWrite</code> puts the message in the reason -> the reason assertion goes red;
-/// <code>OcuPilot.Port.SqlPort.AnalysisWrite</code> releases the lock only after a call that returned -> the raised-call assertion goes red.</p>
+/// <code>OcuPilot.Port.SqlPort.AnalysisCall</code> makes the next call whatever the last one answered -> the gather's vendor status legs go red.</p>
 Method TestTheInstancesRefusalIsTheVendorRefusalAndTheLockIsReleased()
 {
     Do $ClassMethod(..#SEAM, "Refuse", "the analysis could not be completed")
@@ -484,6 +489,21 @@ Method TestTheInstancesRefusalIsTheVendorRefusalAndTheLockIsReleased()
     Set tSC = $ClassMethod(..#FIXTURE, "Invoke", "IndexAnalysis", "GATHER", .tQuery, "", .tAnswer, .tHttp, .tFault)
     Do $$$AssertEquals($Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "500 " _ ##class(OcuPilot.Api.Error).#INTERNAL, "a call that raises is the internal fault")
     Do $$$AssertEquals(..LockFree(..#NAMESPACE), 1, "and the lock is free after it")
+    Do $ClassMethod(..#SEAM, "Reset")
+    Set ^||OcuPilotSqlTuningVendorArmed = 1
+    For tCase = $ListBuild("GATHER", "clearSQLAnalysisDB", "clearSQLStatements(USER);clearSQLAnalysisDB(USER)"), $ListBuild("RUNREPORT", "tableScans", "tableScans(1,0,1,1,0)"), $ListBuild("PURGEANALYSIS", "clearSQLStatements", "clearSQLStatements(USER)") {
+        Set ^||OcuPilotSqlTuningVendorFail = $List(tCase, 2)
+        Kill ^||OcuPilotSqlTuningVendor, tQuery
+        Set tQuery("namespace") = ..#NAMESPACE
+        Set tQuery("id") = "*"
+        Set tQuery("Report") = "TS"
+        Set tSC = $ClassMethod(..#FIXTURE, "Invoke", "IndexAnalysis", $List(tCase, 1), .tQuery, "", .tAnswer, .tHttp, .tFault)
+        Do $$$AssertEquals($Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "409 SQL.INDEXANALYSIS.VENDOR", $List(tCase, 1) _ ": an error status from the vendor's own call is the vendor refusal")
+        Do $$$AssertTrue($IsObject($Get(tFault)) && (tFault.detail.message [ ("the vendor's " _ $List(tCase, 2) _ " failed")), $List(tCase, 1) _ ": with the vendor's message in detail")
+        Do $$$AssertEquals(..Recorded(), $List(tCase, 3), $List(tCase, 1) _ ": no vendor call follows the one that failed")
+    }
+    Kill ^||OcuPilotSqlTuningVendorArmed, ^||OcuPilotSqlTuningVendorFail, ^||OcuPilotSqlTuningVendor
+    Do $$$AssertEquals(..LockFree(..#NAMESPACE), 1, "and the lock is free after them")
 }
 
 /// <p>Whether the namespace's analysis lock is free for another process, asked by a job that tries to take it with no wait: <code>1</code> free,

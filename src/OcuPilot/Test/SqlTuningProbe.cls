@@ -753,9 +753,10 @@ ClassMethod SeedAnalysis(pNamespace As %String, pRun As %Boolean = 1) As %Status
     Quit tSC
 }
 
-/// <p>The rows of the vendor's own result table in <var>pNamespace</var> for the probe table, counted directly, by report code, and the namespace's gathered
-/// statements: <code>{Statements, IU, TS, TI, JI, OI}</code>, or <code>-1</code> for a count that could not be read.</p>
-ClassMethod AnalysisCounts(pNamespace As %String) As %DynamicObject
+/// <p>The rows of the vendor's own result table in <var>pNamespace</var> for the probe table, or for every table when <var>pAllTables</var> is 1, counted
+/// directly, by report code, and the namespace's gathered statements: <code>{Statements, IU, TS, TI, JI, OI}</code>, or <code>-1</code> for a count that
+/// could not be read.</p>
+ClassMethod AnalysisCounts(pNamespace As %String, pAllTables As %Boolean = 0) As %DynamicObject
 {
     Set tCounts = {"Statements": -1, "IU": -1, "TS": -1, "TI": -1, "JI": -1, "OI": -1}
     Set tOrigNS = $NAMESPACE
@@ -768,10 +769,10 @@ ClassMethod AnalysisCounts(pNamespace As %String) As %DynamicObject
             If tResult.%Next() Do tCounts.%Set("Statements", +tResult.%GetData(1), "number")
         }
         Set tStatement = ##class(%SQL.Statement).%New()
-        Set tSC = tStatement.%Prepare("SELECT OptionName, COUNT(*) FROM %SYS_PTools.UtilSQLAnalysisDB WHERE SchemaName = ? AND TableName = ? GROUP BY OptionName", 0)
+        Set tSC = tStatement.%Prepare("SELECT OptionName, COUNT(*) FROM %SYS_PTools.UtilSQLAnalysisDB WHERE (? = 1) OR (SchemaName = ? AND TableName = ?) GROUP BY OptionName", 0)
         If $$$ISOK(tSC) {
             For tCode = "IU", "TS", "TI", "JI", "OI" Do tCounts.%Set(tCode, 0, "number")
-            Set tResult = tStatement.%Execute(..#ANALYSISSCHEMA, "T")
+            Set tResult = tStatement.%Execute(''pAllTables, ..#ANALYSISSCHEMA, "T")
             While tResult.%Next() {
                 Do tCounts.%Set(tResult.%GetData(1), +tResult.%GetData(2), "number")
             }

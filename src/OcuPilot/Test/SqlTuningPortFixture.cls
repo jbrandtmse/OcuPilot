@@ -42,14 +42,22 @@ ClassMethod TableCall(pType As %String, pTarget As %String, pValues As %String, 
 }
 
 /// <p>The index analysis vendor call (Story 21.27), recorded as <code>method(arguments)</code>, in order, in <code>^||OcuPilotSqlTuningVendor</code> while
-/// <code>^||OcuPilotSqlTuningVendorArmed</code> is set, and then answered <code>$$$OK</code> without calling the instance; the production call otherwise.</p>
+/// <code>^||OcuPilotSqlTuningVendorArmed</code> is set, and then answered <code>$$$OK</code> without calling the instance, or an error status for the method
+/// <code>^||OcuPilotSqlTuningVendorFail</code> names; the production call otherwise.</p>
 ClassMethod AnalysisVendor(pNamespace As %String, pMethod As %String, pArgs...) As %Status [ Private ]
 {
     If '$Get(^||OcuPilotSqlTuningVendorArmed) Quit ##super(pNamespace, pMethod, pArgs...)
     Set tText = ""
     For tIndex = 1:1:pArgs Set tText = tText _ $Select(tIndex > 1: ",", 1: "") _ pArgs(tIndex)
     Set ^||OcuPilotSqlTuningVendor($Increment(^||OcuPilotSqlTuningVendor)) = pMethod _ "(" _ tText _ ")"
+    If $Get(^||OcuPilotSqlTuningVendorFail) = pMethod Quit $$$ERROR($$$GeneralError, "the vendor's " _ pMethod _ " failed")
     Quit $$$OK
+}
+
+/// <p>The advice's class: the one <code>^||OcuPilotSqlTuningAdvisor</code> names where a test set it, else the production port's.</p>
+ClassMethod AdvisorClass() As %String
+{
+    Quit $Get(^||OcuPilotSqlTuningAdvisor, ##super())
 }
 
 /// <p>The field's read, which raises while a table call runs where <method>OcuPilot.Test.SqlTuningGateSeam.Throw</method> armed it: the one read a

@@ -14678,6 +14678,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-27-the-index-analyzer-and-its-advice.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: SqlPort.Advised sets advice.truncated at 200 findings or 20 tables; sql-answer.ts and sql-query.page.ts carry no member for it; a note needs a ruled string
 - 2026-11-26T03:54:49Z status=open owner=21-27-the-index-analyzer-and-its-advice by=harvest note=string sent to the orchestrator; code review patches it once ruled
+- 2026-11-26T04:29:38Z status=resolved-by:21-27-the-index-analyzer-and-its-advice
+- 2026-11-26T04:29:47Z status=resolved-by:21-27-the-index-analyzer-and-its-advice by=cr note=SQL query shows the ruled cut note on advice.truncated; self-protection.test.mjs holds its numbers to the caps
 
 ### DW-2875: Workflow user Save route and tool argument check judge full name and shape before source control and the name refusals (refusal order differs from the matrix; same in sibling families)
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-3.md | severity: low | fix-risk: low | footprint: in
@@ -14713,3 +14715,24 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-3.md | severity: low | fix-risk: med | footprint: out
 - evidence: 24.17 B3a review R15; product now removes memberships itself (U-168)
 - 2026-11-26T00:38:36Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=a class reddens because USER lacks the RoleMembership registry
+
+### DW-2883: AD-7's Story 21.27 clause says the advice writes nothing, but an Advise records the statement in the namespace's statement index
+- source: spec-21-27-the-index-analyzer-and-its-advice.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Measured on ocupilot-ci 2026-11-26: an Advise of a new statement added its row to INFORMATION_SCHEMA.STATEMENTS (the typing prepare Plan shares); spine AD-7 line 256 ends 'it writes nothing (measured)'
+- 2026-11-26T04:29:59Z status=escalated owner=burndown by=cr note=spine correction is an AD amendment; recommend restoring the proposed clause naming the statement-index row
+- 2026-11-26T04:38:53Z status=resolved-by:21-27-the-index-analyzer-and-its-advice owner=21-27-the-index-analyzer-and-its-advice by=runner note=spine AD-7 21.27 clause corrected in place to U-165's allowed wording (only side effect the statement-index row, measured); the line is the runner's own, not on feature; veto U-171
+
+### DW-2884: Advice attributes a join's conditions to every table the plan scans, so a missing-index finding can name a field of another table
+- source: spec-21-27-the-index-analyzer-and-its-advice.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: SqlAdvice.Findings tests every condition against each scanned table, as the harvested advisor does (spec Batch 2 Gaps, inference)
+- 2026-11-26T04:30:03Z status=wontfix-accepted owner=21-27-the-index-analyzer-and-its-advice by=cr note=reopen_if=an Advise of a two-table join names a field of one table in a missing-index finding for the other
+
+### DW-2885: Advice compares the plan's SQL names with the dictionary's class-side index and property names
+- source: spec-21-27-the-index-analyzer-and-its-advice.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ADVICEINDEXQUERY reads CompiledIndex Name and Properties; a table with an SqlName or SqlFieldName override would read as an unused or missing index (inference)
+- 2026-11-26T04:30:06Z status=wontfix-accepted owner=21-27-the-index-analyzer-and-its-advice by=cr note=reopen_if=an Advise on a table whose index or field has an SqlName override reports the index the plan reads as unused
+
+### DW-2886: An index analyzer report run in OcuPilot during a classic-page gathering of the same namespace is not refused
+- source: spec-21-27-the-index-analyzer-and-its-advice.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: SqlPort.AnalysisLocked takes only the SQLAnlsys lock; a gathering holds none of it (Task 0 (f)), so OcuPilot's own writes are serialized but a classic-page gathering is not seen (inference)
+- 2026-11-26T04:30:10Z status=wontfix-accepted owner=21-27-the-index-analyzer-and-its-advice by=cr note=reopen_if=a report run in OcuPilot while the classic page gathers the same namespace answers 200 with no rows

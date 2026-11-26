@@ -452,6 +452,7 @@ describe('SQL query', () => {
     expect(mounted.posts).toEqual([{ path: SQL_PLAN_PATH, body: { statement: "SELECT ID FROM OcuProbe227.Scan WHERE Name = 'x'", advise: true }, scope: 'USER' }]);
     expect(el(mounted.host, 'plan').textContent).toBe('Read master map OcuProbe227.Scan.IDKEY, looping on ID.\n');
     expect(el(mounted.host, 'advice-note').textContent?.trim()).toBe(STRINGS.sqlAdviceNote);
+    expect(el(mounted.host, 'advice-truncated')).toBeNull();
     const rows = Array.from(mounted.host.querySelectorAll('[data-ocu-sql="finding"]')) as HTMLElement[];
     expect(rows.map((row) => row.getAttribute('data-ocu-kind'))).toEqual(['fullscan', 'missingindex']);
     const cells = Array.from(rows[0].querySelectorAll('td')).map((cell) => cell.textContent?.replace(/\s+/g, ' ').trim());
@@ -482,6 +483,22 @@ describe('SQL query', () => {
     await settle(mounted.fixture);
     expect(el(mounted.host, 'advice-status').textContent?.trim()).toBe(STRINGS.sqlAdviceUnrecognized);
     expect(el(mounted.host, 'advice-note').textContent?.trim()).toBe(STRINGS.sqlAdviceNote);
+  });
+
+  // Mutation (Rule 19): `adviceOf` drops `truncated` -> the cut note is never drawn and this goes red.
+  it('says when the instance cut the advice at its caps, and only then', async () => {
+    const mounted = await mount();
+    await type(mounted, 'SELECT 1');
+    const finding = { Kind: 'fullscan', Confidence: 'medium', Table: 'A.B', Fields: '', Index: '', Detail: 'd', Recommendation: 'r', Excerpt: '' };
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: 'Read master map A.B.IDKEY.\n', truncated: false, advice: { recognized: true, tables: [], findings: [finding], truncated: true } } };
+    el<HTMLButtonElement>(mounted.host, 'advise').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'advice-truncated').textContent?.trim()).toBe(STRINGS.sqlAdviceTruncated);
+    expect(mounted.host.querySelectorAll('[data-ocu-sql="finding"]').length).toBe(1);
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: 'Read master map A.B.IDKEY.\n', truncated: false, advice: { recognized: true, tables: [], findings: [finding], truncated: false } } };
+    el<HTMLButtonElement>(mounted.host, 'advise').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'advice-truncated')).toBeNull();
   });
 
   // Mutation (Rule 19): drop the refusal's `adopt` path in `post` -> no refusal is drawn and this goes red.

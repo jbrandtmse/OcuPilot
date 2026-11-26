@@ -9,7 +9,7 @@ Class OcuPilot.Screen.Tool.ExplorerSqlIndexAnalysisGather Extends OcuPilot.Scree
 
 Parameter TOOLNAME = "explorer.sqlindexanalysis.gather";
 
-Parameter DESCRIPTION = "Propose gathering this namespace's SQL statements for the index analyzer: its cached queries, class methods, class queries and routines are gathered again, and the statements it had gathered and every report's results are replaced. It changes nothing by itself: it answers a proposal the user reviews and confirms. Send the literal '*' as the target. Gathering system classes and routines takes longer than the page waits, so leave SkipSystem true unless the person asks for them.";
+Parameter DESCRIPTION = "Propose gathering this namespace's SQL statements for the index analyzer: its cached queries, class methods, class queries and routines are gathered again, and the statements it had gathered and every report's results are replaced. It changes nothing by itself: it answers a proposal the user reviews and confirms. Send the literal '*' as the target. Gathering system classes and routines can take longer than the page waits, so leave SkipSystem true unless the person asks for them.";
 
 Parameter WRITETYPE = "GATHER";
 

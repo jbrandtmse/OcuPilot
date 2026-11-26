@@ -42,10 +42,11 @@ export interface SqlAdviceFinding {
   readonly recommendation: string;
 }
 
-/** The advice a plan answer carries when Advise asked for it: whether the plan was recognized, and its findings. */
+/** The advice a plan answer carries when Advise asked for it: whether the plan was recognized, its findings, and whether a cap cut them. */
 export interface SqlAdvice {
   readonly recognized: boolean;
   readonly findings: readonly SqlAdviceFinding[];
+  readonly truncated: boolean;
 }
 
 /** What the instance last answered, as the page draws it. */
@@ -75,6 +76,7 @@ function adviceOf(record: Readonly<Record<string, unknown>>): SqlAdvice | undefi
         detail: text(entry['Detail']),
         recommendation: text(entry['Recommendation']),
       })),
+    truncated: body['truncated'] === true,
   };
 }
 

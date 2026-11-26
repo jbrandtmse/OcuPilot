@@ -5589,7 +5589,7 @@ export const STRINGS = {
   sqlIndexAnalysisGatherConsequence:
     'A new gathering of this namespace\'s cached queries, class methods, class queries and routines replaces its gathered statements and every report\'s results, and rebuilds its class dependency data.',
   sqlIndexAnalysisGatherSystemConsequence:
-    'A new gathering of this namespace\'s cached queries, class methods, class queries and routines replaces its gathered statements and every report\'s results, and rebuilds its class dependency data. Gathering system classes and routines takes longer than the page waits; the list shows the result when it finishes.',
+    'A new gathering of this namespace\'s cached queries, class methods, class queries and routines replaces its gathered statements and every report\'s results, and rebuilds its class dependency data. Gathering system classes and routines can take longer than the page waits; the list shows the result when it finishes.',
   sqlIndexAnalysisRunConsequence: 'This report\'s earlier results in this namespace are replaced.',
   sqlIndexAnalysisPurgeConsequence:
     'This namespace\'s gathered statements and every report\'s results are removed. Gather statements again before running a report.',
@@ -5611,6 +5611,8 @@ export const STRINGS = {
   sqlAdviceNote: 'Advice is read from this one plan and its tables\' indices. Check it against the real workload.',
   sqlAdviceEmpty: 'OcuPilot found nothing to advise for this plan.',
   sqlAdviceUnrecognized: 'OcuPilot did not recognize this plan\'s format, so it offers no advice.',
+  // The numbers are OcuPilot.Port.SqlAdvice's MAXFINDINGS and MAXTABLES; self-protection.test.mjs holds them equal.
+  sqlAdviceTruncated: 'Only the first 200 findings, from at most 20 tables, are shown.',
   sqlRuntimeStatsPurgeAction: 'Purge statistics',
   explorerSqlPlanWithStatistics: 'Plan with statistics',
   sqlRuntimeStatsPurgeConsequence: 'This namespace\'s runtime statistics are removed. New statistics are recorded only while collection is on.',

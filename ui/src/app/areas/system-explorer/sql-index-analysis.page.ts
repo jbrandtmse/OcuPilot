@@ -104,7 +104,10 @@ export class SqlIndexAnalysisPage {
     this.handler.startFor(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_PURGE, SQL_TUNING_ALL_TARGET, {}, this.store);
   }
 
-  /** One send through the handler's `sendFor`, a refusal kept in the dialog: the sentence the instance gave, else the envelope's own. */
+  /**
+   * One send through the handler's `sendFor`, a refusal kept in the dialog: the sentence the instance gave, else the envelope's own. A send whose answer
+   * carries no sentence (the page stopped waiting, as a gathering of system classes can make it) closes the dialog, as the consequence said it would end.
+   */
   protected async onSubmit(choices: IndexAnalysisChoices): Promise<void> {
     const action = this.open();
     if (action === null || this.sending() || this.store === null) return;
@@ -122,10 +125,11 @@ export class SqlIndexAnalysisPage {
     const applied = await this.handler.sendFor(EXPLORER_SQL_INDEX_ANALYSIS, action, SQL_TUNING_ALL_TARGET, values, { setRefusal: () => undefined });
     this.sending.set(false);
     if (this.open() === null) return;
-    if (applied) {
+    const reason = applied ? '' : (this.handler.lastRefusal()?.reason ?? '');
+    if (reason === '') {
       this.onClose();
       return;
     }
-    this.refusal.set(this.handler.lastRefusal()?.reason ?? '');
+    this.refusal.set(reason);
   }
 }

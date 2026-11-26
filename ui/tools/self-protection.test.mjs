@@ -809,6 +809,18 @@ test("Story 19.2: each of System Explorer's write refusals and delete reasons is
   }
 });
 
+test("Story 21.27: SQL query's advice-cut note names the advice's own two caps, and is published in Fixed strings", () => {
+  // Mutation (Rule 19): change MAXTABLES in SqlAdvice.cls to 21 -> this goes red naming the sentence.
+  const advice = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'SqlAdvice.cls'), 'utf8');
+  const findings = /Parameter MAXFINDINGS As INTEGER = (\d+);/.exec(advice);
+  const tables = /Parameter MAXTABLES As INTEGER = (\d+);/.exec(advice);
+  assert.notEqual(findings, null, 'SqlAdvice.cls declares MAXFINDINGS');
+  assert.notEqual(tables, null, 'SqlAdvice.cls declares MAXTABLES');
+  const sentence = `Only the first ${findings[1]} findings, from at most ${tables[1]} tables, are shown.`;
+  assert.equal(stringValue('sqlAdviceTruncated'), sentence, 'the note states the caps the instance applies');
+  assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${sentence}"`), "the note is published in EXPERIENCE.md's Fixed strings");
+});
+
 /** Story 24.1's port, which declares the refusals of a Code metrics or Document hashes argument. */
 const DEVTOOL_PORT = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'DevToolPort.cls');
 

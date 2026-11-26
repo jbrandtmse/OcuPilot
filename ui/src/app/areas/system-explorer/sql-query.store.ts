@@ -316,7 +316,7 @@ export class SqlQueryState {
 
   /**
    * Advise (Story 21.27): post the statement and `advise: true` to the plan route and show the plan with the findings the instance read from it.
-   * The route reads a query's plan only and refuses any other statement before anything is prepared; nothing runs.
+   * The route reads a query's plan only and refuses any other statement before its plan is read; nothing runs.
    */
   async advise(deps: SqlQueryDeps): Promise<void> {
     const result = await this.post(deps, SQL_PLAN_PATH, false, false, true);

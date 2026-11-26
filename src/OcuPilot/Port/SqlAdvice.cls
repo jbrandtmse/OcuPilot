@@ -52,10 +52,10 @@ Parameter UNUSEDINDEXDETAIL = "This statement's plan does not use the index %3 o
 Parameter UNUSEDINDEXRECOMMENDATION = "Check that no other statement uses it before you remove it.";
 
 /// <p>The plan lines that read a table: a master map or an index map, with an optional join alias before the map's name.</p>
-Parameter MAPPATTERN = "Read (?:[a-z]+ )?(?:master|index) map ([\w%]+)\.([\w%]+?)(?:\([A-Za-z0-9]+\))?\.([\w%]+)";
+Parameter MAPPATTERN = "Read (?:[a-z]+ )?(?:master|index) map ([\w%]+)\.([\w%]+?)(?:\(\w+\))?\.([\w%]+)";
 
 /// <p>A master map read that loops over the whole map: a full table scan.</p>
-Parameter SCANPATTERN = "Read master map ([\w%]+)\.([\w%]+?)(?:\([A-Za-z0-9]+\))?\.[\w%]+, looping on [\w.]+(?: and [\w.]+)*\.";
+Parameter SCANPATTERN = "Read master map ([\w%]+)\.([\w%]+?)(?:\(\w+\))?\.[\w%]+, looping on [\w.]+(?: and [\w.]+)*\.";
 
 /// <p>A condition the plan tests on a row: its operator, then the field, with or without the plan's upper-casing function.</p>
 Parameter CONDITIONPATTERN = "(?i)the (NOT NULL|IS NOT NULL|IS NULL|BETWEEN|LIKE|IN|<>|<=|>=|=|<|>) condition on (?:%SQLUPPER\(([\w.%]+)\)|([\w.%]*[\w%]))";

@@ -157,6 +157,9 @@ interface ValueField {
     @if (hasAdvice) {
       <div data-ocu-sql="advice" role="region" [attr.aria-label]="STRINGS.sqlAdviceAction">
         <p class="ocu-explorer-status" data-ocu-sql="advice-note">{{ STRINGS.sqlAdviceNote }}</p>
+        @if (adviceTruncated) {
+          <p class="ocu-explorer-status" data-ocu-sql="advice-truncated">{{ STRINGS.sqlAdviceTruncated }}</p>
+        }
         @if (hasFindings) {
           <table class="ocu-details-volumes-table" data-ocu-sql="findings">
             <thead>
@@ -391,6 +394,11 @@ export class SqlQueryPage {
 
   protected get hasAdvice(): boolean {
     return this.advice !== null;
+  }
+
+  /** Whether the instance cut the findings or the tables at the advice's caps. */
+  protected get adviceTruncated(): boolean {
+    return this.advice?.truncated === true;
   }
 
   /** The findings, each with its kind and confidence named; the sentences are the instance's own. */

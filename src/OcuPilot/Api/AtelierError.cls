@@ -468,7 +468,7 @@ Parameter REASONINDEXANALYSISGATHER = "A new gathering of this namespace's cache
 
 Parameter INDEXANALYSISGATHERSYSTEM = "SQL.INDEXANALYSIS.GATHERSYSTEM";
 
-Parameter REASONINDEXANALYSISGATHERSYSTEM = "A new gathering of this namespace's cached queries, class methods, class queries and routines replaces its gathered statements and every report's results, and rebuilds its class dependency data. Gathering system classes and routines takes longer than the page waits; the list shows the result when it finishes.";
+Parameter REASONINDEXANALYSISGATHERSYSTEM = "A new gathering of this namespace's cached queries, class methods, class queries and routines replaces its gathered statements and every report's results, and rebuilds its class dependency data. Gathering system classes and routines can take longer than the page waits; the list shows the result when it finishes.";
 
 Parameter INDEXANALYSISRUN = "SQL.INDEXANALYSIS.RUN";
 
