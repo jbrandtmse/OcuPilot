@@ -251,6 +251,8 @@ XData Elsewhere
 <screen name="InteropRuleLogList"/>
 <screen name="InteropProcessLogList"/>
 <screen name="InteropWorkflowUserList"/>
+<screen name="InteropWorkflowRoleList"/>
+<screen name="InteropWorkflowMemberList"/>
 <screen name="InteropSuspendedMessageList"/>
 <screen name="InteropItemClassTab"/>
 <screen name="InteropItemJobTab"/>

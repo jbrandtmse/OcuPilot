@@ -276,6 +276,8 @@ XData Coverage
 <screen name="InteropCredentialList" class="OcuPilot.Test.InteropCredentialControl" method="TestTheDeclarationRegisters"/>
 <screen name="InteropScheduleList" class="OcuPilot.Test.InteropScheduleControl" method="TestTheDeclarationRegisters"/>
 <screen name="InteropWorkflowUserList" class="OcuPilot.Test.InteropWorkflowUserList" method="TestTheDeclarationRegisters"/>
+<screen name="InteropWorkflowRoleList" class="OcuPilot.Test.InteropWorkflowRoleList" method="TestTheDeclarationsRegister"/>
+<screen name="InteropWorkflowMemberList" class="OcuPilot.Test.InteropWorkflowRoleList" method="TestTheDeclarationsRegister" corpus="the roles list's declaration and the members list's are asserted together in one method"/>
 <screen name="InteropPurgeList" class="OcuPilot.Test.InteropPurgeControl" method="TestTheDeclarationRegisters"/>
 <screen name="InteropPurgeSettingList" class="OcuPilot.Test.InteropPurgeSettingControl" method="TestTheDeclarationRegisters"/>
 <screen name="InteropArchiveList" class="OcuPilot.Test.InteropArchiveControl" method="TestTheRunIsDeclaredAsTheRowActionOfTheArchiveManager"/>
@@ -639,6 +641,11 @@ XData Coverage
 <tool name="interop.workflowusers.add" class="OcuPilot.Test.InteropWorkflowUserControl" method="TestTheAgentsAddConfirmsOverHttp"/>
 <tool name="interop.workflowusers.update" class="OcuPilot.Test.InteropWorkflowUserControl" method="TestTheAgentsUpdateAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update and the remove in turn"/>
 <tool name="interop.workflowusers.remove" class="OcuPilot.Test.InteropWorkflowUserControl" method="TestTheAgentsUpdateAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update and the remove in turn"/>
+<tool name="interop.workflowroles.add" class="OcuPilot.Test.InteropWorkflowRoleControl" method="TestTheAgentsAddConfirmsOverHttp"/>
+<tool name="interop.workflowroles.update" class="OcuPilot.Test.InteropWorkflowRoleControl" method="TestTheAgentsUpdateAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update and the remove in turn"/>
+<tool name="interop.workflowroles.remove" class="OcuPilot.Test.InteropWorkflowRoleControl" method="TestTheAgentsUpdateAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update and the remove in turn"/>
+<tool name="interop.workflowmembers.add" class="OcuPilot.Test.InteropWorkflowMemberControl" method="TestTheAgentsAddConfirmsOverHttp"/>
+<tool name="interop.workflowmembers.remove" class="OcuPilot.Test.InteropWorkflowMemberControl" method="TestTheAgentsRemoveConfirmsOverHttp"/>
 <tool name="interop.purgesettings.set" class="OcuPilot.Test.InteropPurgeSettingControl" method="TestASettingSetFromEitherCallerReadsBackAsSent"/>
 <tool name="interop.purge.run" class="OcuPilot.Test.InteropPurgeControl" method="TestAPurgeFromEitherCallerDeletesTheOldRecordsAndKeepsTheCurrentOne"/>
 <tool name="interop.archivesettings.set" class="OcuPilot.Test.InteropArchiveSettingControl" method="TestASettingSetFromEitherCallerReadsBackAsSent"/>

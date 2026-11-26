@@ -170,6 +170,8 @@ XData Titles
 "interopUsageImpactLabel": "Database impact",
 "interopUsageLabel": "Interoperability usage",
 "interopUsageVolumeLabel": "Message volume",
+"interopWorkflowMembersLabel": "Role members",
+"interopWorkflowRolesLabel": "Workflow roles",
 "interopWorkflowUsersLabel": "Workflow users",
 "isqlSettingsLabel": "ISQL settings",
 "journalFileDatabaseListLabel": "Journal file databases",

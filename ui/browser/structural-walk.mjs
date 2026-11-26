@@ -14,7 +14,8 @@
  * `SKIP` with its reason, and one in neither place fails the gate. The Transcripts list, which a
  * fresh instance leaves empty, gets one conversation seeded for the walk (`seedConversation`),
  * removed by its exact key when the walk ends; the Managed alerts list gets one probe alert
- * (`seedManagedAlert`), removed by its id the same way.
+ * (`seedManagedAlert`), removed by its id the same way, and the Workflow roles list one probe role
+ * (`seedWorkflowRole`), removed by its name.
  *
  * **It runs in baseline form.** `a11y-structural-invariants.browser-spec.mjs` compares what the walk
  * finds against `structural-baseline.json` by key and fails only on a key outside it; a baseline
@@ -218,6 +219,35 @@ export function removeManagedAlert(config, id) {
     `Write "OCU-WALKUNALERT-START:",##class(${ALERT_FIXTURE}).Delete("HSCUSTOM","${escapeOs(id)}"),":OCU-WALKUNALERT-END",!`,
   ]);
   assert.equal(markerValue(output, 'WALKUNALERT'), '1', `the seeded managed alert ${id} is removed:\n${output}`);
+}
+
+/** The class that stores and removes the workflow role the walk seeds (Story 24.17 Batch 3b's test fixture). */
+const WORKFLOW_FIXTURE = 'OcuPilot.Test.InteropWorkflowFixture';
+
+/** The workflow role the walk seeds, under the fixture's probe marker. */
+const WALK_WORKFLOW_ROLE = 'OcuP2417wWalk';
+
+/**
+ * Seed one workflow role in HSCUSTOM, the namespace the walk browses, so the Workflow roles list has a
+ * row whose Role members screen the walk can open. Answers the role's name; throws when it cannot be
+ * stored.
+ */
+export function seedWorkflowRole(config) {
+  const output = runIris(config.container, [
+    `Set sc=##class(${WORKFLOW_FIXTURE}).ProbeRole("${WALK_WORKFLOW_ROLE}","HSCUSTOM","walk probe role")`,
+    'Write "OCU-WALKROLE-START:",$System.Status.IsOK(sc),":OCU-WALKROLE-END",!',
+  ]);
+  assert.equal(markerValue(output, 'WALKROLE'), '1', `the walk seeds one workflow role in HSCUSTOM:\n${output}`);
+  return WALK_WORKFLOW_ROLE;
+}
+
+/** Remove workflow role `name` from HSCUSTOM, and confirm it is gone. */
+export function removeWorkflowRole(config, name) {
+  const output = runIris(config.container, [
+    `Set sc=##class(${WORKFLOW_FIXTURE}).VendorRoleDelete("HSCUSTOM","${escapeOs(name)}")`,
+    `Write "OCU-WALKUNROLE-START:",$System.Status.IsOK(sc),"|",##class(${WORKFLOW_FIXTURE}).RoleText("HSCUSTOM","${escapeOs(name)}"),":OCU-WALKUNROLE-END",!`,
+  ]);
+  assert.equal(markerValue(output, 'WALKUNROLE'), '1|<absent>', `the seeded workflow role ${name} is removed:\n${output}`);
 }
 
 /** How long a screen may take to settle before the walk records it as unsettled. */
@@ -1241,7 +1271,7 @@ export function passRetrier(report, entries, browser, relaunch = null) {
  * retried pass. When `relaunch` (answers a new browser) is given, the rerun
  * runs on a newly launched browser and the stalled one is closed, as `passRetrier` says; the walk
  * answers the browser it ended on, which the caller closes. All of it runs with one conversation
- * seeded (`seedConversation`) and one managed alert seeded (`seedManagedAlert`), each removed on every
+ * seeded (`seedConversation`), one managed alert seeded (`seedManagedAlert`) and one workflow role seeded (`seedWorkflowRole`), each removed on every
  * exit path. Answers `{entries, report, browser}`;
  * `report` counts walked, skipped, not built, unresolved (an id-requiring screen neither walked nor
  * skipped), unsettled and unmeasurable, and `report.visits` holds each visit's `{visit, ms, settled,
@@ -1270,8 +1300,10 @@ export async function walk(browser, config, relaunch = null) {
 
   const seeded = seedConversation(config);
   let alert = '';
+  let role = '';
   try {
     alert = seedManagedAlert(config);
+    role = seedWorkflowRole(config);
     await withRetry('1280px light then dark', async (found, held) => {
       const wide = await signedInAt(held, config, '/ocupilot/', VIEWPORTS.wide, reducedMotion);
       try {
@@ -1297,9 +1329,13 @@ export async function walk(browser, config, relaunch = null) {
     });
   } finally {
     try {
-      if (alert !== '') removeManagedAlert(config, alert);
+      if (role !== '') removeWorkflowRole(config, role);
     } finally {
-      removeConversation(config, seeded);
+      try {
+        if (alert !== '') removeManagedAlert(config, alert);
+      } finally {
+        removeConversation(config, seeded);
+      }
     }
   }
   return { entries: collapse(entries), report, browser: withRetry.held() };

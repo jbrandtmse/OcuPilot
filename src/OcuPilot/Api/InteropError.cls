@@ -552,6 +552,52 @@ Parameter WORKFLOWUSERINACTIVE = "INTEROP.WORKFLOW.USERINACTIVE";
 
 Parameter REASONWORKFLOWUSERINACTIVE = "An inactive workflow user is sent no new tasks through their workflow roles; their worklist is deleted and each task they hold is left unassigned.";
 
+/// <p>The workflow roles' and their members' refusals, violations and consequences (Story 24.17 Batch 3b). <code>ROLETAKEN</code> and <code>MEMBERTAKEN</code> are 409 on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug and the others are 422; the source control refusal is <parameter>WORKFLOWSOURCECONTROL</parameter>.</p>
+Parameter WORKFLOWROLENAME = "INTEROP.WORKFLOW.ROLENAME";
+
+Parameter REASONWORKFLOWROLENAME = "A workflow role name is 1 to 128 characters and holds no control characters.";
+
+Parameter WORKFLOWROLETAKEN = "INTEROP.WORKFLOW.ROLETAKEN";
+
+Parameter REASONWORKFLOWROLETAKEN = "This namespace already has a workflow role with that name, in some letter case.";
+
+Parameter WORKFLOWROLEDESCRIPTION = "INTEROP.WORKFLOW.ROLEDESCRIPTION";
+
+Parameter REASONWORKFLOWROLEDESCRIPTION = "A description is at most 2,000 characters.";
+
+Parameter WORKFLOWROLECAPACITY = "INTEROP.WORKFLOW.ROLECAPACITY";
+
+Parameter REASONWORKFLOWROLECAPACITY = "Capacity is a whole number from 1 to 100.";
+
+Parameter WORKFLOWMEMBERUSER = "INTEROP.WORKFLOW.MEMBERUSER";
+
+Parameter REASONWORKFLOWMEMBERUSER = "This namespace has no workflow user with that name.";
+
+Parameter WORKFLOWMEMBERTAKEN = "INTEROP.WORKFLOW.MEMBERTAKEN";
+
+Parameter REASONWORKFLOWMEMBERTAKEN = "This workflow user is already a member of this role.";
+
+Parameter WORKFLOWMEMBERRANK = "INTEROP.WORKFLOW.MEMBERRANK";
+
+Parameter REASONWORKFLOWMEMBERRANK = "Rank is a whole number from 1 to 5.";
+
+Parameter WORKFLOWMEMBERTITLE = "INTEROP.WORKFLOW.MEMBERTITLE";
+
+Parameter REASONWORKFLOWMEMBERTITLE = "A title is at most 128 characters and holds no control characters.";
+
+Parameter WORKFLOWROLEREMOVE = "INTEROP.WORKFLOW.ROLEREMOVE";
+
+Parameter REASONWORKFLOWROLEREMOVE = "Removing this workflow role also removes each of its members from it. Tasks already sent through it are left as they are. It cannot be restored from OcuPilot.";
+
+Parameter WORKFLOWMEMBERADD = "INTEROP.WORKFLOW.MEMBERADD";
+
+Parameter REASONWORKFLOWMEMBERADD = "An active member is sent each unassigned task of this role.";
+
+Parameter WORKFLOWMEMBERREMOVE = "INTEROP.WORKFLOW.MEMBERREMOVE";
+
+Parameter REASONWORKFLOWMEMBERREMOVE = "Removing this member deletes their worklist for this role and leaves each task they hold through it unassigned.";
+
 /// <p>The purge's refusals and consequences (Story 24.16). <code>DAYS</code> is 422 on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug and
 /// <code>RUNNING</code> is 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug.</p>
 Parameter PURGEDAYS = "INTEROP.PURGE.DAYS";
@@ -897,7 +943,7 @@ ClassMethod Codes() As %List
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP, ..#ARCHIVERUN, ..#SUSPENDEDRESUBMIT, ..#SUSPENDEDEDIT, ..#SUSPENDEDDISCARD, ..#SUSPENDEDDELETE, ..#MESSAGEEXPORT, ..#ALERTUPDATE, ..#RULELOGPURGE, ..#PROCESSLOGPURGE, ..#WORKFLOWUSERREMOVE, ..#WORKFLOWUSERINACTIVE)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP, ..#ARCHIVERUN, ..#SUSPENDEDRESUBMIT, ..#SUSPENDEDEDIT, ..#SUSPENDEDDISCARD, ..#SUSPENDEDDELETE, ..#MESSAGEEXPORT, ..#ALERTUPDATE, ..#RULELOGPURGE, ..#PROCESSLOGPURGE, ..#WORKFLOWUSERREMOVE, ..#WORKFLOWUSERINACTIVE, ..#WORKFLOWROLEREMOVE, ..#WORKFLOWMEMBERADD, ..#WORKFLOWMEMBERREMOVE)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -1018,7 +1064,7 @@ ClassMethod SchedulePreconditionCodes() As %List
 /// <method>ConsequenceCodes</method>'s.</p>
 ClassMethod WorkflowCodes() As %List
 {
-    Quit $ListBuild(..#WORKFLOWUSERTAKEN, ..#WORKFLOWUSERNAME, ..#WORKFLOWFULLNAME, ..#WORKFLOWSOURCECONTROL)
+    Quit $ListBuild(..#WORKFLOWUSERTAKEN, ..#WORKFLOWUSERNAME, ..#WORKFLOWFULLNAME, ..#WORKFLOWSOURCECONTROL, ..#WORKFLOWROLENAME, ..#WORKFLOWROLETAKEN, ..#WORKFLOWROLEDESCRIPTION, ..#WORKFLOWROLECAPACITY, ..#WORKFLOWMEMBERUSER, ..#WORKFLOWMEMBERTAKEN, ..#WORKFLOWMEMBERRANK, ..#WORKFLOWMEMBERTITLE)
 }
 
 /// <p>The workflow refusals a workflow user tool's fresh read answers when the action does not fit the namespace or the user, as a
@@ -1272,6 +1318,17 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#WORKFLOWFULLNAME Quit ..#REASONWORKFLOWFULLNAME
     If pCode = ..#WORKFLOWUSERREMOVE Quit ..#REASONWORKFLOWUSERREMOVE
     If pCode = ..#WORKFLOWUSERINACTIVE Quit ..#REASONWORKFLOWUSERINACTIVE
+    If pCode = ..#WORKFLOWROLENAME Quit ..#REASONWORKFLOWROLENAME
+    If pCode = ..#WORKFLOWROLETAKEN Quit ..#REASONWORKFLOWROLETAKEN
+    If pCode = ..#WORKFLOWROLEDESCRIPTION Quit ..#REASONWORKFLOWROLEDESCRIPTION
+    If pCode = ..#WORKFLOWROLECAPACITY Quit ..#REASONWORKFLOWROLECAPACITY
+    If pCode = ..#WORKFLOWMEMBERUSER Quit ..#REASONWORKFLOWMEMBERUSER
+    If pCode = ..#WORKFLOWMEMBERTAKEN Quit ..#REASONWORKFLOWMEMBERTAKEN
+    If pCode = ..#WORKFLOWMEMBERRANK Quit ..#REASONWORKFLOWMEMBERRANK
+    If pCode = ..#WORKFLOWMEMBERTITLE Quit ..#REASONWORKFLOWMEMBERTITLE
+    If pCode = ..#WORKFLOWROLEREMOVE Quit ..#REASONWORKFLOWROLEREMOVE
+    If pCode = ..#WORKFLOWMEMBERADD Quit ..#REASONWORKFLOWMEMBERADD
+    If pCode = ..#WORKFLOWMEMBERREMOVE Quit ..#REASONWORKFLOWMEMBERREMOVE
     If pCode = ..#PURGEDAYS Quit ..#REASONPURGEDAYS
     If pCode = ..#PURGERUNNING Quit ..#REASONPURGERUNNING
     If pCode = ..#PURGERUN Quit ..#REASONPURGERUN

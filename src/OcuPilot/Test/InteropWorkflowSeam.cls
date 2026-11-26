@@ -79,6 +79,41 @@ ClassMethod WorkflowVendor(pType As %String, pObject As %RegisteredObject, pName
     Quit ##super(pType, pObject, pName)
 }
 
+/// <p>The probe's answer for the mode in <code>^IRIS.Temp.OcuProbe2417wMode</code> to a workflow role write (Story 24.17 Batch 3b): <code>status</code> and <code>fault</code> as
+/// <method>WorkflowVendor</method> answers them, anything else the vendor's own call.</p>
+ClassMethod WorkflowRoleVendor(pType As %String, pObject As %RegisteredObject, pName As %String) As %Status
+{
+    Set tMode = $Get(^IRIS.Temp.OcuProbe2417wMode)
+    Set ^IRIS.Temp.OcuProbe2417wMode("ranIn") = $NAMESPACE
+    Set ^IRIS.Temp.OcuProbe2417wMode("ran") = $Get(^IRIS.Temp.OcuProbe2417wMode("ran")) + 1
+    If tMode = "status" Quit $$$ERROR($$$GeneralError, ..#MARKER _ " answered for " _ pName)
+    If tMode = "fault" Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, ..#MARKER _ " raised for " _ pName))
+    Quit ##super(pType, pObject, pName)
+}
+
+/// <p>The probe's answer for the mode in <code>^IRIS.Temp.OcuProbe2417wMode</code> to a member write (Story 24.17 Batch 3b): <code>status</code> makes the vendor's own call and then
+/// answers an error status that carries a marker text, so the membership was saved or removed and the answer says otherwise; <code>fault</code> raises; <code>keep</code> answers OK to a
+/// remove and deletes nothing, as the vendor's <code>RemoveUserFromRole</code> does when its delete fails; anything else is the vendor's own call.</p>
+ClassMethod WorkflowMemberVendor(pType As %String, pRole As %String, pUser As %String, pRank As %String, pTitle As %String) As %Status
+{
+    Set tMode = $Get(^IRIS.Temp.OcuProbe2417wMode)
+    Set ^IRIS.Temp.OcuProbe2417wMode("ranIn") = $NAMESPACE
+    Set ^IRIS.Temp.OcuProbe2417wMode("ran") = $Get(^IRIS.Temp.OcuProbe2417wMode("ran")) + 1
+    If tMode = "fault" Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, ..#MARKER _ " raised for " _ pUser))
+    If (tMode = "keep") && (pType = ..#TYPEREMOVEWORKFLOWMEMBER) Quit $$$OK
+    Set tSC = ##super(pType, pRole, pUser, pRank, pTitle)
+    If tMode = "status" Quit $$$ERROR($$$GeneralError, ..#MARKER _ " answered for " _ pUser)
+    Quit tSC
+}
+
+/// <p>The probe's answer for the mode in <code>^IRIS.Temp.OcuProbe2417wMode</code> to the take of the memberships a role's delete left behind (Story 24.17 Batch 3b): <code>gone</code> takes none
+/// and answers an error status, as a membership that could not be removed; anything else is the port's own.</p>
+ClassMethod WorkflowMembersGone(pRole As %String) As %Status
+{
+    If $Get(^IRIS.Temp.OcuProbe2417wMode) = "gone" Quit $$$ERROR($$$GeneralError, ..#MARKER _ " kept the memberships of " _ pRole)
+    Quit ##super(pRole)
+}
+
 /// <p>Raise inside each namespace-switched block when the mode is <code>here</code>.</p>
 ClassMethod WorkflowHere() [ Private ]
 {

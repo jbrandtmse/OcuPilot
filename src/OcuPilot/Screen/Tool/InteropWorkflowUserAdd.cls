@@ -79,7 +79,7 @@ ClassMethod CreatedId(pWritten) As %String
     Quit pWritten.%Get("Name")
 }
 
-/// <p>The add always asks its read for the add (<method>OcuPilot.Screen.Tool.InteropWorkflowUserAction.PortQuery</method>): a name the instance does not offer is refused, present in any letter
+/// <p>The add always asks its read for the add (<method>OcuPilot.Screen.Tool.InteropWorkflowAction.PortQuery</method>): a name the instance does not offer is refused, present in any letter
 /// case is <code>TAKEN</code> and absent is the 404 a create expects (AD-54), at the mint and at the confirm alike.</p>
 Parameter READASKSACTION As BOOLEAN = 1;
 

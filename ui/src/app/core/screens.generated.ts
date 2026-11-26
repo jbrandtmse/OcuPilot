@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting' | 'statement-index-entry' | 'cached-query' | 'sql-table' | 'sql-index' | 'sql-schema' | 'interop-archive' | 'interop-archive-setting' | 'sql-field' | 'interop-managed-alert' | 'sql-runtime-stat' | 'sql-runtime-stats-setting' | 'interop-rule-log' | 'interop-process-log' | 'interop-workflow-user' | 'sql-index-analysis';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting' | 'statement-index-entry' | 'cached-query' | 'sql-table' | 'sql-index' | 'sql-schema' | 'interop-archive' | 'interop-archive-setting' | 'sql-field' | 'interop-managed-alert' | 'sql-runtime-stat' | 'sql-runtime-stats-setting' | 'interop-rule-log' | 'interop-process-log' | 'interop-workflow-user' | 'interop-workflow-role' | 'interop-workflow-member' | 'sql-index-analysis';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -611,6 +611,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "interop-rule-log",
   "interop-process-log",
   "interop-workflow-user",
+  "interop-workflow-role",
+  "interop-workflow-member",
   "sql-index-analysis"
 ];
 
@@ -26622,6 +26624,327 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropWorkflowMemberList",
+    "route": "interoperability/workflow-roles/members",
+    "area": "interoperability",
+    "labelKey": "interopWorkflowMembersLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_WorkflowConfig",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_WorkflowConfig",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "interop-workflow-member",
+    "secondaryEntityTypes": [
+      "interop-workflow-role",
+      "interop-workflow-user"
+    ],
+    "scope": "namespace",
+    "parentScope": "interoperability/workflow-roles",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Role",
+        "User"
+      ]
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "remove",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Role",
+        "User",
+        "FullName",
+        "Ranking",
+        "Title",
+        "IsActive"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopWorkflowMembersEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopWorkflowMembersPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopWorkflowRolesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopWorkflowMembersPrompt2"
+      }
+    ],
+    "classicPage": "EnsPortal.WFRoles",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "workflow role member",
+      "source": {
+        "port": "interop",
+        "endpoint": "WorkflowMembers",
+        "type": "LIST"
+      },
+      "fields": [
+        "Role",
+        "User",
+        "FullName",
+        "Ranking",
+        "Title",
+        "IsActive"
+      ],
+      "filter": [
+        "User",
+        "FullName",
+        "Title"
+      ],
+      "sort": {
+        "fields": [
+          "User",
+          "FullName",
+          "Ranking",
+          "Title",
+          "IsActive"
+        ],
+        "default": "User",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "role",
+            "labelKey": "userRoleField",
+            "kind": "text",
+            "maxLength": 128,
+            "hint": "One workflow role, spelled as interop.workflowroles.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "User",
+          "labelKey": "processColumnUser",
+          "kind": "name"
+        },
+        {
+          "field": "FullName",
+          "labelKey": "userColumnFullName",
+          "kind": "text"
+        },
+        {
+          "field": "Ranking",
+          "labelKey": "interopWorkflowMemberColumnRank",
+          "kind": "number"
+        },
+        {
+          "field": "Title",
+          "labelKey": "interopPartnerFieldTitle",
+          "kind": "text"
+        },
+        {
+          "field": "IsActive",
+          "labelKey": "interopColumnActive",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopWorkflowMembersEmptyAgent"
+    },
+    "toolIdentifier": "interop.workflowmembers",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropWorkflowRoleList",
+    "route": "interoperability/workflow-roles",
+    "area": "interoperability",
+    "labelKey": "interopWorkflowRolesLabel",
+    "sideBarPosition": 26,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_WorkflowConfig",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_WorkflowConfig",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "interop-workflow-role",
+    "secondaryEntityTypes": [
+      "interop-workflow-member",
+      "interop-workflow-user"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "add",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "edit",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Description",
+        "Capacity",
+        "Members"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopWorkflowRolesEmpty",
+    "commandAliases": [
+      "workflow roles"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopWorkflowRolesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopWorkflowRolesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopWorkflowRolesPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.WFRoles",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "workflow role",
+      "source": {
+        "port": "interop",
+        "endpoint": "WorkflowRoles",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Description",
+        "Capacity",
+        "Members"
+      ],
+      "filter": [
+        "Name",
+        "Description"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Description",
+          "Capacity",
+          "Members"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        },
+        {
+          "field": "Capacity",
+          "labelKey": "promptGroupCapacity",
+          "kind": "number"
+        },
+        {
+          "field": "Members",
+          "labelKey": "roleEditorTabMembers",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopWorkflowRolesEmptyAgent"
+    },
+    "toolIdentifier": "interop.workflowroles",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.InteropWorkflowUserList",
     "route": "interoperability/workflow-users",
     "area": "interoperability",
@@ -26648,7 +26971,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "interop-workflow-user",
-    "secondaryEntityTypes": [],
+    "secondaryEntityTypes": [
+      "interop-workflow-role",
+      "interop-workflow-member"
+    ],
     "scope": "namespace",
     "parentScope": "",
     "id": {

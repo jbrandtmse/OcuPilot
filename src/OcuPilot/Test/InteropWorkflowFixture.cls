@@ -93,8 +93,8 @@ ClassMethod ProbeUser(pName As %String, pFullName As %String = "", pActive As %B
     Quit tSC
 }
 
-/// <p>Store the workflow role <var>pName</var> in <var>pNamespace</var>.</p>
-ClassMethod ProbeRole(pName As %String, pNamespace As %String = {..#SOURCE}) As %Status
+/// <p>Store the workflow role <var>pName</var> in <var>pNamespace</var>, with <var>pDescription</var> and, when it is not empty, <var>pCapacity</var> (the vendor's own 100 otherwise).</p>
+ClassMethod ProbeRole(pName As %String, pNamespace As %String = {..#SOURCE}, pDescription As %String = "", pCapacity As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
@@ -103,6 +103,8 @@ ClassMethod ProbeRole(pName As %String, pNamespace As %String = {..#SOURCE}) As 
         If '##class(EnsLib.Workflow.RoleDefinition).%ExistsId(pName) {
             Set tRole = ##class(EnsLib.Workflow.RoleDefinition).%New()
             Set tRole.Name = pName
+            Set tRole.Description = pDescription
+            If pCapacity '= "" Set tRole.Capacity = pCapacity
             Set tSC = tRole.%Save()
         }
         Set tRole = ""
@@ -114,14 +116,15 @@ ClassMethod ProbeRole(pName As %String, pNamespace As %String = {..#SOURCE}) As 
     Quit tSC
 }
 
-/// <p>Make the workflow user <var>pUser</var> a member of the role <var>pRole</var> in <var>pNamespace</var> through the vendor's own <code>AddUserToRole</code>.</p>
-ClassMethod ProbeMember(pRole As %String, pUser As %String, pNamespace As %String = {..#SOURCE}) As %Status
+/// <p>Make the workflow user <var>pUser</var> a member of the role <var>pRole</var> in <var>pNamespace</var> through the vendor's own <code>AddUserToRole</code>, with the rank
+/// <var>pRank</var> and the title <var>pTitle</var>.</p>
+ClassMethod ProbeMember(pRole As %String, pUser As %String, pNamespace As %String = {..#SOURCE}, pRank As %Integer = 1, pTitle As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
-        Set tSC = ##class(EnsLib.Workflow.RoleDefinition).AddUserToRole(pRole, pUser, 1, "")
+        Set tSC = ##class(EnsLib.Workflow.RoleDefinition).AddUserToRole(pRole, pUser, pRank, pTitle)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -169,6 +172,127 @@ ClassMethod ProbeTask(pRole As %String, pOwner As %String, pWorklistUser As %Str
         Set tId = 0
     }
     Quit tId
+}
+
+/// <p>The workflow role <var>pName</var> of <var>pNamespace</var> as <code>Description|Capacity</code>, held under exactly that name, or <code>&lt;absent&gt;</code> (Story 24.17 Batch 3b).</p>
+ClassMethod RoleText(pNamespace As %String, pName As %String) As %String
+{
+    Set tOrigNS = $NAMESPACE
+    Set tText = "<absent>"
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tRole = ##class(EnsLib.Workflow.RoleDefinition).%OpenId(pName)
+        If $IsObject(tRole) && ('(tRole.Name ] pName)) && ('(pName ] tRole.Name)) Set tText = tRole.Description _ "|" _ tRole.Capacity
+        Set tRole = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tText = "<unreadable>"
+    }
+    Quit tText
+}
+
+/// <p>The membership of <var>pUser</var> in <var>pRole</var> in <var>pNamespace</var> as <code>Ranking|Title</code>, held under exactly those names, or <code>&lt;absent&gt;</code>.</p>
+ClassMethod MemberText(pNamespace As %String, pRole As %String, pUser As %String) As %String
+{
+    Set tOrigNS = $NAMESPACE
+    Set tText = "<absent>"
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tRS = ##class(%SQL.Statement).%ExecDirectNoPriv(, "SELECT Ranking, Title FROM EnsLib_Workflow.RoleMembership WHERE %EXACT(RoleName) = ? AND %EXACT(UserName) = ?", pRole, pUser)
+        If (tRS.%SQLCODE = 0) && tRS.%Next() Set tText = tRS.%GetData(1) _ "|" _ tRS.%GetData(2)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tText = "<unreadable>"
+    }
+    Quit tText
+}
+
+/// <p>What the workflow tables of <var>pNamespace</var> hold for the role <var>pRole</var> as <code>memberships|worklist items|tasks|tasks assigned</code>, or <code>?</code> when unreadable.</p>
+ClassMethod RoleFacts(pNamespace As %String, pRole As %String) As %String
+{
+    Set tOrigNS = $NAMESPACE
+    Set tText = "?"
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tText = ..CountOf("SELECT COUNT(*) FROM EnsLib_Workflow.RoleMembership WHERE %EXACT(RoleName) = ?", pRole) _ "|" _ ..CountOf("SELECT COUNT(*) FROM EnsLib_Workflow.Worklist WHERE %EXACT(RoleName) = ?", pRole) _ "|" _ ..CountOf("SELECT COUNT(*) FROM EnsLib_Workflow.TaskResponse WHERE TaskStatus_RoleName = ?", pRole) _ "|" _ ..CountOf("SELECT COUNT(*) FROM EnsLib_Workflow.TaskResponse WHERE TaskStatus_RoleName = ? AND TaskStatus_AssignedTo <> ''", pRole)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tText = "?"
+    }
+    Quit tText
+}
+
+/// <p>Whether <var>pNamespace</var> holds the registry entry the vendor's delete of a workflow role reads to take the role's memberships with it, which a compile of
+/// <class>EnsLib.Workflow.RoleMembership</class> in that namespace writes; -1 when unreadable. Nothing is written.</p>
+ClassMethod RoleCascadeHeld(pNamespace As %String) As %Integer
+{
+    Set tOrigNS = $NAMESPACE
+    Set tHeld = -1
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tHeld = ''$Data(^rINDEXEXT("F", "EnsLib.Workflow.RoleDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "RoleKey"))
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tHeld = -1
+    }
+    Quit tHeld
+}
+
+/// <p>Take the registry entry <method>RoleCascadeHeld</method> reads out of <var>pNamespace</var>, keeping what it held so <method>RestoreCascade</method> puts it back exactly, and answer whether
+/// the namespace then holds none.</p>
+ClassMethod HideRoleCascade(pNamespace As %String) As %Boolean
+{
+    Set tOrigNS = $NAMESPACE
+    Set tGone = 0
+    Try {
+        Set $NAMESPACE = pNamespace
+        If $Data(^rINDEXEXT("F", "EnsLib.Workflow.RoleDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "RoleKey")) && '$Data(^||OcuPilotWorkflowRoleCascade(pNamespace)) {
+            Merge ^||OcuPilotWorkflowRoleCascade(pNamespace) = ^rINDEXEXT("F", "EnsLib.Workflow.RoleDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "RoleKey")
+            Kill ^rINDEXEXT("F", "EnsLib.Workflow.RoleDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "RoleKey")
+        }
+        Set tGone = '$Data(^rINDEXEXT("F", "EnsLib.Workflow.RoleDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "RoleKey"))
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tGone = 0
+    }
+    Quit tGone
+}
+
+/// <p>The vendor's own <code>RemoveUserFromRole</code> of <var>pUser</var> from <var>pRole</var> in <var>pNamespace</var>, which a test uses to change a membership after a proposal read it.</p>
+ClassMethod VendorDeleteMember(pNamespace As %String, pRole As %String, pUser As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(EnsLib.Workflow.RoleDefinition).RemoveUserFromRole(pRole, pUser)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The vendor's own <code>%DeleteId</code> of the workflow role <var>pName</var> in <var>pNamespace</var>, as a positive control of what the vendor's delete takes with it.</p>
+ClassMethod VendorRoleDelete(pNamespace As %String, pName As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(EnsLib.Workflow.RoleDefinition).%DeleteId(pName)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>The workflow user <var>pName</var> of <var>pNamespace</var> as <code>FullName|IsActive</code>, held under exactly that name, or <code>&lt;absent&gt;</code>.</p>
@@ -364,6 +488,19 @@ ClassMethod RestoreCascade()
         }
     }
     Kill ^||OcuPilotWorkflowCascade
+    Set tNamespace = ""
+    For {
+        Set tNamespace = $Order(^||OcuPilotWorkflowRoleCascade(tNamespace))
+        If tNamespace = "" Quit
+        Try {
+            Set $NAMESPACE = tNamespace
+            Merge ^rINDEXEXT("F", "EnsLib.Workflow.RoleDefinition", "ID", "f", "EnsLib.Workflow.RoleMembership", "RoleKey") = ^||OcuPilotWorkflowRoleCascade(tNamespace)
+            Set $NAMESPACE = tOrigNS
+        } Catch {
+            Set $NAMESPACE = tOrigNS
+        }
+    }
+    Kill ^||OcuPilotWorkflowRoleCascade
 }
 
 /// <p>The vendor's own <code>%DeleteId</code> of the workflow user <var>pName</var> in <var>pNamespace</var>, as a positive control of what the vendor's delete takes with it.</p>
@@ -521,13 +658,13 @@ ClassMethod Left() As %Integer
 }
 
 /// <p>The names of the rows <var>pRows</var> carries under <code>Name</code>, comma-separated in the order they come.</p>
-ClassMethod Names(pRows) As %String
+ClassMethod Names(pRows, pField As %String = "Name") As %String
 {
     Set tText = ""
     If '$IsObject(pRows) Quit tText
     Set tIterator = pRows.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
-        Set tText = tText _ $Select(tText = "": "", 1: ",") _ tRow.%Get("Name")
+        Set tText = tText _ $Select(tText = "": "", 1: ",") _ tRow.%Get(pField)
     }
     Quit tText
 }
@@ -552,7 +689,7 @@ ClassMethod Leg(pLeg As %DynamicObject, pClass As %String = "OcuPilot.Port.Inter
     If $IsObject($Get(tResult)) {
         If tResult.%IsA("%Library.DynamicArray") {
             Do tLeg.%Set("count", tResult.%Size(), "number")
-            Do tLeg.%Set("names", ..Names(tResult), "string")
+            Do tLeg.%Set("names", ..Names(tResult, $Select(pLeg.%Get("field") '= "": pLeg.%Get("field"), 1: "Name")), "string")
         } Else {
             Do tLeg.%Set("name", tResult.%Get("Name"), "string")
         }

@@ -578,6 +578,10 @@ export const CONSEQUENCE_INTEROPSCHEDULECHANGE = 'INTEROP.SCHEDULE.CHANGE';
 /** Story 24.17 Batch 3a: a workflow user's removal, and a workflow user made inactive. */
 export const CONSEQUENCE_INTEROPWORKFLOWUSERREMOVE = 'INTEROP.WORKFLOW.USERREMOVE';
 export const CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE = 'INTEROP.WORKFLOW.USERINACTIVE';
+/** Story 24.17 Batch 3b: a workflow role's removal, a member added to a role, and a member removed from it. */
+export const CONSEQUENCE_INTEROPWORKFLOWROLEREMOVE = 'INTEROP.WORKFLOW.ROLEREMOVE';
+export const CONSEQUENCE_INTEROPWORKFLOWMEMBERADD = 'INTEROP.WORKFLOW.MEMBERADD';
+export const CONSEQUENCE_INTEROPWORKFLOWMEMBERREMOVE = 'INTEROP.WORKFLOW.MEMBERREMOVE';
 /** Story 24.16: a purge of management data, and one whose bitmap cleanup is on. */
 export const CONSEQUENCE_INTEROPPURGERUN = 'INTEROP.PURGE.RUN';
 export const CONSEQUENCE_INTEROPPURGEBITMAP = 'INTEROP.PURGE.BITMAP';
@@ -855,6 +859,10 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 24.17 Batch 3a: a workflow user's removal and its deactivation, each published once.
   if (code === CONSEQUENCE_INTEROPWORKFLOWUSERREMOVE) return STRINGS.interopWorkflowUserRemoveConsequence;
   if (code === CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE) return STRINGS.interopWorkflowUserInactiveConsequence;
+  // Story 24.17 Batch 3b: a workflow role's removal, a member's addition and a member's removal, each published once.
+  if (code === CONSEQUENCE_INTEROPWORKFLOWROLEREMOVE) return STRINGS.interopWorkflowRoleRemoveConsequence;
+  if (code === CONSEQUENCE_INTEROPWORKFLOWMEMBERADD) return STRINGS.interopWorkflowMemberAddConsequence;
+  if (code === CONSEQUENCE_INTEROPWORKFLOWMEMBERREMOVE) return STRINGS.interopWorkflowMemberRemoveConsequence;
   // Story 24.16: a purge's sentence, the one its own dialog shows, and the bitmap cleanup's.
   if (code === CONSEQUENCE_INTEROPPURGERUN) return STRINGS.interopPurgeRunConsequence;
   if (code === CONSEQUENCE_INTEROPPURGEBITMAP) return STRINGS.interopPurgeBitmapConsequence;

@@ -127,6 +127,9 @@ const {
   CONSEQUENCE_INTEROPSCHEDULECHANGE,
   CONSEQUENCE_INTEROPWORKFLOWUSERREMOVE,
   CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE,
+  CONSEQUENCE_INTEROPWORKFLOWROLEREMOVE,
+  CONSEQUENCE_INTEROPWORKFLOWMEMBERADD,
+  CONSEQUENCE_INTEROPWORKFLOWMEMBERREMOVE,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
   CONFIRMED_TIME_PLACEHOLDER,
@@ -429,6 +432,25 @@ test("a workflow user's remove and inactive consequence codes resolve to their p
   assert.equal(CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE, inactive[1]);
   assert.equal(consequenceSentence(CONSEQUENCE_INTEROPWORKFLOWUSERREMOVE), STRINGS.interopWorkflowUserRemoveConsequence);
   assert.equal(consequenceSentence(CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE), STRINGS.interopWorkflowUserInactiveConsequence);
+});
+
+// Story 24.17 Batch 3b: a workflow role's remove, a member's add and a member's remove carry the codes the server mints, and each resolves to the
+// sentence its own screen shows, published once.
+//
+// Mutation (Rule 19): drop any of the three workflow role and member branches from `consequenceSentence` -> its leg goes red.
+test("a workflow role's remove and a member's add and remove consequence codes resolve to their published sentences", () => {
+  const errors = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Api', 'InteropError.cls'), 'utf8');
+  const rows = [
+    ['WORKFLOWROLEREMOVE', CONSEQUENCE_INTEROPWORKFLOWROLEREMOVE, STRINGS.interopWorkflowRoleRemoveConsequence],
+    ['WORKFLOWMEMBERADD', CONSEQUENCE_INTEROPWORKFLOWMEMBERADD, STRINGS.interopWorkflowMemberAddConsequence],
+    ['WORKFLOWMEMBERREMOVE', CONSEQUENCE_INTEROPWORKFLOWMEMBERREMOVE, STRINGS.interopWorkflowMemberRemoveConsequence],
+  ];
+  for (const [parameter, constant, sentence] of rows) {
+    const declared = new RegExp(`^Parameter ${parameter} = "([^"]+)";`, 'm').exec(errors);
+    assert.ok(declared, `InteropError.cls declares ${parameter}`);
+    assert.equal(constant, declared[1], `${parameter}'s code is the constant the card reads`);
+    assert.equal(consequenceSentence(constant), sentence, `${parameter} resolves to its published sentence`);
+  }
 });
 
 // Story 20.18, AD-64: an agent change to a screen's permissions that drops a pair is destructive with the

@@ -8499,6 +8499,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-24T02:54:59Z status=routed owner=burndown by=runner note=occurrence: run 45309694750 (21.31 integrate-only M 592784b70 over 626172470), browser 1/5 only, same settle, renderer and main thread unresponsive; third consecutive 21.31 head
 - 2026-11-24T03:39:25Z status=routed owner=21-40-the-governance-page-s-render-cost by=orchestrator note=fix-forward Story 21.40 (Rule 27): browser 1/5 attempt 1 red on 3 of 4 21.31 heads vs 1 of 26 others; measure render cost at 3 trees and 4x CPU throttle, fix in the page
 - 2026-11-25T18:38:49Z status=routed owner=burndown by=runner note=21.40 end (re-owned, not resolved): governance render at 4x is one long task of 127-248 ms and settle about 1.7-1.8 s; the read is about 1.2 s after the single-parse fix (1.6 s before); the stall is not render cost (spec-21-40 measurements). Walk order is identical at failing and passing heads (governance is the 3rd screen walked); ui/src registers no beforeunload and calls no native dialog. Next capture: a browser-level CDP session (SystemInfo.getProcessInfo, Target.getTargets, Tracing flushed on an abandoned call), a Page.javascriptDialogOpening listener, and from the runner shell at the stall: chrome ps (pid,stat,rss,pcpu,etime), free -m, dmesg OOM lines, docker stats --no-stream
+- 2026-11-26T02:06:32Z occurrence=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=runner note=run_45730527156(24.17_B3a_head_c08571e7d)_browser_1/5_a11y_AC5_governance_settle_stall_on_attempt_1_AND_attempt_2(renderer_and_main_thread_unresponsive);B3a_touches_no_governance_file;asked_orchestrator
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -13219,6 +13220,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-21T11:38:26Z status=routed owner=burndown by=orchestrator note=awaiting_a_CI_red_with_the_shipped_diagnostics(21.23_stall_report,346d580fe);resolve_or_wontfix_at_burn-down
 - 2026-11-22T06:23:36Z status=routed owner=21-39-ci-health-the-governance-renderer-stall-and-the-journal-reve by=orchestrator note=fix_forward_21.39(CI_health,Rule_27): DW-1822 2 of last 5 runs, DW-2517 two consecutive runs
 - 2026-11-22T12:36:39Z status=routed owner=burndown by=orchestrator note=21.39 ships capture at the stall (paused frames, governance bytes, CI-uploaded profile); not reproduced locally (macOS arm64). Re-own to the story that receives the first red carrying a profile
+- 2026-11-26T01:31:39Z occurrence=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=ci note=run_45730527156_browser_1/5_a11y_AC5_governance_settle_stall(renderer_unresponsive);rerun_attempt_2
 ### DW-2601: A screen action whose write landed but whose after-write step failed answers an error, so the client publishes no change event and the list keeps the old value
 - source: spec-21-4-nls-locales-and-sql-settings.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Operation.ApplyAt returns AfterWrite's error after the write; ScreenAction.cls:422-426 answers Fault and skips readBack/target; screen-action-handler.ts:1750 publishes nothing on error (its comment says a refused write changed nothing). Reached by ConfigSettingSet's failed purge and UserPassword's flag re-apply.
@@ -14665,6 +14667,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-2.md | severity: low | fix-risk: low | footprint: out
 - evidence: CI run 45661016373 browser shard 5/5 on 76959926c (24.17 Batch 2, no SSL change); rerun pending on the next push
 - 2026-11-25T17:54:15Z status=routed owner=burndown by=ci note=flake candidate; confirm on rerun
+- 2026-11-26T01:31:39Z occurrence=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=ci note=run_45730527156_browser_5/5:system-security.browser-spec_5_tests_navigation_timeout_on_/ocupilot/security/ssl(30s,request_in_flight);same_SSL_screen_as_the_first;flake_rerun_attempt_2
 ### DW-2873: A time-of-day stop set on the classic Runtime Stats Settings page reads as no stop in Runtime statistics collection, and the next level set replaces it with a 50-minute stop
 - source: spec-21-26-runtime-statistics.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: ConfigPort.SqlStatsState reads only ptInfo(terminate,mins); the classic page saves T:<YYYYMMDD HHMM>:<raf> (RuntimeStatsSettings.cls:328, Utils.cls:42-60); mins empty for a T: stop is (inference), unmeasured; a level-after-stop of 2 or 3 set through the API reads as Off
@@ -14742,3 +14745,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-26-runtime-statistics.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: 21.27 gate sweep shard 19/20 (run 903 on ocupilot-ci, head 041605b60): SqlPort.TestThePortNamesNoSourceCodeApiClass red on 21.27's UncheckedRow/UncheckedRows %Prepare(pText, 0); 21.26's StatsCount %Prepare(tText, 0) on feature evaded the literal check
 - 2026-11-26T07:50:20Z status=open owner=21-27-the-index-analyzer-and-its-advice by=runner note=orchestrator ruling 2026-11-26: rework 1 of 21.27 prepares every SqlPort catalog read with checks on and strengthens the test; veto U-174
+
+### DW-2887: InteropMessageExportElsewhere (Story 24.16) fails on a long-lived instance once HSCUSTOM's next message id falls inside the ids USER holds (counters 89 vs 252 after a full local sweep); the fixture's cross-namespace id guard does not raise the counter first (inference)
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-4.md | severity: med | fix-risk: low | footprint: in
+- evidence: 24.17 B3b implement sweep shard 1 red on ocupilot-b-ci; class untouched since ca5626323; not re-run
+- 2026-11-26T05:12:59Z status=routed owner=burndown by=harvest note=Rule 19 hermeticity: raise the id counter first, as Story 24.16's archive rule says
