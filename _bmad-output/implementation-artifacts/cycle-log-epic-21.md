@@ -1219,3 +1219,4 @@
 2026-11-26T20:15:10Z	Story 21.28	cr_complete	agent=a4750e79d model=opus high=0 med=4 low=10 rows=45 unresolved_high_med=1(DW-2899->resolved_by_runner_AD-21/AD-44_lines) patched=11 wontfix=DW-2900,DW-2901 final=done residual=by-design_per_reviewer(superseded_by_U-180_measure_ruling)
 2026-11-26T20:15:10Z	Epic 21	spine_updated	ad=AD-21,AD-44 reason=DW-2899(ruled_U-166/U-178_as_built) by=runner story=21-28-alternate-show-plans lint=preexisting_low_placeholder_only
 2026-11-26T20:17:24Z	Story 21.28	rework_opened	cycle_iteration=4 iteration=1 trigger=med_first_review(ruling_U-180) items=compare_note_pin,filter-only_residual_measure scope_baseline=c74e95342
+2026-11-26T20:17:28Z	Story 21.28	stage_spawned	stage=implement spawn_at=2026-11-26T20:17:28Z model=sonnet agent_name=21-28-rework1 cycle_iteration=4 prompt=e21-kit/21-28/rework1/prompt.md
