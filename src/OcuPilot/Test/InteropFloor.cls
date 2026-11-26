@@ -39,17 +39,19 @@ Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";
 /// <p>What the <code>%Ens_Portal</code> holder and the Monitor role open on the floor alone: the
 /// agent's owner-scoped screens, Home (an empty classic <code>RESOURCE</code>), the analytics log
 /// (the public <code>%DeepSee_Portal</code>), Analytics' Cubes with its three tabs (Story 20.11), whose one pair is that
-/// public one, and Analytics' User Portal link (Story 20.32), whose one pair it is too. These principals hold no
+/// public one, Analytics' User Portal link (Story 20.32), whose one pair it is too, and the Workflow tasks and Workflow worklist screens (Story 24.17 Batch 4), whose classic pages
+/// declare no resource and so admit the portal's pair alone. These principals hold no
 /// <code>%Development:USE</code>, so they do not open Folder items, none holds <code>%DeepSee_PortalEdit:USE</code>, so none
 /// opens Term lists, and none holds <code>%DeepSee_Architect:USE</code> or <code>%DeepSee_Analyzer:USE</code>, so none opens
 /// the Architect or Analyzer links.</p>
-Parameter BASESCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,AnalyticsCubeDimensionsTab,AnalyticsCubeList,AnalyticsCubeMeasuresTab,AnalyticsCubeRelationshipsTab,AnalyticsUserPortalLink,Home,LogAnalyticsViewer";
+Parameter BASESCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,AnalyticsCubeDimensionsTab,AnalyticsCubeList,AnalyticsCubeMeasuresTab,AnalyticsCubeRelationshipsTab,AnalyticsUserPortalLink,Home,InteropWorkflowTaskList,InteropWorkflowWorklist,LogAnalyticsViewer";
+
+/// <p>See <parameter>BASESCREENS</parameter>. The Interoperability area is here for the two workflow screens (Story 24.17 Batch 4), whose classic pages declare no resource beyond
+/// <code>%Ens_Portal:USE</code>.</p>
+Parameter BASEAREAS = "agent,analytics,home,interoperability,logs";
 
 /// <p>See <parameter>BASESCREENS</parameter>.</p>
-Parameter BASEAREAS = "agent,analytics,home,logs";
-
-/// <p>See <parameter>BASESCREENS</parameter>.</p>
-Parameter BASETOOLS = "agent.transcripts.read,analytics.cubedimensions.read,analytics.cubemeasures.read,analytics.cuberelationships.read,analytics.cubes.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open,shell.tools.find";
+Parameter BASETOOLS = "agent.transcripts.read,analytics.cubedimensions.read,analytics.cubemeasures.read,analytics.cuberelationships.read,analytics.cubes.read,interop.workflowtasks.read,interop.workflowworklist.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open,shell.tools.find";
 
 /// <p>What the Monitor role adds: the Production monitor, through the <code>%Ens_Dashboard:USE</code> the role holds (Story
 /// 20.4). The Operator and Administrator roles hold it too.</p>
@@ -151,7 +153,7 @@ Method OnAfterAllTests() As %Status
 /// <p>The areas the map opens to kind <var>pKind</var>.</p>
 ClassMethod Areas(pKind As %String) As %String
 {
-    Quit ..#BASEAREAS _ $Select($ListFind($ListBuild("monitor", "operator", "administrator"), pKind): ",interoperability", 1: "")
+    Quit ..#BASEAREAS
 }
 
 /// <p>The screens the map opens to kind <var>pKind</var>.</p>

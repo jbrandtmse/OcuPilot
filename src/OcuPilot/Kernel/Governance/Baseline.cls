@@ -369,6 +369,8 @@ XData Keys [ MimeType = application/json ]
   "interop.workflowroles.add": true,
   "interop.workflowroles.remove": false,
   "interop.workflowroles.update": true,
+  "interop.workflowtasks.assign": true,
+  "interop.workflowtasks.cancel": false,
   "interop.workflowusers.add": true,
   "interop.workflowusers.update": true,
   "interop.workflowusers.remove": false,

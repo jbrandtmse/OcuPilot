@@ -300,6 +300,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
     import('../areas/interoperability/interop-workflow-role-list.page').then((m) => m.InteropWorkflowRoleListPage),
   'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList': () =>
     import('../areas/interoperability/interop-workflow-member-list.page').then((m) => m.InteropWorkflowMemberListPage),
+  // Story 24.17 Batch 4: Workflow tasks, the list with its Assign task dialog. Workflow worklist is read-only and takes the shared list page.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': () =>
+    import('../areas/interoperability/interop-workflow-task-list.page').then((m) => m.InteropWorkflowTaskListPage),
   // Story 24.16: Purge management data, the list with its Purge dialog, and Purge data settings, on the settings page that adds Set value over the shared list.
   'OcuPilot.Screen.Descriptor.InteropPurgeList': () => import('../areas/interoperability/interop-purge-list.page').then((m) => m.InteropPurgeListPage),
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': CONFIG_SETTINGS_PAGE,

@@ -157,6 +157,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 24.17 Batch 3b: Workflow roles, whose Remove types the workflow role's name and whose New workflow role and Edit its own page's dialog sends, and Role members, whose Remove warns first and whose Add member its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList',
   'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList',
+  // Story 24.17 Batch 4: Workflow tasks, whose Cancel task types the task's ID and whose Assign its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList',
   // Story 24.16: Purge management data, whose Purge its own page's dialog sends, and Purge data settings, whose Set value the settings page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropPurgeList',
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList',
@@ -583,6 +585,8 @@ const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropArchiveList': ['archive'],
   // Story 24.17 Batch 1: Managed alerts' Update alert reads the alert's owner, state and level and the owners it may be given to before its dialog opens.
   'OcuPilot.Screen.Descriptor.InteropManagedAlertList': ['update'],
+  // Story 24.17 Batch 4: Workflow tasks' Assign reads the task's assignee and priority before its dialog opens. Cancel task has no review.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': ['assign'],
   // Story 24.17 Batch 2: the two logs' Purge reads the log's record count before its dialog opens.
   'OcuPilot.Screen.Descriptor.InteropRuleLogList': ['purge'],
   'OcuPilot.Screen.Descriptor.InteropProcessLogList': ['purge'],
@@ -741,6 +745,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': ['edit'],
   // Workflow roles' page registers Edit itself, whose dialog sends the description and the capacity (Story 24.17 Batch 3b).
   'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList': ['edit'],
+  // Workflow tasks' page registers Assign itself, whose dialog sends the user and the priority (Story 24.17 Batch 4).
+  'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': ['assign'],
   // Purge management data's page registers Purge itself, whose dialog takes the days, and Purge data settings' page registers Set value itself (Story 24.16).
   'OcuPilot.Screen.Descriptor.InteropPurgeList': ['purge'],
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': ['set'],
@@ -966,6 +972,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   // opens the warning dialog instead (`WARNING_CONSEQUENCES`); this entry is what registers it, since a destructive verb with no published sentence is not drawn.
   'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList': { remove: STRINGS.interopWorkflowRoleRemoveConsequence },
   'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList': { remove: STRINGS.interopWorkflowMemberRemoveConsequence },
+  // Story 24.17 Batch 4: a workflow task's Cancel task takes it off every worklist and returns it, canceled, to the business process that sent it.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': { cancel: STRINGS.interopWorkflowTaskCancelConsequence },
   // Story 20.23: an abort never delivers the messages it takes: all of a queue's, one waiting message, or the message a job keeps retrying.
   [INTEROP_QUEUE_LIST]: { abort: STRINGS.interopQueueAbortConsequence },
   [INTEROP_QUEUE_MESSAGE_LIST]: { abort: STRINGS.interopMessageAbortConsequence },
@@ -1098,6 +1106,8 @@ const TYPED_NAME_ROWS: Readonly<
   'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 24.17 Batch 3b: a workflow role is keyed by its name, which its Remove types. A member's Remove types none.
   'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.17 Batch 4: a workflow task is keyed by its ID, which its Cancel task types.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': { name: 'TaskId', field: '', equals: '', advisory: '' },
   // Story 20.23: an abort types the queue's name, the message's id or the job's process id, which each list's name column shows.
   [INTEROP_QUEUE_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   [INTEROP_QUEUE_MESSAGE_LIST]: { name: 'MessageId', field: '', equals: '', advisory: '' },

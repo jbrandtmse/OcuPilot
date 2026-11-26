@@ -377,6 +377,11 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     add: STRINGS.interopWorkflowMemberAddAction,
     remove: STRINGS.actionRemove,
   },
+  // Story 24.17 Batch 4: Workflow tasks' Assign opens the dialog that assigns or unassigns a task and sets its priority, and its Cancel task cancels one.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': {
+    assign: STRINGS.webAppRoleAssign,
+    cancel: STRINGS.backgroundTaskCancelAction,
+  },
   // Story 24.16: Purge management data's Purge, which opens the dialog that takes the days, and Purge data settings' Set value.
   'OcuPilot.Screen.Descriptor.InteropPurgeList': { purge: STRINGS.auditDatabasePurgeConfirm },
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': { set: STRINGS.interopItemSettingSetAction },

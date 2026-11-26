@@ -125,7 +125,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules,PurgeSettings,Purge,SuspendedMessages,ArchiveSettings,Archive,ArchiveErrors,ManagedAlerts,ManagedAlertActions,RuleLog,ProcessLog,WorkflowUsers,WorkflowRoles,WorkflowMembers";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules,PurgeSettings,Purge,SuspendedMessages,ArchiveSettings,Archive,ArchiveErrors,ManagedAlerts,ManagedAlertActions,RuleLog,ProcessLog,WorkflowUsers,WorkflowRoles,WorkflowMembers,WorkflowTasks,WorkflowWorklist";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -1222,7 +1222,7 @@ ClassMethod IsStartupWrite(pType As %String) As %Boolean
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
 ClassMethod IsAnyWrite(pType As %String) As %Boolean
 {
-    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsPurgeWrite(pType) || ..IsArchiveWrite(pType) || (pType = ..#TYPEARCHIVESETTINGSET) || ..IsSuspendedWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType) || ..IsAlertWrite(pType) || ..IsLogPurgeWrite(pType) || ..IsWorkflowWrite(pType) || ..IsWorkflowRoleWrite(pType) || ..IsWorkflowMemberWrite(pType)
+    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsPurgeWrite(pType) || ..IsArchiveWrite(pType) || (pType = ..#TYPEARCHIVESETTINGSET) || ..IsSuspendedWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType) || ..IsAlertWrite(pType) || ..IsLogPurgeWrite(pType) || ..IsWorkflowWrite(pType) || ..IsWorkflowRoleWrite(pType) || ..IsWorkflowMemberWrite(pType) || ..IsWorkflowTaskWrite(pType)
 }
 
 /// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads, Story 20.30's session trace and Story 24.4's three session reads. Each serves
@@ -1274,6 +1274,8 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
         Set tSpec = ..#ALERTPAIRS
     } ElseIf (pEndpoint = ..#ENDPOINTWORKFLOWUSERS) || (pEndpoint = ..#ENDPOINTWORKFLOWROLES) || (pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS) {
         Set tSpec = ..#WORKFLOWPAIRS
+    } ElseIf (pEndpoint = ..#ENDPOINTWORKFLOWTASKS) || (pEndpoint = ..#ENDPOINTWORKFLOWWORKLIST) {
+        Set tSpec = ..#WORKFLOWTASKPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTRULELOG {
         Set tSpec = ..#RULELOGPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTPROCESSLOG {
@@ -1322,6 +1324,7 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     If (pEndpoint = ..#ENDPOINTMANAGEDALERTS) && (..IsAlertWrite(pType) || (pType = ..#TYPEALERTOWNERS)) Set tSpec = tSpec _ "," _ ..#ALERTWRITEPAIR
     If (pEndpoint = ..#ENDPOINTWORKFLOWUSERS) && (..IsWorkflowWrite(pType) || (pType = ..#TYPEWORKFLOWUSERCHOICES)) Set tSpec = tSpec _ "," _ ..#WORKFLOWWRITEPAIR
     If ((pEndpoint = ..#ENDPOINTWORKFLOWROLES) && ..IsWorkflowRoleWrite(pType)) || ((pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS) && ..IsWorkflowMemberWrite(pType)) Set tSpec = tSpec _ "," _ ..#WORKFLOWWRITEPAIR
+    If (pEndpoint = ..#ENDPOINTWORKFLOWTASKS) && ..IsWorkflowTaskWrite(pType) Set tSpec = tSpec _ "," _ ..#WORKFLOWWRITEPAIR
     If ((pEndpoint = ..#ENDPOINTRULELOG) || (pEndpoint = ..#ENDPOINTPROCESSLOG)) && ..IsLogPurgeWrite(pType) Set tSpec = tSpec _ "," _ ..#LOGPURGEPAIR
     If pType = ..#TYPEAUTOSTART Set tSpec = tSpec _ "," _ ..#AUTOSTARTPAIR
     If pType = ..#TYPESHUTDOWNGROUP Set tSpec = tSpec _ "," _ ..#GROUPPAIR
@@ -1371,6 +1374,8 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTWORKFLOWUSERS Quit (pType = ..#TYPEWORKFLOWUSER) || (pType = ..#TYPEWORKFLOWUSERCHOICES) || ..IsWorkflowWrite(pType)
     If pEndpoint = ..#ENDPOINTWORKFLOWROLES Quit (pType = ..#TYPEWORKFLOWROLE) || ..IsWorkflowRoleWrite(pType)
     If pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS Quit (pType = ..#TYPEWORKFLOWMEMBER) || ..IsWorkflowMemberWrite(pType)
+    If pEndpoint = ..#ENDPOINTWORKFLOWTASKS Quit (pType = ..#TYPEWORKFLOWTASK) || ..IsWorkflowTaskWrite(pType)
+    If pEndpoint = ..#ENDPOINTWORKFLOWWORKLIST Quit 0
     If pEndpoint = ..#ENDPOINTRULELOG Quit (pType = ..#TYPERULELOGSTATE) || (pType = ..#TYPEPURGERULELOG)
     If pEndpoint = ..#ENDPOINTPROCESSLOG Quit (pType = ..#TYPEPROCESSLOGSTATE) || (pType = ..#TYPEPURGEPROCESSLOG)
     If pEndpoint = ..#ENDPOINTITEMTEST Quit (pType = ..#TYPETESTTARGET) || (pType = ..#TYPESENDTEST)
@@ -1571,6 +1576,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS {
             Set tSC = ..InvokeWorkflowMember(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pEndpoint = ..#ENDPOINTWORKFLOWTASKS) || (pEndpoint = ..#ENDPOINTWORKFLOWWORKLIST) {
+            Set tSC = ..InvokeWorkflowTask(tNamespace, pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         If (pEndpoint = ..#ENDPOINTRULELOG) || (pEndpoint = ..#ENDPOINTPROCESSLOG) {
@@ -7040,6 +7049,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTWORKFLOWUSERS) && ..IsWorkflowWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTWORKFLOWROLES) && ..IsWorkflowRoleWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS) && ..IsWorkflowMemberWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTWORKFLOWTASKS) && ..IsWorkflowTaskWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTPURGESETTINGS) && (pType = ..#TYPEPURGESETTINGSET) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTPURGE) && (pType = ..#TYPEPURGE) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTARCHIVESETTINGS) && (pType = ..#TYPEARCHIVESETTINGSET) Quit "objectscript"
@@ -7118,6 +7128,10 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tText = tText _ tPart
     } ElseIf pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS {
         Set tPart = ..WorkflowMemberSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTWORKFLOWTASKS {
+        Set tPart = ..WorkflowTaskSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery)
         If tPart = "" Quit []
         Set tText = tText _ tPart
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
@@ -11445,6 +11459,504 @@ ClassMethod WorkflowMemberSnippet(pType As %String, pId As %String, pBody As %Dy
     Set tText = tText _ tNL _ " If tGo Set tSC = ##class(EnsLib.Workflow.RoleDefinition).RemoveUserFromRole(" _ tRole _ ", " _ tUser _ ")"
     ; RemoveUserFromRole answers the engine's status, not the delete's, so the membership is read again.
     Quit tText _ tNL _ " If tGo, $System.Status.IsOK(tSC), ##class(EnsLib.Workflow.RoleMembership).IDExists(" _ tRole _ ", " _ tUser _ ") Set tSC = " _ tError _ """a workflow role membership was not removed"")"
+}
+
+/// <p>The Workflow tasks endpoint (Story 24.17 Batch 4): <code>LIST</code> (the namespace's <code>EnsLib.Workflow.TaskResponse</code> rows, newest first, as the classic
+/// <code>Engine:Tasklist</code> reads them), <code>WORKFLOWTASK</code> (one task, fresh, by its task id) and the writes <code>ASSIGNWORKFLOWTASK</code> and <code>CANCELWORKFLOWTASK</code>,
+/// the vendor's own <code>Engine</code> calls as the classic Assign or Reassign Task dialog performs them.</p>
+Parameter ENDPOINTWORKFLOWTASKS = "WorkflowTasks";
+
+/// <p>The Workflow worklist endpoint (Story 24.17 Batch 4): <code>LIST</code> alone (the namespace's <code>EnsLib.Workflow.Worklist</code> rows, newest first, as the classic
+/// <code>Engine:Worklist</code> reads them).</p>
+Parameter ENDPOINTWORKFLOWWORKLIST = "WorkflowWorklist";
+
+/// <p>The pairs both endpoints require: the portal's. Neither classic page declares a resource of its own, so the gate's READ on the namespace's globals database is the rest of what they
+/// admit. A write adds <parameter>WORKFLOWWRITEPAIR</parameter> and WRITE on that database.</p>
+Parameter WORKFLOWTASKPAIRS = "%Ens_Portal:USE";
+
+/// <p>One workflow task, fresh: <code>{TaskId, RoleName, IsComplete, Status, Priority, Source, AssignedTo, Subject, TimeCreated, TimeCompleted, Duration, Namespace, User}</code>, <code>User</code>
+/// being <code>AssignedTo</code> under the name the assign's argument carries. With <parameter>ACTIONKEY</parameter> in the query it refuses what that write would be refused.</p>
+Parameter TYPEWORKFLOWTASK = "WORKFLOWTASK";
+
+Parameter TYPEASSIGNWORKFLOWTASK = "ASSIGNWORKFLOWTASK";
+
+Parameter TYPECANCELWORKFLOWTASK = "CANCELWORKFLOWTASK";
+
+/// <p>The most workflow tasks a list answers, and the most worklist items, to a call that names no cap of its own: 10,000, the classic tables' own row limit. Each read ended inside 0.12
+/// seconds at 10,000 (measured). A call that names a cap gets that many, so the one row it asks for beyond what it shows reports its truncation (AD-36).</p>
+Parameter WORKFLOWTASKSMAX As INTEGER = 10000;
+
+Parameter WORKFLOWWORKLISTMAX As INTEGER = 10000;
+
+/// <p>The query keys an assign's values travel under: the user to assign the task to (<code>""</code> unassigns it) and the priority. An absent key means unchanged.</p>
+Parameter WORKFLOWTASKUSERKEY = "taskuser";
+
+Parameter WORKFLOWTASKPRIORITYKEY = "taskpriority";
+
+/// <p>The entity type the audit rows of a workflow task write name, and the verbs they carry.</p>
+Parameter ENTITYWORKFLOWTASK = "interop-workflow-task";
+
+Parameter VERBWORKFLOWASSIGN = "assign";
+
+Parameter VERBWORKFLOWCANCEL = "cancel";
+
+/// <p>The columns of a task row, in the order <method>WorkflowTaskRow</method> reads them, as the classic <code>Engine:Tasklist</code> query selects them, and the table they come from.</p>
+Parameter WORKFLOWTASKCOLUMNS = "%ID, TaskStatus_RoleName, TaskStatus_IsComplete, %Status, %Priority, TaskStatus_Source, TaskStatus_AssignedTo, %Subject, TaskStatus_TimeCreated, TaskStatus_TimeCompleted, DATEDIFF('ss', TaskStatus_TimeCreated, TaskStatus_TimeCompleted)";
+
+Parameter WORKFLOWTASKFROM = "FROM EnsLib_Workflow.TaskResponse";
+
+/// <p>The statement the worklist reads, as the classic <code>Engine:Worklist</code> query selects its columns, newest item first.</p>
+Parameter WORKFLOWWORKLISTSQL = "SELECT TOP ? Task, UserName, RoleName, Task->%Priority, TimeCreated, Age, Task->TaskStatus_AssignedTo, Task->%Subject FROM EnsLib_Workflow.Worklist ORDER BY TimeCreated DESC, Task DESC";
+
+/// <p>Whether <var>pType</var> is one of the workflow task writes this port carries (Story 24.17 Batch 4): an assign (a user, Unassigned or a priority) or a cancel, each needing WRITE on the
+/// namespace's globals database and no routines database.</p>
+ClassMethod IsWorkflowTaskWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEASSIGNWORKFLOWTASK) || (pType = ..#TYPECANCELWORKFLOWTASK)
+}
+
+/// <p>Whether <var>pId</var> is a task id this port reads or writes: a whole number written without a sign or a leading zero. Pure.</p>
+ClassMethod WorkflowTaskIdOK(pId As %String) As %Boolean
+{
+    Quit $Match(pId, "^[1-9][0-9]{0,17}$")
+}
+
+/// <p>Whether <var>pValue</var> is a priority this port writes: a whole number from 1 to 5. Pure.</p>
+ClassMethod WorkflowTaskPriorityOK(pValue As %String) As %Boolean
+{
+    Quit $Match(pValue, "^[1-5]$")
+}
+
+/// <p>Whether <var>pUser</var> is a user name this port asks the vendor about: the empty one (Unassigned) or a name <method>WorkflowNameOK</method> accepts. Pure.</p>
+ClassMethod WorkflowTaskUserShapeOK(pUser As %String) As %Boolean
+{
+    Quit (pUser = "") || ..WorkflowNameOK(pUser)
+}
+
+/// <p>The published sentence a value of kind <var>pKind</var> (<code>user</code> or <code>priority</code>) is refused with, which the assign tool's screen action answers with, or <code>""</code> for
+/// another kind. Pure.</p>
+ClassMethod WorkflowTaskProblem(pKind As %String) As %String
+{
+    Set tCode = $Case(pKind, "user": ##class(OcuPilot.Api.InteropError).#WORKFLOWTASKUSER, "priority": ##class(OcuPilot.Api.InteropError).#WORKFLOWTASKPRIORITY, : "")
+    If tCode = "" Quit ""
+    Quit ##class(OcuPilot.Api.InteropError).ReasonFor(tCode)
+}
+
+/// <p>The vendor's write of the workflow task write <var>pType</var> in the current namespace, which the caller has already switched, on the task <var>pTask</var>, opened at concurrency 4 with
+/// its new priority set: <code>CompleteTask</code> with no action for a cancel; for an assign <code>AssignTask</code> to <var>pUser</var>, or for <code>""</code> <code>UnassignTask</code> and
+/// then <code>SendTaskToAll</code>. Overridable so a fixture can answer a status or a fault; production never overrides it.</p>
+ClassMethod WorkflowTaskVendor(pType As %String, pTask As %RegisteredObject, pUser As %String) As %Status
+{
+    If pType = ..#TYPECANCELWORKFLOWTASK Quit ##class(EnsLib.Workflow.Engine).CompleteTask(pTask)
+    If pUser '= "" Quit ##class(EnsLib.Workflow.Engine).AssignTask(pTask, pUser)
+    Set tSC = ##class(EnsLib.Workflow.Engine).UnassignTask(pTask)
+    If $$$ISERR(tSC) Quit tSC
+    Quit ##class(EnsLib.Workflow.Engine).SendTaskToAll(pTask)
+}
+
+/// <p>The task as the eleven values a row carries, in order, from the columns <parameter>WORKFLOWTASKCOLUMNS</parameter> read as <var>pLine</var>: the id, the role, 1 or 0 for complete, the status, the
+/// priority, the source, the assignee, the subject, the two stamps as the vendor stores them and the duration in whole seconds or <code>""</code>. A cleared string column reads as
+/// <code>""</code>. Pure.</p>
+ClassMethod WorkflowTaskLine(pLine As %List) As %List [ Private ]
+{
+    Quit $ListBuild($List(pLine, 1) _ "", ..AlertText($List(pLine, 2)), ''$List(pLine, 3), ..AlertText($List(pLine, 4)), +$List(pLine, 5), ..AlertText($List(pLine, 6)), ..AlertText($List(pLine, 7)), ..AlertText($List(pLine, 8)), ..AlertText($List(pLine, 9)), ..AlertText($List(pLine, 10)), $Select($List(pLine, 11) = "": "", 1: +$List(pLine, 11)))
+}
+
+/// <p>The row a tasks list and read answer, from the raw columns <var>pLine</var> (<method>WorkflowTaskLine</method>): <code>{TaskId, RoleName, IsComplete, Status, Priority, Source, AssignedTo,
+/// Subject, TimeCreated, TimeCompleted, Duration, Namespace, User}</code>, the stamps as the instance's local time as the other lists show them. Runs in the install namespace.</p>
+ClassMethod WorkflowTaskRow(pLine As %List, pNamespace As %String) As %DynamicObject [ Private ]
+{
+    Set tLine = ..WorkflowTaskLine(pLine)
+    Set tRow = {}
+    Do tRow.%Set("TaskId", $List(tLine, 1), "string")
+    Do tRow.%Set("RoleName", $List(tLine, 2), "string")
+    Do tRow.%Set("IsComplete", ''$List(tLine, 3), "boolean")
+    Do tRow.%Set("Status", $List(tLine, 4), "string")
+    Do tRow.%Set("Priority", $List(tLine, 5), "number")
+    Do tRow.%Set("Source", $List(tLine, 6), "string")
+    Do tRow.%Set("AssignedTo", $List(tLine, 7), "string")
+    Do tRow.%Set("Subject", $List(tLine, 8), "string")
+    Do tRow.%Set("TimeCreated", ..AlertLocal($List(tLine, 9)), "string")
+    Do tRow.%Set("TimeCompleted", ..AlertLocal($List(tLine, 10)), "string")
+    Do tRow.%Set("Duration", $List(tLine, 11) _ "", "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Do tRow.%Set("User", $List(tLine, 7), "string")
+    Quit tRow
+}
+
+/// <p>The facts about the task <var>pId</var>, read in the current namespace, which the caller has already switched, and kept in <var>pFacts</var>: <code>held</code>, and when it is <code>line</code>
+/// (the raw columns of <parameter>WORKFLOWTASKCOLUMNS</parameter>), <code>token</code> (the task's response token), <code>headerHeld</code> (the request header the token names is there) and
+/// <code>returnQueue</code> (that header's return queue). <code>userActive</code> is 1 when <var>pUser</var> names an active workflow user held exactly. A task id this port does not read is not
+/// held. Read with <code>%ExecDirectNoPriv</code> after the gate, so a task another process holds locked is still read; nothing is written.</p>
+ClassMethod WorkflowTaskFactsHere(pId As %String, pUser As %String, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("held") = 0
+    Set pFacts("line") = ""
+    Set pFacts("token") = ""
+    Set pFacts("headerHeld") = 0
+    Set pFacts("returnQueue") = ""
+    Set pFacts("userActive") = 0
+    If ..WorkflowTaskIdOK(pId) && ..WorkflowRowHere("SELECT " _ ..#WORKFLOWTASKCOLUMNS _ ", TaskStatus_ResponseToken " _ ..#WORKFLOWTASKFROM _ " WHERE %ID = ?", .tLine, pId) {
+        Set pFacts("held") = 1
+        Set pFacts("line") = $List(tLine, 1, 11)
+        Set pFacts("token") = $List(tLine, 12)
+        Set tHeader = $Piece(pFacts("token"), "|", 1)
+        If $Match(tHeader, "^[1-9][0-9]*$") && ..WorkflowRowHere("SELECT ReturnQueueName FROM Ens.MessageHeader WHERE %ID = ?", .tQueue, tHeader) {
+            Set pFacts("headerHeld") = 1
+            Set pFacts("returnQueue") = $List(tQueue, 1)
+            If pFacts("returnQueue") = $Char(0) Set pFacts("returnQueue") = ""
+        }
+    }
+    If (pUser '= "") && ..WorkflowNameOK(pUser) Set pFacts("userActive") = ''..WorkflowCount("SELECT COUNT(*) FROM EnsLib_Workflow.UserDefinition WHERE %EXACT(Name) = ? AND IsActive = 1", pUser)
+}
+
+/// <p><method>WorkflowTaskFactsHere</method> in <var>pNamespace</var>; a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod WorkflowTaskFacts(pNamespace As %String, pId As %String, pUser As %String, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..WorkflowHere()
+        Do ..WorkflowTaskFactsHere(pId, pUser, .pFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The violations of an assign's arguments, as a <class>%List</class> of <code>$ListBuild(field, token)</code> where the token is <code>USER</code>, <code>PRIORITY</code> or
+/// <code>SHAPE</code>, and <code>""</code> for none: a task id <method>WorkflowTaskIdOK</method> refuses (judged only when <var>pJudgeId</var>) or a field of the wrong type is
+/// <code>SHAPE</code>; a user name <method>WorkflowTaskUserShapeOK</method> refuses is <code>USER</code>; a priority that is not a whole number from 1 to 5 is <code>PRIORITY</code>. It names no
+/// other class and judges nothing the instance holds. Pure.</p>
+ClassMethod WorkflowTaskBad(pId As %String, pFields As %DynamicObject, pJudgeId As %Boolean = 1) As %List
+{
+    Set tBad = ""
+    If pJudgeId && '..WorkflowTaskIdOK(pId) Set tBad = tBad _ $ListBuild($ListBuild("TaskId", "SHAPE"))
+    If '$IsObject(pFields) || 'pFields.%IsA("%Library.DynamicObject") Set pFields = {}
+    Set tType = pFields.%GetTypeOf("User")
+    If tType = "string" {
+        If '..WorkflowTaskUserShapeOK(pFields.%Get("User")) Set tBad = tBad _ $ListBuild($ListBuild("User", "USER"))
+    } ElseIf tType '= "unassigned" {
+        Set tBad = tBad _ $ListBuild($ListBuild("User", "SHAPE"))
+    }
+    Set tType = pFields.%GetTypeOf("Priority")
+    If tType '= "unassigned" {
+        If ((tType '= "number") && (tType '= "string")) || '..WorkflowTaskPriorityOK(pFields.%Get("Priority")) Set tBad = tBad _ $ListBuild($ListBuild("Priority", "PRIORITY"))
+    }
+    Quit tBad
+}
+
+/// <p>The 422 violations of a task id and an assign's arguments, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field, code)</code> with the count in
+/// <code>pViolations</code>, from <method>WorkflowTaskBad</method>. It reads no vendor class.</p>
+ClassMethod WorkflowTaskViolations(pId As %String, pFields As %DynamicObject, Output pViolations, pJudgeId As %Boolean = 1) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tBad = ..WorkflowTaskBad(pId, pFields, pJudgeId)
+    For tI = 1:1:$ListLength(tBad) {
+        Set tEntry = $List(tBad, tI)
+        Set tCode = $Case($List(tEntry, 2), "USER": ##class(OcuPilot.Api.InteropError).#WORKFLOWTASKUSER, "PRIORITY": ##class(OcuPilot.Api.InteropError).#WORKFLOWTASKPRIORITY, : ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        Set pViolations($Increment(pViolations)) = $ListBuild($List(tEntry, 1), tCode)
+    }
+    Quit $$$OK
+}
+
+/// <p>The decision a workflow task write <var>pType</var> is refused with, as a token, else <code>""</code>, in the order the refusals are made: a task not held is <code>ABSENT</code>; a task already
+/// complete is <code>COMPLETE</code>; and for a cancel, no running production in the namespace is <code>NOTRUNNING</code> and a sender that is not waiting is <code>SENDER</code>. The assign's values
+/// are judged by <method>WorkflowTaskJudge</method>. <var>pRunning</var> is whether a production runs in the namespace and <var>pSender</var> whether <method>WorkflowTaskSenderOK</method> reads 1. Pure.</p>
+ClassMethod WorkflowTaskWriteToken(pType As %String, pHeld As %Boolean, pComplete As %Boolean, pRunning As %Boolean, pSender As %Boolean) As %String
+{
+    If 'pHeld Quit "ABSENT"
+    If pComplete Quit "COMPLETE"
+    If pType = ..#TYPECANCELWORKFLOWTASK {
+        If 'pRunning Quit "NOTRUNNING"
+        If 'pSender Quit "SENDER"
+    }
+    Quit ""
+}
+
+/// <p>Whether the response of a task can be delivered, as <code>Ens.Host.SendDeferredResponse</code> needs it: the production the task's response token <var>pToken</var> names is the one running,
+/// <var>pProduction</var>, its request header is held and that header has a return queue. Pure.</p>
+ClassMethod WorkflowTaskSenderOK(pToken As %String, pHeaderHeld As %Boolean, pReturnQueue As %String, pProduction As %String) As %Boolean
+{
+    If pProduction = "" Quit 0
+    Quit ''pHeaderHeld && (pReturnQueue '= "") && ($Piece(pToken, "|", 2) = pProduction)
+}
+
+/// <p>Whether <var>pQuery</var> carries any of an assign's values. Pure.</p>
+ClassMethod WorkflowTaskHasValues(ByRef pQuery) As %Boolean [ Private ]
+{
+    Quit $Data(pQuery(..#WORKFLOWTASKUSERKEY)) || $Data(pQuery(..#WORKFLOWTASKPRIORITYKEY))
+}
+
+/// <p>Judge the task <var>pId</var> in <var>pNamespace</var> for <var>pAction</var> (<code>""</code> for no write, else a write type), before any vendor call, in the order the spec names them, and leave
+/// what it read in <var>pFacts</var>: a task not held is 404; a complete one is 409 <code>INTEROP.WORKFLOW.TASKCOMPLETE</code>. For a cancel, no running production in the namespace is 409
+/// <code>INTEROP.PRODUCTION.NOTRUNNING</code> and a response that cannot be delivered (<method>WorkflowTaskSenderOK</method>) 409 <code>INTEROP.WORKFLOW.TASKSENDER</code>. For an assign judged
+/// with <var>pValues</var> (<var>pJudgeValues</var>), the values the query carries, in <var>pValues</var> by <code>user</code> and <code>priority</code> when present: a user that differs from the
+/// task's and is neither <code>""</code> nor an active workflow user held exactly is 422 <code>.TASKUSER</code>, a priority that differs and is not a whole number from 1 to 5 is
+/// <code>.TASKPRIORITY</code> (both reported together), and nothing differing is 409 <code>.TASKUNCHANGED</code>. A fault is mapped; nothing is written.</p>
+ClassMethod WorkflowTaskJudge(pNamespace As %String, pAction As %String, pId As %String, ByRef pQuery, pJudgeValues As %Boolean, Output pFacts, Output pValues, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Kill pValues
+    If '..WorkflowTaskIdOK(pId) Quit ..Absent(.pHttpStatus, .pFault)
+    Set tAssign = (pAction = ..#TYPEASSIGNWORKFLOWTASK)
+    Set tUserSent = tAssign && ''$Data(pQuery(..#WORKFLOWTASKUSERKEY))
+    Set tPrioritySent = tAssign && ''$Data(pQuery(..#WORKFLOWTASKPRIORITYKEY))
+    If tUserSent Set pValues("user") = pQuery(..#WORKFLOWTASKUSERKEY)
+    If tPrioritySent Set pValues("priority") = pQuery(..#WORKFLOWTASKPRIORITYKEY)
+    Do ..WorkflowTaskFacts(pNamespace, pId, $Select(tUserSent: pValues("user"), 1: ""), .pFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow task read failed", .pHttpStatus, .pFault)
+    Set tLine = $Select(pFacts("held"): ..WorkflowTaskLine(pFacts("line")), 1: "")
+    Set tProduction = ""
+    Set tSender = 0
+    If (pAction = ..#TYPECANCELWORKFLOWTASK) && pFacts("held") && '$List(tLine, 3) {
+        Set tSC = ..RunningProduction(pNamespace, .tProduction, .tRunCaught)
+        If $IsObject(tRunCaught) Quit ..Mapped(tRunCaught, "the production's state could not be read", .pHttpStatus, .pFault)
+        Set tSender = ..WorkflowTaskSenderOK(pFacts("token"), pFacts("headerHeld"), pFacts("returnQueue"), tProduction)
+    }
+    Set tToken = $Select(pAction = "": "", 1: ..WorkflowTaskWriteToken(pAction, pFacts("held"), $Select(pFacts("held"): $List(tLine, 3), 1: 0), (tProduction '= ""), tSender))
+    If (pAction = "") && 'pFacts("held") Set tToken = "ABSENT"
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken = "COMPLETE" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#WORKFLOWTASKCOMPLETE, .pHttpStatus, .pFault)
+    If tToken = "NOTRUNNING" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#NOTRUNNING, .pHttpStatus, .pFault)
+    If tToken = "SENDER" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#WORKFLOWTASKSENDER, .pHttpStatus, .pFault)
+    If 'tAssign || 'pJudgeValues Quit $$$OK
+    Set tCurrentUser = $List(tLine, 7)
+    Set tCurrentPriority = $List(tLine, 5)
+    Set tUserChanges = tUserSent && (pValues("user") '= tCurrentUser)
+    Set tPriorityChanges = tPrioritySent && (pValues("priority") '= tCurrentPriority)
+    Set tViolations = 0
+    If tUserChanges && ('..WorkflowTaskUserShapeOK(pValues("user")) || ((pValues("user") '= "") && 'pFacts("userActive"))) Set tViolations($Increment(tViolations)) = $ListBuild("User", ##class(OcuPilot.Api.InteropError).#WORKFLOWTASKUSER)
+    If tPriorityChanges && '..WorkflowTaskPriorityOK(pValues("priority")) Set tViolations($Increment(tViolations)) = $ListBuild("Priority", ##class(OcuPilot.Api.InteropError).#WORKFLOWTASKPRIORITY)
+    If tViolations Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    If 'tUserChanges && 'tPriorityChanges Quit ..Conflict(##class(OcuPilot.Api.InteropError).#WORKFLOWTASKUNCHANGED, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The workflow tasks of <var>pNamespace</var> newest first, at most <var>pMax</var> (<parameter>WORKFLOWTASKSMAX</parameter> when that is not above zero): <code>{TaskId, RoleName, IsComplete,
+/// Status, Priority, Source, AssignedTo, Subject, TimeCreated, TimeCompleted, Duration, Namespace, User}</code> (<method>WorkflowTaskRow</method>). Read with <code>%ExecDirectNoPriv</code> after
+/// the gate (<method>SqlRows</method>); nothing is written. A longer list than the cap is the caller's truncation, which it reads from the one row it asked for beyond its own cap.</p>
+ClassMethod ListWorkflowTasks(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..SqlRows(pNamespace, "SELECT TOP ? " _ ..#WORKFLOWTASKCOLUMNS _ " " _ ..#WORKFLOWTASKFROM _ " ORDER BY %ID DESC", .tFound, .tCaught, ..WorkflowCap(pMax, ..#WORKFLOWTASKSMAX))
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow task list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Do pRows.%Push(..WorkflowTaskRow(tFound(tI), pNamespace))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The worklist items of <var>pNamespace</var> newest first, at most <var>pMax</var> (<parameter>WORKFLOWWORKLISTMAX</parameter> when that is not above zero): <code>{TaskId, UserName,
+/// RoleName, Priority, TimeCreated, Age, AssignedTo, Subject, Namespace}</code>, one for each user a task was sent to. Read with <code>%ExecDirectNoPriv</code> after the gate; nothing is written.</p>
+ClassMethod ListWorkflowWorklist(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..SqlRows(pNamespace, ..#WORKFLOWWORKLISTSQL, .tFound, .tCaught, ..WorkflowCap(pMax, ..#WORKFLOWWORKLISTMAX))
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow worklist failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tLine = tFound(tI)
+        Set tRow = {}
+        Do tRow.%Set("TaskId", $List(tLine, 1) _ "", "string")
+        Do tRow.%Set("UserName", ..AlertText($List(tLine, 2)), "string")
+        Do tRow.%Set("RoleName", ..AlertText($List(tLine, 3)), "string")
+        Do tRow.%Set("Priority", +$List(tLine, 4), "number")
+        Do tRow.%Set("TimeCreated", ..AlertLocal($List(tLine, 5)), "string")
+        Do tRow.%Set("Age", ..AlertText($List(tLine, 6)), "string")
+        Do tRow.%Set("AssignedTo", ..AlertText($List(tLine, 7)), "string")
+        Do tRow.%Set("Subject", ..AlertText($List(tLine, 8)), "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+        Do pRows.%Push(tRow)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One workflow task, fresh (Story 24.17 Batch 4): <method>WorkflowTaskRow</method>'s fields. A task not held, or an id this port does not read, is 404 <code>PORT.NOTFOUND</code>, unlogged. With
+/// <var>pAction</var> it refuses what that write would be refused (<method>WorkflowTaskJudge</method>), judging the values <var>pQuery</var> carries only when it carries some, so the read that
+/// opens the assign dialog judges the task alone.</p>
+ClassMethod ReadWorkflowTask(pNamespace As %String, pId As %String, pAction As %String, ByRef pQuery, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Set tSC = ..WorkflowTaskJudge(pNamespace, pAction, pId, .pQuery, ..WorkflowTaskHasValues(.pQuery), .tFacts, .tValues, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pRow = ..WorkflowTaskRow(tFacts("line"), pNamespace)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the WorkflowTasks endpoint's and the WorkflowWorklist endpoint's <code>LIST</code> and the WorkflowTasks typed types after <method>Invoke</method>'s gate (Story 24.17 Batch 4): the
+/// <code>WORKFLOWTASK</code> read and the two writes, the task named under <parameter>IDKEY</parameter> by its task id. An <parameter>ACTIONKEY</parameter> names the write the read is composed for;
+/// an assign's values travel under <parameter>WORKFLOWTASKUSERKEY</parameter> and <parameter>WORKFLOWTASKPRIORITYKEY</parameter>.</p>
+ClassMethod InvokeWorkflowTask(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pEndpoint = ..#ENDPOINTWORKFLOWWORKLIST {
+                Set tSC = ..ListWorkflowWorklist(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            } Else {
+                Set tSC = ..ListWorkflowTasks(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            }
+            Quit
+        }
+        Set tId = $Get(pQuery(..#IDKEY))
+        If tId = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsWorkflowTaskWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsWorkflowTaskWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsWorkflowTaskWrite(pType) {
+            Set tSC = ..PerformWorkflowTask(pNamespace, pType, tId, .pQuery, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadWorkflowTask(pNamespace, tId, tAction, .pQuery, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the workflow task call failed inside the port", ..VendorCodesStatus(ex.AsStatus(), "the workflow task call"), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Run workflow task write <var>pType</var> on the task <var>pId</var> in <var>pNamespace</var> and answer what it leaves (Story 24.17 Batch 4), as the classic Assign or Reassign Task dialog's
+/// <code>SaveData</code> performs it, with no transaction. The sequence:</p>
+/// <ol>
+/// <li>The task is read again and judged before any vendor call (<method>WorkflowTaskJudge</method>): a 404, a complete task, an assign's user and priority and an assign that changes nothing,
+/// a cancel's running production and waiting sender.</li>
+/// <li>In the namespace the task is opened at concurrency 4 (a task another process holds locked is 503) and, for an assign whose priority differs, its priority is set. The vendor call is
+/// <method>WorkflowTaskVendor</method>: <code>AssignTask</code> to the user, or for Unassigned <code>UnassignTask</code> then <code>SendTaskToAll</code>, or <code>CompleteTask</code> with no action
+/// for a cancel. An assign that names no user keeps the task's own assignment. The reference is dropped in the namespace it was opened in.</li>
+/// <li>The namespace is restored, then OcuPilot's own audit row is recorded (<method>AuditRuntime</method>) whatever the vendor answered, because the vendor records none: the namespace, the task
+/// id, for an assign the assignee and the priority after, and whether it completed, never a subject or a message.</li>
+/// </ol>
+/// <p>A vendor error status or a fault is 500 <code>INTERNAL</code>, never 200, even after part of it was saved (an unassign whose <code>SendTaskToAll</code> fails, a cancel whose delivery fails
+/// after the vendor deleted the worklist). The answer is the task read again (<method>ReadWorkflowTask</method>).</p>
+ClassMethod PerformWorkflowTask(pNamespace As %String, pType As %String, pId As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..WorkflowTaskJudge(pNamespace, pType, pId, .pQuery, 1, .tFacts, .tValues, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tCancel = (pType = ..#TYPECANCELWORKFLOWTASK)
+    Set tLine = ..WorkflowTaskLine(tFacts("line"))
+    Set tTo = $Select($Data(tValues("user")): tValues("user"), 1: $List(tLine, 7))
+    Set tNewPriority = ""
+    If 'tCancel && $Data(tValues("priority")) && (tValues("priority") '= $List(tLine, 5)) Set tNewPriority = +tValues("priority")
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tBusy = 0
+    Set tAttempted = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..WorkflowHere()
+        Set tObject = ##class(EnsLib.Workflow.TaskResponse).%OpenId(pId, 4)
+        If '$IsObject(tObject) {
+            Set tBusy = 1
+        } Else {
+            If tNewPriority '= "" Set tObject.%Priority = tNewPriority
+            Set tAttempted = 1
+            Set tVendorSC = ..WorkflowTaskVendor(pType, tObject, tTo)
+        }
+        ; The task's lock is released in the namespace it was taken in.
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Try {
+            Set $NAMESPACE = pNamespace
+        } Catch {
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If tAttempted {
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        Do tEffects.%Set("task", pId, "string")
+        If 'tCancel {
+            Do tEffects.%Set("assignedTo", tTo, "string")
+            Do tEffects.%Set("priority", $Select(tNewPriority '= "": tNewPriority, 1: +$List(tLine, 5)), "number")
+        }
+        Do tEffects.%Set("completed", ($$$ISOK(tVendorSC) && '$IsObject(tCaught)), "boolean")
+        Do ..AuditRuntime($Select(tCancel: ..#VERBWORKFLOWCANCEL, 1: ..#VERBWORKFLOWASSIGN), ..#ENTITYWORKFLOWTASK, pId _ "", tEffects)
+    }
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow task write failed", .pHttpStatus, .pFault)
+    If tBusy Quit ..Unavailable(.pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the workflow task write"), "the workflow task write failed", .pHttpStatus, .pFault)
+    Kill tNone
+    Set tReadSC = ..ReadWorkflowTask(pNamespace, pId, "", .tNone, .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) || '$IsObject(tRow) {
+        Set tRow = {}
+        Do tRow.%Set("TaskId", pId, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the workflow task write <var>pType</var> of the task <var>pId</var> with the values <var>pQuery</var> carries (Story 24.17 Batch 4): the task
+/// opened at concurrency 4, each refusal as one guard that stops the write (a task not held, a task already complete, an assign's user, an assign that changes nothing, a cancel's running production
+/// and waiting sender), and the vendor's <code>AssignTask</code>, or <code>UnassignTask</code> then <code>SendTaskToAll</code>, or <code>CompleteTask</code> with no action. Ids, names and
+/// values are literals, so nothing the query carries runs as code. <code>""</code> for an id or a value the port would refuse by shape, which renders no draft. Nothing here runs; a person runs it.</p>
+ClassMethod WorkflowTaskSnippet(pType As %String, pId As %String, ByRef pQuery) As %String [ Private ]
+{
+    If '..WorkflowTaskIdOK(pId) Quit ""
+    Set tCancel = (pType = ..#TYPECANCELWORKFLOWTASK)
+    Set tUserSent = 'tCancel && ''$Data(pQuery(..#WORKFLOWTASKUSERKEY))
+    Set tPrioritySent = 'tCancel && ''$Data(pQuery(..#WORKFLOWTASKPRIORITYKEY))
+    Set tUserName = $Select(tUserSent: pQuery(..#WORKFLOWTASKUSERKEY), 1: "")
+    If tUserSent && '..WorkflowTaskUserShapeOK(tUserName) Quit ""
+    If tPrioritySent && '..WorkflowTaskPriorityOK(pQuery(..#WORKFLOWTASKPRIORITYKEY)) Quit ""
+    Set tNL = $Char(10)
+    Set tError = "$System.Status.Error(5001, "
+    Set tId = ..Literal(pId)
+    Set tText = tNL _ " Set tId = " _ tId _ ", tGo = ##class(EnsLib.Workflow.TaskResponse).%ExistsId(tId), tSC = $System.Status.OK()"
+    Set tText = tText _ tNL _ " If 'tGo Set tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.Error).#PORTNOTFOUND) _ ")"
+    Set tText = tText _ tNL _ " Set tTask = $Select(tGo: ##class(EnsLib.Workflow.TaskResponse).%OpenId(tId, 4), 1: """")"
+    Set tText = tText _ tNL _ " If tGo, '$IsObject(tTask) Set tGo = 0, tSC = " _ tError _ ..Literal(..#REASONLOCK) _ ")"
+    Set tText = tText _ tNL _ " If tGo, tTask.%TaskStatus.IsComplete Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWTASKCOMPLETE) _ ")"
+    If tCancel {
+        Set tText = tText _ tNL _ " Do ##class(Ens.Director).GetProductionStatus(.tCurrent, .tState, 2)"
+        Set tText = tText _ tNL _ " If tGo, +$Get(tState) '= 1 Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONNOTRUNNING) _ ")"
+        Set tText = tText _ tNL _ " Set tHeader = $Select(tGo: ##class(Ens.MessageHeader).%OpenId($Piece(tTask.%TaskStatus.ResponseToken, ""|"", 1)), 1: """")"
+        Set tText = tText _ tNL _ " If tGo, '$IsObject(tHeader) || ($Piece(tTask.%TaskStatus.ResponseToken, ""|"", 2) '= $Get(tCurrent)) || (tHeader.ReturnQueueName = """") Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWTASKSENDER) _ ")"
+        Quit tText _ tNL _ " If tGo Set tSC = ##class(EnsLib.Workflow.Engine).CompleteTask(tTask)" _ tNL _ " Set tTask = """""
+    }
+    Set tUserChanges = "0"
+    Set tPriorityChanges = "0"
+    If tUserSent {
+        Set tUserChanges = "(" _ ..Literal(tUserName) _ " '= tTask.%TaskStatus.AssignedTo)"
+        If tUserName '= "" {
+            Set tText = tText _ tNL _ " Set tUser = $Select(tGo: ##class(EnsLib.Workflow.UserDefinition).%OpenId(" _ ..Literal(tUserName) _ ", 0), 1: """")"
+            Set tText = tText _ tNL _ " If tGo, " _ tUserChanges _ ", '$IsObject(tUser) || 'tUser.IsActive || (tUser.Name '= " _ ..Literal(tUserName) _ ") Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWTASKUSER) _ ")"
+        }
+    }
+    If tPrioritySent Set tPriorityChanges = "(" _ +pQuery(..#WORKFLOWTASKPRIORITYKEY) _ " '= tTask.%Priority)"
+    Set tText = tText _ tNL _ " If tGo, '(" _ tUserChanges _ " || " _ tPriorityChanges _ ") Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWTASKUNCHANGED) _ ")"
+    If tPrioritySent Set tText = tText _ tNL _ " If tGo, " _ tPriorityChanges _ " Set tTask.%Priority = " _ +pQuery(..#WORKFLOWTASKPRIORITYKEY)
+    Set tText = tText _ tNL _ " Set tTo = " _ $Select(tUserSent: ..Literal(tUserName), 1: "tTask.%TaskStatus.AssignedTo")
+    Set tText = tText _ tNL _ " If tGo, tTo = """" { Set tSC = ##class(EnsLib.Workflow.Engine).UnassignTask(tTask) If $System.Status.IsOK(tSC) Set tSC = ##class(EnsLib.Workflow.Engine).SendTaskToAll(tTask) }"
+    Set tText = tText _ tNL _ " If tGo, tTo '= """" Set tSC = ##class(EnsLib.Workflow.Engine).AssignTask(tTask, tTo)"
+    Quit tText _ tNL _ " Set tTask = """""
 }
 
 /// <p>The Purge data settings endpoint (Story 24.16): <code>LIST</code>, one setting (<code>SETTING</code>) and the write <code>SETTINGSET</code>, over

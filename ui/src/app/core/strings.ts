@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:680 */
+  /** EXPERIENCE.md:681 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -9977,6 +9977,48 @@ export const STRINGS = {
   interopWorkflowMembersPrompt1: 'Which members of this role are inactive?',
   /** EXPERIENCE.md:638 */
   interopWorkflowMembersPrompt2: 'Add a member to this role.',
+  // Story 24.17 Batch 4: the workflow tasks and worklist screens, the Assign task dialog, the three consequences, the five refusals, the empty states and the prompts.
+  /** EXPERIENCE.md:639 */
+  interopWorkflowTasksLabel: 'Workflow tasks',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowWorklistLabel: 'Workflow worklist',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowTaskAssignTitle: 'Assign task',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowWorklistColumnAge: 'Age',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowTaskAssignConsequence: 'Assigning this task takes it off every other user\'s worklist.',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowTaskUnassignConsequence: 'Unassigning this task sends it to every active member of its workflow role.',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowTaskCancelConsequence:
+    'Canceling this task takes it off every worklist and returns it, canceled, to the business process that sent it. It cannot be undone.',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowTaskRefusalComplete: 'This task is already complete.',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowTaskRefusalUser: 'Assign the task to an active workflow user of this namespace, or to Unassigned.',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowTaskRefusalPriority: 'Priority is a whole number from 1 to 5.',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowTaskRefusalUnchanged: 'Nothing would change. Choose another user or priority.',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowTaskRefusalSender: 'This task cannot be canceled, because the business process that sent it is not waiting for it in the running production.',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowTasksEmpty: 'This namespace has no workflow tasks.',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowTasksEmptyAgent: 'assign or cancel a workflow task',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowWorklistEmpty: 'No workflow user in this namespace has a worklist item.',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowTasksPrompt1: 'Which workflow tasks are unassigned?',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowTasksPrompt2: 'Which workflow tasks have been open the longest?',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowTasksPrompt3: 'Assign the oldest unassigned task to an active member of its role.',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowWorklistPrompt1: 'Which workflow users have the most items on their worklist?',
+  /** EXPERIENCE.md:639 */
+  interopWorkflowWorklistPrompt2: 'Which worklist items are more than a day old?',
 } as const;
 
 /**

@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting' | 'statement-index-entry' | 'cached-query' | 'sql-table' | 'sql-index' | 'sql-schema' | 'interop-archive' | 'interop-archive-setting' | 'sql-field' | 'interop-managed-alert' | 'sql-runtime-stat' | 'sql-runtime-stats-setting' | 'interop-rule-log' | 'interop-process-log' | 'interop-workflow-user' | 'interop-workflow-role' | 'interop-workflow-member';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting' | 'statement-index-entry' | 'cached-query' | 'sql-table' | 'sql-index' | 'sql-schema' | 'interop-archive' | 'interop-archive-setting' | 'sql-field' | 'interop-managed-alert' | 'sql-runtime-stat' | 'sql-runtime-stats-setting' | 'interop-rule-log' | 'interop-process-log' | 'interop-workflow-user' | 'interop-workflow-role' | 'interop-workflow-member' | 'interop-workflow-task';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -612,7 +612,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "interop-process-log",
   "interop-workflow-user",
   "interop-workflow-role",
-  "interop-workflow-member"
+  "interop-workflow-member",
+  "interop-workflow-task"
 ];
 
 /**
@@ -26703,6 +26704,201 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropWorkflowTaskList",
+    "route": "interoperability/workflow-tasks",
+    "area": "interoperability",
+    "labelKey": "interopWorkflowTasksLabel",
+    "sideBarPosition": 27,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "interop-workflow-task",
+    "secondaryEntityTypes": [
+      "interop-workflow-user",
+      "interop-workflow-member"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "TaskId"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "assign",
+        "selfProtection": ""
+      },
+      {
+        "id": "cancel",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "TaskId",
+        "RoleName",
+        "IsComplete",
+        "Status",
+        "Priority",
+        "AssignedTo",
+        "Subject",
+        "TimeCreated"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopWorkflowTasksEmpty",
+    "commandAliases": [
+      "workflow tasks"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopWorkflowTasksPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopWorkflowTasksPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopWorkflowTasksPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.WFTasklist",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "workflow task",
+      "source": {
+        "port": "interop",
+        "endpoint": "WorkflowTasks",
+        "type": "LIST"
+      },
+      "fields": [
+        "TaskId",
+        "RoleName",
+        "IsComplete",
+        "Status",
+        "Priority",
+        "Source",
+        "AssignedTo",
+        "Subject",
+        "TimeCreated",
+        "TimeCompleted",
+        "Duration"
+      ],
+      "filter": [
+        "RoleName",
+        "AssignedTo",
+        "Status",
+        "Subject"
+      ],
+      "sort": {
+        "fields": [
+          "TaskId",
+          "RoleName",
+          "IsComplete",
+          "Status",
+          "Priority",
+          "Source",
+          "AssignedTo",
+          "TimeCreated",
+          "TimeCompleted"
+        ],
+        "default": "TaskId",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "TaskId",
+          "labelKey": "taskHistoryColumnTaskId",
+          "kind": "name"
+        },
+        {
+          "field": "RoleName",
+          "labelKey": "userRoleField",
+          "kind": "text"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "text"
+        },
+        {
+          "field": "Priority",
+          "labelKey": "taskDetailsPriority",
+          "kind": "number"
+        },
+        {
+          "field": "IsComplete",
+          "labelKey": "interopLogColumnCompleted",
+          "kind": "status"
+        },
+        {
+          "field": "Source",
+          "labelKey": "auditEventFieldSource",
+          "kind": "text"
+        },
+        {
+          "field": "AssignedTo",
+          "labelKey": "roleEditorTabAssignedTo",
+          "kind": "text"
+        },
+        {
+          "field": "Subject",
+          "labelKey": "x509ColumnSubject",
+          "kind": "text"
+        },
+        {
+          "field": "TimeCreated",
+          "labelKey": "journalColumnCreated",
+          "kind": "text"
+        },
+        {
+          "field": "TimeCompleted",
+          "labelKey": "taskHistoryColumnCompleted",
+          "kind": "text"
+        },
+        {
+          "field": "Duration",
+          "labelKey": "explorerUnitTestsColumnDuration",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopWorkflowTasksEmptyAgent"
+    },
+    "toolIdentifier": "interop.workflowtasks",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.InteropWorkflowUserList",
     "route": "interoperability/workflow-users",
     "area": "interoperability",
@@ -26846,6 +27042,173 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "interopWorkflowUsersEmptyAgent"
     },
     "toolIdentifier": "interop.workflowusers",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropWorkflowWorklist",
+    "route": "interoperability/workflow-worklist",
+    "area": "interoperability",
+    "labelKey": "interopWorkflowWorklistLabel",
+    "sideBarPosition": 28,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [
+      "interop-workflow-task",
+      "interop-workflow-user",
+      "interop-workflow-member"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "TaskId",
+        "UserName"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "TaskId",
+        "UserName",
+        "RoleName",
+        "Priority",
+        "TimeCreated",
+        "Age",
+        "AssignedTo",
+        "Subject"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopWorkflowWorklistEmpty",
+    "commandAliases": [
+      "workflow worklist",
+      "worklist"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopWorkflowWorklistPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopWorkflowWorklistPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopWorkflowTasksPrompt2"
+      }
+    ],
+    "classicPage": "EnsPortal.WFWorklist",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "worklist item",
+      "source": {
+        "port": "interop",
+        "endpoint": "WorkflowWorklist",
+        "type": "LIST"
+      },
+      "fields": [
+        "TaskId",
+        "UserName",
+        "RoleName",
+        "Priority",
+        "TimeCreated",
+        "Age",
+        "AssignedTo",
+        "Subject"
+      ],
+      "filter": [
+        "UserName",
+        "RoleName",
+        "Subject"
+      ],
+      "sort": {
+        "fields": [
+          "TaskId",
+          "UserName",
+          "RoleName",
+          "Priority",
+          "TimeCreated",
+          "AssignedTo"
+        ],
+        "default": "TimeCreated",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "TaskId",
+          "labelKey": "taskHistoryColumnTaskId",
+          "kind": "name"
+        },
+        {
+          "field": "UserName",
+          "labelKey": "processColumnUser",
+          "kind": "text"
+        },
+        {
+          "field": "RoleName",
+          "labelKey": "userRoleField",
+          "kind": "text"
+        },
+        {
+          "field": "Priority",
+          "labelKey": "taskDetailsPriority",
+          "kind": "number"
+        },
+        {
+          "field": "TimeCreated",
+          "labelKey": "journalColumnCreated",
+          "kind": "text"
+        },
+        {
+          "field": "Age",
+          "labelKey": "interopWorkflowWorklistColumnAge",
+          "kind": "text"
+        },
+        {
+          "field": "AssignedTo",
+          "labelKey": "roleEditorTabAssignedTo",
+          "kind": "text"
+        },
+        {
+          "field": "Subject",
+          "labelKey": "x509ColumnSubject",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "interop.workflowworklist",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,

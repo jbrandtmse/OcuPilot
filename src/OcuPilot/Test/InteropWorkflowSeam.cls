@@ -114,6 +114,21 @@ ClassMethod WorkflowMembersGone(pRole As %String) As %Status
     Quit ##super(pRole)
 }
 
+/// <p>The probe's answer for the mode in <code>^IRIS.Temp.OcuProbe2417wMode</code> to a workflow task write (Story 24.17 Batch 4): <code>status</code> makes the vendor's own call for an assign
+/// or an unassign, so the task was saved, and then answers an error status that carries a marker text, and answers that status for a cancel without calling the vendor; <code>fault</code> raises;
+/// anything else is the vendor's own call.</p>
+ClassMethod WorkflowTaskVendor(pType As %String, pTask As %RegisteredObject, pUser As %String) As %Status
+{
+    Set tMode = $Get(^IRIS.Temp.OcuProbe2417wMode)
+    Set ^IRIS.Temp.OcuProbe2417wMode("ranIn") = $NAMESPACE
+    Set ^IRIS.Temp.OcuProbe2417wMode("ran") = $Get(^IRIS.Temp.OcuProbe2417wMode("ran")) + 1
+    If tMode = "fault" Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, ..#MARKER _ " raised for " _ pUser))
+    If (tMode = "status") && (pType = ..#TYPECANCELWORKFLOWTASK) Quit $$$ERROR($$$GeneralError, ..#MARKER _ " answered for the cancel")
+    Set tSC = ##super(pType, pTask, pUser)
+    If tMode = "status" Quit $$$ERROR($$$GeneralError, ..#MARKER _ " answered for " _ pUser)
+    Quit tSC
+}
+
 /// <p>Raise inside each namespace-switched block when the mode is <code>here</code>.</p>
 ClassMethod WorkflowHere() [ Private ]
 {
