@@ -913,3 +913,9 @@
 2026-11-26T06:41:03Z	Story 24.17	ruling	question=batch4_veto_set choice=keep_all(V1-V6;V2_SQL_check_list_only_if_#5580) category=veto inbox=U-172 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-26T06:41:03Z	Story 24.17	spec_validated	scope=batch4 ledger_inbox=empty mutates_shared_runtime=false(throwaway_only)
 2026-11-26T06:41:03Z	Story 24.17	stage_spawned	stage=implement spawn_at=2026-11-26T06:41:03Z model=sonnet agent_name=24-17-implement-batch4 cycle_iteration=5 story_base=51a8f7cd5 scope=batch4
+2026-11-26T07:08:12Z	Story 24.17	ci_resolved	story=24.17-batch3b sha=d1fbfd002 runs=45768023682 result=success failed=none resolved_at=next_plan
+2026-11-26T07:08:12Z	Story 24.17	reported_to_orchestrator	scope=batch3b code_head=d1fbfd002 run=45768023682 ledger=DW-2887..2891
+2026-11-26T07:11:48Z	Story 24.17	merged_to_feature	scope=batch3b feature=bd8e47e8a(ff_d1fbfd002+record+timings_45768023682) batch4_integrates=bd8e47e8a
+2026-11-26T07:28:51Z	Story 24.17	dev_clarification_requested	scope=batch4 halt=empty-state_agent_phrase_needed(Registry_TableProblem) taskO=done(caps_10000;no_sdd;no_#5580;consequences_true;live-task_recipe;$ROLES_unchanged) partial=server_code_uncommitted(handoff-server.md)
+2026-11-26T07:28:51Z	Story 24.17	ruling	question=batch4_empty_agent_phrase choice="assign_or_cancel_a_workflow_task" category=veto inbox=U-173 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-26T07:28:51Z	Story 24.17	stage_spawned	stage=implement spawn_at=2026-11-26T07:28:51Z model=sonnet agent_name=24-17-implement-batch4-r cycle_iteration=5 note=continues_predecessor_uncommitted_server_code(tree_not_clean_by_design)
