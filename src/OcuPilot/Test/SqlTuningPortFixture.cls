@@ -13,11 +13,13 @@ ClassMethod GateClass() As %String
     Quit ..#GATE
 }
 
-ClassMethod StatementCall(pType As %String, pHash As %String, pNamespace As %String) As %Status
+ClassMethod StatementCall(pType As %String, pHash As %String, pNamespace As %String, pValues As %String = "") As %Status
 {
     Set ^||OcuPilotSqlTuningCalls = $Get(^||OcuPilotSqlTuningCalls) + 1
+    Set ^||OcuPilotSqlTuningStatement($Increment(^||OcuPilotSqlTuningStatement)) = pType _ "|" _ pValues
     If $Get(^||OcuPilotSqlTuningRefuse) '= "" Quit $$$ERROR($$$GeneralError, ^||OcuPilotSqlTuningRefuse)
-    Quit ##super(pType, pHash, pNamespace)
+    If $Get(^||OcuPilotSqlTuningRaise) '= "" Throw ##class(%Exception.General).%New("StatementCallRaised", 5001, , "the statement call raised")
+    Quit ##super(pType, pHash, pNamespace, pValues)
 }
 
 /// <p>The table writes' seam (Story 21.25), counted and refused as <method>StatementCall</method> is, and recording the type and values of each call

@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting' | 'statement-index-entry' | 'cached-query' | 'sql-table' | 'sql-index' | 'sql-schema' | 'interop-archive' | 'interop-archive-setting' | 'sql-field' | 'interop-managed-alert' | 'sql-runtime-stat' | 'sql-runtime-stats-setting';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting' | 'statement-index-entry' | 'cached-query' | 'sql-table' | 'sql-index' | 'sql-schema' | 'interop-archive' | 'interop-archive-setting' | 'sql-field' | 'interop-managed-alert' | 'sql-runtime-stat' | 'sql-runtime-stats-setting' | 'sql-index-analysis';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -607,7 +607,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "sql-field",
   "interop-managed-alert",
   "sql-runtime-stat",
-  "sql-runtime-stats-setting"
+  "sql-runtime-stats-setting",
+  "sql-index-analysis"
 ];
 
 /**
@@ -14850,6 +14851,247 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "explorer.sqlfields",
     "refreshDefault": 0,
     "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerSqlIndexAnalysis",
+    "route": "system-explorer/sql-index-analysis",
+    "area": "system-explorer",
+    "labelKey": "explorerSqlTabIndexAnalysis",
+    "sideBarPosition": 23,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "sql-index-analysis",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Report",
+        "Counter"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "gather",
+        "selfProtection": ""
+      },
+      {
+        "id": "run",
+        "selfProtection": ""
+      },
+      {
+        "id": "purge",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Report",
+        "Counter",
+        "Schema",
+        "Table",
+        "Index",
+        "UsageCount",
+        "ClassOrRoutine",
+        "Statement"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerSqlIndexAnalysisEmpty",
+    "commandAliases": [
+      "index analyzer",
+      "index analysis"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "explorerSqlIndexAnalysisPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "explorerSqlIndexAnalysisPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "explorerSqlIndexAnalysisPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.QButtons.IndexAnalyzer",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "index analysis row",
+      "label": "The namespace's SQL index analysis: one row for each row of the five reports (Index usage, Table scan, Temporary index, Missing join index and Outlier index), with the table, index, statement and sizes each report recorded.",
+      "source": {
+        "port": "atelier",
+        "endpoint": "Catalog.IndexAnalysis",
+        "type": "LIST"
+      },
+      "fields": [
+        "Report",
+        "Counter",
+        "Schema",
+        "Table",
+        "Index",
+        "UsageCount",
+        "StatementType",
+        "ClassOrRoutine",
+        "Module",
+        "MapType",
+        "IndexFields",
+        "DataFields",
+        "IndexNeeded",
+        "Match",
+        "OutlierField",
+        "ExtentSize",
+        "BlockCount",
+        "Statement"
+      ],
+      "filter": [
+        "Report",
+        "Schema",
+        "Table",
+        "Index",
+        "ClassOrRoutine",
+        "Statement"
+      ],
+      "sort": {
+        "fields": [
+          "Report",
+          "Counter",
+          "Schema",
+          "Table",
+          "Index",
+          "UsageCount",
+          "ExtentSize",
+          "BlockCount"
+        ],
+        "default": "Counter",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "note": {
+        "key": "explorerSqlIndexAnalysisNote",
+        "text": "Reports read the statements last gathered in this namespace. Gather them again after the code changes."
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Report",
+          "labelKey": "databaseIntegrityStepReport",
+          "kind": "name"
+        },
+        {
+          "field": "Schema",
+          "labelKey": "explorerSqlColumnSchema",
+          "kind": "text"
+        },
+        {
+          "field": "Table",
+          "labelKey": "explorerSqlColumnTable",
+          "kind": "text"
+        },
+        {
+          "field": "Index",
+          "labelKey": "explorerSqlColumnIndex",
+          "kind": "text"
+        },
+        {
+          "field": "UsageCount",
+          "labelKey": "indexAnalysisColumnUsageCount",
+          "kind": "number"
+        },
+        {
+          "field": "StatementType",
+          "labelKey": "indexAnalysisColumnStatementType",
+          "kind": "text"
+        },
+        {
+          "field": "ClassOrRoutine",
+          "labelKey": "indexAnalysisColumnClassOrRoutine",
+          "kind": "text"
+        },
+        {
+          "field": "Module",
+          "labelKey": "runtimeStatsColumnModule",
+          "kind": "text"
+        },
+        {
+          "field": "MapType",
+          "labelKey": "indexAnalysisColumnMapType",
+          "kind": "text"
+        },
+        {
+          "field": "IndexFields",
+          "labelKey": "indexAnalysisColumnIndexFields",
+          "kind": "text"
+        },
+        {
+          "field": "DataFields",
+          "labelKey": "indexAnalysisColumnDataFields",
+          "kind": "text"
+        },
+        {
+          "field": "IndexNeeded",
+          "labelKey": "indexAnalysisColumnIndexNeeded",
+          "kind": "text"
+        },
+        {
+          "field": "Match",
+          "labelKey": "explorerColumnMatch",
+          "kind": "text"
+        },
+        {
+          "field": "OutlierField",
+          "labelKey": "indexAnalysisColumnOutlierField",
+          "kind": "text"
+        },
+        {
+          "field": "ExtentSize",
+          "labelKey": "explorerSqlColumnExtentSize",
+          "kind": "number"
+        },
+        {
+          "field": "BlockCount",
+          "labelKey": "indexAnalysisColumnBlockCount",
+          "kind": "number"
+        },
+        {
+          "field": "Statement",
+          "labelKey": "explorerSqlColumnStatement",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "explorerSqlIndexAnalysisEmptyAgent"
+    },
+    "toolIdentifier": "explorer.sqlindexanalysis",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
     "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],

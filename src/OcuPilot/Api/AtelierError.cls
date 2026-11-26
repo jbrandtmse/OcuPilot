@@ -425,6 +425,53 @@ Parameter RUNTIMESTATSSET = "SQL.RUNTIMESTATS.SET";
 
 Parameter REASONRUNTIMESTATSSET = "This applies to every namespace on the instance. A query prepared while collection was set to Off records nothing once collection is turned on, until its cached query is purged.";
 
+/// <p>Envelope code: the instance answered an error status for a gather, a report or a purge of the SQL index analyzer (Story 21.27). Rendered on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, the instance's message in <code>detail</code> alone and never logged
+/// (AD-39).</p>
+Parameter INDEXANALYSISVENDOR = "SQL.INDEXANALYSIS.VENDOR";
+
+Parameter REASONINDEXANALYSISVENDOR = "The instance did not complete this index analysis.";
+
+/// <p>Envelope code: another process holds the namespace's analysis lock, so a gather, a report or a purge is refused before anything is called. Rendered
+/// on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409.</p>
+Parameter INDEXANALYSISBUSY = "SQL.INDEXANALYSIS.BUSY";
+
+Parameter REASONINDEXANALYSISBUSY = "An index analysis is already running in this namespace.";
+
+/// <p>The precondition refusals: a purge of a namespace that holds no gathered statement and no report row, and a report run before the namespace's
+/// statements were gathered.</p>
+Parameter INDEXANALYSISNOROWS = "SQL.INDEXANALYSIS.NOROWS";
+
+Parameter REASONINDEXANALYSISNOROWS = "This namespace holds no index analysis.";
+
+Parameter INDEXANALYSISNOSTATEMENTS = "SQL.INDEXANALYSIS.NOSTATEMENTS";
+
+Parameter REASONINDEXANALYSISNOSTATEMENTS = "Gather this namespace's statements before running this report.";
+
+/// <p>Envelope code: a report outside the five the analyzer runs, 400 on the <parameter>OcuPilot.Api.Error.BADREQUEST</parameter> slug before any call,
+/// from either caller.</p>
+Parameter INDEXANALYSISREPORT = "SQL.INDEXANALYSIS.REPORT";
+
+Parameter REASONINDEXANALYSISREPORT = "Choose Index usage, Table scan, Temporary index, Missing join index or Outlier index.";
+
+/// <p>The consequence codes the proposal card and the dialog of the analyzer's writes carry (Story 21.27). A gather states the first sentence, and the
+/// second too when it includes system classes and routines, which take longer than the page waits.</p>
+Parameter INDEXANALYSISGATHER = "SQL.INDEXANALYSIS.GATHER";
+
+Parameter REASONINDEXANALYSISGATHER = "A new gathering of this namespace's cached queries, class methods, class queries and routines replaces its gathered statements and every report's results, and rebuilds its class dependency data.";
+
+Parameter INDEXANALYSISGATHERSYSTEM = "SQL.INDEXANALYSIS.GATHERSYSTEM";
+
+Parameter REASONINDEXANALYSISGATHERSYSTEM = "A new gathering of this namespace's cached queries, class methods, class queries and routines replaces its gathered statements and every report's results, and rebuilds its class dependency data. Gathering system classes and routines takes longer than the page waits; the list shows the result when it finishes.";
+
+Parameter INDEXANALYSISRUN = "SQL.INDEXANALYSIS.RUN";
+
+Parameter REASONINDEXANALYSISRUN = "This report's earlier results in this namespace are replaced.";
+
+Parameter INDEXANALYSISPURGE = "SQL.INDEXANALYSIS.PURGE";
+
+Parameter REASONINDEXANALYSISPURGE = "This namespace's gathered statements and every report's results are removed. Gather statements again before running a report.";
+
 /// <p>Envelope code: the instance answered an error status for a table write -- an index rebuild (Story 21.25). Rendered on the
 /// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, the instance's message in <code>detail</code> alone and never logged
 /// (AD-39).</p>
@@ -534,6 +581,15 @@ ClassMethod SqlReasonFor(pCode As %String) As %String
     If pCode = ..#RUNTIMESTATSNOROWS Quit ..#REASONRUNTIMESTATSNOROWS
     If pCode = ..#RUNTIMESTATSPURGE Quit ..#REASONRUNTIMESTATSPURGE
     If pCode = ..#RUNTIMESTATSSET Quit ..#REASONRUNTIMESTATSSET
+    If pCode = ..#INDEXANALYSISVENDOR Quit ..#REASONINDEXANALYSISVENDOR
+    If pCode = ..#INDEXANALYSISBUSY Quit ..#REASONINDEXANALYSISBUSY
+    If pCode = ..#INDEXANALYSISNOROWS Quit ..#REASONINDEXANALYSISNOROWS
+    If pCode = ..#INDEXANALYSISNOSTATEMENTS Quit ..#REASONINDEXANALYSISNOSTATEMENTS
+    If pCode = ..#INDEXANALYSISREPORT Quit ..#REASONINDEXANALYSISREPORT
+    If pCode = ..#INDEXANALYSISGATHER Quit ..#REASONINDEXANALYSISGATHER
+    If pCode = ..#INDEXANALYSISGATHERSYSTEM Quit ..#REASONINDEXANALYSISGATHERSYSTEM
+    If pCode = ..#INDEXANALYSISRUN Quit ..#REASONINDEXANALYSISRUN
+    If pCode = ..#INDEXANALYSISPURGE Quit ..#REASONINDEXANALYSISPURGE
     Quit ""
 }
 

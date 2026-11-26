@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:677 */
+  /** EXPERIENCE.md:678 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5554,6 +5554,24 @@ export const STRINGS = {
   explorerSqlRuntimeStatsPrompt3: 'Are runtime statistics being collected?',
   runtimeStatsSettingsPrompt1: 'Is runtime statistics collection on, and when does it stop?',
   configRefusalSqlStatsNoStop: 'Collection must be on before its stop can be set.',
+  // Story 21.27: the SQL index analyzer list, its columns, empty state, note and prompts. Report, Schema, Table, Index, Module, Match, Extent size and
+  // Statement reuse the published columns.
+  explorerSqlTabIndexAnalysis: 'SQL index analyzer',
+  indexAnalysisColumnUsageCount: 'Usage count',
+  indexAnalysisColumnStatementType: 'Statement type',
+  indexAnalysisColumnClassOrRoutine: 'Class or routine',
+  indexAnalysisColumnMapType: 'Map type',
+  indexAnalysisColumnIndexFields: 'Index fields',
+  indexAnalysisColumnDataFields: 'Data fields',
+  indexAnalysisColumnIndexNeeded: 'Index needed',
+  indexAnalysisColumnOutlierField: 'Outlier field',
+  indexAnalysisColumnBlockCount: 'Block count',
+  explorerSqlIndexAnalysisEmpty: 'No index analysis is recorded in this namespace.',
+  explorerSqlIndexAnalysisEmptyAgent: 'gather SQL statements for analysis',
+  explorerSqlIndexAnalysisNote: 'Reports read the statements last gathered in this namespace. Gather them again after the code changes.',
+  explorerSqlIndexAnalysisPrompt1: 'Which indices are never used?',
+  explorerSqlIndexAnalysisPrompt2: 'Which queries scan a whole table?',
+  explorerSqlIndexAnalysisPrompt3: 'Which queries need an index for a join?',
   sqlRuntimeStatsPurgeAction: 'Purge statistics',
   explorerSqlPlanWithStatistics: 'Plan with statistics',
   sqlRuntimeStatsPurgeConsequence: 'This namespace\'s runtime statistics are removed. New statistics are recorded only while collection is on.',

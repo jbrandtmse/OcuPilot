@@ -8,7 +8,27 @@ Class OcuPilot.Test.SqlTuningGateSeam Extends %RegisteredObject
 /// <p>Forget what was armed and recorded.</p>
 ClassMethod Reset()
 {
-    Kill ^||OcuPilotSqlTuningDeny, ^||OcuPilotSqlTuningAsked, ^||OcuPilotSqlTuningCalls, ^||OcuPilotSqlTuningRefuse, ^||OcuPilotSqlTuningTable, ^||OcuPilotSqlTuningBadMap, ^||OcuPilotSqlTuningThrow, ^||OcuPilotSqlTuningInCall
+    Kill ^||OcuPilotSqlTuningDeny, ^||OcuPilotSqlTuningAsked, ^||OcuPilotSqlTuningCalls, ^||OcuPilotSqlTuningRefuse, ^||OcuPilotSqlTuningTable, ^||OcuPilotSqlTuningBadMap, ^||OcuPilotSqlTuningThrow, ^||OcuPilotSqlTuningInCall, ^||OcuPilotSqlTuningStatement, ^||OcuPilotSqlTuningRaise
+}
+
+/// <p>Make <method>OcuPilot.Test.SqlTuningPortFixture.StatementCall</method> raise, until <method>Reset</method>.</p>
+ClassMethod Raise()
+{
+    Set ^||OcuPilotSqlTuningRaise = 1
+}
+
+/// <p>The statement calls <method>OcuPilot.Test.SqlTuningPortFixture.StatementCall</method> was asked since <method>Reset</method>, as
+/// <code>type|values</code>, joined by <code>;</code>.</p>
+ClassMethod StatementCalls() As %String
+{
+    Set tText = ""
+    Set tKey = ""
+    For {
+        Set tKey = $Order(^||OcuPilotSqlTuningStatement(tKey))
+        If tKey = "" Quit
+        Set tText = tText _ $Select(tText = "": "", 1: ";") _ ^||OcuPilotSqlTuningStatement(tKey)
+    }
+    Quit tText
 }
 
 /// <p>Make a selectivity's table call raise where it reads the field, after the table's collected statistics were saved as its fixed ones, until
