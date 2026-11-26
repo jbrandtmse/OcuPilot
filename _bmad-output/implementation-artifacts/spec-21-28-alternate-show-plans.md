@@ -2,7 +2,7 @@
 title: 'Story 21.28: Alternate show plans'
 type: 'feature'
 created: '2026-11-25'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '59243ea80bcfd513b4bf83fbbddfd080b8e09c41'
 baseline_commit: '59243ea80bcfd513b4bf83fbbddfd080b8e09c41'
 review_loop_iteration: 0
@@ -202,6 +202,11 @@ Record each measurement as a short Verification line.
   - Compare plans with two checked rows shows two compared rows and the note.
 
   Its `after` hook removes the probe.
+
+**Rework 1** (orchestrator rulings 2026-11-26, veto U-180):
+
+- [ ] [Review] Pin the compare note with a test (client and the model-facing copy if any): "Compare plans runs the statement once for each plan, without its values, so a filtered query can show zero rows. Comparing can take longer than the page waits; what each run recorded stays on Runtime statistics."
+- [ ] [Review] Filter-only residual, decided by measurement: on `ocupilot-ci` measure the worst filter-only Compare inside the 4/4 bound (the largest cross product of the probe tables, with one or more single-table filters, at most five plans) and record it under Verification. If worst x1.5 > 60 s: count only join conditions (a predicate whose two sides name columns of two different tables or aliases, resolved by the same SQL-aware tokenizer as `%NOPARALLEL`; refuse when unsure, stated in the spec); tests: the filter-only case refused, a real join allowed. If worst x1.5 <= 60 s: keep the count and ledger the residual LOW `wontfix-accepted` with `reopen_if=a compare outlasts the gateway on a filter-only statement` and the measurement as evidence. Rule 19: a mutation that reddens the branch's test.
 
 **Acceptance Criteria:**
 
