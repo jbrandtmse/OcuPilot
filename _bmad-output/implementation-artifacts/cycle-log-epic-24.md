@@ -946,3 +946,6 @@
 2026-11-26T19:29:33Z	Story 24.17	stage_spawned	stage=qa+code-review spawn_at=2026-11-26T19:29:33Z model=opus agent_name=24-17-review-batch5 cycle_iteration=6 diff=ee5bdb591..ea969a1a0 head=b7f798063 rebuild_once_permitted=yes
 2026-11-26T20:37:55Z	Story 24.17	cr_complete	scope=batch5 spawn_at=19:31Z model=opus commit=de6eef2d0 rebuild=20:08Z high=0 med=3(2_patched:overlapping_reads_serialized,session_leg;1_escalated:AD-43_roster) low=12_patched deferred=DW-2902..2904 resolved=spec_deferred(overlapping_reads) classes=all_green browser=system-monitor2/2,drill-downs5/5,a11y13/13 smoke=49/49 npm_test=green slip=one_batched_ci-runner_message(rerun_singly) closing_sections_present=true
 2026-11-26T20:37:55Z	Story 24.17	fresh_check_passed	scope=batch5 basis=review_rebuild_20:08Z feature=cdac20fb9_ancestor
+2026-11-26T20:38:36Z	Story 24.17	code_head_pushed	scope=batch5 sha=de6eef2d0 runs=45892451647 ci=pending
+2026-11-26T20:38:36Z	Story 24.17	escalated	AD-43_amendment(system_monitor_14th_auto-refresh)_asked_orchestrator
+2026-11-26T20:38:36Z	Story 24.17	stage_spawned	stage=spine spawn_at=2026-11-26T20:38:36Z model=opus agent_name=24-17-spine cycle_iteration=7 scope=story-end_AD_lines(AD-62,7,9,15,22;AD-43_pending)
