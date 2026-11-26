@@ -14665,3 +14665,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-28-alternate-show-plans.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Story 21.28 honours a custom resource on QButtons.ShowPlanAlt (orchestrator ruling U-166); 21.26's Plan with statistics and 21.27's Advise do not check their pages' custom resources (21.28 Task 0 measurement to be appended)
 - 2026-11-25T20:32:14Z status=routed owner=burndown by=runner note=orchestrator ruling 2026-11-25 (21.28 plan gate)
+
+### DW-2882: The SQL query screen does not show that the advice list was cut at its cap
+- source: spec-21-27-the-index-analyzer-and-its-advice.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlPort.Advised sets advice.truncated at 200 findings or 20 tables; sql-answer.ts and sql-query.page.ts carry no member for it; a note needs a ruled string
+- 2026-11-26T03:54:49Z status=open owner=21-27-the-index-analyzer-and-its-advice by=harvest note=string sent to the orchestrator; code review patches it once ruled
