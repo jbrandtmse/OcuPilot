@@ -2,7 +2,7 @@
 title: 'Story 21.27: The index analyzer and its advice'
 type: 'feature'
 created: '2026-11-25'
-status: 'blocked'
+status: 'in-progress'
 baseline_revision: 'adba0163090595157c60cccce50739acee74e496'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -211,7 +211,7 @@ deferred: []
 
 - 2026-11-25, orchestrator rulings at the plan gate (veto U-165 for items 1, 2, 5, 6 and 7), authoritative over the Design Notes records:
   1. **AD-51 case** (veto U-165): allowed, add-only, written by the runner. The `UtilSQLAnalysis` calls run only inside the confirmed write, after the prohibited and shape checks; the namespace is the request's; `Report` comes from the declared five-value choice, validated before any call; the flags are coerced to 0 or 1. The null device is restored on every exit, the error and catch paths included, pinned by a test that a raised call leaves the device as it was.
-  2. **AD-7** (veto U-165): allowed, add-only, written by the runner. Task 0 measures gather's and each report's worst case on the largest namespace reachable on `ocupilot-ci` (HSCUSTOM with its library). An operation runs in the request only if its worst case times 1.5 is under the named gateway limit, and the spec cites the measurement; otherwise it uses Story 24.16's background-run form. Advice is a read whose only side effect is the statement-index row, measure-first; if it measures any other write, the implement stage stops and reports.
+  2. **AD-7** (veto U-165, U-169): allowed, add-only, written by the runner. Gather, Run report and Purge analysis run in their confirm or action request under the existing named gateway limit, as Story 24.16's writes do; no background-run kind is built (none exists for writes). Measured at Task 0: Gather on HSCUSTOM with system classes 45.5-46.3 s (x1.5 over the 60 s limit), without them 2.6-3.0 s; each report 7.7-8.8 s. Gather conditions (U-169): (a) the Gather dialog defaults "Skip system classes and routines" to on; the classic dialog's own default is recorded under Verification, and this spec says where ours differs; (b) when the box is off, the Gather consequence adds "Gathering system classes and routines takes longer than the page waits; the list shows the result when it finishes." (measure-first; reuse 24.16's person-facing sentence for its named limit instead if one exists, and cite it); (c) measured once on `ocupilot-ci`: with the gateway giving up first (limit forced low, or an equivalent measured probe), the server-side gather finishes, the list reads the new statements afterwards, and a second Gather or Run during it refuses with the `.BUSY` refusal; if the server-side gather is killed with the connection, HALT `blocked` and report; (d) the agent proposal path has the same default and sentence. Gather rewrites the namespace's class dependency data (`^oddDEP` in its code database), as the classic Gather does; its consequence ends "...and rebuilds its class dependency data." (measure-first: say only what was measured). Advice writes nothing (measured at Task 0).
   3. **AD-10:** decided, no new arm; Advise keeps the console's own-table `Check`.
   4. **Governance:** decided. `explorer.sqlindexanalysis.gather` `true`, `.run` `true`, `.purge` `false`.
   5. **Gate** (veto U-165): reads `%Development:USE`; writes `AtelierPort.WritePairs(ns)` plus any pair Task 0 (a) measures from the instance; never looser than the classic page, whose measured gate is recorded here.
