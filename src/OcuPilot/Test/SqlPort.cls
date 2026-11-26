@@ -191,7 +191,8 @@ Method TestTheScriptPreparesAndBindsLiterals()
 }
 
 /// <p>The source pin: the port names no class of the source code API and calls no other port's
-/// <code>Invoke</code>; it reuses only <class>OcuPilot.Port.AtelierPort</class>'s pair set.</p>
+/// <code>Invoke</code>; it reuses only <class>OcuPilot.Port.AtelierPort</class>'s pair set. Every
+/// <code>%Prepare</code> in it passes privilege checks on, whatever its first argument is named.</p>
 Method TestThePortNamesNoSourceCodeApiClass()
 {
     Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsString($NAMESPACE, ..#PORT, .tText)
@@ -199,7 +200,17 @@ Method TestThePortNamesNoSourceCodeApiClass()
     Do $$$AssertTrue($Length(tText) > 1000, "and is not empty")
     Do $$$AssertTrue(tText '[ ("%Api" _ "."), "it names no %Api class")
     Do $$$AssertTrue(tText '[ ("AtelierPort)" _ ".Invoke"), "it calls no AtelierPort.Invoke")
-    Do $$$AssertTrue((tText '[ ("%Prepare(pText, " _ "0)")) && (tText '[ ("%ExecDirectNo" _ "Priv")), "it never prepares with privilege checks off")
+    Set tOff = 0
+    Set tOn = 0
+    For tI = 1:1:$Length(tText, $Char(10)) {
+        Set tLine = $Translate($Piece(tText, $Char(10), tI), $Char(13))
+        If tLine '[ "%Prepare(" Continue
+        If $Match(tLine, ".*%Prepare\(.*,\s*0\s*\).*") Set tOff = tOff + 1
+        If $Match(tLine, ".*%Prepare\(.*,\s*1\s*\).*") Set tOn = tOn + 1
+    }
+    Do $$$AssertEquals(tOff, 0, "no prepare of any variable passes a literal 0 for its privilege flag")
+    Do $$$AssertTrue(tOn > 0, "and the scan sees the prepares that pass 1, so a zero count is not a missed scan")
+    Do $$$AssertTrue(tText '[ ("%ExecDirectNo" _ "Priv"), "it never executes without the privilege check")
     Do $$$AssertTrue(tText [ "AtelierPort).Pairs()", "it reuses the source code port's pair set")
 }
 

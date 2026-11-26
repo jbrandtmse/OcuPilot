@@ -14745,6 +14745,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-26-runtime-statistics.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: 21.27 gate sweep shard 19/20 (run 903 on ocupilot-ci, head 041605b60): SqlPort.TestThePortNamesNoSourceCodeApiClass red on 21.27's UncheckedRow/UncheckedRows %Prepare(pText, 0); 21.26's StatsCount %Prepare(tText, 0) on feature evaded the literal check
 - 2026-11-26T07:50:20Z status=open owner=21-27-the-index-analyzer-and-its-advice by=runner note=orchestrator ruling 2026-11-26: rework 1 of 21.27 prepares every SqlPort catalog read with checks on and strengthens the test; veto U-174
+- 2026-11-26T08:08:39Z status=open owner=21-27-the-index-analyzer-and-its-advice by=runner note=behavior change (orchestrator ruling, veto U-175): with checks on, least-privileged users get the 403 refusal naming the SQL SELECT privilege until granted, on 21.26's runtime statistics list as well as 21.27's reads
 
 ### DW-2887: InteropMessageExportElsewhere (Story 24.16) fails on a long-lived instance once HSCUSTOM's next message id falls inside the ids USER holds (counters 89 vs 252 after a full local sweep); the fixture's cross-namespace id guard does not raise the counter first (inference)
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-4.md | severity: med | fix-risk: low | footprint: in

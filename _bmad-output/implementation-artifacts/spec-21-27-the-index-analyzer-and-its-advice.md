@@ -3,7 +3,7 @@ title: 'Story 21.27: The index analyzer and its advice'
 type: 'feature'
 created: '2026-11-25'
 status: 'in-progress'
-baseline_revision: '23762d9606527ff542274e0d939ba0e17b3b0c6e'
+baseline_revision: '4d260ca241a41ad831f556168768303b21101fcb'
 baseline_commit: '23762d9606527ff542274e0d939ba0e17b3b0c6e'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -218,9 +218,16 @@ deferred:
 
 **Rework 1** (gate red; orchestrator ruling 2026-11-26, veto U-174; DW-2892):
 
-- [ ] [Gate] `SqlPort.TestThePortNamesNoSourceCodeApiClass` red (sweep shard 19, run 903): `UncheckedRow`/`UncheckedRows` prepare with `%Prepare(pText, 0)`. Every `SqlPort` catalog read prepares with privilege checks ON (`%Prepare(text, 1)`), Story 21.26's `StatsCount` included (it has `%Prepare(tText, 0)`). Never turn checks off.
+- [x] [Gate] `SqlPort.TestThePortNamesNoSourceCodeApiClass` red (sweep shard 19, run 903): `UncheckedRow`/`UncheckedRows` prepare with `%Prepare(pText, 0)`. Every `SqlPort` catalog read prepares with privilege checks ON (`%Prepare(text, 1)`), Story 21.26's `StatsCount` included (it has `%Prepare(tText, 0)`). Never turn checks off.
 - [ ] [Gate] Measure on `ocupilot-ci` with the least-privileged principal the gate admits (`%Development:USE` + `AtelierPort.WritePairs(ns)`; 21.26's settings gate where it applies) that each checked read still answers; record the principal and the result per read under Verification. If a checked prepare refuses that principal, HALT `blocked` (intent gap) for that part with options (for example a gate that also requires SELECT on the `%SYS_PTools` views, or a narrower read); the rest of the rework may still land.
-- [ ] [Gate] Strengthen `SqlPort.TestThePortNamesNoSourceCodeApiClass` to refuse any `%Prepare(<expr>, 0)`, `%ExecDirectNoPriv` or similar no-privilege form anywhere in `SqlPort`, whatever the variable's name; `mutation:` reintroduce `StatsCount`'s old `%Prepare(tText, 0)` -> the test red.
+- [x] [Gate] Strengthen `SqlPort.TestThePortNamesNoSourceCodeApiClass` to refuse any `%Prepare(<expr>, 0)`, `%ExecDirectNoPriv` or similar no-privilege form anywhere in `SqlPort`, whatever the variable's name; `mutation:` reintroduce `StatsCount`'s old `%Prepare(tText, 0)` -> the test red.
+
+**Rework 1, continued** (orchestrator ruling 2026-11-26, option 1, veto U-175):
+
+- [ ] [Gate] Checks stay on. A checked read the instance refuses with SQLCODE -99 answers 403 with "Reading this needs the SQL SELECT privilege on %1." (measure-first), never 500; every other SQLCODE keeps today's path. Tests pin both: the -99 path (probe principal or an equivalent seam) and one other negative SQLCODE answering as before.
+- [ ] [Gate] `%1` is a table the port's own fixed statement names, taken from the port's own list and never parsed from the error text; for a read over several tables, name the first refused or list them -- state the choice here.
+- [ ] [Gate] The model-facing tool result carries the same sentence, so the agent tells the person which grant to ask for and never retries around it.
+- [ ] [Gate] Security note in Design Notes: the four reads (STATS, ANALYSIS, advice class read, advice index read) and their tables (`%SYS_PTools.StatsSQL`, `%SYS_PTools.UtilSQLStatements`, `%SYS_PTools.UtilSQLAnalysisDB`, `%Dictionary.CompiledClass`, `%Dictionary.CompiledIndex`), each with its measured -99 and its measured success after the grant. If the project has a per-screen permissions reference (EXPERIENCE.md or docs), add one line per screen there; otherwise no README text.
 
 **Acceptance Criteria:**
 
@@ -559,17 +566,23 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
 - Not falsifiable here: dropping `CallWithNullDevice`'s mnemonic restore left the mnemonic assertion green (inference: `Use` of a device keeps the mnemonic it was opened with), so the assertion pins the property and no mutation line is claimed.
 - **Loop on HEAD plus the patches.** `LOADERRORS=0`. Green, one class per call: `SqlAdviceRead` 11, `SqlIndexAnalysisRead` 7, `SqlIndexAnalysisWrite` 11 (armed), `PortGate` 4, `AdvisorRead` 9, `AdvisorWrite` 5, `SqlConsoleRoutes` 8, `SqlPortLive` 16, `WorkflowCatalog` 10, `ConfirmNamespaceRoster` 3, `CompositeMintSweep` 5, `MappingDescriptor` 6, `ClassicPageGate` 9, `SurfaceCoverage` 4, `ToolWrite` 33, `ReadTool` 28, `DraftRegistry` 9, `ToolEmit` 11, `ToolRoundTrip` 2, `StageTwoTools` 4, `RemovalRowsSweep` 7, `EndpointCoverage` 2, `ToolDispatch` 19, `GovernanceBaseline` 5, `Navigation` 14, `Descriptor` 60, `Prohibited` 24, `ClaimReach` 2, `ReadDescriptions` 9. `npm run test:tools` 2417/2417; `npm run build` clean (initial 2.32 MB); `npm run test:components` 343 files green; `check-objectscript` 0 problems; `lint-docs` clean. Browser, after rebuild and redeploy: `system-explorer-sql-index-analysis` with `system-explorer-sql-runtime-stats` 10/10 forward and 10/10 reversed; `system-explorer-sql-query` 3/3.
 
+### Rework 1 results (2026-11-26, `ocupilot-ci`; every line observed unless marked (inference))
+
+- **Change.** `SqlPort.UncheckedRow`/`UncheckedRows` are now `CheckedRow`/`CheckedRows` and prepare with `%Prepare(pText, 1)`, so every `SqlPort` catalog read (`STATS`, `ANALYSIS`, the advice's class and index reads) is prepared with privilege checks on. `TestThePortNamesNoSourceCodeApiClass` scans every `%Prepare(` line of the port's source for a literal-0 flag whatever the first argument is named (and requires the scan to see the flag-1 lines), and refuses `%ExecDirectNoPriv`.
+- **Principal.** `ZZRework1User` holding role `%Development:U,%DB_USER:RW,%DB_ENSLIB:R,%DB_IRISLIB:R,%DB_HSCUSTOM:RW,%DB_HSLIB:R` (the gate's pairs for `USER` and `HSCUSTOM`), created on `ocupilot-ci` and removed with its SQL grants, probe table `ZZRework1.T` and statement-index rows, read back absent.
+- **Result, no SQL privilege.** The checked prepare of each of the four fixed reads (`STATSCOUNTQUERY`, `ANALYSISCOUNTQUERY`, `ADVICECLASSQUERY`, `ADVICEINDEXQUERY`) answers SQLCODE -99 ("User ZZRework1User is not privileged for the operation") in `USER` and in `HSCUSTOM`; the same texts prepared unchecked answer ok. Through `SqlPort.Invoke`, the four reads answer 500 `INTERNAL` for this principal. **HALT `blocked` (intent gap) for this part.**
+- **Result, with SELECT granted.** After `GRANT SELECT` on `%SYS_PTools.StatsSQL`, `%SYS_PTools.UtilSQLStatements`, `%SYS_PTools.UtilSQLAnalysisDB`, `%Dictionary.CompiledClass` and `%Dictionary.CompiledIndex` in each namespace, all four checked prepares answer ok and the port answers 200 for `ANALYSIS` and `STATS` in both namespaces, `Indexed` (class `ZZRework1.T`, its three indices) and `Plan` with advice (findings Full table scan and Missing index, also needing SELECT on the probe table).
+- **Options for the lead.** (1) Keep the checks on and state the five tables' SELECT as a prerequisite for the principal (the reads answer 500 until then; mapping SQLCODE -99 to a 403 naming the privilege is a separate decision). (2) Have the gate also require SELECT on those tables. (3) Narrow a read to what a `%Development` principal may select.
+- **Loop.** `LOADERRORS=0`. Green, one class per call: `SqlPort` 11, `SqlPortLive` 16, `SqlRuntimeStatsRead` 10, `SqlRuntimeStatsWrite` 8, `SqlIndexAnalysisRead` 7, `SqlIndexAnalysisWrite` 11 (armed), `SqlAdviceRead` 11, `SqlStatementRead` 5, `SqlConsoleRoutes` 8, `PortGate` 4, `ClassicPageGate` 9. `check-objectscript` 0 problems; `npm run test:tools` 2420/2420.
+- mutation: `StatsCount` prepares its own text with `%Prepare(tText, 0)` -> `SqlPort.TestThePortNamesNoSourceCodeApiClass` red on the literal-0 count alone. Reverted (md5 of `SqlPort.cls` equal to before), reloaded, class 11/11 green.
+
 ## Auto Run Result
 
-Status: done
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap -- the privilege-checked catalog reads (`%Prepare(text, 1)`) are refused for the least-privileged principal the gate admits.
 
-This pass (re-dispatch after the Task 0 rulings, baseline 23762d9606527ff542274e0d939ba0e17b3b0c6e):
+Rework 1 (baseline 4d260ca241a41ad831f556168768303b21101fcb), this pass only:
 
-- **Implemented.** The two new measurements (the classic dialog's default; the gather finishing after the gateway gave up, with the `.BUSY` half on the real endpoint) are under Verification. Batch 1 (analyzer list, Gather, Run report and Purge analysis under the namespace lock, null-device helper in `Kernel/Utils`, three tools, descriptor, entity type, governance, rosters), Batch 2 (`SqlAdvice`, `Plan` with advise on both callers, `explorer.sqladvice.read`, `slowquery` step naming both reads), Batch 3 (the page, the dialog, Advise on SQL query, strings, browser spec) and Batch 3b (Gather statements as the primary action, Run report as a screen-level action) are committed as 519defe98, e25a5b351, f67156f5d and 0d0bb32fd; review patches P1-P6 ride the finalize commit.
-- **Review.** Pass 1, 13 findings (Review Triage Log): patched 2 medium and 4 low (test and comment fixes), deferred 1 low (`advice.truncated` not shown), rejected 2 low and 4 false, each with its reason in the log.
-- **Verification.** On `ocupilot-ci`: `LOADERRORS=0`; `SqlIndexAnalysisWrite` 11, `SqlIndexAnalysisRead` 7, `SqlAdviceRead` 10, `AdvisorWrite` 5, `AdvisorRead` 9, `ConfirmNamespaceRoster` 3, `PortGate` 4, `SqlTuningWrite` 4, `SqlConsoleRoutes` 8, `WorkflowCatalog` 10, `SqlRuntimeStatsRead` 10, `Prohibited` 22, all green; `npm run build` clean, `test:components` 3982, `test:tools` 2415, the six node files 395, `check-objectscript` 0 problems; browser `system-explorer-sql-index-analysis` 6 and `system-explorer-sql-runtime-stats` 4, both orders. The runner owns the full sweep, the smoke and the fresh check.
-- **Follow-up review recommended: true.** Two medium findings were patched. The unverified risk: `SkipSystem` false reaches the vendor's first positional argument only through the recording seam, never against the vendor, because that gather takes 45 s.
-- **Residual risks.** Purge analysis is a row action, so a namespace holding only gathered statements is purged after a report row exists. The advice refusal for a non-query runs after the console's typing prepare. The second agent invitation, "run an index analyzer report", has no place in the descriptor. The Gather consequence is one joined sentence (Batch 1 results).
-
-The Task 0 gaps of the first pass closed at the Spec Change Log's ruling item 2 (veto U-169).
+- **Changed (uncommitted, no review layers run).** `SqlPort.UncheckedRow`/`UncheckedRows` are now `CheckedRow`/`CheckedRows` and prepare with privilege checks on, `StatsCount` and the `ANALYSIS`, class and index reads included; `Test/SqlPort.TestThePortNamesNoSourceCodeApiClass` refuses a literal-0 prepare flag on any `%Prepare` line and `%ExecDirectNoPriv`. Mutation line under Verification, "Rework 1 results".
+- **Verified.** `LOADERRORS=0`; green one class per call: `SqlPort` 11, `SqlPortLive` 16, `SqlRuntimeStatsRead` 10, `SqlRuntimeStatsWrite` 8, `SqlIndexAnalysisRead` 7, `SqlIndexAnalysisWrite` 11, `SqlAdviceRead` 11, `SqlStatementRead` 5, `SqlConsoleRoutes` 8, `PortGate` 4, `ClassicPageGate` 9; `test:tools` 2420/2420; `check-objectscript` 0 problems.
+- **Blocked.** The principal `%Development:USE` plus the gate's pairs gets SQLCODE -99 on all four checked reads in `USER` and `HSCUSTOM`, and the port answers 500 `INTERNAL`; with SELECT on `%SYS_PTools.StatsSQL`, `UtilSQLStatements`, `UtilSQLAnalysisDB`, `%Dictionary.CompiledClass` and `CompiledIndex` all four answer. Options: (1) keep the checks and state those SELECT grants as a prerequisite (a 403 naming the privilege instead of the 500 is a separate decision); (2) the gate also requires that SELECT; (3) narrow a read to what a `%Development` principal may select.

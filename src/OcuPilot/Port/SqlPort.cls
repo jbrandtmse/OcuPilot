@@ -105,7 +105,7 @@ Parameter REPORTCODES = "IU,TS,TI,JI,OI";
 Parameter ANALYSISCLASS = "%SYS.PTools.UtilSQLAnalysis";
 
 /// <p>The counts <parameter>TYPEANALYSIS</parameter> reads: the gathered statements and each report's rows in the current namespace, one fixed
-/// statement with nothing bound, prepared without SQL privilege checks as <parameter>STATSCOUNTQUERY</parameter> is.</p>
+/// statement with nothing bound, prepared with SQL privilege checks on as <parameter>STATSCOUNTQUERY</parameter> is.</p>
 Parameter ANALYSISCOUNTQUERY = "SELECT (SELECT COUNT(*) FROM %SYS_PTools.UtilSQLStatements), COUNT(CASE OptionName WHEN 'IU' THEN 1 END), COUNT(CASE OptionName WHEN 'TS' THEN 1 END), COUNT(CASE OptionName WHEN 'TI' THEN 1 END), COUNT(CASE OptionName WHEN 'JI' THEN 1 END), COUNT(CASE OptionName WHEN 'OI' THEN 1 END) FROM %SYS_PTools.UtilSQLAnalysisDB";
 
 /// <p>The runtime statistics endpoint (Story 21.26, AD-51): <parameter>TYPESTATS</parameter> answers how many runtime statistics rows the namespace holds
@@ -118,7 +118,7 @@ Parameter TYPESTATS = "STATS";
 Parameter TYPEPURGESTATS = "PURGESTATS";
 
 /// <p>The count <parameter>TYPESTATS</parameter> reads: the runtime statistics rows of one namespace, a fixed statement with the namespace bound, prepared
-/// without SQL privilege checks as the source code API's query route prepares the statistics list's read, which the gate has already admitted.</p>
+/// with SQL privilege checks on, after the gate has admitted the caller.</p>
 Parameter STATSCOUNTQUERY = "SELECT COUNT(*) FROM %SYS_PTools.StatsSQL WHERE NameSpace = ?";
 
 /// <p>The vendor class whose <code>clearStatsSQL</code> the purge calls.</p>
@@ -969,8 +969,7 @@ ClassMethod AdvisorClass() As %String
 /// <p>The compiled class and the indices of the table <var>pSchema</var>.<var>pTable</var> in <var>pNamespace</var>, as <var>pClass</var> (<code>""</code>
 /// when the dictionary holds none, as for a view) and <var>pRows</var>, an array of <code>{Name, Properties, Type, PrimaryKey, IdKey}</code> or
 /// <code>""</code> when there is no class. A name the dictionary does not hold, such as one with a quote, resolves nothing and raises nothing. A table in a
-/// system schema is not read. The caller is gated here (AD-29), and both reads are prepared without SQL privilege checks, as the dictionary's
-/// system tables are the port's to read.</p>
+/// system schema is not read. The caller is gated here (AD-29), and both reads are prepared with SQL privilege checks on.</p>
 ClassMethod Indexed(pNamespace As %String, pSchema As %String, pTable As %String, Output pClass As %String, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set pClass = ""
@@ -980,11 +979,11 @@ ClassMethod Indexed(pNamespace As %String, pSchema As %String, pTable As %String
     Set tSC = ..Gate(pNamespace, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     If ($Extract(pSchema, 1) = "%") || ($ZConvert(pSchema, "U") = "INFORMATION_SCHEMA") Quit $$$OK
-    Set tSC = ..UncheckedRows(pNamespace, ..#ADVICECLASSQUERY, [(pSchema), (pTable)], 1, "the class of an advised table", .tClasses, .pHttpStatus, .pFault)
+    Set tSC = ..CheckedRows(pNamespace, ..#ADVICECLASSQUERY, [(pSchema), (pTable)], 1, "the class of an advised table", .tClasses, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     If tClasses.%Size() = 0 Quit $$$OK
     Set pClass = tClasses.%Get(0).%Get(0)
-    Set tSC = ..UncheckedRows(pNamespace, ..#ADVICEINDEXQUERY, [(pClass)], ..#MAXROWS, "the indices of an advised table", .tIndices, .pHttpStatus, .pFault)
+    Set tSC = ..CheckedRows(pNamespace, ..#ADVICEINDEXQUERY, [(pClass)], ..#MAXROWS, "the indices of an advised table", .tIndices, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     Set pRows = []
     Set tIterator = tIndices.%GetIterator()
@@ -1001,9 +1000,9 @@ ClassMethod Indexed(pNamespace As %String, pSchema As %String, pTable As %String
 }
 
 /// <p>The rows of the fixed statement <var>pText</var> run in <var>pNamespace</var> with <var>pValues</var> bound, at most <var>pMax</var>, as
-/// <var>pRows</var>, an array of arrays of text cells; prepared without SQL privilege checks (the gate has already admitted the caller). A statement the
+/// <var>pRows</var>, an array of arrays of text cells; prepared with SQL privilege checks on, after the gate has admitted the caller. A statement the
 /// instance refuses or a failed read is the internal fault, named by <var>pWhat</var>. The switched region calls vendor classes only.</p>
-ClassMethod UncheckedRows(pNamespace As %String, pText As %String, pValues As %DynamicArray, pMax As %Integer, pWhat As %String, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+ClassMethod CheckedRows(pNamespace As %String, pText As %String, pValues As %DynamicArray, pMax As %Integer, pWhat As %String, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pRows = []
     Set tCode = 0
@@ -1012,7 +1011,7 @@ ClassMethod UncheckedRows(pNamespace As %String, pText As %String, pValues As %D
     Try {
         Set $NAMESPACE = pNamespace
         Set tStatement = ##class(%SQL.Statement).%New()
-        Set tSC = tStatement.%Prepare(pText, 0)
+        Set tSC = tStatement.%Prepare(pText, 1)
         If $$$ISOK(tSC) {
             Set tResult = $Case(pValues.%Size(), 1: tStatement.%Execute(pValues.%Get(0)), 2: tStatement.%Execute(pValues.%Get(0), pValues.%Get(1)), : tStatement.%Execute())
             Set tCode = tResult.%SQLCODE
@@ -1321,22 +1320,22 @@ ClassMethod RuntimeStatsRead(pNamespace As %String, Output pAnswer As %DynamicOb
 }
 
 /// <p>How many runtime statistics rows <var>pNamespace</var> holds, as <var>pCount</var>, from <parameter>STATSCOUNTQUERY</parameter> with the
-/// namespace bound, prepared without SQL privilege checks and run in <var>pNamespace</var>. A statement the instance refuses or a failed read is
+/// namespace bound, prepared with SQL privilege checks on and run in <var>pNamespace</var>. A statement the instance refuses or a failed read is
 /// the internal fault. The switched region calls vendor classes only.</p>
 ClassMethod StatsCount(pNamespace As %String, Output pCount As %Integer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pCount = 0
-    Set tSC = ..UncheckedRow(pNamespace, ..#STATSCOUNTQUERY, 1, "the runtime statistics count", .tRow, .pHttpStatus, .pFault)
+    Set tSC = ..CheckedRow(pNamespace, ..#STATSCOUNTQUERY, 1, "the runtime statistics count", .tRow, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     Set pCount = +$ListGet(tRow, 1)
     Quit $$$OK
 }
 
 /// <p>The first row of the fixed statement <var>pText</var> as a list of its column values, <var>pRow</var>, run in <var>pNamespace</var>, prepared
-/// without SQL privilege checks (the gate has already admitted the caller) and with the namespace's upper-case name bound when
+/// with SQL privilege checks on (after the gate has admitted the caller) and with the namespace's upper-case name bound when
 /// <var>pBindNamespace</var> is 1. <var>pRow</var> is <code>""</code> for a statement that answers none. A statement the instance refuses or a failed
 /// read is the internal fault, named by <var>pWhat</var>. The switched region calls vendor classes only.</p>
-ClassMethod UncheckedRow(pNamespace As %String, pText As %String, pBindNamespace As %Boolean, pWhat As %String, Output pRow As %List, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+ClassMethod CheckedRow(pNamespace As %String, pText As %String, pBindNamespace As %Boolean, pWhat As %String, Output pRow As %List, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pRow = ""
     Set tCode = 0
@@ -1345,7 +1344,7 @@ ClassMethod UncheckedRow(pNamespace As %String, pText As %String, pBindNamespace
     Try {
         Set $NAMESPACE = pNamespace
         Set tStatement = ##class(%SQL.Statement).%New()
-        Set tSC = tStatement.%Prepare(pText, 0)
+        Set tSC = tStatement.%Prepare(pText, 1)
         If $$$ISOK(tSC) {
             If pBindNamespace {
                 Set tResult = tStatement.%Execute($ZConvert(pNamespace, "U"))
@@ -1376,7 +1375,7 @@ ClassMethod UncheckedRow(pNamespace As %String, pText As %String, pBindNamespace
 ClassMethod AnalysisRead(pNamespace As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pAnswer = ""
-    Set tSC = ..UncheckedRow(pNamespace, ..#ANALYSISCOUNTQUERY, 0, "the index analysis count", .tRow, .pHttpStatus, .pFault)
+    Set tSC = ..CheckedRow(pNamespace, ..#ANALYSISCOUNTQUERY, 0, "the index analysis count", .tRow, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     Set pAnswer = {}
     Do pAnswer.%Set("Namespace", pNamespace, "string")
