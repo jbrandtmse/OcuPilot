@@ -1193,3 +1193,7 @@
 2026-11-26T09:14:31Z	Story 21.27	ledger_adjudicated	owned=2 resolved=2(DW-2892,DW-2893) reowned=0 terminal=0
 2026-11-26T09:14:31Z	Epic 21	spine_updated	ad=AD-51 reason=orchestrator_ruling(U-174,U-175;in-place_on_21.27_line) by=runner story=21-27-the-index-analyzer-and-its-advice lint=preexisting_low_placeholder_only
 2026-11-26T09:16:25Z	Story 21.27	gate_step	step=fresh_check+full_sweep+smoke head=b14244015 started=2026-11-26T09:16:25Z dir=e21-kit/21-27/gate2
+2026-11-26T09:22:05Z	Story 21.27	fresh_check	env=recipe(ci-throwaway_rebuild) tests=12_classes(incl_armed_SqlSelectPrivilege)+3_specs result=pass order=forward,reverse head=b14244015
+2026-11-26T12:33:15Z	Story 21.27	gate_step	step=full_sweep+smoke head=b14244015 sweep=20/20 smoke=50/50 result=pass
+2026-11-26T12:33:15Z	Story 21.27	smoke_complete	method=api(smoke.sh)+browser(fresh_specs) result=pass iterations=2 defects_caught=1(gate1_sweep:SqlPort_privilege_checks) evidence=e21-kit/21-27/gate1,gate2
+2026-11-26T12:33:53Z	Story 21.27	committed	sha=b14244015 submodules= ci=pending runs=45820743109 amendments=none note=code_head_pushed_alone
