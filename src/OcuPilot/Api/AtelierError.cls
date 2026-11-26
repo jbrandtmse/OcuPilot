@@ -460,6 +460,44 @@ Parameter SQLADVICE = "EXPLORER.SQL.ADVICE";
 
 Parameter REASONSQLADVICE = "Advice reads a query's plan, so it takes a query only.";
 
+/// <p>Envelope code: Compare plans sent a statement that is not a query (Story 21.28). Rendered on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422, before anything runs.</p>
+Parameter SQLALTCOMPARE = "EXPLORER.SQL.ALTCOMPARE";
+
+Parameter REASONSQLALTCOMPARE = "Compare plans runs the statement, so it takes a query only.";
+
+/// <p>Envelope code: a plan Show plan or Compare plans named is not one of the statement's possible plans. Rendered on the
+/// <parameter>OcuPilot.Api.Error.BADREQUEST</parameter> slug with 400, before anything runs.</p>
+Parameter SQLALTPLAN = "EXPLORER.SQL.ALTPLAN";
+
+Parameter REASONSQLALTPLAN = "Choose a plan from this statement's possible plans.";
+
+/// <p>Envelope code: Compare plans named no plan, more than five, a plan twice or something that is not a whole number. Rendered on the
+/// <parameter>OcuPilot.Api.Error.BADREQUEST</parameter> slug with 400, before anything runs.</p>
+Parameter SQLALTCOUNT = "EXPLORER.SQL.ALTCOUNT";
+
+Parameter REASONSQLALTCOUNT = "Choose from one to five possible plans to compare.";
+
+/// <p>Envelope code: a statement over the bound of Alternate plans. Rendered on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with
+/// 422, before anything reaches the instance. <code>%1</code> and <code>%2</code> are the most tables and conditions, which
+/// <method>AlternateBoundReason</method> fills in.</p>
+Parameter SQLALTBOUND = "EXPLORER.SQL.ALTBOUND";
+
+Parameter REASONSQLALTBOUND = "Alternate plans take a statement with at most %1 tables and %2 conditions.";
+
+/// <p>Envelope code: Compare plans sent a statement with a table that no condition joins. Rendered on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422, before anything runs.</p>
+Parameter SQLALTJOIN = "EXPLORER.SQL.ALTJOIN";
+
+Parameter REASONSQLALTJOIN = "Compare plans takes a statement that joins each table by a condition.";
+
+/// <p>Envelope code: a read OcuPilot makes through a system procedure was refused the caller for want of the SQL EXECUTE privilege on it. Rendered on the
+/// <parameter>OcuPilot.Api.Error.FORBIDDEN</parameter> slug with 403, naming the procedure in the sentence and in <code>detail</code>.
+/// <code>%1</code> is the procedure <method>ExecutePrivilegeReason</method> fills in.</p>
+Parameter SQLEXECUTEPRIVILEGE = "SQL.EXECUTE.PRIVILEGE";
+
+Parameter REASONSQLEXECUTEPRIVILEGE = "Reading this needs the SQL EXECUTE privilege on %1.";
+
 /// <p>Envelope code: a read OcuPilot makes of a fixed system table was refused the caller for want of the SQL SELECT privilege on it. Rendered on the
 /// <parameter>OcuPilot.Api.Error.FORBIDDEN</parameter> slug with 403, naming the table or tables the read uses in the sentence and in <code>detail</code>.
 /// <code>%1</code> is the table list <method>SelectPrivilegeReason</method> fills in.</p>
@@ -604,7 +642,20 @@ ClassMethod SqlReasonFor(pCode As %String) As %String
     If pCode = ..#INDEXANALYSISRUN Quit ..#REASONINDEXANALYSISRUN
     If pCode = ..#INDEXANALYSISPURGE Quit ..#REASONINDEXANALYSISPURGE
     If pCode = ..#SQLSELECTPRIVILEGE Quit ..#REASONSQLSELECTPRIVILEGE
+    If pCode = ..#SQLEXECUTEPRIVILEGE Quit ..#REASONSQLEXECUTEPRIVILEGE
     Quit ""
+}
+
+/// <p>The sentence of <parameter>SQLEXECUTEPRIVILEGE</parameter> naming <var>pProcedure</var>, the system procedure a read calls.</p>
+ClassMethod ExecutePrivilegeReason(pProcedure As %String) As %String
+{
+    Quit $Replace(..#REASONSQLEXECUTEPRIVILEGE, "%1", pProcedure)
+}
+
+/// <p>The sentence of <parameter>SQLALTBOUND</parameter> for the bound of <var>pTables</var> tables and <var>pConditions</var> conditions.</p>
+ClassMethod AlternateBoundReason(pTables As %Integer, pConditions As %Integer) As %String
+{
+    Quit $Replace($Replace(..#REASONSQLALTBOUND, "%1", pTables), "%2", pConditions)
 }
 
 /// <p>The sentence of <parameter>SQLSELECTPRIVILEGE</parameter> naming <var>pTables</var>, the table or tables a read needs the SQL SELECT privilege on.</p>

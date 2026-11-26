@@ -629,8 +629,9 @@ ClassMethod StatsRoutines(pNamespace As %String, pToken As %String = {..#STATSTO
     Quit tList
 }
 
-/// <p>How many runtime statistics rows <var>pNamespace</var> holds for the probe's statement, <code>-1</code> when they cannot be read.</p>
-ClassMethod StatsRowCount(pNamespace As %String) As %Integer
+/// <p>How many runtime statistics rows <var>pNamespace</var> holds for the statements carrying <var>pToken</var>, <code>-1</code> when they cannot be
+/// read.</p>
+ClassMethod StatsRowCount(pNamespace As %String, pToken As %String = {..#STATSTOKEN}) As %Integer
 {
     Set tCount = -1
     Set tOrigNS = $NAMESPACE
@@ -639,7 +640,7 @@ ClassMethod StatsRowCount(pNamespace As %String) As %Integer
         Set tStatement = ##class(%SQL.Statement).%New()
         Set tSC = tStatement.%Prepare("SELECT COUNT(*) FROM %SYS_PTools.StatsSQLView WHERE NameSpace = ? AND QueryText [ ?")
         If $$$ISOK(tSC) {
-            Set tResult = tStatement.%Execute($ZConvert(pNamespace, "U"), ..#STATSTOKEN)
+            Set tResult = tStatement.%Execute($ZConvert(pNamespace, "U"), pToken)
             If tResult.%Next() Set tCount = tResult.%GetData(1)
         }
         Set (tResult, tStatement) = ""
@@ -904,6 +905,119 @@ ClassMethod RemoveOwn(pNamespace As %String, pHash As %String)
     } Catch {
         Set $NAMESPACE = tOrigNS
     }
+}
+
+/// <p>Story 21.28's probe: the table <parameter>ALTERNATETABLE</parameter>, tuned, with the columns <code>A</code>, <code>B</code>, <code>C</code> and
+/// <code>D</code>, an index on <code>B</code> and one on <code>C</code>, and 3,000 rows in which <code>B</code> and <code>C</code> agree. Its
+/// statement <parameter>ALTERNATEQUERY</parameter>, with a condition on each indexed column, has more than one possible plan, and the alias in its
+/// text, <parameter>ALTERNATETOKEN</parameter>, is what the statistics rows of its runs are found by.</p>
+Parameter ALTERNATESCHEMA = "OcuProbe228";
+
+Parameter ALTERNATETABLE = "OcuProbe228.T";
+
+Parameter ALTERNATETOKEN = "Probe228";
+
+Parameter ALTERNATEQUERY = "SELECT A AS Probe228 FROM OcuProbe228.T WHERE B = 5 AND C = 'c5'";
+
+/// <p>Create <parameter>ALTERNATETABLE</parameter> in <var>pNamespace</var>, after removing any an earlier run left
+/// (<method>RemoveAlternates</method>).</p>
+ClassMethod MakeAlternates(pNamespace As %String) As %Status
+{
+    Set tSC = ..RemoveAlternates(pNamespace)
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ..Run("CREATE TABLE " _ ..#ALTERNATETABLE _ " (A INTEGER, B INTEGER, C VARCHAR(20), D VARCHAR(20))")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run("CREATE INDEX IdxB ON " _ ..#ALTERNATETABLE _ " (B)")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run("CREATE INDEX IdxC ON " _ ..#ALTERNATETABLE _ " (C)")
+        If $$$ISERR(tSC) Quit
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("INSERT INTO " _ ..#ALTERNATETABLE _ " (A, B, C, D) VALUES (?, ?, ?, 'd')")
+        If $$$ISERR(tSC) Quit
+        For tI = 1:1:3000 {
+            Set tResult = tStatement.%Execute(tI, tI # 200, "c" _ (tI # 200))
+            If tResult.%SQLCODE < 0 {
+                Set tSC = $$$ERROR($$$GeneralError, "SQLCODE " _ tResult.%SQLCODE _ " " _ tResult.%Message)
+                Quit
+            }
+        }
+        Set (tResult, tStatement) = ""
+        If $$$ISERR(tSC) Quit
+        Set tMessage = ""
+        Do ##class(%SYSTEM.SQL).TuneTable(..#ALTERNATETABLE, 1, 0, .tMessage, 0, 0, "")
+        If tMessage '= "" Set tSC = $$$ERROR($$$GeneralError, "tuning the probe table answered " _ tMessage)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The view <method>MakeAlternateView</method> makes over <parameter>ALTERNATETABLE</parameter>: its own text repeats the table four times.</p>
+Parameter ALTERNATEVIEW = "OcuProbe228.V";
+
+/// <p>Create <parameter>ALTERNATEVIEW</parameter> in <var>pNamespace</var>, whose table <method>MakeAlternates</method> made: four aliases of the table
+/// joined on <code>B</code>. <method>RemoveAlternates</method> drops it.</p>
+ClassMethod MakeAlternateView(pNamespace As %String) As %Status
+{
+    Quit ..RunIn(pNamespace, "CREATE VIEW " _ ..#ALTERNATEVIEW _ " AS SELECT a.A AS A FROM " _ ..#ALTERNATETABLE _ " a, " _ ..#ALTERNATETABLE _ " b, " _ ..#ALTERNATETABLE _ " c, " _ ..#ALTERNATETABLE _ " d WHERE a.B = b.B AND b.B = c.B AND c.B = d.B")
+}
+
+/// <p>Put <var>pNamespace</var> back as an unmade probe has it: the runtime statistics of <parameter>ALTERNATETOKEN</parameter>'s statements removed by
+/// routine, the table's cached queries purged, the table dropped, and the statement index cleaned of the statements that no longer have a location. A
+/// table that is already gone is not an error.</p>
+ClassMethod RemoveAlternates(pNamespace As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Do ..RemoveStats(pNamespace, ..#ALTERNATETOKEN)
+        Set $NAMESPACE = pNamespace
+        Do $SYSTEM.SQL.PurgeQueries({"table": [(..#ALTERNATEVIEW)]})
+        Do $SYSTEM.SQL.PurgeQueries({"table": [(..#ALTERNATETABLE)]})
+        Do ..Run("DROP VIEW " _ ..#ALTERNATEVIEW)
+        Do ..Run("DROP TABLE " _ ..#ALTERNATETABLE)
+        Do $SYSTEM.SQL.Statement.Clean()
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>What <var>pNamespace</var> holds of the alternate-plans probe, as <code>tables|cached queries|statistics rows|statement index rows</code>: the
+/// tables of <parameter>ALTERNATESCHEMA</parameter>, the cached queries and statement index rows that read <parameter>ALTERNATETABLE</parameter>, and the
+/// runtime statistics rows of <parameter>ALTERNATETOKEN</parameter>'s statements; <code>-1</code> for a count that could not be read. An unmade probe
+/// reads <code>0|0|0|0</code>.</p>
+ClassMethod AlternateState(pNamespace As %String) As %String
+{
+    Set tTables = -1
+    Set tRows = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ?", 0)
+        If $$$ISOK(tSC) {
+            Set tResult = tStatement.%Execute(..#ALTERNATESCHEMA)
+            If tResult.%Next() Set tTables = tResult.%GetData(1)
+        }
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATEMENT_RELATIONS WHERE Relation = ?", 0)
+        If $$$ISOK(tSC) {
+            Set tResult = tStatement.%Execute($ZConvert(..#ALTERNATETABLE, "U"))
+            If tResult.%Next() Set tRows = tResult.%GetData(1)
+        }
+        Set (tResult, tStatement) = ""
+    } Catch {
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tTables _ "|" _ ..CachedQueryCount(pNamespace, ..#ALTERNATESCHEMA) _ "|" _ ..StatsRowCount(pNamespace, ..#ALTERNATETOKEN) _ "|" _ tRows
 }
 
 }

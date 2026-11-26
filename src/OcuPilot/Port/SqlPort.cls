@@ -304,6 +304,14 @@ Parameter STATSKEY = "stats";
 /// <p>The plan route's body key that asks for the advice on the plan (Story 21.27): a boolean.</p>
 Parameter ADVISEKEY = "advise";
 
+/// <p>The plan route's body keys for Alternate plans (Story 21.28): <code>alternates</code>, a boolean; <code>plan</code>, one plan's number; and
+/// <code>compare</code>, an array of plan numbers.</p>
+Parameter ALTERNATESKEY = "alternates";
+
+Parameter PLANKEY = "plan";
+
+Parameter COMPAREKEY = "compare";
+
 /// <p>The two dictionary reads behind the advice, both fixed statements with their values bound: the compiled class of a table, from its SQL schema
 /// and name, and that class's indices.</p>
 Parameter ADVICECLASSQUERY = "SELECT Name FROM %Dictionary.CompiledClass WHERE SqlSchemaName = ? AND SqlTableName = ?";
@@ -319,6 +327,31 @@ Parameter ANALYSISTABLES = "%SYS_PTools.UtilSQLStatements,%SYS_PTools.UtilSQLAna
 Parameter ADVICECLASSTABLES = "%Dictionary.CompiledClass";
 
 Parameter ADVICEINDEXTABLES = "%Dictionary.CompiledIndex";
+
+/// <p>Alternate plans (Story 21.28). The most possible plans a list answers, the most plans one compare runs, and the most tables and conditions a
+/// statement may hold for the list, a plan's text or a compare; a statement over either count is refused before anything reaches the instance.</p>
+Parameter ALTMAXPLANS As INTEGER = 100;
+
+Parameter ALTMAXCOMPARE As INTEGER = 5;
+
+Parameter ALTMAXTABLES As INTEGER = 4;
+
+Parameter ALTMAXCONDITIONS As INTEGER = 4;
+
+/// <p>The two class queries of <parameter>STATSCLASS</parameter> behind the possible plans and a plan's run statistics, and the procedures the instance
+/// answers them as, which a refusal for want of the SQL EXECUTE privilege names.</p>
+Parameter ALTLISTQUERY = "possiblePlans";
+
+Parameter ALTSTATSQUERY = "possiblePlansStats";
+
+Parameter ALTLISTPROCEDURE = "%SYS_PTools.PT_possiblePlans";
+
+Parameter ALTSTATSPROCEDURE = "%SYS_PTools.PT_possiblePlansStats";
+
+/// <p>The read of a view's text, a fixed statement with the relation's schema and name bound, and the table it names.</p>
+Parameter ALTVIEWQUERY = "SELECT ViewQuery FROM %Dictionary.CompiledClass WHERE UPPER(SqlSchemaName) = ? AND UPPER(SqlTableName) = ?";
+
+Parameter ALTVIEWTABLES = "%Dictionary.CompiledClass";
 
 /// <p>The save's query keys: the table's schema and name, and its staged changes as JSON array
 /// text.</p>
@@ -440,6 +473,11 @@ Parameter OUTCOMESTOPPED = "stopped";
 Parameter OUTCOMEPLAN = "plan";
 
 Parameter OUTCOMENOPLAN = "noplan";
+
+/// <p>The outcomes of Alternate plans' list and compare (Story 21.28); its one plan's text is <parameter>OUTCOMEPLAN</parameter>.</p>
+Parameter OUTCOMEPLANS = "plans";
+
+Parameter OUTCOMECOMPARED = "compared";
 
 /// <p>The SQLCODE the instance answers a statement its alarm stopped with.</p>
 Parameter ALARMSQLCODE As INTEGER = -450;
@@ -855,14 +893,19 @@ ClassMethod Run(pNamespace As %String, pText As %String, pValues As %DynamicArra
 /// <p>With <var>pAdvise</var> 1 the plan also carries <code>advice: {recognized, tables, findings, truncated}</code> (<method>Advised</method>),
 /// read from the plan as the instance explains it, which runs nothing. Only a <parameter>KINDQUERY</parameter> is taken: any other kind is refused
 /// (422 <code>EXPLORER.SQL.ADVICE</code>) before the plan is read, and <var>pAdvise</var> with <var>pStats</var> is the input refusal.</p>
-ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pStats As %Boolean = 0, pAdvise As %Boolean = 0) As %Status
+/// <p>With <var>pAlternates</var> 1 the statement's possible plans are answered instead (<method>Alternates</method>): <var>pPlanId</var> asks for one
+/// plan's text and <var>pCompare</var>, a <class>%DynamicArray</class> of plan numbers, for each plan's run statistics. <var>pAlternates</var> with
+/// <var>pStats</var> or <var>pAdvise</var>, <var>pPlanId</var> with <var>pCompare</var>, and either of those two without <var>pAlternates</var> are the
+/// input refusal.</p>
+ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pStats As %Boolean = 0, pAdvise As %Boolean = 0, pAlternates As %Boolean = 0, pPlanId As %String = "", pCompare As %DynamicArray = "") As %Status
 {
     Set pAnswer = ""
     Set pHttpStatus = 0
     Set pFault = ""
     Set tSC = $$$OK
     Try {
-        If pAdvise && pStats {
+        Set tCompares = $IsObject(pCompare)
+        If (pAdvise && pStats) || (pAlternates && (pStats || pAdvise)) || (tCompares && (pPlanId '= "")) || ('pAlternates && (tCompares || (pPlanId '= ""))) {
             Set tSC = ..RefuseFor("input", .pHttpStatus, .pFault)
             Quit
         }
@@ -885,6 +928,10 @@ ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %Dyn
         Do pAnswer.%Set("kind", tKind, "string")
         If (tKind '= ..#KINDQUERY) && (tKind '= ..#KINDDML) {
             Do pAnswer.%Set("outcome", ..#OUTCOMENOPLAN, "string")
+            Quit
+        }
+        If pAlternates {
+            Set tSC = ..Alternates(pNamespace, pText, tKind, tGuard, pPlanId, pCompare, .pAnswer, .pHttpStatus, .pFault)
             Quit
         }
         Set tBound = $Select(pStats: ..BoundSeconds(), 1: 0)
@@ -919,6 +966,312 @@ ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %Dyn
         Set tSC = ..Fail("the statement's plan could not be read", $$$ERROR($$$GeneralError, ex.Name), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>Alternate plans (Story 21.28), <method>Plan</method>'s case for <var>pAlternates</var>: <var>pKind</var> and <var>pGuard</var> are
+/// <method>Classify</method>'s for <var>pText</var> in <var>pNamespace</var>. Every check below answers before anything reaches the instance, in this
+/// order: the bound, a statement of more than <parameter>ALTMAXTABLES</parameter> tables or <parameter>ALTMAXCONDITIONS</parameter> conditions
+/// (<method>AlternateCounts</method>) refused 422 <code>EXPLORER.SQL.ALTBOUND</code>; for a compare, a kind other than a query (422
+/// <code>EXPLORER.SQL.ALTCOMPARE</code>), a list that is not one to <parameter>ALTMAXCOMPARE</parameter> distinct whole numbers (400
+/// <code>EXPLORER.SQL.ALTCOUNT</code>) and a table no condition joins (422 <code>EXPLORER.SQL.ALTJOIN</code>); for one plan, a number that is not whole
+/// (400 <code>EXPLORER.SQL.ALTPLAN</code>). The statement's possible plans are then read once, and a plan number the list does not hold is 400
+/// <code>EXPLORER.SQL.ALTPLAN</code>, before the plan's text or any run.</p>
+/// <p><var>pAnswer</var> is one of <code>{outcome: plans, kind, plans: [{Plan, Cost, MapType, StartingMap}], truncated}</code>, the first
+/// <parameter>ALTMAXPLANS</parameter> plans, nothing run; <code>{outcome: plan, kind, alternate, plan, truncated}</code>, the text of the one plan
+/// <var>pPlanId</var> names, cut at <parameter>MAXANSWER</parameter> characters, nothing run; <code>{outcome: compared, kind, plans: [{Plan, Cost,
+/// StartingMap, GlobalReferences, Commands, TotalTime, Rows}]}</code>, one row for each plan in <var>pCompare</var>, in its order, the statistics the
+/// instance's own text; <code>{outcome: stopped, kind, seconds}</code> when the compare's runs reached <method>BoundSeconds</method>, which is read after
+/// each run and ends the compare with no rows; or <code>{outcome: error, kind, sqlcode, message}</code> for any SQLCODE below 0. A compare runs the
+/// statement once for each plan, with no values, as <method>Compared</method> says.</p>
+ClassMethod Alternates(pNamespace As %String, pText As %String, pKind As %String, pGuard As %DynamicObject, pPlanId As %String, pCompare As %DynamicArray, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pAnswer = ""
+    Set tCompares = $IsObject(pCompare)
+    Set tSC = ..AlternateCounts(pNamespace, pText, pGuard, .tTables, .tConditions, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If (tTables > ..#ALTMAXTABLES) || (tConditions > ..#ALTMAXCONDITIONS) {
+        Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AtelierError).#SQLALTBOUND, ##class(OcuPilot.Api.AtelierError).AlternateBoundReason(..#ALTMAXTABLES, ..#ALTMAXCONDITIONS), .pHttpStatus, .pFault)
+    }
+    Set tIds = ""
+    If tCompares {
+        If pKind '= ..#KINDQUERY Quit ..RefuseFor("altcompare", .pHttpStatus, .pFault)
+        Set tIds = ..CompareIds(pCompare)
+        If $ListLength(tIds) = 0 Quit ..RefuseFor("altcount", .pHttpStatus, .pFault)
+        If ##class(OcuPilot.Port.SqlAlternateScan).CrossProduct(tTables, tConditions) Quit ..RefuseFor("altjoin", .pHttpStatus, .pFault)
+    }
+    If (pPlanId '= "") && '$Match(pPlanId, ..#WHOLEPATTERN) Quit ..RefuseFor("altplan", .pHttpStatus, .pFault)
+    Set tSC = ..PlansRead(pNamespace, ..#ALTLISTQUERY, pText, "", .tRows, .tCode, .tMessage, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If tCode < 0 {
+        Set pAnswer = ..ErrorAnswer(pKind, tCode, tMessage)
+        Quit $$$OK
+    }
+    Set tPlans = []
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tRow) {
+        Set tListed(+tRow.%Get(0)) = $ListBuild(..Plain(tRow.%Get(1)), ..Plain(tRow.%Get(2)), ..Plain(tRow.%Get(3)))
+        If tPlans.%Size() < ..#ALTMAXPLANS {
+            Set tPlan = {}
+            Do tPlan.%Set("Plan", +tRow.%Get(0), "number")
+            Do tPlan.%Set("Cost", ..Plain(tRow.%Get(1)), "string")
+            Do tPlan.%Set("MapType", ..Plain(tRow.%Get(2)), "string")
+            Do tPlan.%Set("StartingMap", ..Plain(tRow.%Get(3)), "string")
+            Do tPlans.%Push(tPlan)
+        }
+    }
+    If pPlanId '= "" {
+        If '$Data(tListed(+pPlanId)) Quit ..RefuseFor("altplan", .pHttpStatus, .pFault)
+        Quit ..PlanShown(pNamespace, pText, pKind, +pPlanId, .pAnswer, .pHttpStatus, .pFault)
+    }
+    If tCompares {
+        Set tUnlisted = 0
+        For tI = 1:1:$ListLength(tIds) {
+            If '$Data(tListed($List(tIds, tI))) Set tUnlisted = 1
+        }
+        If tUnlisted Quit ..RefuseFor("altplan", .pHttpStatus, .pFault)
+        Quit ..Compared(pNamespace, pText, pKind, tIds, .tListed, .pAnswer, .pHttpStatus, .pFault)
+    }
+    Set pAnswer = {}
+    Do pAnswer.%Set("outcome", ..#OUTCOMEPLANS, "string")
+    Do pAnswer.%Set("kind", pKind, "string")
+    Do pAnswer.%Set("plans", tPlans)
+    Do pAnswer.%Set("truncated", (tRows.%Size() > ..#ALTMAXPLANS), "boolean")
+    Quit $$$OK
+}
+
+/// <p>The tables and conditions of <var>pText</var> in <var>pNamespace</var> as <class>OcuPilot.Port.SqlAlternateScan</class> counts them, in
+/// <var>pTables</var> and <var>pConditions</var>: the text's own, and, when those are within the bounds, the text of each view <var>pGuard</var>'s relations
+/// name added to both. A view's text is read through <method>CheckedRows</method> with the relation's schema and name bound, so a caller without the SQL
+/// SELECT privilege on the dictionary table is the 403 of <method>SelectRefusal</method>.</p>
+ClassMethod AlternateCounts(pNamespace As %String, pText As %String, pGuard As %DynamicObject, Output pTables As %Integer, Output pConditions As %Integer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tScan = "OcuPilot.Port.SqlAlternateScan"
+    Set tRelations = pGuard.%Get("Tables")
+    Do $ClassMethod(tScan, "Count", pText, "", tRelations.%Size(), .pTables, .pConditions)
+    If (pTables > ..#ALTMAXTABLES) || (pConditions > ..#ALTMAXCONDITIONS) Quit $$$OK
+    Set tViews = []
+    Set tSC = $$$OK
+    Set tIterator = tRelations.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tRelation) {
+        Set tSC = ..CheckedRows(pNamespace, ..#ALTVIEWQUERY, [($ZConvert($Piece(tRelation, ".", 1), "U")), ($ZConvert($Piece(tRelation, ".", 2, *), "U"))], 10, "the text of a view", ..#ALTVIEWTABLES, .tRows, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tRowIterator = tRows.%GetIterator()
+        While tRowIterator.%GetNext(.tRowKey, .tRow) {
+            If tRow.%Get(0) '= "" Do tViews.%Push(tRow.%Get(0), "string")
+        }
+    }
+    If $$$ISERR(tSC) Quit tSC
+    Do $ClassMethod(tScan, "Count", pText, tViews, tRelations.%Size(), .pTables, .pConditions)
+    Quit $$$OK
+}
+
+/// <p>The plan numbers <var>pCompare</var> holds as a list, or an empty list when it holds none, more than <parameter>ALTMAXCOMPARE</parameter>, one that
+/// is not a whole number (a JSON number or a string of digits) or one twice.</p>
+ClassMethod CompareIds(pCompare As %DynamicArray) As %List [ Private ]
+{
+    Set tIds = ""
+    If (pCompare.%Size() < 1) || (pCompare.%Size() > ..#ALTMAXCOMPARE) Quit ""
+    Set tIterator = pCompare.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue, .tType) {
+        If ((tType '= "number") && (tType '= "string")) || '$Match(tValue, ..#WHOLEPATTERN) Return ""
+        If $ListFind(tIds, +tValue) Return ""
+        Set tIds = tIds _ $ListBuild(+tValue)
+    }
+    Quit tIds
+}
+
+/// <p><var>pText</var> without the white space the vendor's cells carry at either end.</p>
+ClassMethod Plain(pText As %String) As %String [ Private ]
+{
+    Quit $ZStrip(pText, "<>W")
+}
+
+/// <p>The rows of the class query <var>pQuery</var> of <parameter>STATSCLASS</parameter> for <var>pText</var> and, for the statistics query,
+/// <var>pIds</var>, in <var>pRows</var> (<method>PlansVendor</method>), with <var>pCode</var> and <var>pMessage</var> the instance's SQLCODE and message. A
+/// -99, the instance refusing the caller the query's procedure, is the 403 of <method>ExecuteRefusal</method>; any other SQLCODE is the caller's to
+/// answer, and a failed read is the internal fault.</p>
+ClassMethod PlansRead(pNamespace As %String, pQuery As %String, pText As %String, pIds As %String, Output pRows As %DynamicArray, Output pCode As %Integer, Output pMessage As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tSC = ..PlansVendor(pNamespace, pQuery, pText, pIds, .pRows, .pCode, .pMessage)
+    If $$$ISERR(tSC) Quit ..Fail("the possible plans could not be read", tSC, .pHttpStatus, .pFault)
+    If pCode = ..#PRIVILEGESQLCODE Quit ..ExecuteRefusal($Select(pQuery = ..#ALTSTATSQUERY: ..#ALTSTATSPROCEDURE, 1: ..#ALTLISTPROCEDURE), .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The class query <var>pQuery</var> of <parameter>STATSCLASS</parameter> run in <var>pNamespace</var>, prepared with the instance's privilege check
+/// (<code>%PrepareClassQuery</code>), with <var>pText</var> and, when it is not empty, <var>pIds</var> as its values: every row as an array of text
+/// cells in <var>pRows</var>, and in <var>pCode</var> and <var>pMessage</var> the SQLCODE of the prepare or the run, 0 when it succeeded. The
+/// instance writes a page to the current device for a statement it cannot explain, so the run is made under the null device, which is restored with the
+/// namespace on every path; a transaction it leaves open is rolled back and <code>%AltPlan</code>, which the query leaves behind, is killed. The
+/// returned status is an unexpected failure. Overridable so a fixture can count the calls; production overrides none. The switched region calls vendor
+/// classes only.</p>
+ClassMethod PlansVendor(pNamespace As %String, pQuery As %String, pText As %String, pIds As %String, Output pRows As %DynamicArray, Output pCode As %Integer, Output pMessage As %String) As %Status [ Private ]
+{
+    Set pRows = []
+    Set pCode = 0
+    Set pMessage = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Set tDevice = $IO
+    Set tMnemonic = ##class(%Library.Device).GetMnemonicRoutine()
+    Set tNull = ##class(%Library.Device).GetNullDevice()
+    Set tHeld = ##class(OcuPilot.Kernel.Utils).DeviceIsOpen(tNull)
+    Set (tOpened, tSwitched) = 0
+    Set tRedirected = ##class(%Library.Device).ReDirectIO(0)
+    Set tLevel = $TLevel
+    Try {
+        If $Piece(tDevice, ":", 1) '= tNull {
+            If 'tHeld {
+                Open tNull::1
+                If '$Test {
+                    Set tSC = $$$ERROR($$$GeneralError, "the null device could not be opened")
+                    Quit
+                }
+                Set tOpened = 1
+            }
+            Use tNull
+            Set tSwitched = 1
+        }
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tPrepared = tStatement.%PrepareClassQuery(..#STATSCLASS, pQuery)
+        If $$$ISERR(tPrepared) {
+            Set pCode = $System.Status.StatusToSQLCODE(tPrepared, .pMessage)
+        } Else {
+            Set tResult = $Select(pIds = "": tStatement.%Execute(pText), 1: tStatement.%Execute(pText, pIds))
+            Set pCode = tResult.%SQLCODE
+            While (pCode >= 0) && tResult.%Next() {
+                Set tRow = []
+                For tI = 1:1:tResult.%ResultColumnCount Do tRow.%Push(tResult.%GetData(tI), "string")
+                Do pRows.%Push(tRow)
+            }
+            If pCode >= 0 Set pCode = $Select(tResult.%SQLCODE < 0: tResult.%SQLCODE, 1: 0)
+            If pCode < 0 Set pMessage = tResult.%Message
+            Set tResult = ""
+        }
+        Set tStatement = ""
+    } Catch ex {
+        Set pRows = []
+        Set pCode = 0
+        Set pMessage = ""
+        Set tSC = $$$ERROR($$$GeneralError, "the possible plans read raised " _ ex.Name)
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Kill %AltPlan
+    While $TLevel > tLevel {
+        TRollback 1
+    }
+    If tSwitched {
+        If tMnemonic '= "" {
+            Use tDevice::("^" _ tMnemonic)
+        } Else {
+            Use tDevice
+        }
+    }
+    If tOpened Close tNull
+    Do ##class(%Library.Device).ReDirectIO(tRedirected)
+    Quit tSC
+}
+
+/// <p>The 403 of a read the instance refused the caller for want of the SQL EXECUTE privilege on the procedure <var>pProcedure</var>:
+/// <code>SQL.EXECUTE.PRIVILEGE</code> with the sentence <method>OcuPilot.Api.AtelierError.ExecutePrivilegeReason</method> composes, which is also
+/// <code>detail.reason</code> beside <code>detail.procedure</code>. Nothing of the instance's error text reaches the answer.</p>
+ClassMethod ExecuteRefusal(pProcedure As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tReason = ##class(OcuPilot.Api.AtelierError).ExecutePrivilegeReason(pProcedure)
+    Set tDetail = {}
+    Do tDetail.%Set("procedure", pProcedure, "string")
+    Do tDetail.%Set("reason", tReason, "string")
+    Quit ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.AtelierError).#SQLEXECUTEPRIVILEGE, tReason, .pHttpStatus, .pFault, tDetail)
+}
+
+/// <p>The text of the one plan <var>pPlanId</var> of <var>pText</var> in <var>pNamespace</var>, from <code>$SYSTEM.SQL.Explain</code> with the
+/// <code>alt</code> and <code>ids</code> qualifiers, the plan number as plain text (<method>Explained</method>); <var>pAnswer</var> is
+/// <code>{outcome: plan, kind, alternate, plan, truncated}</code> or the <code>error</code> outcome. Nothing runs.</p>
+ClassMethod PlanShown(pNamespace As %String, pText As %String, pKind As %String, pPlanId As %Integer, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = ..Explained(pNamespace, pText, .tPlan, .tCode, .tMessage, 0, 0, .tStopped, pPlanId)
+    If $$$ISERR(tSC) Quit ..Fail("the plan could not be read", tSC, .pHttpStatus, .pFault)
+    If tCode '= "" {
+        Set pAnswer = ..ErrorAnswer(pKind, tCode, tMessage)
+        Quit $$$OK
+    }
+    Set pAnswer = {}
+    Do pAnswer.%Set("outcome", ..#OUTCOMEPLAN, "string")
+    Do pAnswer.%Set("kind", pKind, "string")
+    Do pAnswer.%Set("alternate", pPlanId, "number")
+    Do pAnswer.%Set("plan", $Extract(tPlan, 1, ..#MAXANSWER), "string")
+    Do pAnswer.%Set("truncated", ($Length(tPlan) > ..#MAXANSWER), "boolean")
+    Quit $$$OK
+}
+
+/// <p>The run statistics of the plans <var>pIds</var> (a list of plan numbers every one of which <var>pListed</var>, an array keyed by plan number
+/// holding <code>$ListBuild(cost, map type, starting map)</code>, names) of <var>pText</var> in <var>pNamespace</var>. The instance runs the statement's
+/// own text, the one <code>$SYSTEM.SQL.Explain</code> gives with its literals replaced by <code>?</code>
+/// (<method>OcuPilot.Port.SqlAlternateScan.StatementText</method>) so each plan number names the plan the list showed, with
+/// <code>%NOPARALLEL</code> after each FROM so it starts no parallel workers, and without values: a <code>?</code> runs as nothing. The statistics query
+/// is called once for each plan, in order, and the elapsed seconds are read after each run: once they reach <method>BoundSeconds</method> the compare
+/// answers <code>{outcome: stopped, kind, seconds}</code> and runs no further plan. The cost and starting map of a row are the list's, the statistics the
+/// instance's own text, blank for a plan that recorded none. Any SQLCODE below 0 is the <code>error</code> outcome.</p>
+ClassMethod Compared(pNamespace As %String, pText As %String, pKind As %String, pIds As %List, ByRef pListed, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tScan = "OcuPilot.Port.SqlAlternateScan"
+    Set tSC = ..Explained(pNamespace, pText, .tPlan, .tCode, .tMessage)
+    If $$$ISERR(tSC) Quit ..Fail("the statement's own text could not be read", tSC, .pHttpStatus, .pFault)
+    If tCode '= "" {
+        Set pAnswer = ..ErrorAnswer(pKind, tCode, tMessage)
+        Quit $$$OK
+    }
+    Set tOwn = $ClassMethod(tScan, "StatementText", tPlan)
+    If tOwn = "" Quit ..Fail("the statement's own text is not in its plan", $$$ERROR($$$GeneralError, "no statement text in the plan"), .pHttpStatus, .pFault)
+    Set tCompare = $ClassMethod(tScan, "NoParallel", tOwn)
+    Set tBound = ..BoundSeconds()
+    Set tStart = $ZHorolog
+    Set tRows = []
+    Set tAnswered = 0
+    For tI = 1:1:$ListLength(pIds) {
+        Set tId = $List(pIds, tI)
+        Set tSC = ..PlansRead(pNamespace, ..#ALTSTATSQUERY, tCompare, tId, .tStats, .tCode, .tMessage, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If tCode < 0 {
+            Set pAnswer = ..ErrorAnswer(pKind, tCode, tMessage)
+            Set tAnswered = 1
+            Quit
+        }
+        Set tStat = ""
+        Set tIterator = tStats.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tCandidate) {
+            If (tStat = "") && (+tCandidate.%Get(0) = tId) Set tStat = tCandidate
+        }
+        Set tCompared = {}
+        Do tCompared.%Set("Plan", tId, "number")
+        Do tCompared.%Set("Cost", $List(pListed(tId), 1), "string")
+        Do tCompared.%Set("StartingMap", $List(pListed(tId), 3), "string")
+        Do tCompared.%Set("GlobalReferences", $Select($IsObject(tStat): ..Plain(tStat.%Get(3)), 1: ""), "string")
+        Do tCompared.%Set("Commands", $Select($IsObject(tStat): ..Plain(tStat.%Get(4)), 1: ""), "string")
+        Do tCompared.%Set("TotalTime", $Select($IsObject(tStat): ..Plain(tStat.%Get(5)), 1: ""), "string")
+        Do tCompared.%Set("Rows", $Select($IsObject(tStat): ..Plain(tStat.%Get(6)), 1: ""), "string")
+        Do tRows.%Push(tCompared)
+        If (tBound > 0) && (($ZHorolog - tStart) >= tBound) {
+            Set pAnswer = {}
+            Do pAnswer.%Set("outcome", ..#OUTCOMESTOPPED, "string")
+            Do pAnswer.%Set("kind", pKind, "string")
+            Do pAnswer.%Set("seconds", tBound, "number")
+            Set tAnswered = 1
+            Quit
+        }
+    }
+    If $$$ISERR(tSC) Quit tSC
+    If tAnswered Quit $$$OK
+    Set pAnswer = {}
+    Do pAnswer.%Set("outcome", ..#OUTCOMECOMPARED, "string")
+    Do pAnswer.%Set("kind", pKind, "string")
+    Do pAnswer.%Set("plans", tRows)
+    Quit $$$OK
 }
 
 /// <p>The advice for <var>pPlan</var>, the text of a query's plan in <var>pNamespace</var>: <code>{recognized, tables, findings, truncated}</code>.
@@ -2856,9 +3209,10 @@ ClassMethod Executed(pNamespace As %String, pText As %String, pType As %Integer,
 /// module's statistics, under an alarm of <var>pBound</var> seconds when that is above 0, and
 /// <var>pStopped</var> is 1 when the alarm stopped the run: the instance reports that inside the plan
 /// text, in its error status or as an <code>&lt;ALARM&gt;</code> exception. The run takes no values, and a
-/// transaction it leaves open is rolled back to the level it started at, as <method>Executed</method> does. The
+/// transaction it leaves open is rolled back to the level it started at, as <method>Executed</method> does. With <var>pIds</var>, plain text naming
+/// possible plans, <var>pPlan</var> is the text of those plans alone. The
 /// switched region calls vendor classes only.</p>
-ClassMethod Explained(pNamespace As %String, pText As %String, Output pPlan As %String, Output pCode As %String, Output pMessage As %String, pStats As %Boolean = 0, pBound As %Integer = 0, Output pStopped As %Boolean) As %Status [ Private ]
+ClassMethod Explained(pNamespace As %String, pText As %String, Output pPlan As %String, Output pCode As %String, Output pMessage As %String, pStats As %Boolean = 0, pBound As %Integer = 0, Output pStopped As %Boolean, pIds As %String = "") As %Status [ Private ]
 {
     Set pPlan = ""
     Set pCode = ""
@@ -2873,6 +3227,10 @@ ClassMethod Explained(pNamespace As %String, pText As %String, Output pPlan As %
         Set tText = pText
         Set tPlan = ""
         Set tQualifiers = {"silent": 1}
+        If pIds '= "" {
+            Do tQualifiers.%Set("alt", 1, "number")
+            Do tQualifiers.%Set("ids", pIds, "string")
+        }
         If pStats {
             Do tQualifiers.%Set("stats", 1, "number")
             If pBound > 0 {
@@ -2897,9 +3255,11 @@ ClassMethod Explained(pNamespace As %String, pText As %String, Output pPlan As %
             Set pPlan = $Get(tPlan)
             If pStats && (pPlan [ ("SQLCODE=" _ ..#ALARMSQLCODE)) Set pStopped = 1
         }
+        If pIds '= "" Kill %AltPlan
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
+        If pIds '= "" Kill %AltPlan
         If tAlarmed Do $System.Alarm.Clear()
         While $TLevel > tLevel {
             TRollback 1
@@ -2967,7 +3327,9 @@ ClassMethod Closed(pNamespace As %String, ByRef pStatement) [ Private ]
 /// <code>EXPLORER.SQL.READS</code>), <code>agentcode</code> (422 <code>EXPLORER.SQL.AGENTCODE</code>),
 /// <code>notprepared</code> (422 <code>EXPLORER.SQL.NOTPREPARED</code>) and <code>parameters</code>
 /// (422 <code>EXPLORER.SQL.PARAMETERS</code>), <code>planstats</code> (422 <code>EXPLORER.SQL.PLANSTATS</code>) and <code>advice</code> (422
-/// <code>EXPLORER.SQL.ADVICE</code>), <var>pDetail</var> becoming the fault's
+/// <code>EXPLORER.SQL.ADVICE</code>), and Alternate plans' <code>altcompare</code> (422 <code>EXPLORER.SQL.ALTCOMPARE</code>), <code>altjoin</code> (422
+/// <code>EXPLORER.SQL.ALTJOIN</code>), <code>altplan</code> (400 <code>EXPLORER.SQL.ALTPLAN</code>) and <code>altcount</code> (400
+/// <code>EXPLORER.SQL.ALTCOUNT</code>), <var>pDetail</var> becoming the fault's
 /// <code>detail</code> when supplied. A tool names this method rather than the error class, which only
 /// a port may name.</p>
 ClassMethod RefuseFor(pWhich As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pDetail As %DynamicObject = "") As %Status
@@ -2982,6 +3344,11 @@ ClassMethod RefuseFor(pWhich As %String, Output pHttpStatus As %Integer, Output 
     If pWhich = "parameters" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLPARAMETERS"), $Parameter(tError, "REASONSQLPARAMETERS"), .pHttpStatus, .pFault, pDetail)
     If pWhich = "planstats" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLPLANSTATS"), $Parameter(tError, "REASONSQLPLANSTATS"), .pHttpStatus, .pFault, pDetail)
     If pWhich = "advice" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLADVICE"), $Parameter(tError, "REASONSQLADVICE"), .pHttpStatus, .pFault, pDetail)
+    If pWhich = "altcompare" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLALTCOMPARE"), $Parameter(tError, "REASONSQLALTCOMPARE"), .pHttpStatus, .pFault, pDetail)
+    If pWhich = "altjoin" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLALTJOIN"), $Parameter(tError, "REASONSQLALTJOIN"), .pHttpStatus, .pFault, pDetail)
+    Set tBadRequest = ##class(OcuPilot.Api.Error).#BADREQUEST
+    If pWhich = "altplan" Quit ..Refuse(400, tBadRequest, $Parameter(tError, "SQLALTPLAN"), $Parameter(tError, "REASONSQLALTPLAN"), .pHttpStatus, .pFault, pDetail)
+    If pWhich = "altcount" Quit ..Refuse(400, tBadRequest, $Parameter(tError, "SQLALTCOUNT"), $Parameter(tError, "REASONSQLALTCOUNT"), .pHttpStatus, .pFault, pDetail)
     Quit ..Fail("an agent tool asked for a refusal the port does not publish", $$$ERROR($$$GeneralError, pWhich), .pHttpStatus, .pFault)
 }
 

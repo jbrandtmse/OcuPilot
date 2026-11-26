@@ -111,11 +111,18 @@ ClassMethod Grant() As %Status
     Quit tSC
 }
 
-/// <p>Revoke the principal's SELECT on each of <parameter>READTABLES</parameter>; a revoke of a privilege it does not hold is not an error.</p>
+/// <p>The two procedures Alternate plans' reads call (Story 21.28), on each of which the principal is granted EXECUTE by the test that needs it.</p>
+Parameter PROCEDURES = "%SYS_PTools.PT_possiblePlans,%SYS_PTools.PT_possiblePlansStats";
+
+/// <p>Revoke the principal's SELECT on each of <parameter>READTABLES</parameter> and its EXECUTE on each of <parameter>PROCEDURES</parameter>; a revoke of a
+/// privilege it does not hold is not an error.</p>
 ClassMethod Revoke() As %Status
 {
     For tI = 1:1:$Length(..#READTABLES, ",") {
         Do ..InNamespace("REVOKE SELECT ON " _ $Piece(..#READTABLES, ",", tI) _ " FROM " _ ..#USER)
+    }
+    For tI = 1:1:$Length(..#PROCEDURES, ",") {
+        Do ..InNamespace("REVOKE EXECUTE ON " _ $Piece(..#PROCEDURES, ",", tI) _ " FROM " _ ..#USER)
     }
     Quit $$$OK
 }
@@ -195,6 +202,14 @@ ClassMethod Probe(pParent As %Integer, pUsername As %String, pNamespace As %Stri
         Set tFault = ""
         Set tSC = $ClassMethod(..#PORT, "Plan", pNamespace, ..#ADVISE, .tAnswer, .tHttp, .tFault, 0, 1)
         Do tOut.%Set("advice", ..Leg($Select($IsObject(tFault): tHttp, 1: 200), tFault) _$Select($IsObject($Get(tAnswer)) && $IsObject(tAnswer.%Get("advice")): "|findings=" _ (tAnswer.advice.findings.%Size() > 0), 1: ""))
+        Set tAnswer = ""
+        Set tFault = ""
+        Set tSC = $ClassMethod(..#PORT, "Plan", pNamespace, ..#ADVISE, .tAnswer, .tHttp, .tFault, 0, 0, 1)
+        Do tOut.%Set("alternates", ..Leg($Select($IsObject(tFault): tHttp, 1: 200), tFault) _ $Select($IsObject($Get(tAnswer)) && (tAnswer.%Get("outcome") = "plans"): "|plans=" _ (tAnswer.plans.%Size() > 0), 1: ""))
+        Set tAnswer = ""
+        Set tFault = ""
+        Set tSC = $ClassMethod(..#PORT, "Plan", pNamespace, ..#ADVISE, .tAnswer, .tHttp, .tFault, 0, 0, 1, "", [1])
+        Do tOut.%Set("compare", ..Leg($Select($IsObject(tFault): tHttp, 1: 200), tFault))
         Do ##class(OcuPilot.Kernel.Scope).Set(pNamespace)
         Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("explorer.sqladvice.read", .tTool)
         If $$$ISERR(tSC) || '$IsObject($Get(tTool)) {
@@ -238,6 +253,7 @@ Method TestAPrincipalWithoutSelectIsRefusedEachCheckedReadNamingItsTables()
     Set tAdvice = "403|" _ tCode _ "|" _ ..Sentence("%Dictionary.CompiledClass")
     Do $$$AssertEquals(tProbe.%Get("advice"), tAdvice, "the plan with advice is refused naming the class table")
     Do $$$AssertEquals(tProbe.%Get("tool"), tAdvice, "so is the agent's advice read")
+    Do $$$AssertEquals(tProbe.%Get("alternates") _ "~" _ tProbe.%Get("compare"), tAdvice _ "~" _ tAdvice, "and the list and the compare of Alternate plans, which read a view's text from the class table first")
     Set tContent = ""
     Try { Set tContent = ##class(%DynamicObject).%FromJSON(tProbe.%Get("content")) } Catch {}
     Do $$$AssertTrue($IsObject(tContent) && (tContent.%Get("code") = tCode) && $IsObject(tContent.%Get("detail")) && (tContent.detail.%Get("reason") = ..Sentence("%Dictionary.CompiledClass")), "the model's tool result carries the code and the same sentence: " _ tProbe.%Get("content"))
@@ -262,6 +278,24 @@ Method TestTheSameReadsAnswerOnceTheSelectPrivilegeIsGranted()
     Do $$$AssertEquals(tProbe.%Get("advice"), "200|findings=1", "the plan with advice answers with findings: " _ tProbe.%ToJSON())
     Do $$$AssertEquals(tProbe.%Get("tool"), 200, "the agent's advice read answers")
     Do $$$AssertTrue(tProbe.%Get("mint") '[ ##class(OcuPilot.Api.AtelierError).#SQLSELECTPRIVILEGE, "and the agent's proposal of a report run is no longer refused for want of the privilege: " _ tProbe.%Get("mint"))
+}
+
+/// <p>Alternate plans (Story 21.28): a principal holding SELECT but not EXECUTE on the procedure behind the possible plans is refused the list and the
+/// compare 403 <code>SQL.EXECUTE.PRIVILEGE</code> naming that procedure; granted EXECUTE on it alone, it is answered the list and refused the compare naming the
+/// statistics procedure, which nothing ran for.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.PlansRead</code> answers the error outcome for SQLCODE -99 -> the refusal legs go red.</p>
+Method TestAPrincipalWithoutExecuteIsRefusedAlternatePlansNamingTheProcedure()
+{
+    Set tCode = ##class(OcuPilot.Api.AtelierError).#SQLEXECUTEPRIVILEGE
+    Set tList = "403|" _ tCode _ "|Reading this needs the SQL EXECUTE privilege on %SYS_PTools.PT_possiblePlans."
+    Set tStats = "403|" _ tCode _ "|Reading this needs the SQL EXECUTE privilege on %SYS_PTools.PT_possiblePlansStats."
+    Do $$$AssertStatusOK(..Grant(), "SELECT is granted on the five tables")
+    Set tProbe = ..ProbeAs()
+    Do $$$AssertEquals(tProbe.%Get("error") _ "|" _ tProbe.%Get("username"), "|" _ ..#USER, "the probe ran as the principal: " _ tProbe.%ToJSON())
+    Do $$$AssertEquals(tProbe.%Get("alternates") _ "~" _ tProbe.%Get("compare"), tList _ "~" _ tList, "with no EXECUTE the list and the compare are refused naming the list's procedure")
+    Do $$$AssertStatusOK(..InNamespace("GRANT EXECUTE ON %SYS_PTools.PT_possiblePlans TO " _ ..#USER), "EXECUTE is granted on the list's procedure")
+    Set tProbe = ..ProbeAs()
+    Do $$$AssertEquals(tProbe.%Get("alternates") _ "~" _ tProbe.%Get("compare"), "200|plans=1~" _ tStats, "the list answers and the compare is refused naming the statistics procedure: " _ tProbe.%ToJSON())
 }
 
 /// <p>A principal granted SELECT on the dictionary's class table but not its index table is refused the advice's second read, and the sentence names the

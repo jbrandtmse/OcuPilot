@@ -221,6 +221,8 @@ Method TestTheGateAndAnUngrantedTable()
         Do ..Post(tPath, {"statement": "SELECT Name FROM OcuProbe196.Granted"}, .tStatus, .tAnswer, .tType, "USER", $Parameter(..#PROBE, "NODEVUSER"))
         Do $$$AssertEquals(..Code(tStatus, tAnswer) _ " " _ $Select($IsObject(tAnswer) && $IsObject(tAnswer.%Get("detail")): tAnswer.detail.%Get("failedPair"), 1: ""), "403 AUTH.NOPRIVILEGE %Development:USE", tPath _ " without %Development:USE")
     }
+    Do ..Post(..#PLAN, {"statement": "SELECT Name FROM OcuProbe196.Granted", "alternates": true}, .tStatus, .tAnswer, .tType, "USER", $Parameter(..#PROBE, "NODEVUSER"))
+    Do $$$AssertEquals(..Code(tStatus, tAnswer) _ " " _ $Select($IsObject(tAnswer) && $IsObject(tAnswer.%Get("detail")): tAnswer.detail.%Get("failedPair"), 1: ""), "403 AUTH.NOPRIVILEGE %Development:USE", "the plan route's alternate plans without %Development:USE (Story 21.28)")
     Set tUser = $Parameter(..#PROBE, "USER")
     Do ..Post(..#RUN, {"statement": "SELECT Name FROM OcuProbe196.Granted WHERE Num = 1"}, .tStatus, .tAnswer, .tType, "USER", tUser)
     Do $$$AssertEquals(..Line(tStatus, tAnswer), "200 {""kind"":""query"",""outcome"":""rows"",""columns"":[""Name""],""rows"":[[""n1""]],""truncated"":false}", "the principal reads the granted table")
