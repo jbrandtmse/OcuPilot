@@ -98,17 +98,87 @@ Method TestAViewAddsItsOwnCounts()
     Do $$$AssertEquals(..Counts("SELECT * FROM v", ["SELECT * FROM t1", "SELECT * FROM t2 JOIN t3 ON t2.a = t3.a"], 3), "4/1", "every view's text is added")
 }
 
-/// <p>A table joined by no condition: fewer conditions than tables minus one.</p>
+/// <p>A table no join reaches: fewer joins than tables minus one.</p>
 /// <p>Mutation (Rule 19): <code>CrossProduct</code> compares with the tables, not the tables minus one -> the boundary legs go red.</p>
-Method TestACrossProductIsFewerConditionsThanTablesMinusOne()
+Method TestACrossProductIsFewerJoinsThanTablesMinusOne()
 {
-    Do $$$AssertEquals($ClassMethod(..#SCAN, "CrossProduct", 1, 0), 0, "one table needs no condition")
-    Do $$$AssertEquals($ClassMethod(..#SCAN, "CrossProduct", 2, 0), 1, "two tables and no condition")
-    Do $$$AssertEquals($ClassMethod(..#SCAN, "CrossProduct", 2, 1), 0, "two tables and one condition")
-    Do $$$AssertEquals($ClassMethod(..#SCAN, "CrossProduct", 3, 1), 1, "three tables and one condition")
-    Do $$$AssertEquals($ClassMethod(..#SCAN, "CrossProduct", 3, 2), 0, "three tables and two conditions")
-    Do $$$AssertEquals($ClassMethod(..#SCAN, "CrossProduct", 4, 4), 0, "more conditions than tables")
+    Do $$$AssertEquals($ClassMethod(..#SCAN, "CrossProduct", 1, 0), 0, "one table needs no join")
+    Do $$$AssertEquals($ClassMethod(..#SCAN, "CrossProduct", 2, 0), 1, "two tables and no join")
+    Do $$$AssertEquals($ClassMethod(..#SCAN, "CrossProduct", 2, 1), 0, "two tables and one join")
+    Do $$$AssertEquals($ClassMethod(..#SCAN, "CrossProduct", 3, 1), 1, "three tables and one join")
+    Do $$$AssertEquals($ClassMethod(..#SCAN, "CrossProduct", 3, 2), 0, "three tables and two joins")
+    Do $$$AssertEquals($ClassMethod(..#SCAN, "CrossProduct", 4, 4), 0, "more joins than tables")
     Do $$$AssertEquals($ClassMethod(..#SCAN, "CrossProduct", 3, 0), 1, "a three-table cross join")
+}
+
+/// <p>Whether <var>pText</var> (and the view texts <var>pViews</var>) leaves a table no join reaches, as <method>Count</method> answers it.</p>
+ClassMethod Cross(pText As %String, pViews As %DynamicArray = "") As %Boolean
+{
+    Do $ClassMethod(..#SCAN, "Count", pText, pViews, 0, .tTables, .tConditions, .tCross)
+    Quit tCross
+}
+
+/// <p>Only a comparison of two qualified columns of different qualifiers, standing as a conjunct, is a join: a filter on one table is not, however many
+/// there are, and a shape the scan cannot read is not counted, so it is refused.</p>
+/// <p>Mutation (Rule 19): <code>Count</code> reads <code>CrossProduct</code> over the conditions, not the joins -> the filter-only legs go red.</p>
+Method TestOnlyAComparisonOfTwoTablesIsAJoin()
+{
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t"), 0, "one table needs no join")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.x = 5"), 1, "a filter on one of two tables joins nothing")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b, t c WHERE a.x = 1 AND b.x = 2"), 1, "two filters over three tables are two conditions and no join")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b, t c, t d WHERE a.x = b.x AND b.y = 1 AND c.y = 2"), 1, "one join and two filters over four tables")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.x = b.x"), 0, "two tables joined")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b, t c, t d WHERE a.x = b.x AND b.x = c.x AND c.x = d.x"), 0, "four tables joined by three")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b, t c, t d WHERE a.x = b.x AND b.x = c.x"), 1, "four tables joined by two")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM a JOIN b ON a.x = b.x JOIN c ON b.y = c.y"), 0, "JOIN ... ON")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM a JOIN b ON a.x = 1"), 1, "an ON that filters one table")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM a JOIN b ON a.x = b.x AND a.y = 1 WHERE b.z = 2"), 0, "a join among filters")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM a JOIN b USING (x)"), 0, "USING is a join")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.x = a.y"), 1, "two columns of one table")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE x = y"), 1, "columns with no qualifier cannot be told apart")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE s.a.x = b.x"), 1, "a column of three parts")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.x = 'b.x'"), 1, "a string literal is not a column")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE 1 = 1 /* a.x = b.x */"), 1, "nor is a comment")
+    For tOperator = "=", "<", ">", "<=", ">=", "<>", "!=" {
+        Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.x " _ tOperator _ " b.x"), 0, "the comparison " _ tOperator)
+    }
+}
+
+/// <p>A join an OR, a NOT or an expression can make optional, or that is not a comparison of two plain columns, is not counted.</p>
+/// <p>Mutation (Rule 19): <code>Conjunct</code> skips its backward OR scan -> the legs with an OR before the join go red; skips its forward OR scan -> the
+/// "an OR outside its parentheses" leg goes red.</p>
+Method TestAJoinThatIsNotACertainConjunctIsNotCounted()
+{
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.x = b.x OR a.y = 1"), 1, "an OR after it")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.y = 1 OR a.x = b.x"), 1, "an OR before it")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.y = 1 OR c = 2 AND a.x = b.x"), 1, "an OR earlier in the clause")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.y = 1 ! a.x = b.x"), 1, "! is OR")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.y != 1 AND a.x = b.x"), 0, "but the ! of != is not")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.y = 1 & a.x = b.x"), 0, "& is AND")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.y = 1 AND (a.x = b.x OR b.z = 2)"), 1, "an OR inside its parentheses")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE (a.x = b.x) OR a.y = 1"), 1, "an OR outside its parentheses")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.y = 1 OR (a.x = b.x)"), 1, "parentheses after an OR")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE (a.x = b.x) AND a.y = 1"), 0, "parentheses around a join")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.y = 1 AND ((a.x = b.x))"), 0, "and around those")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE NOT a.x = b.x"), 1, "a NOT before it")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE NOT (a.x = b.x)"), 1, "a NOT before its parentheses")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.x + 1 = b.x"), 1, "an expression on the left")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.x = b.x + 1"), 1, "an expression on the right")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.x = b.x ORDER BY a.x"), 0, "a clause end after it")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a, t b WHERE a.x IN (b.x, 2)"), 1, "a list is not a comparison")
+}
+
+/// <p>A subquery and a view are read as texts of their own: a correlated subquery joins its table, one that nothing correlates does not, and each view's
+/// text must join its own tables.</p>
+/// <p>Mutation (Rule 19): <code>Count</code> ignores the views' joins -> the view leg goes red.</p>
+Method TestASubqueryAndAViewAreReadForTheirOwnJoins()
+{
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a WHERE EXISTS (SELECT 1 FROM u b WHERE b.x = a.x)"), 0, "a correlated subquery")
+    Do $$$AssertEquals(..Cross("SELECT 1 FROM t a WHERE a.x IN (SELECT y FROM u)"), 1, "a subquery nothing correlates")
+    Do $$$AssertEquals(..Cross("SELECT * FROM v", ["SELECT * FROM t a, t b WHERE a.x = 1"]), 1, "a view that filters its tables and joins none")
+    Do $$$AssertEquals(..Cross("SELECT * FROM v", ["SELECT * FROM t a, t b WHERE a.x = b.x"]), 0, "a view that joins them")
+    Do $$$AssertEquals(..Cross("SELECT * FROM v", ["SELECT * FROM t"]), 0, "a view of one table")
+    Do $$$AssertEquals(..Cross("SELECT * FROM v, w", ["SELECT * FROM t"]), 1, "two views and no join between them")
 }
 
 /// <p>The keyword is inserted after the FROM that opens a FROM clause, in a subquery and a derived table too, and nowhere else: not after a function's FROM,

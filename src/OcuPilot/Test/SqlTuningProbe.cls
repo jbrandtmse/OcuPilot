@@ -967,6 +967,22 @@ ClassMethod MakeAlternateView(pNamespace As %String) As %Status
     Quit ..RunIn(pNamespace, "CREATE VIEW " _ ..#ALTERNATEVIEW _ " AS SELECT a.A AS A FROM " _ ..#ALTERNATETABLE _ " a, " _ ..#ALTERNATETABLE _ " b, " _ ..#ALTERNATETABLE _ " c, " _ ..#ALTERNATETABLE _ " d WHERE a.B = b.B AND b.B = c.B AND c.B = d.B")
 }
 
+/// <p>The view <method>MakeAlternateTwoTableViews</method> makes over two aliases of <parameter>ALTERNATETABLE</parameter> with a filter on each and no join.</p>
+Parameter ALTERNATEFILTERVIEW = "OcuProbe228.F";
+
+/// <p>The view <method>MakeAlternateTwoTableViews</method> makes over two aliases of <parameter>ALTERNATETABLE</parameter> joined on <code>B</code>.</p>
+Parameter ALTERNATEJOINVIEW = "OcuProbe228.J";
+
+/// <p>Create <parameter>ALTERNATEFILTERVIEW</parameter> and <parameter>ALTERNATEJOINVIEW</parameter> in <var>pNamespace</var>, whose table
+/// <method>MakeAlternates</method> made. <method>RemoveAlternates</method> drops them.</p>
+ClassMethod MakeAlternateTwoTableViews(pNamespace As %String) As %Status
+{
+    Set tFrom = ..#ALTERNATETABLE _ " a, " _ ..#ALTERNATETABLE _ " b WHERE "
+    Set tSC = ..RunIn(pNamespace, "CREATE VIEW " _ ..#ALTERNATEFILTERVIEW _ " AS SELECT a.A AS A FROM " _ tFrom _ "a.B = 5 AND b.B = 5")
+    If $$$ISERR(tSC) Quit tSC
+    Quit ..RunIn(pNamespace, "CREATE VIEW " _ ..#ALTERNATEJOINVIEW _ " AS SELECT a.A AS A FROM " _ tFrom _ "a.B = b.B")
+}
+
 /// <p>Put <var>pNamespace</var> back as an unmade probe has it: the runtime statistics of <parameter>ALTERNATETOKEN</parameter>'s statements removed by
 /// routine, the table's cached queries purged, the table dropped, and the statement index cleaned of the statements that no longer have a location. A
 /// table that is already gone is not an error.</p>
@@ -980,6 +996,8 @@ ClassMethod RemoveAlternates(pNamespace As %String) As %Status
         Do $SYSTEM.SQL.PurgeQueries({"table": [(..#ALTERNATEVIEW)]})
         Do $SYSTEM.SQL.PurgeQueries({"table": [(..#ALTERNATETABLE)]})
         Do ..Run("DROP VIEW " _ ..#ALTERNATEVIEW)
+        Do ..Run("DROP VIEW " _ ..#ALTERNATEFILTERVIEW)
+        Do ..Run("DROP VIEW " _ ..#ALTERNATEJOINVIEW)
         Do ..Run("DROP TABLE " _ ..#ALTERNATETABLE)
         Do $SYSTEM.SQL.Statement.Clean()
         Set $NAMESPACE = tOrigNS

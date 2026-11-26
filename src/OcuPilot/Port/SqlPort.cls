@@ -973,7 +973,7 @@ ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %Dyn
 /// order: the bound, a statement of more than <parameter>ALTMAXTABLES</parameter> tables or <parameter>ALTMAXCONDITIONS</parameter> conditions
 /// (<method>AlternateCounts</method>) refused 422 <code>EXPLORER.SQL.ALTBOUND</code>; for a compare, a kind other than a query (422
 /// <code>EXPLORER.SQL.ALTCOMPARE</code>), a list that is not one to <parameter>ALTMAXCOMPARE</parameter> distinct whole numbers (400
-/// <code>EXPLORER.SQL.ALTCOUNT</code>) and a table no condition joins (422 <code>EXPLORER.SQL.ALTJOIN</code>); for one plan, a number that is not whole
+/// <code>EXPLORER.SQL.ALTCOUNT</code>) and a table no join reaches (422 <code>EXPLORER.SQL.ALTJOIN</code>; a join is a comparison of two qualified columns, as <class>OcuPilot.Port.SqlAlternateScan</class> reads it); for one plan, a number that is not whole
 /// (400 <code>EXPLORER.SQL.ALTPLAN</code>). The statement's possible plans are then read once, and a plan number the list does not hold is 400
 /// <code>EXPLORER.SQL.ALTPLAN</code>, before the plan's text or any run.</p>
 /// <p><var>pAnswer</var> is one of <code>{outcome: plans, kind, plans: [{Plan, Cost, MapType, StartingMap}], truncated}</code>, the first
@@ -987,7 +987,7 @@ ClassMethod Alternates(pNamespace As %String, pText As %String, pKind As %String
 {
     Set pAnswer = ""
     Set tCompares = $IsObject(pCompare)
-    Set tSC = ..AlternateCounts(pNamespace, pText, pGuard, .tTables, .tConditions, .pHttpStatus, .pFault)
+    Set tSC = ..AlternateCounts(pNamespace, pText, pGuard, .tTables, .tConditions, .tCross, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     If (tTables > ..#ALTMAXTABLES) || (tConditions > ..#ALTMAXCONDITIONS) {
         Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AtelierError).#SQLALTBOUND, ##class(OcuPilot.Api.AtelierError).AlternateBoundReason(..#ALTMAXTABLES, ..#ALTMAXCONDITIONS), .pHttpStatus, .pFault)
@@ -997,7 +997,7 @@ ClassMethod Alternates(pNamespace As %String, pText As %String, pKind As %String
         If pKind '= ..#KINDQUERY Quit ..RefuseFor("altcompare", .pHttpStatus, .pFault)
         Set tIds = ..CompareIds(pCompare)
         If $ListLength(tIds) = 0 Quit ..RefuseFor("altcount", .pHttpStatus, .pFault)
-        If ##class(OcuPilot.Port.SqlAlternateScan).CrossProduct(tTables, tConditions) Quit ..RefuseFor("altjoin", .pHttpStatus, .pFault)
+        If tCross Quit ..RefuseFor("altjoin", .pHttpStatus, .pFault)
     }
     If (pPlanId '= "") && '$Match(pPlanId, ..#WHOLEPATTERN) Quit ..RefuseFor("altplan", .pHttpStatus, .pFault)
     Set tSC = ..PlansRead(pNamespace, ..#ALTLISTQUERY, pText, "", .tRows, .tCode, .tMessage, .pHttpStatus, .pFault)
@@ -1040,16 +1040,17 @@ ClassMethod Alternates(pNamespace As %String, pText As %String, pKind As %String
 }
 
 /// <p>The tables and conditions of <var>pText</var> in <var>pNamespace</var> as <class>OcuPilot.Port.SqlAlternateScan</class> counts them, in
-/// <var>pTables</var> and <var>pConditions</var>: the text's own, and, when those are within the bounds, the text of each view <var>pGuard</var>'s relations
-/// name added to both. A view's text is read through <method>CheckedRows</method> with the relation's schema and name bound, so a caller without the SQL
-/// SELECT privilege on the dictionary table is the 403 of <method>SelectRefusal</method>.</p>
-ClassMethod AlternateCounts(pNamespace As %String, pText As %String, pGuard As %DynamicObject, Output pTables As %Integer, Output pConditions As %Integer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <var>pTables</var> and <var>pConditions</var>, and <var>pCross</var>, whether a table of the text, or of a view's, no join reaches: the text's own, and,
+/// when those are within the bounds, the text of each view <var>pGuard</var>'s relations name added to both. A view's text is read through
+/// <method>CheckedRows</method> with the relation's schema and name bound, so a caller without the SQL SELECT privilege on the dictionary table is the 403
+/// of <method>SelectRefusal</method>.</p>
+ClassMethod AlternateCounts(pNamespace As %String, pText As %String, pGuard As %DynamicObject, Output pTables As %Integer, Output pConditions As %Integer, Output pCross As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pHttpStatus = 0
     Set pFault = ""
     Set tScan = "OcuPilot.Port.SqlAlternateScan"
     Set tRelations = pGuard.%Get("Tables")
-    Do $ClassMethod(tScan, "Count", pText, "", tRelations.%Size(), .pTables, .pConditions)
+    Do $ClassMethod(tScan, "Count", pText, "", tRelations.%Size(), .pTables, .pConditions, .pCross)
     If (pTables > ..#ALTMAXTABLES) || (pConditions > ..#ALTMAXCONDITIONS) Quit $$$OK
     Set tViews = []
     Set tSC = $$$OK
@@ -1063,7 +1064,7 @@ ClassMethod AlternateCounts(pNamespace As %String, pText As %String, pGuard As %
         }
     }
     If $$$ISERR(tSC) Quit tSC
-    Do $ClassMethod(tScan, "Count", pText, tViews, tRelations.%Size(), .pTables, .pConditions)
+    Do $ClassMethod(tScan, "Count", pText, tViews, tRelations.%Size(), .pTables, .pConditions, .pCross)
     Quit $$$OK
 }
 

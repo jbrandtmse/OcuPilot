@@ -227,7 +227,7 @@ Method TestACompareRunsEachListedPlanAndAnswersItsNumbers()
 }
 
 /// <p>Every refusal of a compare answers before the statistics query is called: a statement that is not a query (422 <code>EXPLORER.SQL.ALTCOMPARE</code>),
-/// no plan, six, a repeat or a value that is not a whole number (400 <code>EXPLORER.SQL.ALTCOUNT</code>), a table no condition joins (422
+/// no plan, six, a repeat or a value that is not a whole number (400 <code>EXPLORER.SQL.ALTCOUNT</code>), a table no join reaches, with filters or with none (422
 /// <code>EXPLORER.SQL.ALTJOIN</code>) and, after the list alone, a plan it does not hold (400 <code>EXPLORER.SQL.ALTPLAN</code>). A plan and a compare
 /// together, and either without alternates, are the input refusal.</p>
 /// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.Alternates</code> skips the query-only check -> the DML leg goes red.</p>
@@ -244,6 +244,8 @@ Method TestEveryCompareRefusalCallsNothing()
     }
     Set tSC = ..Plan(tFixture, ..Aliases(2, 0), "", "[1]", .tAnswer, .tHttp, .tFault)
     Do $$$AssertEquals(..Refused(tSC, tHttp, tFault), "422 EXPLORER.SQL.ALTJOIN " _ $Parameter(..#ERROR, "REASONSQLALTJOIN"), "two tables joined by no condition")
+    Set tSC = ..Plan(tFixture, ..Aliases(3, 0) _ " WHERE t1.B = 5 AND t2.B = 5", "", "[1]", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertEquals(..Refused(tSC, tHttp, tFault), "422 EXPLORER.SQL.ALTJOIN " _ $Parameter(..#ERROR, "REASONSQLALTJOIN"), "three tables with two filters and no join are two conditions, and refused")
     Do $$$AssertEquals($ClassMethod(tFixture, "Calls"), 0, "none of them called the instance")
     Set tSC = ..Plan(tFixture, ..Query(), "", "[1,99]", .tAnswer, .tHttp, .tFault)
     Do $$$AssertEquals(..Refused(tSC, tHttp, tFault), "400 EXPLORER.SQL.ALTPLAN " _ $Parameter(..#ERROR, "REASONSQLALTPLAN"), "an unlisted plan among the chosen")
@@ -290,6 +292,24 @@ Method TestAStatementOverTheBoundIsRefusedBeforeAnyCall()
     Do $$$AssertEquals($Select($$$ISOK(tSC): tAnswer.outcome _ "|" _ tAnswer.plans.%Size(), 1: ..Refused(tSC, tHttp, tFault)), "plans|3", "four tables and four conditions are within the bound")
     Set tSC = ..Plan(tFixture, ..Aliases(4), "", "[1]", .tAnswer, .tHttp, .tFault)
     Do $$$AssertEquals($Select($$$ISOK(tSC): tAnswer.outcome _ "|" _ tAnswer.plans.%Size(), 1: ..Refused(tSC, tHttp, tFault)), "compared|1", "so is a compare of four tables joined by three conditions")
+}
+
+/// <p>A compare reads a view's own text for its joins: a view of two tables that it only filters is refused 422 <code>EXPLORER.SQL.ALTJOIN</code> before any
+/// call, and a view that joins its two tables is compared.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.AlternateCounts</code> drops <code>pCross</code> from its second <code>Count</code> call -> the
+/// filtered-view leg goes red.</p>
+Method TestACompareReadsAViewsOwnTextForItsJoins()
+{
+    Set tFixture = ..#FIXTURE
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeAlternateTwoTableViews", ..#NAMESPACE), "the two views of two aliases are created")
+    Set tFiltered = "SELECT A AS Probe228 FROM " _ $Parameter(..#PROBE, "ALTERNATEFILTERVIEW")
+    Set tJoined = "SELECT A AS Probe228 FROM " _ $Parameter(..#PROBE, "ALTERNATEJOINVIEW")
+    Set tSC = ..Plan(tFixture, tFiltered, "", "[1]", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertEquals(..Refused(tSC, tHttp, tFault), "422 EXPLORER.SQL.ALTJOIN " _ $Parameter(..#ERROR, "REASONSQLALTJOIN"), "a view that only filters its two tables")
+    Do $$$AssertEquals($ClassMethod(tFixture, "Calls"), 0, "and nothing reached the instance")
+    Do $ClassMethod(tFixture, "Fake", 3)
+    Set tSC = ..Plan(tFixture, tJoined, "", "[1]", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertEquals($Select($$$ISOK(tSC): tAnswer.outcome _ "|" _ tAnswer.plans.%Size(), 1: ..Refused(tSC, tHttp, tFault)), "compared|1", "a view that joins them is compared")
 }
 
 /// <p>AD-36. The list is cut at 100 plans and says so: 100 plans are not cut and 101 are. A compare takes five plans and not six.</p>

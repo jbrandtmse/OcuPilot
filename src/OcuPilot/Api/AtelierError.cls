@@ -485,7 +485,7 @@ Parameter SQLALTBOUND = "EXPLORER.SQL.ALTBOUND";
 
 Parameter REASONSQLALTBOUND = "Alternate plans take a statement with at most %1 tables and %2 conditions.";
 
-/// <p>Envelope code: Compare plans sent a statement with a table that no condition joins. Rendered on the
+/// <p>Envelope code: Compare plans sent a statement with a table that no join reaches. Rendered on the
 /// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422, before anything runs.</p>
 Parameter SQLALTJOIN = "EXPLORER.SQL.ALTJOIN";
 

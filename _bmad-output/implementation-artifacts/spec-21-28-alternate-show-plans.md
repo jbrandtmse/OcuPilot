@@ -2,11 +2,11 @@
 title: 'Story 21.28: Alternate show plans'
 type: 'feature'
 created: '2026-11-25'
-status: 'in-progress'
-baseline_revision: '59243ea80bcfd513b4bf83fbbddfd080b8e09c41'
+status: 'done'
+baseline_revision: '2b7c190bf9a66245ebe720f7d08275727c4c3709'
 baseline_commit: '59243ea80bcfd513b4bf83fbbddfd080b8e09c41'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-26-runtime-statistics.md'
@@ -205,8 +205,8 @@ Record each measurement as a short Verification line.
 
 **Rework 1** (orchestrator rulings 2026-11-26, veto U-180):
 
-- [ ] [Review] Pin the compare note with a test (client and the model-facing copy if any): "Compare plans runs the statement once for each plan, without its values, so a filtered query can show zero rows. Comparing can take longer than the page waits; what each run recorded stays on Runtime statistics."
-- [ ] [Review] Filter-only residual, decided by measurement: on `ocupilot-ci` measure the worst filter-only Compare inside the 4/4 bound (the largest cross product of the probe tables, with one or more single-table filters, at most five plans) and record it under Verification. If worst x1.5 > 60 s: count only join conditions (a predicate whose two sides name columns of two different tables or aliases, resolved by the same SQL-aware tokenizer as `%NOPARALLEL`; refuse when unsure, stated in the spec); tests: the filter-only case refused, a real join allowed. If worst x1.5 <= 60 s: keep the count and ledger the residual LOW `wontfix-accepted` with `reopen_if=a compare outlasts the gateway on a filter-only statement` and the measurement as evidence. Rule 19: a mutation that reddens the branch's test.
+- [x] [Review] Pin the compare note with a test (client and the model-facing copy if any): "Compare plans runs the statement once for each plan, without its values, so a filtered query can show zero rows. Comparing can take longer than the page waits; what each run recorded stays on Runtime statistics."
+- [x] [Review] Filter-only residual, decided by measurement: on `ocupilot-ci` measure the worst filter-only Compare inside the 4/4 bound (the largest cross product of the probe tables, with one or more single-table filters, at most five plans) and record it under Verification. If worst x1.5 > 60 s: count only join conditions (a predicate whose two sides name columns of two different tables or aliases, resolved by the same SQL-aware tokenizer as `%NOPARALLEL`; refuse when unsure, stated in the spec); tests: the filter-only case refused, a real join allowed. If worst x1.5 <= 60 s: keep the count and ledger the residual LOW `wontfix-accepted` with `reopen_if=a compare outlasts the gateway on a filter-only statement` and the measurement as evidence. Rule 19: a mutation that reddens the branch's test.
 
 **Acceptance Criteria:**
 
@@ -315,6 +315,20 @@ Code review 1, 2026-11-26 (full-opus tier; blind-hunter, edge-case-hunter, verif
   - `[low]` `[reject]` The new test classes call themselves "Live-safe" and are not armed — the same pattern as `SqlRuntimeStatsRead`; they remove every row they cause, and no stage runs them off the throwaway.
   - `[false]` `[reject]` A compare answers `stopped` only after the fact — ruled (round-2 compare ruling).
   - `[false]` `[reject]` No explicit sanitizer call is visible — the agent read inherits `ExplorerSqlRead`, and every tool result passes AD-60's sanitizer.
+
+### 2026-11-26 — Review pass (Rework 1)
+
+- verdicts: 9 findings — high 0, medium 1, low 8, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` A view's own cross product reaches `SqlPort.AlternateCounts`' second `Count` call, which no test reaches (the scan test calls `Count` directly and the port's view leg exits on `ALTBOUND`) — `TestACompareReadsAViewsOwnTextForItsJoins` added over two probe views; dropping `pCross` from that call reddens it.
+  - `[low]` `[patch]` The compare-note test's agent-read check and its EXPERIENCE.md check had no observed mutation — both observed red and recorded under Verification.
+  - `[low]` `[patch]` The `mutation:` headers in `SqlAlternateScan` named mutations that were not the ones run — corrected to the observed ones; the forward OR scan was observed red and only its parenthesis leg depends on it.
+  - `[low]` `[reject]` Two joins of the same pair of tables pass for three tables with the third unjoined — the ruling states the rule as joins against tables minus one, and a connectivity check is more than a direct correction; named under Auto Run Result.
+  - `[low]` `[reject]` The refusal sentence still says "joins each table by a condition" — the sentence is ruled and a different one is an escalation; a filter is not a join condition, so it stays accurate.
+  - `[low]` `[reject]` Intent audit: the new rule is exercised at the port and scan, not through the page, route or agent read — the route and the agent read call the same `SqlPort.Plan`, and `SqlAlternatePlansRoutes` passes over them; the page renders the refusal sentence from the server's answer.
+  - `[low]` `[reject]` Intent audit: the rule refuses statements it cannot read (unqualified columns, expressions, ORs) — the item states "refuse when unsure" and the scanner's contract lists each shape.
+  - `[low]` `[reject]` Intent audit: the sentence and the code comment describe different rules — the same finding as the sentence row above.
+  - `[low]` `[reject]` Intent audit: the decisive measurement was taken at the port, not the screen — the compare runs the same vendor call from both, and the figure is recorded with its fixture under Verification.
 
 ## Design Notes
 
@@ -537,35 +551,36 @@ Measured on `ocupilot-ci`, `USER`, by scratch classes that are deleted. The stat
 - **Run on HEAD with the patches, one class per call:** `SqlAlternateScan` 7, `SqlAlternatePlansRead` 11, `SqlAlternatePlansRoutes` 6, `SqlAdviceRead` 11, `SqlAgentRead` 7, `SqlPort` 11, `SqlPortLive` 16, `SqlConsoleRoutes` 8, `SqlSelectPrivilege` 5, `WorkflowCatalog` 10, `ReadTool` 28, `ToolRoundTrip` 2, `ToolEmit` 11, `DeveloperFloor` 10, `ExplorerDescriptor` 17, `ReadDescriptions` 9, `SurfaceCoverage` 4, `ClassicPageGate` 10, `MappingDescriptor` 6, `EndpointCoverage` 2, `ToolDispatch` 19, all green. `test:tools` 2422, `test:components` 4112, `check-objectscript` 0 problems. After a rebuild and redeploy: `system-explorer-sql-alternate-plans` 3/3, `system-explorer-sql-runtime-stats` 4/4, `system-explorer-sql-statements` 5/5, and alternate plans again after runtime statistics 3/3. The merged rosters needed no change.
 - `mutation: Compared without the compare-text Explain -> TestARefusedProcedure... red (the compare-text leg); Compared never answers stopped -> TestACompareThatReachesTheBound... red; CrossProduct answers 0 -> TestEveryCompareRefusalCallsNothing red (the ALTJOIN leg); ALTMAXCOMPARE 6 -> TestTheListAndACompareAreCapped... and TestEveryCompareRefusal... red (the six legs); PlansRead without the -99 refusal -> TestARefusedProcedure... red (the list leg); AlternateCounts reads no view text -> TestAStatementOverTheBound... red (the view legs); PlansCall kills %AltPlan inside its Try only -> TestThePlansReadLeaves... red on the raised leg alone; PlansVendor calls PlansCall without the null device -> the same test red on the device leg alone (each reverted by Edit, files compared equal to the saved copies, reloaded, green).`
 
+### Rework 1, measured on `ocupilot-ci`
+
+- **Compare note.** `self-protection.test.mjs` pins `sqlAlternateCompareNote` to the ruled sentence, requires it in EXPERIENCE.md's Fixed strings and requires that `ExplorerSqlAlternatePlansRead` carries no compare note (the agent read has no compare). `sql-query.page.spec.ts` already pinned the literal beside every compared result and beside no other. No client file changed.
+- **Worst filter-only compare.** Probe table of 3,000 rows (`B` and `C` indexed). `SELECT ... FROM T t1, T t2 WHERE t1.B <> 5` (one single-table filter, 2 tables, 1 condition, about 9.0 million rows; it passed the old count rule) listed 8 plans in 0.2 s; a compare of ids 1 to 5 had not answered when the process was killed at 110 s, so the worst x1.5 is over 60 s, and a second filtered table or an unfiltered `D = 'd'` only lengthens it. The same shape with `t1.B = 5` (about 45,000 rows) answered in 0.5 s. A filter-only statement is therefore refused (the instance recorded no statement for `A > 0`, `D = 'd'` or `B >= 0` on two tables, so only the `<>` and equality filters were reachable). The job was killed with the process and no worker of mine remained (`ps` read the baseline).
+- **Branch taken: count joins only.** The cross-product test reads joins, a comparison of two qualified columns of different qualifiers standing as a conjunct (`SqlAlternateScan.Conjunct`: bounded by WHERE or ON, no OR or `!` at its own or an enclosing level, no NOT, expression, three-part column, unqualified column or literal around it). Anything the scan cannot read is not counted, so it is refused (inference: a subquery that no condition correlates, such as `IN (SELECT ...)`, is refused too, as the stricter side). A view's own text must join its own tables. After the change a compare of `t1.B <> 5` over two tables answered 422 `EXPLORER.SQL.ALTJOIN` and `t1.B = t2.B AND t1.A = 5` answered `compared`. No ledger entry: the branch is not the accepted-residual one.
+- **Run, one class per call:** `SqlAlternateScan` 10, `SqlAlternatePlansRead` 11, `SqlAlternatePlansRoutes` 6, `SqlPort` 11, all green. Probes read back `0|0|0|0` in `USER` and `HSCUSTOM`; the scratch class and its file were removed.
+- `mutation: sqlAlternateCompareNote loses a letter in strings.ts -> the new self-protection test red; Count reads CrossProduct over the conditions, not the joins -> TestOnlyAComparisonOfTwoTablesIsAJoin, TestAJoinThatIsNotACertainConjunctIsNotCounted, TestASubqueryAndAViewAreReadForTheirOwnJoins and TestEveryCompareRefusalCallsNothing (the filter-only leg) red; Conjunct without its backward OR scan -> TestAJoinThatIsNotACertainConjunctIsNotCounted red (each reverted by Edit, files compared equal to the saved copies, reloaded, green).`
+- **Review patches.** `SqlAlternatePlansRead` gains `TestACompareReadsAViewsOwnTextForItsJoins` (a view of two filtered aliases refused `ALTJOIN` with no call, a view joining its two aliases compared), over two new probe views in `SqlTuningProbe` that `RemoveAlternates` drops. Run after the patches, one class per call: `SqlAlternateScan` 10, `SqlAlternatePlansRead` 12, `SqlAlternatePlansRoutes` 6, `SqlPort` 11, `SqlPortLive` 16; `test:tools` 2423; `check-objectscript` 0 problems; `lint-docs` clean.
+- `mutation: AlternateCounts drops pCross from its second Count call -> TestACompareReadsAViewsOwnTextForItsJoins red (the filtered-view leg and its no-call leg); Conjunct without its forward OR scan -> the "an OR outside its parentheses" leg of TestAJoinThatIsNotACertainConjunctIsNotCounted red (an OR directly after the join is refused at the boundary check, so only an OR beyond a closing parenthesis needs the scan); the agent read's description gains "Compare plans runs the statement once for each plan." -> the note test red; EXPERIENCE.md's note loses its ending -> the same test red (each reverted by Edit and compared equal to the saved copy, reloaded, green).`
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Summary.** SQL query gains Alternate plans. The list, Show plan and Compare plans (one to five listed ids, one `possiblePlansStats` run per id) go through `SqlPort.Plan` and the plan route. `explorer.sqlalternateplans.read` lists and shows plans and runs nothing, and `slowquery` names it. A statement over four tables or four conditions is refused before anything reaches the vendor, a compare also refuses a statement whose counted conditions are fewer than its tables minus one, and a compare answers `stopped` only after the fact. Committed in two batches (server `a2fa037b7`, client `b270555be`) and the review patches in the finalize commit.
+**Summary (Rework 1).** The compare note is pinned by a test. The compare's cross-product refusal now counts joins, a comparison of two qualified columns of different qualifiers standing as a conjunct, not conditions: on the probe, a compare of `FROM T t1, T t2 WHERE t1.B <> 5` did not answer in 110 s (worst x1.5 over 60 s), so the filter-only statement is refused `EXPLORER.SQL.ALTJOIN` and a real join is compared. No ledger entry (the accepted-residual branch was not taken).
 
 **Files.**
 
-- Server: `Port/SqlAlternateScan.cls` (new, the counts and the token-aware `%NOPARALLEL`), `Port/SqlPort.cls`, `Api/AtelierError.cls`, `Area/Explorer/SqlConsole.cls`, `Screen/Tool/ExplorerSqlAlternatePlansRead.cls` (new), `Kernel/Agent/Workflow.cls`.
-- Client: `sql-query.store.ts`, `sql-query.page.ts`, `core/sql-answer.ts`, `core/strings.ts`, EXPERIENCE.md, `_components.scss` (the form's controls wrap), `self-protection.test.mjs`, and the new `system-explorer-sql-alternate-plans.browser-spec.mjs`.
-- Tests: `SqlAlternateScan`, `SqlAlternatePlansRead`, `SqlAlternatePlansRoutes` (new, with `SqlAlternateFixture` and `SqlAlternateTool`), `SqlTuningProbe`, `SqlSelectPrivilege`, and the rosters `ReadTool`, `DeveloperFloor`, `ExplorerDescriptor`, `PortGate`, `ToolEmit`, `ToolRoundTrip`, `WorkflowCatalog`, `SqlConsoleRoutes`, `ClassicPageGate`.
+- Server: `Port/SqlAlternateScan.cls` (`IsColumn`, `JoinAt`, `Conjunct`; `Count` answers `pCross`), `Port/SqlPort.cls`, `Api/AtelierError.cls` (doc comment).
+- Client tests: `ui/tools/self-protection.test.mjs` (the note pin). No `ui/src` file changed.
+- Tests: `SqlAlternateScan`, `SqlAlternatePlansRead`, `SqlTuningProbe` (two two-table views).
 
-**Decided in-stage** (small, inside the rulings):
+**Review.** 9 findings: 1 medium and 2 low patched (a view's own cross product tested through the port, the note test's mutations observed, the scan test headers corrected), 6 low rejected with their reasons in the Review Triage Log. Nothing deferred.
 
-- The compare note's ending, from Verification (k): "Comparing can take longer than the page waits; what each run recorded stays on Runtime statistics." The answer is lost with the connection, but the run's statistics rows stay readable.
-- The agent read's description: "List the plans the optimizer considered for one SQL query, with their cost, map type and starting map, or show one of them by its plan number. This lists and shows plans and runs nothing."
-- The compare's elapsed seconds count from its first statistics run, after the list. The note shows on `compared` results only.
-- `PlansCall` switches to the caller's namespace itself, because the switched region may call vendor classes only.
-
-**Review.** 15 findings: 2 medium and 2 low patched (the null-device copy routed through the helper, the read-back made able to fail, the compare's own statistics row checked, the mutation lines recorded), 11 rejected with their reasons in the Review Triage Log. Nothing deferred.
-
-**Verification.** Every class and spec the batches touched is green on `ocupilot-ci`, one per call: `SqlAlternateScan` 7, `SqlAlternatePlansRead` 11, `SqlAlternatePlansRoutes` 6, `SqlPortLive` 16, `SqlConsoleRoutes` 8, `SqlRuntimeStatsRead` 10, `SqlSelectPrivilege` 5, `SqlAdviceRead` 11, `SqlAgentRead` 7 and the roster classes. `npm run test:components` 4092, `npm run test:tools` 2421, `npm run build` clean (2.33 MB initial), `check-objectscript` and `lint-docs` clean, and the alternate-plans and runtime-statistics browser specs pass forward and in reverse. The full ObjectScript sweep and the full browser suite are the runner's and CI's.
+**Verification.** On `ocupilot-ci`, one class per call, all green: `SqlAlternateScan` 10, `SqlAlternatePlansRead` 12, `SqlAlternatePlansRoutes` 6, `SqlPort` 11, `SqlPortLive` 16. `npm run test:tools` 2423, `check-objectscript` 0 problems, `lint-docs` clean. No client source changed, so the component tests, the rebuild and the browser spec were not rerun. Mutations are recorded under Verification, Rework 1.
 
 **Residual risks.**
 
-- The cross-product refusal counts conditions, so a filter-only multi-table statement such as `FROM a, b WHERE a.x = 1` passes it and its compare can run long (an unjoined three-way join passed 100 s). The page's wait is the only limit, and the rows are kept on Runtime statistics.
-- The worker-control measurement in Handoff 1 was inconclusive on its own probe; the Task 0 addendum's 16 busy workers without `%NOPARALLEL` and 0 with it stand.
-- `SqlAlternatePlansRoutes`, `SqlAlternateTool` and the new browser spec are not in `ui/tools/ci-timings.json`; the merge-time refresh adds them. `ReadTool`, `ToolRoundTrip`, `DeveloperFloor`, `ExplorerDescriptor`, `strings.ts` and EXPERIENCE.md carry count literals and rows Epic 24 also changes, so they need a union at the merge.
-- The cached-query purge in `RemoveAlternates` is redundant after the table drop; the statement-index clean-up is what the read-back needs.
+- A join is counted per comparison, not per connected table, so three tables joined twice on the same pair with the third table unjoined pass the refusal.
+- The scan refuses a statement it cannot read, so an uncorrelated `IN (SELECT ...)` is refused as a compare (inference).
 
-**Follow-up review recommended: true.** Two medium findings were patched on this first pass. The unverified risk is `PlansCall`'s restore of the device, namespace, transaction and `%AltPlan` on a raise, which the new test covers only for a success and an SQLCODE error.
+**Follow-up review recommended: false.** No high was patched.
