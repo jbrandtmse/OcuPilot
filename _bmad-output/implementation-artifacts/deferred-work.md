@@ -14668,3 +14668,38 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-26-runtime-statistics.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: ConfigPort.SqlStatsState reads only ptInfo(terminate,mins); the classic page saves T:<YYYYMMDD HHMM>:<raf> (RuntimeStatsSettings.cls:328, Utils.cls:42-60); mins empty for a T: stop is (inference), unmeasured; a level-after-stop of 2 or 3 set through the API reads as Off
 - 2026-11-25T19:49:55Z status=decision-pending owner=burndown by=cr note=owner call: refuse a set while a time stop is held (new sentence), or show the time stop; the spec rules out sending T:
+
+### DW-2875: Workflow user Save route and tool argument check judge full name and shape before source control and the name refusals (refusal order differs from the matrix; same in sibling families)
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-3.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.17 B3a review R9: ItemSave.Create runs Violations before the absence read
+- 2026-11-26T00:38:36Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=a caller sees a shape refusal where the spec orders source control first
+
+### DW-2876: Screen Edit of a workflow user with IsActive 'yes' answers 400 TOOL.ARGUMENTS, not PORT.FIELD.SHAPE (copied from InteropScheduleUpdate; the client never sends it)
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-3.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.17 B3a review R10: InteropWorkflowUserUpdate.ScreenActionDelta
+- 2026-11-26T00:38:36Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=the client or the agent sends a non-boolean IsActive
+
+### DW-2877: Workflow user writes: a locked user's remove answers 500 not 503, a concurrent add 500 not 409, a user removed between facts read and edit open 503 not 404 (inference)
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-3.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.17 B3a review R11: Statused maps only CODERUNTIMELOCK to 503
+- 2026-11-26T00:38:36Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=a measured run shows one of these statuses to a caller
+
+### DW-2878: A full-name edit of an inactive workflow user re-runs the vendor inactivation (worklist items deleted again) with no consequence shown; a fix needs a new string
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-3.md | severity: low | fix-risk: med | footprint: in
+- evidence: 24.17 B3a review R12: UserDefinition.%OnBeforeSave
+- 2026-11-26T00:38:36Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=an inactive user holds worklist items when edited
+
+### DW-2879: Workflow user choices route reports no truncation at 10,000, offers names over 128 characters the add then refuses, and the dialog has no loading or empty state (needs a string)
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-3.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.17 B3a review R13: HandleChoices sends no cap
+- 2026-11-26T00:38:36Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=an instance holds more than 10,000 users or a user name over 128 characters
+
+### DW-2880: Batch 3a AC5 (vendor error never a 200) is pinned only through the port seam, not from either caller; add tests rely on the stock test account listing every user
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-3.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.17 B3a review R14; same in sibling families
+- 2026-11-26T00:38:36Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=a caller path diverges from the port's error mapping
+
+### DW-2881: Something in the full ObjectScript sweep removes USER's vendor foreign-key registry for EnsLib.Workflow.RoleMembership (fresh USER holds it; missing after sweep shard 11)
+- source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-3.md | severity: low | fix-risk: med | footprint: out
+- evidence: 24.17 B3a review R15; product now removes memberships itself (U-168)
+- 2026-11-26T00:38:36Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=a class reddens because USER lacks the RoleMembership registry
