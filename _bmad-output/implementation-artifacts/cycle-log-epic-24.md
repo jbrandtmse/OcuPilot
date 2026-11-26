@@ -951,3 +951,4 @@
 2026-11-26T20:38:36Z	Story 24.17	stage_spawned	stage=spine spawn_at=2026-11-26T20:38:36Z model=opus agent_name=24-17-spine cycle_iteration=7 scope=story-end_AD_lines(AD-62,7,9,15,22;AD-43_pending)
 2026-11-26T20:48:04Z	Story 24.17	spine_updated	ad=AD-62(items23-28),AD-7,AD-9,AD-15,AD-22 reason=story_end_owner_kept_vetoes(U-179) commit=4d53ca0f0 lint=ok_except_preexisting_{id}
 2026-11-26T20:48:04Z	Story 24.17	spine_updated	ad=AD-43(thirteen->fourteen,in_place),AD-7(metrics_records_bullet;shapes_six->eight) reason=unattended_ruling inbox=U-181 lint=ok_except_preexisting_{id} roster_test=none_found
+2026-11-26T20:50:34Z	Story 24.17	note	story_end_spine: AD-7 shapes sentence read six while the wallet use row (Story 18.41) had made seven; U-181 corrected it to eight with the metrics bullet; marker trimmed to the standard form (orchestrator)
