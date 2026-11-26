@@ -2,7 +2,7 @@
 title: 'Story 21.28: Alternate show plans'
 type: 'feature'
 created: '2026-11-25'
-status: 'in-progress'
+status: 'blocked'
 baseline_revision: '59243ea80bcfd513b4bf83fbbddfd080b8e09c41'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -86,6 +86,8 @@ deferred: []
   - `ui/browser/system-explorer-sql-runtime-stats.browser-spec.mjs`.
 
 ## Tasks & Acceptance
+
+**Handoff scope (edited between batches): Batch 1 only. Task 0 and its addendum are done (Verification); the Spec Change Log entries of 2026-11-26 win over the Batch bullets below wherever they differ: the Batch 1 bullets that say `%PrepareClassQuery`, a single compare call, the listing's own literal text or `ALTMAXPLANS` are read through them. Batch 1 adds the bound's scanner and its test class, runs Task 0 (j) first and records it under Verification before any code, and updates every roster named in the stage prompt. Do not start Batch 2.**
 
 **Execution:** Task 0 first, then two batches, each committed on its own. A handoff builds one batch. Build after Story 21.27 is on the branch. Strings are only the ruled set (Design Notes, "Strings, escalated"). Any other sentence a person reads is `## Clarification Needed`.
 
@@ -193,6 +195,14 @@ deferred: []
   5. Side effects: a compare adds runtime-statistics rows, one statement-index row and one cached query (measured); the AD-7 21.28 line names all three.
   6. The empty-state sentence ships only if a test shows CALL or SET OPTION can reach the list; otherwise it is omitted.
   7. DW-2874: evidence recorded; no change here.
+
+- 2026-11-26, runner decisions at the re-dispatch, from the Task 0 addendum under Verification (small, inside the rulings above; authoritative over the Batch bullets where they differ):
+  1. **Constants.** `ALTMAXTABLES` 4 and `ALTMAXCONDITIONS` 4 on `SqlPort`, counted by a pure scanner class (its own test class pins the boundary at 4 and 5 for each count, and the view-expansion case: a view whose own text repeats one table is refused). The refusal is the ruled sentence with the two constants as `%1` and `%2`, a 422 with a new `AtelierError` code (add-only), answered before anything reaches the vendor, from the screen route and the agent read alike.
+  2. **Compare text.** The compare runs the statement's own parameterized text, taken from `$SYSTEM.SQL.Explain` with `silent` as the addendum describes, with `%NOPARALLEL` after each FROM token. If the instance does not prepare that text, the answer is the console's `error` outcome with the instance's SQLCODE and message (no new sentence). The id pre-check lists the caller's statement through `possiblePlans`, as for show.
+  3. **One run at a time.** The compare calls `possiblePlansStats` once per chosen id (the port closes each result set and kills `%AltPlan` first), each under an alarm of the seconds left of `BoundSeconds`, and answers `stopped` as soon as the alarm fired in a run or the seconds are spent, with no partial rows. Task 0 (j), measured before any code and recorded under Verification: a single-id compare under a short alarm on a long-running statement, whether the instance aborts that run, what it answers, and how the port reads the alarm. If a single-id run is not stopped by the alarm, HALT `blocked` as an intent gap.
+  4. **Show one plan** uses `Explain` with the plain id text (ruling 4) after the list; the list is `possiblePlans` on the caller's text.
+  5. **Empty state.** `Plan` answers `noplan` for CALL and SET OPTION before the list is reached, and every query or DML statement measured answered at least one plan: string 6 is not shipped.
+  6. **Privilege.** `possiblePlans` and `possiblePlansStats` are prepared as checked class queries (`%PrepareClassQuery`); a -99 is the 403 EXECUTE refusal of ruling 2.
 
 ## Review Triage Log
 
@@ -348,16 +358,50 @@ Measured 2026-11-26 on `ocupilot-ci` (IRIS 2026.2 build 221U), `USER` (the throw
 - **Caller locals.** The vendor routines clobber an unprotected caller's local variables when called from a terminal session (a `For` loop stopped after one pass); every probe call ran inside a class method.
 - **DW-2874: the classic pages' custom resource on 21.26's and 21.27's console actions.** A custom resource was assigned to `RuntimeStats`, `RuntimeStatsSettings`, `IndexAnalyzer` and `ShowPlanAlt`; a principal with `%Development:USE` that did not hold it was refused 403 on `GET /screens/explorer.sqlruntimestats/read` and `explorer.sqlindexanalysis/read` (failed pair `OcuP228Custom:USE`), and the purge, gather, run, purge-analysis and settings tools' `PrivilegePairs` gained that pair. `POST /explorer/sql/plan` with `stats: true` still answered 200 and with `advise: true` passed the gate (it then answered the SELECT refusal on `%Dictionary.CompiledClass`); `ExplorerSqlAdviceRead` and `ExplorerSqlRead` listed `%Development:USE` alone. Plan with statistics and Advise therefore do not honour their classic pages' resource; the lists and the writes do. No change to either story.
 
+### Task 0 addendum (re-dispatch 2026-11-26)
+
+Measured on `ocupilot-ci`, `USER`, by scratch classes and tables that are removed and read back absent (schema, views, cached queries, 314 runtime-statistics rows by routine, workers the probe grew). Observed unless marked (inference).
+
+- **Bound derivation.** About 1,100 list calls, each in its own process under a 100 s kill, over chain, star, ring, dense, both-column, indexed-filter, OR, comma, JOIN and self-join shapes on tables of 3 to 12 indexes (200 rows each). Slowest list within T tables and C conditions (seconds, plans):
+
+  | T \ C | 3 | 4 | 5 | 6 | 7 | 8 |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | 2 | 4.5 | 9.9 | 12.9 | 26.3 | 26.6 | 55.1 |
+  | 3 | 9.9 | 22.6 | 42.3 | 45.7 | 45.7 | 80.7 |
+  | 4 | 13.7 | **27.6 (407)** | 52.2 | 70.6 | 71.7 | 80.7 |
+  | 5 | 16.7 | 45.4 | 59.3 | 70.6 | 71.7 | 80.7 |
+
+  A single table was 0.1 to 0.2 s with 12 conditions. Chosen bound: **at most 4 tables and 4 conditions** (27.6 s x 1.5 = 41 s). Show one plan on the worst statement: 14.1 to 14.7 s. The search was adversarial but not exhaustive (no tables above 12 indexes, no composite or bitmap indexes, no production-size statistics).
+- **Compare is not bounded by the counts.** It runs the statement per plan, so its time follows the data: a 4-table, 4-condition join answered in 45.5 s on one fixture, and a three-table cross join with no condition was still running at 100 s. A five-plan compare of the worst 4/4 statement on small tables: 14.8 to 22.9 s.
+- **Counting.** The statement index counts aliases of one table once (a four-alias self-join: 1 relation) and lists a view with its base tables, not how often the view's own text repeats one (`VS`, a view of four aliases of one table: 2 relations, list 53.6 s). `&` is AND and `!` is OR (a statement with `&` only listed 446 plans in 42.6 s). The rule below was run over 1,094 generated statements with known counts: 1,091 equal, 0 over, 3 under (generator shortfalls).
+  - Tokenize the statement and drop comments, string literals and delimited identifiers.
+  - TABLES = FROM keywords + commas at the same depth up to the next clause keyword + JOIN keywords + one per UPDATE or INSERT INTO target.
+  - CONDITIONS = WHERE, ON, AND, OR, `&`, `!`, HAVING + one per column of each USING.
+  - A view relation adds the same two counts over its `%Dictionary.CompiledClass.ViewQuery`. Tables is the larger of that sum and the relation count.
+  - `BETWEEN ... AND` and a derived table overcount by one, which is safe.
+  - (inference) a query or DML statement the statement index does not hold is already refused 422 by `Classify` before the count, so no unindexed text reaches it.
+- **The compare's own text.** `ShowPlanAlt^%apiSQL` is called with preparse 1 by the list and preparse 0 by the compare. With a literal, the compare's ids name other plans than the list's (skewed column: list id 1 cost 16702.0 `IxX`; compare of the literal text id 1 cost 18600.0 `IDKEY`). Taking the text from `$SYSTEM.SQL.Explain(.text, {"silent":1})` (the lines after `SQL:` up to the blank line, `/*#OPTIONS ... */` removed, lines joined by one space; 0.01 to 0.02 s even where the list takes 22 s) and comparing that text gives the list's ids, costs and starting maps for `'common'`, `'rare40'`, `'it''s'`, non-ASCII, 40 literals and `TOP ?`; its `?` run as nothing (rows 0).
+- **No-parallel form.** The documented form is the keyword `%NOPARALLEL` as the first token after FROM; one covers every table of that FROM clause, and it is a syntax error elsewhere. There is no per-process or per-statement option (`AutoParallel` is instance configuration, `possiblePlansStats` takes `(sql, ids)` only). A three-way self-join of the 3,000-row probe, compare of ids 1 to 5: 16 `startWork^%SYS.WorkQueueMgr` workers busy at 68 to 98% CPU (a pool of 2 grew to 20 idle workers afterwards) and 2.2 s; with `%NOPARALLEL` after each FROM: 2 workers present all through (the baseline), 0 busy, 52.3 s. A two-way self-join: 0 busy with and without. List signatures (ids, costs, starting maps) are identical with and without the keyword for a 3-way join, a skewed column, a subquery, a derived table, a view and a UNION. The keyword breaks `DELETE FROM` (-1) and a FROM inside `SUBSTRING`, `TRIM` or `EXTRACT` (-12, -28). The plan text says `Call Module-A in parallel on each subrange` for 50 of 50 plans without the keyword and 0 of 50 with it.
+
+### Task 0 (j): one id under the alarm (re-dispatch 2026-11-26)
+
+Measured on `ocupilot-ci`, `USER`, by scratch classes that are deleted. The statement is a three-way self-join of the 3,000-row probe with `%NOPARALLEL` after FROM (50 plans, listing 0.9 s), compared with `possiblePlansStats` and one id, the alarm set before the call and cleared after. Every line is observed unless marked (inference). Read back absent afterwards: the probe tables and schema, the 100 runtime-statistics rows the runs recorded (by routine), the scratch classes and their files in the container, and `$TLevel` stayed 0 throughout.
+
+- **Total time follows the alarm plus a whole run.** Alarm 3, 6, 10, 20 s: 29.6-30.1, 32.7, 36.7 and 46.8 s, each answering every statistic complete (`TimeSpent` 26.1-26.7 s). Alarm 60 s, which never fires: 52.7 s with the same `TimeSpent`. So the instance executes the statement twice (inference: 2 x 26 s), and an alarm that fires in the first execution ends it, is swallowed, and the second runs to the end.
+- **An alarm in the second execution stops it:** alarm 40 s returned at 40.0 s with SQLCODE 0, no `<ALARM>` reaching the caller and every statistic blank.
+- **`$SYSTEM.SQL.Explain` with `alt`, `ids` and `stats` behaves the same:** 52.5 s with alarm 60, 29.7 s with alarm 3 and 36.9 s with alarm 10, the plan carrying no stopped marker.
+- Consequence: a single-id run whose own time exceeds the bound (50 s here, `BoundSeconds`) ends after the bound plus the whole run, and the alarm reports nothing, so the port cannot answer `stopped` in time.
+- **Rule 3 of the 2026-11-26 runner decisions applies: a single-id run is not stopped by the alarm.**
+
 ## Auto Run Result
 
 Status: blocked
-Blocking condition: intent gap. Task 0 (b) stop rule: listing's worst case (five-table join, 8 predicates, 51.6 s, x1.5 = 77 s) reaches the 60 s limit and `$System.Alarm` does not stop plan generation or a compare, so "under the console's time limit" cannot be met (record 1). No product code was written; Task 0 is recorded under Verification.
+Blocking condition: intent gap. Task 0 (j): a compare's single-id `possiblePlansStats` run is not bounded by `$System.Alarm`. An alarm that fires in the instance's first execution of the statement is swallowed and the second execution runs to the end, so a run longer than `BoundSeconds` takes the bound plus its own time and the port cannot answer `stopped` before the 60 s gateway limit (Verification, "Task 0 (j)"). The same holds for `Explain` with `alt`, `ids` and `stats`. No product code was written; the earlier Task 0 and its addendum stand.
 
-Also contradicting the spec, each needing a ruling:
+Options for the ruling, none decided here:
 
-1. `%SQL.Statement.%PrepareClassQuery` is refused -99 for the screen's audience (needs SQL EXECUTE on `%SYS_PTools.PT_possiblePlans` and `PT_possiblePlansStats`); the classic page's `%ResultSet` form needs none but checks no table privilege, so the checked prepare must stay first. Recommend `%ResultSet`.
-2. "Ids checked against a fresh list" does not hold for a statement with a literal: the list literal-replaces the statement, `possiblePlansStats` does not, so an id can name a different plan (cost 23213.6 vs 26600.0 on a skewed column). Recommend a compare takes a statement whose literals are parameterised, or the note names it.
-3. Task 0 (c) form `"ids": $ListBuild(id)` is refused (-481a); the plain id text works. A side effect missing from record 1: a compare adds runtime-statistics rows, one statement-index row and one cached query.
-4. Strings: 7 becomes "Compare plans runs the statement once for each plan, without the values for its ? placeholders." (a literal runs as written); 11 follows it; 6 is needed only if CALL or SET OPTION reach the list.
+1. A compare answers `stopped` after the fact: it measures its own elapsed time, discards rows when it has reached `BoundSeconds`, and the gateway's 504 is the only limit on a longer run (the 21.27 Gather precedent: the server finishes, a second Compare refuses while one holds the lock). This drops "under the console's time limit" for Compare only.
+2. A compare refuses a plan whose listed cost is above a measured constant before running it (the probe's cost 6.6e7 ran 26 s per execution; the cost-to-time relation is an inference from one statement).
+3. Compare is dropped from this story, and Alternate plans lists and shows plans only.
 
-Recommended amendment for the gap: refuse a listing past a measured table or predicate bound before anything reaches the vendor (a named constant), or rule that the gateway's own 504 is the limit and drop "under the console's time limit" for alternates. Resume at Batch 1 after the ruling.
+The bound's scanner, listing and showing are unaffected and can land first if the ruling keeps them in Batch 1.
