@@ -1197,3 +1197,4 @@
 2026-11-26T12:33:15Z	Story 21.27	gate_step	step=full_sweep+smoke head=b14244015 sweep=20/20 smoke=50/50 result=pass
 2026-11-26T12:33:15Z	Story 21.27	smoke_complete	method=api(smoke.sh)+browser(fresh_specs) result=pass iterations=2 defects_caught=1(gate1_sweep:SqlPort_privilege_checks) evidence=e21-kit/21-27/gate1,gate2
 2026-11-26T12:33:53Z	Story 21.27	committed	sha=b14244015 submodules= ci=pending runs=45820743109 amendments=none note=code_head_pushed_alone
+2026-11-26T13:26:50Z	Story 21.27	ci_red_classified	run=45820743109 workflow=.github/workflows/ci.yml class=flake test=a11y-structural-invariants_AC5(DW-1822:governance_1280_light_settle,renderer_unresponsive,retry_light+dark_stalled) action=rerun_failed_once_by_runner
