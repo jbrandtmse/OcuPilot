@@ -71,6 +71,12 @@ Parameter INTEROPSUSPENDEDDISABLED = "interop.suspendedmessages.resubmit,interop
 /// <p>The local archive run (Story 24.16 Batch 4): the one archive write that ships disabled.</p>
 Parameter INTEROPARCHIVEDISABLED = "interop.archive.run";
 
+/// <p>The business rule log and business process log purges (Story 24.17 Batch 2): the two writes that ship disabled.</p>
+Parameter INTEROPLOGPURGEDISABLED = "interop.processlog.purge,interop.rulelog.purge";
+
+/// <p>The workflow user remove (Story 24.17 Batch 3a): the one write of the three that ships disabled.</p>
+Parameter INTEROPWORKFLOWDISABLED = "interop.workflowusers.remove";
+
 /// <p>Story 20.34's cube build, which ships disabled (AD-22): it deletes a cube's facts and those of the cubes that depend on it. Its
 /// synchronize ships enabled.</p>
 Parameter CUBEDISABLED = "analytics.cubemanager.build";
@@ -249,6 +255,8 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If $ListFind($ListFromString(..#INTEROPMESSAGEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPSUSPENDEDDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPARCHIVEDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPLOGPURGEDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPWORKFLOWDISABLED), tKey) Set tExpected = "0|baseline"
         If tKey = ..#CUBEDISABLED Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#BACKUPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#TERMLISTDISABLED), tKey) Set tExpected = "0|baseline"

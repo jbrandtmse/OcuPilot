@@ -575,6 +575,9 @@ export const CONSEQUENCE_INTEROPCREDENTIALCHANGE = 'INTEROP.CREDENTIAL.CHANGE';
 /** Story 24.15: a schedule spec's removal, and a changed schedule spec's reach into a running production. */
 export const CONSEQUENCE_INTEROPSCHEDULEREMOVE = 'INTEROP.SCHEDULE.REMOVE';
 export const CONSEQUENCE_INTEROPSCHEDULECHANGE = 'INTEROP.SCHEDULE.CHANGE';
+/** Story 24.17 Batch 3a: a workflow user's removal, and a workflow user made inactive. */
+export const CONSEQUENCE_INTEROPWORKFLOWUSERREMOVE = 'INTEROP.WORKFLOW.USERREMOVE';
+export const CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE = 'INTEROP.WORKFLOW.USERINACTIVE';
 /** Story 24.16: a purge of management data, and one whose bitmap cleanup is on. */
 export const CONSEQUENCE_INTEROPPURGERUN = 'INTEROP.PURGE.RUN';
 export const CONSEQUENCE_INTEROPPURGEBITMAP = 'INTEROP.PURGE.BITMAP';
@@ -582,6 +585,9 @@ export const CONSEQUENCE_INTEROPPURGEBITMAP = 'INTEROP.PURGE.BITMAP';
 export const CONSEQUENCE_INTEROPARCHIVERUN = 'INTEROP.ARCHIVE.RUN';
 /** Story 24.17 Batch 1: a managed alert update. */
 export const CONSEQUENCE_INTEROPALERTUPDATE = 'INTEROP.ALERT.UPDATE';
+/** Story 24.17 Batch 2: a business rule log purge and a business process log purge. */
+export const CONSEQUENCE_INTEROPRULELOGPURGE = 'INTEROP.RULELOG.PURGE';
+export const CONSEQUENCE_INTEROPPROCESSLOGPURGE = 'INTEROP.PROCESSLOG.PURGE';
 /** Story 20.6: a host test, which sends a real message through the running production. */
 export const CONSEQUENCE_INTEROPTESTSENDS = 'INTEROP.TEST.SENDS';
 /** Story 20.27: a data transformation test, which runs the transformation's code on this instance as the person. */
@@ -846,6 +852,9 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 24.15: a schedule spec's removal and its change, each published once.
   if (code === CONSEQUENCE_INTEROPSCHEDULEREMOVE) return STRINGS.interopScheduleRemoveConsequence;
   if (code === CONSEQUENCE_INTEROPSCHEDULECHANGE) return STRINGS.interopScheduleChangeConsequence;
+  // Story 24.17 Batch 3a: a workflow user's removal and its deactivation, each published once.
+  if (code === CONSEQUENCE_INTEROPWORKFLOWUSERREMOVE) return STRINGS.interopWorkflowUserRemoveConsequence;
+  if (code === CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE) return STRINGS.interopWorkflowUserInactiveConsequence;
   // Story 24.16: a purge's sentence, the one its own dialog shows, and the bitmap cleanup's.
   if (code === CONSEQUENCE_INTEROPPURGERUN) return STRINGS.interopPurgeRunConsequence;
   if (code === CONSEQUENCE_INTEROPPURGEBITMAP) return STRINGS.interopPurgeBitmapConsequence;
@@ -853,6 +862,9 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_INTEROPARCHIVERUN) return STRINGS.interopArchiveRunConsequence;
   // Story 24.17 Batch 1: a managed alert update's sentence, the one its own dialog shows.
   if (code === CONSEQUENCE_INTEROPALERTUPDATE) return STRINGS.interopManagedAlertUpdateConsequence;
+  // Story 24.17 Batch 2: the two log purges' sentences, the ones their own dialog shows.
+  if (code === CONSEQUENCE_INTEROPRULELOGPURGE) return STRINGS.interopRuleLogPurgeConsequence;
+  if (code === CONSEQUENCE_INTEROPPROCESSLOGPURGE) return STRINGS.interopProcessLogPurgeConsequence;
   // Story 20.6: a host test's sentence, the one its own dialog shows.
   if (code === CONSEQUENCE_INTEROPTESTSENDS) return STRINGS.interopTestSendsConsequence;
   // Story 20.27: a data transformation test's sentence, the one its own dialog shows.

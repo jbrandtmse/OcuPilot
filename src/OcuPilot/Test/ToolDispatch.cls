@@ -197,6 +197,8 @@ Method TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled()
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPMESSAGEDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPSUSPENDEDDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPARCHIVEDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPLOGPURGEDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPWORKFLOWDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If tTool.name = $Parameter("OcuPilot.Test.Governance", "CUBEDISABLED") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "BACKUPDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "TERMLISTDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED

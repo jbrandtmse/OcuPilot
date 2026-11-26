@@ -131,6 +131,8 @@ Method TestACreateSaveHoldsTheKeyItsMintComputes()
     Do ..HeldLeg("/interop/credentials?ns=USER", "OcuPilot.Screen.Tool.InteropCredentialAdd", "OcuProbeHold2415C", {"Name": "OcuProbeHold2415C", "OcuProbeUnexpected": 1}.%ToJSON())
     ; A schedule spec is namespace-scoped and its id is its name alone.
     Do ..HeldLeg("/interop/schedules?ns=USER", "OcuPilot.Screen.Tool.InteropScheduleAdd", "OcuProbeHold2415S", {"Name": "OcuProbeHold2415S", "OcuProbeUnexpected": 1}.%ToJSON())
+    ; A workflow user is namespace-scoped and its id is its name alone.
+    Do ..HeldLeg("/interop/workflow-users?ns=USER", "OcuPilot.Screen.Tool.InteropWorkflowUserAdd", "OcuProbeHold2417W", {"Name": "OcuProbeHold2417W", "OcuProbeUnexpected": 1}.%ToJSON())
     ; A REST service is namespace-scoped and named by its package as typed; the document breaks a rule the Save checks after the hold.
     Do ..HeldLeg("/rest-service?ns=USER", "OcuPilot.Screen.Tool.RestServiceCreate", "OcuProbe1832Hold", {"Name": "OcuProbe1832Hold", "Document": "not json"}.%ToJSON())
     Do ##class(OcuPilot.Kernel.Scope).Clear()

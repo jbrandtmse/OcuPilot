@@ -507,6 +507,11 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'interoperability/archive-errors',
       // Story 24.17 Batch 1: Managed alerts, listed after them.
       'interoperability/managed-alerts',
+      // Story 24.17 Batch 2: Business rule log and Business process log, listed after it.
+      'interoperability/rule-log',
+      'interoperability/process-log',
+      // Story 24.17 Batch 3a: Workflow users, listed after them.
+      'interoperability/workflow-users',
       // Story 20.11: Analytics' four unlisted screens (a cube's three tabs and a term list's entries), then Cubes, Term lists and Folder items.
       'analytics/cubes/dimensions',
       'analytics/cubes/document',
@@ -1158,10 +1163,10 @@ test('Story 20.8: the Productions name cell still opens Production items, the di
   assert.equal(screenForUrl(`/${viewer.route}?ns=USER`)?.route, viewer.route);
   assert.equal(screenForUrl(`/${viewer.route}/x?ns=USER`), null, 'a route id after it names no screen');
   const listed = listedScreensForArea('interoperability').map((screen) => screen.route);
-  assert.equal(listed.at(-13), viewer.route, 'listed before Messages (Story 20.9), the two default settings screens, Credentials and Schedule specs (Story 24.15), the two purge screens, Suspended messages and the three archive screens (Story 24.16) and Managed alerts (Story 24.17), which close the area\'s side bar');
-  assert.equal(listed.at(-12), 'interoperability/messages', 'Messages follows it');
+  assert.equal(listed.at(-16), viewer.route, 'listed before Messages (Story 20.9), the two default settings screens, Credentials and Schedule specs (Story 24.15), the two purge screens, Suspended messages and the three archive screens (Story 24.16), Managed alerts, Business rule log, Business process log and Workflow users (Story 24.17), which close the area\'s side bar');
+  assert.equal(listed.at(-15), 'interoperability/messages', 'Messages follows it');
   assert.deepEqual(
-    listed.slice(-11),
+    listed.slice(-14),
     [
       'interoperability/default-settings',
       'interoperability/default-settings-diff',
@@ -1174,8 +1179,11 @@ test('Story 20.8: the Productions name cell still opens Production items, the di
       'interoperability/archive-settings',
       'interoperability/archive-errors',
       'interoperability/managed-alerts',
+      'interoperability/rule-log',
+      'interoperability/process-log',
+      'interoperability/workflow-users',
     ],
-    'and System default settings, Compare default settings, Credentials, Schedule specs, Purge management data, Purge data settings, Suspended messages, Archive manager, Archive settings, Archive errors and Managed alerts close the side bar'
+    'and System default settings, Compare default settings, Credentials, Schedule specs, Purge management data, Purge data settings, Suspended messages, Archive manager, Archive settings, Archive errors, Managed alerts, Business rule log, Business process log and Workflow users close the side bar'
   );
 });
 

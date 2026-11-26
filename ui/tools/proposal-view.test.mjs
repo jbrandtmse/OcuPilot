@@ -125,6 +125,8 @@ const {
   CONSEQUENCE_AUDITENCRYPTIONCHANGE,
   CONSEQUENCE_INTEROPSCHEDULEREMOVE,
   CONSEQUENCE_INTEROPSCHEDULECHANGE,
+  CONSEQUENCE_INTEROPWORKFLOWUSERREMOVE,
+  CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
   CONFIRMED_TIME_PLACEHOLDER,
@@ -412,6 +414,21 @@ test("a schedule spec's remove and change consequence codes resolve to their pub
   assert.equal(CONSEQUENCE_INTEROPSCHEDULECHANGE, change[1]);
   assert.equal(consequenceSentence(CONSEQUENCE_INTEROPSCHEDULEREMOVE), STRINGS.interopScheduleRemoveConsequence);
   assert.equal(consequenceSentence(CONSEQUENCE_INTEROPSCHEDULECHANGE), STRINGS.interopScheduleChangeConsequence);
+});
+
+// Story 24.17 Batch 3a: a workflow user's remove and deactivation carry the codes the server mints, and each resolves to
+// the sentence its own screen shows, published once.
+//
+// Mutation (Rule 19): drop either workflow user branch from `consequenceSentence` -> its leg goes red.
+test("a workflow user's remove and inactive consequence codes resolve to their published sentences", () => {
+  const errors = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Api', 'InteropError.cls'), 'utf8');
+  const remove = /^Parameter WORKFLOWUSERREMOVE = "([^"]+)";/m.exec(errors);
+  const inactive = /^Parameter WORKFLOWUSERINACTIVE = "([^"]+)";/m.exec(errors);
+  assert.ok(remove && inactive, 'InteropError.cls declares both workflow user consequence codes');
+  assert.equal(CONSEQUENCE_INTEROPWORKFLOWUSERREMOVE, remove[1]);
+  assert.equal(CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE, inactive[1]);
+  assert.equal(consequenceSentence(CONSEQUENCE_INTEROPWORKFLOWUSERREMOVE), STRINGS.interopWorkflowUserRemoveConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE), STRINGS.interopWorkflowUserInactiveConsequence);
 });
 
 // Story 20.18, AD-64: an agent change to a screen's permissions that drops a pair is destructive with the

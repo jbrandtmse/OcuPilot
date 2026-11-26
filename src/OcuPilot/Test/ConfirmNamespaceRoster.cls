@@ -31,7 +31,7 @@ Parameter MINTARGUMENT = "OcuPilot.Screen.Tool.ExplorerClassCreate,OcuPilot.Scre
 Parameter EXEMPTIONCOUNT = 43;
 
 /// <p>The fewest write tools the walk must ask, so an exemption that takes tools out of the check is seen.</p>
-Parameter CHECKEDFLOOR = 128;
+Parameter CHECKEDFLOOR = 155;
 
 /// <p>The source texts that read the request scope, comma-separated.</p>
 Parameter SCOPEREADERS = "Kernel.Scope,OcuPilotScope";

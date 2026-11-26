@@ -294,6 +294,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.InteropCredentialList': () => import('../areas/interoperability/interop-credential-list.page').then((m) => m.InteropCredentialListPage),
   // Story 24.15: Schedule specs, the list with its New schedule spec and Edit dialog.
   'OcuPilot.Screen.Descriptor.InteropScheduleList': () => import('../areas/interoperability/interop-schedule-list.page').then((m) => m.InteropScheduleListPage),
+  // Story 24.17 Batch 3a: Workflow users, the list with its New workflow user and Edit dialog.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': () =>
+    import('../areas/interoperability/interop-workflow-user-list.page').then((m) => m.InteropWorkflowUserListPage),
   // Story 24.16: Purge management data, the list with its Purge dialog, and Purge data settings, on the settings page that adds Set value over the shared list.
   'OcuPilot.Screen.Descriptor.InteropPurgeList': () => import('../areas/interoperability/interop-purge-list.page').then((m) => m.InteropPurgeListPage),
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': CONFIG_SETTINGS_PAGE,
@@ -303,6 +306,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 24.17 Batch 1: Managed alerts, the list with its Update alert dialog. Alert history is the shared list page.
   'OcuPilot.Screen.Descriptor.InteropManagedAlertList': () =>
     import('../areas/interoperability/interop-managed-alert-list.page').then((m) => m.InteropManagedAlertListPage),
+  // Story 24.17 Batch 2: Business rule log and Business process log, the lists with their Purge dialog.
+  'OcuPilot.Screen.Descriptor.InteropRuleLogList': () => import('../areas/interoperability/interop-log-purge-list.page').then((m) => m.InteropLogPurgeListPage),
+  'OcuPilot.Screen.Descriptor.InteropProcessLogList': () => import('../areas/interoperability/interop-log-purge-list.page').then((m) => m.InteropLogPurgeListPage),
   // Story 24.16 Batch 3: Messages, the search with its Export dialog.
   'OcuPilot.Screen.Descriptor.InteropMessageList': () => import('../areas/interoperability/interop-message-list.page').then((m) => m.InteropMessageListPage),
   // Story 24.16: Suspended messages, the list with its Edit and resubmit form.

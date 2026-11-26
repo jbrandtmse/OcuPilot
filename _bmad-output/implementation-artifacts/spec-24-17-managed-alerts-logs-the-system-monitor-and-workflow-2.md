@@ -2,8 +2,8 @@
 title: 'Story 24.17: Managed alerts, logs, the system monitor and workflow (Batch 2: business rule log and business process log)'
 type: 'feature'
 created: '2026-11-23'
-status: 'ready-for-dev'
-baseline_revision: '26cc156bf3eb17a38b65c82e442c12626a83eb40'
+status: 'in-review'
+baseline_revision: '2c22660e7d4febe7564aa0feb0130618d86ea6a2'
 review_loop_iteration: 0
 followup_review_recommended: false
 owned_ledger: ''
@@ -84,11 +84,11 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `26cc156bf`).
 
 **Execution:**
 
-- [ ] **Task 0** (`ocupilot-b-ci` only, USER and HSCUSTOM, auditing on; every probe row, user and role removed after; record under Design Notes, Measured): (a) each vendor purge, run inside `PurgeFrame`, writes only the namespace's own database (journal by process id) and no vendor audit row (with a positive control); whether `Ens.Rule.Log`'s purge reaches `OneClass` (a `%SYS_Maint.Bitmap` row); `$ROLES`, `$USERNAME` and `$NAMESPACE` before and after for a principal without `%All` and for `_SYSTEM`; (b) a principal holding `%Ens_Portal:U` and `%Ens_RuleLog:U` (then `%Ens_Jobs:R`) and `%DB_USER:R` reads each list through `%ExecDirectNoPriv`, and the classic page's own query (`RuleLog.cls:374-377`, `BPInstances.cls:635-647`, prepared as that principal through `%Library.ResultSet`) answers rows or an SQL privilege refusal; with `%Ens_Purge:U` and `%DB_USER:RW` each purge succeeds, with `%DB_USER:R` what the vendor answers; name any further pair; (c) which class a fixture can save business process probes as in both namespaces (`Ens.BusinessProcess` itself first: `OcuPilot.Test` classes are not compiled in USER, measured at plan) with a back-dated `%TimeCreated`, and that the vendor purge deletes an old completed one, keeps an old running one and a new one; that back-dated rule log rows (with a `DebugId` debug row) are purged with their debug rows; (d) days 0: today's rule log rows deleted; today's completed business process deleted, a running one kept; (e) each list read's time at 1,000 and 2,000 probes: the cap is the larger whose read ends within 5 s here (7.5 s on CI at 1.5 times), never above 2,000; and each purge's time over 10,000 rule log rows and 2,000 business processes, recorded for the named limit. HALT `blocked` if a read writes data; if `$ROLES`, `$USERNAME` or `$NAMESPACE` differs after `PurgeFrame` returns; if (a) finds a vendor audit row or a write outside the namespace's database; if (b) finds the classic query needs an SQL privilege the gate does not ask (`## Clarification Needed`: security posture); if (c) finds no class that saves and purges in both namespaces (`intent gap: fixture`); if (d) measures otherwise than the consequences say (`intent gap: new string`); or if 1,000 does not fit (e).
-- [ ] `src/OcuPilot/Port/InteropPort.cls`, `src/OcuPilot/Api/InteropError.cls` -- the two endpoints, gate, lists, state reads, both purges through `PurgeFrame`, snippets, consequence codes -- one port, the purge family extended.
-- [ ] `src/OcuPilot/Screen/Tool/InteropRuleLogPurge.cls`, `InteropProcessLogPurge.cls`, the two descriptors, `EntityType.cls`, `Baseline.cls`, `Prohibited.cls` -- the tools, screens, types, keys and terms.
-- [ ] `ui/src/app/areas/interoperability/` page and dialog, the add-only maps, strings and outlet registrations; regenerate the mirror and titles; the EXPERIENCE.md row; `README.md` count and off-list clause with `ui/tools/interop.test.mjs`'s clause.
-- [ ] `src/OcuPilot/Test/InteropLog*.cls`, `ui/browser/interop-log-purge.browser-spec.mjs`, the component specs, the `# classes:` line and the rosters the sweep names -- the matrix, either order.
+- [x] **Task 0** (`ocupilot-b-ci` only, USER and HSCUSTOM, auditing on; every probe row, user and role removed after; record under Design Notes, Measured): (a) each vendor purge, run inside `PurgeFrame`, writes only the namespace's own database (journal by process id) and no vendor audit row (with a positive control); whether `Ens.Rule.Log`'s purge reaches `OneClass` (a `%SYS_Maint.Bitmap` row); `$ROLES`, `$USERNAME` and `$NAMESPACE` before and after for a principal without `%All` and for `_SYSTEM`; (b) a principal holding `%Ens_Portal:U` and `%Ens_RuleLog:U` (then `%Ens_Jobs:R`) and `%DB_USER:R` reads each list through `%ExecDirectNoPriv`, and the classic page's own query (`RuleLog.cls:374-377`, `BPInstances.cls:635-647`, prepared as that principal through `%Library.ResultSet`) answers rows or an SQL privilege refusal; with `%Ens_Purge:U` and `%DB_USER:RW` each purge succeeds, with `%DB_USER:R` what the vendor answers; name any further pair; (c) which class a fixture can save business process probes as in both namespaces (`Ens.BusinessProcess` itself first: `OcuPilot.Test` classes are not compiled in USER, measured at plan) with a back-dated `%TimeCreated`, and that the vendor purge deletes an old completed one, keeps an old running one and a new one; that back-dated rule log rows (with a `DebugId` debug row) are purged with their debug rows; (d) days 0: today's rule log rows deleted; today's completed business process deleted, a running one kept; (e) each list read's time at 1,000 and 2,000 probes: the cap is the larger whose read ends within 5 s here (7.5 s on CI at 1.5 times), never above 2,000; and each purge's time over 10,000 rule log rows and 2,000 business processes, recorded for the named limit. HALT `blocked` if a read writes data; if `$ROLES`, `$USERNAME` or `$NAMESPACE` differs after `PurgeFrame` returns; if (a) finds a vendor audit row or a write outside the namespace's database; if (b) finds the classic query needs an SQL privilege the gate does not ask (`## Clarification Needed`: security posture); if (c) finds no class that saves and purges in both namespaces (`intent gap: fixture`); if (d) measures otherwise than the consequences say (`intent gap: new string`); or if 1,000 does not fit (e).
+- [x] `src/OcuPilot/Port/InteropPort.cls`, `src/OcuPilot/Api/InteropError.cls` -- the two endpoints, gate, lists, state reads, both purges through `PurgeFrame`, snippets, consequence codes -- one port, the purge family extended.
+- [x] `src/OcuPilot/Screen/Tool/InteropRuleLogPurge.cls`, `InteropProcessLogPurge.cls`, the two descriptors, `EntityType.cls`, `Baseline.cls`, `Prohibited.cls` -- the tools, screens, types, keys and terms.
+- [x] `ui/src/app/areas/interoperability/` page and dialog, the add-only maps, strings and outlet registrations; regenerate the mirror and titles; the EXPERIENCE.md row; `README.md` count and off-list clause with `ui/tools/interop.test.mjs`'s clause.
+- [x] `src/OcuPilot/Test/InteropLog*.cls`, `ui/browser/interop-log-purge.browser-spec.mjs`, the component specs, the `# classes:` line and the rosters the sweep names -- the matrix, either order.
 
 **Acceptance Criteria:**
 
@@ -106,6 +106,40 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `26cc156bf`).
 ## Spec Change Log
 
 ## Review Triage Log
+
+### 2026-11-25, code review (Opus; four layers; `19c85b326..b20dd9c24`, patched on HEAD `7cf604bee`)
+
+No HIGH. Runs are on `ocupilot-b-ci`.
+
+- **R1 MED, escalated (Clarification Needed).** Gating the state read with the SQL check also gates both purge callers for a principal who holds the purge pairs but no grant: the screen's review and the agent's mint and confirm read the state first. The classic page counts and purges without SQL privilege (`RuleLog.cls:682-700`). Measured: `RuleLogCount` and `BusinessProcessCount` answered for a principal whose `CheckPrivilege` read 0. Kept as built.
+  - Ruled (a) by the lead; patched in the rework.
+- **R2 MED, patched.** The log reads' faults logged vendor text (`Mapped`), against the Never list. Now `LogMapped`. Mutation run 994.
+- **R3 MED, patched.** `Foreign` missed the vendor's id-based business process selection. Probe: a completed non-probe process created today in `USER`. Patched, the class refused to start (run 998). The old predicate let it start, and its purge deleted that process (run 999).
+- **R4 MED, patched.** The state leg of the "nothing logged while switched" test raised in the privilege check, never in `ReadLogState`'s own block. The seam now has a `herestate` mode. Mutation run 993.
+- **R5 MED, patched.** The SQL equality test ran in `USER` only and never asserted the login. Added: `HSCUSTOM` legs, `loggedIn`, and a database-only principal. Mutation run 995.
+- **R6-R10 LOW, patched.**
+  - R6: `CreateGated` reports a failed grant.
+  - R7: the process agent leg gains the rule leg's assertions.
+  - R8: roles legs for a principal without `%All`, on an error status and on a raise. Regression evidence only, because such a principal cannot change its roles.
+  - R9: stale doc comments and spec claims corrected (Decided (implement) 2 and 5).
+  - R10: unused test helpers removed.
+- **Closed:**
+  - R11 `wontfix-theoretical`: a `CheckPrivilege` status read as 403. `reopen_if`: a caller with the grant is refused naming the table.
+  - R12 `wontfix-accepted`: `maxRows` is judged before the SQL check. `reopen_if`: a 400 where 403 named the table.
+  - R13 `by-design`: no hard cap over the caller's `maxRows` (the `AlertCap` family).
+  - R14 `wontfix-theoretical`: `<PROTECT>` text kept. The gate demands WRITE first.
+  - R15 `by-design`: the business process sentence omits the vendor's id-based selection, and the rule log sentence omits debug rows (V1-ruled strings). `reopen_if`: process ids out of creation order.
+  - R16 `wontfix-accepted`: the component spec stubs a 409 these purges never send.
+  - R17 `by-design`: the page's flags on a reject repeat the sibling page.
+  - R18 `by-design`: `strings.ts` citation renumbered, `ci-throwaway.sh` comment lines added.
+  - R19 `wontfix-accepted`: the snippet renders the clamp as text.
+  - R20 `false`: governance hermeticity. `ci-runner.mjs` sets the policy aside per class; the test stayed green with both keys stored on.
+  - R21 `wontfix-accepted`: revoke results are not asserted, because REVOKE answers SQLCODE 100 when already revoked. The rebuild holds no `OcuP2417*` user, role or SQL privilege. `reopen_if`: one appears.
+  - R22 `false`: Rule 19 asks one mutation per AC.
+  - R23: `CHECKEDFLOOR` recommended at 152 (measured on HEAD), not edited.
+  - R24 `by-design`: the `{Namespace}` fallback.
+- **R25 MED, ledger candidate.** Story 24.16's `PerformPurge` writes no audit row when the vendor raises (AD-15). Owner: burndown.
+- CI rework: `InteropControl` left 1 business process row (`Ens.ScheduleHandler`, not completed, no creation time) in USER, and the shared `ProductionProbe.Remove` now removes it; the guard is unchanged.
 
 ## Veto items
 
@@ -163,6 +197,24 @@ No new dependency; no privilege, role or access grant; nothing is written into a
 12. The README's Interoperability paragraph waits for Batch 5, per Batch 1's split; only the count and the off-list clause land here, because `interop.test.mjs` reddens without them.
 13. Story 24.21's harvested `rule_log` and `get_business_process_instance` stay its own; these are the screens' declared reads.
 
+**Decided in-stage (implement).**
+
+1. `PRECONDITIONFIELD` is `Namespace` (the orchestrator's ruling), and `PRECONDITIONCODES` is `INTEROP.NAMESPACE`, not empty: the fresh read's one refusal, a namespace that runs no interoperability, is answered with that code as every sibling write tool lists it.
+2. The SQL SELECT check gates the two lists only; the state reads, which are the purges' fresh read, take no SQL check, as the classic page and the V3 ruling say.
+3. No `LogPurgeCodes` list: the log purges answer no code beyond `INTEROP.PURGE.DAYS`, which `PurgeCodes` already lists, so a list would only repeat it. The two consequence codes join `ConsequenceCodes`.
+4. `InteropProcessLogPurge` extends `InteropRuleLogPurge`, which extends `InteropPurgeRun`; it overrides only what differs (name, description, descriptor, types, page, consequence, endpoint).
+5. A purge that raises is audited as `completed` false with the count the vendor had reached, as a purge the vendor answers an error status is; the sibling full purge writes no audit row for a raised error.
+6. `PurgeFrame` gained the trailing optional `pKind`; `VendorLogPurge(pKind, pDays, Output pDeleted)` is the new seam, called only from the frame. A `LogHere()` hook sits inside the switched blocks of the privilege check and the state read, as `AlertHere()` does for Batch 1, so a test can prove nothing is logged there.
+7. The list's criterion refusal for `completed` is the port's generic sentence `completed is not valid.`, the same fallback `open` takes; no new string.
+8. The test suite adds `InteropLogPurgeGate` (principal legs and the SQL equality) and `InteropLogPurgeChild` (the child process) beside the four named classes, to hold each class under 500 lines. The arming roster line names the case class alone.
+9. `ui/tools/screen-mirror.mjs` was run to regenerate `screens.generated.ts` and `Titles.cls`, the generator the spec names; every other file was written with Edit or Write.
+
+**Decided in-stage (review).**
+
+1. The log reads' faults go through a new `LogMapped` (the `AlertMapped` shape), so no vendor text reaches the log.
+2. `Foreign` counts every non-probe completed business process, or one with no creation time, whatever its age, because the vendor's integrity-kept purge selects by id below the newest old record.
+3. The SQL check gates the lists only (R1, ruled (a)).
+
 **Measured at plan (`ocupilot-b-ci`, read-only global and dictionary reads).** USER and HSCUSTOM hold no `^Ens.Rule.LogD` or `^Ens.BusinessProcessD` data; `OcuPilot.Test.InteropAlertCase` is compiled in HSCUSTOM and not in USER; `Ens.BusinessProcess` is not abstract.
 
 **Measured (Task 0, `ocupilot-b-ci`, 2026-11-24, USER and HSCUSTOM, auditing on, probes marked `OcuProbe2417`; every probe row, user, role, resource and the probe class removed after; both namespaces hold no rule log or business process row; HALT at (b)).** The session ran as `irisowner`; principals ran in a child job after `$System.Security.Login`.
@@ -173,6 +225,19 @@ No new dependency; no privilege, role or access grant; nothing is written into a
 - (c) `Ens.BusinessProcess` itself cannot be saved as a probe: its `x__ClassName` is empty and the vendor purge raises `<SUBSCRIPT>`. `EnsLib.MsgRouter.RoutingEngine`, a concrete subclass present in USER and HSCUSTOM, saves with a back-dated `%TimeCreated`, `%IsCompleted`, `%ConfigName` and `%SessionId`. At 3650 days the purge deleted the old completed probe, kept the old running probe and the new one; the rule log purge deleted old rows with their debug rows and kept the new.
 - (d) Days 0 deleted today's rule log rows with their debug rows and today's completed business process, and kept a running one; days 1 kept all of today's. Both consequence sentences hold.
 - (e) List reads (port-shaped, `%ExecDirectNoPriv`, columns read): 1,000 rows 0.004 s and 2,000 rows 0.008 s for each list, so both caps are 2,000. Purges: rule log 10,000 rows (1,000 with a debug row) 0.10 s, 50,000 rows (5,000 with a debug row) 0.60 s; business processes 2,000 records 0.03 s, 10,000 records 0.13 s. Worst case 0.60 s at 50,000 rows, 1.5 times 0.90 s, within the orchestrator's 30 s bound (V5: no row cap).
+
+**Measured (V3 equality, implement, `ocupilot-b-ci`, 2026-11-24).** For each probe principal, in each namespace, the new check (`$SYSTEM.SQL.Security.CheckPrivilege($USERNAME, 1, <table>, "s", <namespace>)` with the namespace switched) against whether the classic page's own query prepared through `%Library.ResultSet`. Every pair was equal: the check answered 1 exactly when the query prepared, and 0 exactly when it answered `#5580`.
+
+| Principal (pairs and `%DB_USER:R`, then) | Table | USER | HSCUSTOM |
+| --- | --- | --- | --- |
+| no SQL grant | rule log, business process | refused, `#5580` | refused, `#5580` |
+| `%EnsRole_Operator` | rule log, business process | held, prepared | refused, `#5580` (the role's grants are USER's) |
+| direct grant on both tables | rule log, business process | held, prepared | held, prepared |
+| direct grant on the rule log alone | rule log; business process | held, prepared; refused, `#5580` | held, prepared; refused, `#5580` |
+| `%DB_USER:R` and `%DB_HSCUSTOM:R` only | rule log, business process | refused, `#5580` | refused, `#5580` |
+| `%All` | rule log, business process | held, prepared | held, prepared |
+
+The check reads `Ens_Rule.Log` and `Ens.BusinessProcess` as the vendor names the tables; the refusal is 403 `AUTH.NOPRIVILEGE` with `detail.failedPair` `Ens_Rule.Log:SELECT` or `Ens.BusinessProcess:SELECT`, and the published sentence "This account does not hold the privilege this request requires." fits it, so no veto addendum is needed. The probe principals, their grants and the probe class were removed after; its source file stays in the throwaway's `/tmp`, which the container refuses to let the session remove.
 
 **Integration and linkage (Rules 1, 2).** Integration: AC6 (the kernel's confirm consumes each stored proposal in its own namespace) and AC1's agent leg (the derived read tools). Consumes: the purge family, `InteropPurgeRun`, `InteropAction`, the kernel's proposal, confirm, governance and audit. Consumed-by: no consumer in this story; Story 24.20's undo names these purges as not restorable (inference). DW-2841 (the database pair read in the confirming namespace, owner `burndown`) applies through `InteropAction`; not addressed here. Story 24.16's deferred agent marker on a failed agent purge applies alike.
 
@@ -192,11 +257,36 @@ No new dependency; no privilege, role or access grant; nothing is written into a
 
 **Hermeticity:** every test added or changed passes on its first run on a fresh instance, in either order; it makes its own probes, asserts on them by marker, drops them in both namespaces, and removes any principal it made.
 
-**Mutations** (each AC's pinning test shown red on `ocupilot-b-ci`, `src` reloaded with subclasses and reverted byte-identical; client ones on a rebuilt, redeployed bundle or in the component runner), recorded as `mutation: <change> -> <test red>`. Planned: AC1 the `errors` criterion ignored -> `InteropLogList` red; AC2 the business process purge passed integrity 0 -> `InteropLogPurgeControl` red (old running kept leg); AC3 the purge pair dropped from `Pairs` -> `InteropLogPurgeRefusals` red; AC4 the vendor status ignored -> `InteropLogPurgeRefusals` red; AC5 the log purge called outside `PurgeFrame` -> `InteropLogPurgeRefusals` red (`_SYSTEM`'s role leg); AC6 `Namespace` dropped from a tool's `FINGERPRINTSUBJECT` -> `InteropLogPurgeElsewhere` red; AC7 a tool's `DraftRegistry` row removed -> red, a log line inside the switched block -> `InteropLogPurgeRefusals` red, the new `Prohibited` arm placed before an earlier one -> `Prohibited` red; AC8 the README count one less -> `interop.test.mjs` red; AC9 the dialog sends days 0 -> the browser spec red; AC10 `DropProbes` skipped -> `InteropLogPurgeElsewhere`'s after-all check red.
+**Mutations** (each AC's pinning test shown red on `ocupilot-b-ci`, `src` reloaded with subclasses and reverted byte-identical; client ones on a rebuilt, redeployed bundle or in the component runner), recorded as `mutation: <change> -> <test red>`. Each was applied, run, reverted and compared with the file as it stood before (`cmp`, or `diff` showing only the next mutation's hunk), then the tree was reloaded with every subclass:
+
+- mutation: the `errors` and `completed` criterion ignored in `ListLog` -> `InteropLogList.TestEachListAnswersItsProbesNewestFirstAndTheCriterionNarrowsIt` red (AC1).
+- mutation: the business process purge passes integrity 0 -> `InteropLogPurgeControl.TestABusinessProcessPurgeFromEitherCallerKeepsTheRunningOneAndTheCurrentOne` red (AC2).
+- mutation: the purge pair dropped from `Pairs` -> `InteropLogPurgeGate.TestTheGateRefusesEachPrincipalBeforeAnyVendorCall` red on `OcuP2417gNoPurge`'s two purge legs (AC3).
+- mutation: the privilege check asks the other log's table -> `InteropLogPurgeGate` red in both tests, on `OcuP2417gNoSelect`'s four read legs and the refusal's named table (AC3).
+- mutation: the vendor's error status ignored in `PerformLogPurge` -> `InteropLogPurgeRefusals.TestAVendorErrorIsNeverA200AndIsAuditedAsNotCompleted` red (AC4).
+- mutation: the vendor call made outside `PurgeFrame` -> `InteropLogPurgeRefusals.TestTheProcessRolesAreGivenBackOnSuccessAndOnAnError` red on legs (b) and (c) for both logs (AC5).
+- mutation: the tool's confirm query loses the proposal's namespace (`PortQuery` kills the namespace key) -> `InteropLogPurgeElsewhere.TestThePurgeIsConfirmedInTheNamespaceItWasReadIn` red (AC6). Dropping `Namespace` from `FINGERPRINTSUBJECT` is refused at registration by `Registry.FingerprintSubjectProblem`, because `PRECONDITIONFIELD` is `Namespace`, so it was not run.
+- mutation: the two `DraftRegistry` argument rows removed -> `DraftRegistry.TestNoSecretReachesAnyRenderedScript` red naming both tools; a tool's `NAMESPACEFIELD` made `Wrong` -> `ConfirmNamespaceRoster.TestEveryWriteToolAsksItsPortInTheNamespaceItsProposalRead` red naming both tools (the roster asks 149 write tools, and `CHECKEDFLOOR` 130 is a floor under it); a `LogFault` inside `PerformLogPurge`'s switched `Catch` -> `InteropLogPurgeRefusals` red in two tests; the new arm placed ahead of the table arm and widened to `sql-table` -> `Prohibited` red on the table legs (AC7).
+- mutation: the README count typed one less -> `interop.test.mjs` red (AC8; run by the client delegate).
+- mutation: the dialog's Purge sends `'0'` days, on a rebuilt and redeployed bundle -> `interop-log-purge.browser-spec.mjs` red in both tests; the component runner reddened for two more client mutations (the page's registration of Purge dropped; the dialog's count line) (AC9).
+- mutation: `DropProbes` leaves the rule log probes -> `InteropLogPurgeElsewhere` red on `OnAfterOneTest`'s assertion that none survives (AC10).
+- mutation (review): `LogSelectGate` asks `CheckPrivilege` in `USER` whatever the namespace -> `InteropLogPurgeGate.TestTheSqlSelectCheckIsTheClassicPagesOwn` red on the `HSCUSTOM` legs (AC3); a `LogFault` in `ReadLogState`'s switched `Catch` -> `InteropLogPurgeRefusals.TestNothingIsLoggedWhileTheNamespaceIsSwitched` red on the state leg, and the privilege check mapped through `Mapped` -> red on "names no vendor text" (AC7); `Foreign`'s old date-only predicate -> the class starts beside a foreign business process created today and deletes it (AC10).
+- mutation (CI rework): `RemoveScheduleHandler` dropped from `ProductionProbe.Remove` -> `InteropControl.TestTheProbeRemovalLeavesNoScheduleHandlerRow` red; then `InteropControl`, `InteropLogPurgeGate` and `InteropLogPurgeControl` green in that order.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: Task 0 (b) halt (veto V3): the classic pages' own queries need SQL privileges the gate does not ask for; see Design Notes, Measured. Nothing was built; no product file changed.
+Status: in-review
+Blocking condition: none.
 
-**Plan.** Batch 2 of five: Business rule log and Business process log through `InteropPort`, each with a destructive Purge by days reached by the screen and the agent, run inside `PurgeFrame`, every proposal keeping its namespace. Veto items 1 to 6; decided-in-stage list and Task 0 above. Read-only check on `ocupilot-b-ci` (52777): no rule log or business process rows in USER or HSCUSTOM. Nothing was written to the instance.
+**Rework pass (2026-11-25).**
+
+- **Changed:** R1 ruled (a): the two state reads take no SQL check and `LogSelectGate` gates the lists only. `InteropLogPurgeGate` pins the principal with the purge pairs and no grant: its state reads and purges answer the log's count while its lists are refused naming the table. The seam's `herestate` mode went, since the state read has one hook. `CHECKEDFLOOR` is 152, the count the walk asks on HEAD (measured).
+- **Verified:** on `ocupilot-b-ci`, the five Batch 2 classes (forward, then reversed), `ConfirmNamespaceRoster`, `GovernanceBaseline`, `Governance`, `ToolDispatch` and `InteropPurgeControl` are green; `test:tools` and `ci.test.mjs` are green.
+- mutation: `LogSelectGate` put back at the head of `ReadLogState` -> `InteropLogPurgeGate.TestTheGateRefusesEachPrincipalBeforeAnyVendorCall` red on the no-grant principal's state legs and on both purge answers' count (run 40).
+- mutation: `CHECKEDFLOOR` 153 -> `ConfirmNamespaceRoster.TestEveryWriteToolAsksItsPortInTheNamespaceItsProposalRead` red, 152 asked (run 41).
+
+**Review pass (2026-11-25).**
+
+- **Changed:** `LogMapped` for the log reads' faults; `Foreign` matched to the vendor's selection; the seam's `herestate` mode; the equality test in both namespaces; and the LOW patches R6-R10 (Review Triage Log).
+- **Verified:** `ocupilot-b-ci` was rebuilt on HEAD at 16:08:50 UTC. The five Batch 2 classes ran forward and reversed. The sibling purge classes, 21 rosters and Story 21.31's three classes ran too. All green. Nothing is left in either namespace.
+- **Browser and client:** browser `interop-log-purge` and `interop-purge` are green on a rebuilt bundle. The client gates and `check-objectscript.py` are clean.

@@ -442,4 +442,41 @@ Method TestEachToolsDraftRendersItsScript()
     }
 }
 
+/// <p>The vendor's schedule handler rows in <code>USER</code>'s business process table; -1 when they cannot be read.</p>
+ClassMethod ScheduleRows() As %Integer
+{
+    Set tOrigNS = $NAMESPACE
+    Set tCount = -1
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tRS = ##class(%SQL.Statement).%ExecDirectNoPriv(, "SELECT COUNT(*) FROM Ens.BusinessProcess WHERE %ConfigName = 'Ens.ScheduleHandler'")
+        If (tRS.%SQLCODE >= 0) && tRS.%Next() Set tCount = tRS.%GetData(1)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tCount
+}
+
+/// <p>A production that stops while the vendor's schedule handler is mid-run leaves the handler's business process row in <code>USER</code>
+/// (inference), a row the same shape as the one this test saves; the probe's removal takes it away, so a class that purges the
+/// interoperability logs does not find a row it did not make.</p>
+/// <p>Mutation (Rule 19): drop the <code>RemoveScheduleHandler</code> call from <method>OcuPilot.Test.ProductionProbe.Remove</method> --
+/// the row outlives the removal and this goes red.</p>
+Method TestTheProbeRemovalLeavesNoScheduleHandlerRow()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Settle"), "the probe is stopped")
+    Set tOrigNS = $NAMESPACE
+    Set $NAMESPACE = ..#NAMESPACE
+    Set tHandler = ##class(Ens.ScheduleHandler).%New("Ens.ScheduleHandler")
+    Set tSC = tHandler.%Save()
+    Set tHandler = ""
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertStatusOK(tSC, "a schedule handler row is saved in USER")
+    Do $$$AssertTrue(..ScheduleRows() > 0, "and it is there, so the removal below has one to remove")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove"), "the probe is removed")
+    Do $$$AssertEquals(..ScheduleRows(), 0, "and no schedule handler row is left in USER")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Create"), "the probe is created again for the tests after this one")
+}
+
 }

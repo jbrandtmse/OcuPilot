@@ -152,6 +152,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropCredentialList',
   // Story 24.15: Schedule specs, whose Remove types the schedule spec's name and whose New schedule spec and Edit its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropScheduleList',
+  // Story 24.17 Batch 3a: Workflow users, whose Remove types the workflow user's name and whose New workflow user and Edit its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowUserList',
   // Story 24.16: Purge management data, whose Purge its own page's dialog sends, and Purge data settings, whose Set value the settings page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropPurgeList',
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList',
@@ -160,6 +162,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropArchiveSettingList',
   // Story 24.17 Batch 1: Managed alerts, whose Update alert its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropManagedAlertList',
+  // Story 24.17 Batch 2: Business rule log and Business process log, whose Purge their own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropRuleLogList',
+  'OcuPilot.Screen.Descriptor.InteropProcessLogList',
   // Story 20.23: Queues, whose Abort all types the queue's name; Queue messages and an item's Queue tab, whose Abort types the
   // message id; and Jobs and an item's Jobs tab, whose Abort message types the job's process id and whose Suspend message and
   // Stop job warn first.
@@ -587,6 +592,9 @@ const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropArchiveList': ['archive'],
   // Story 24.17 Batch 1: Managed alerts' Update alert reads the alert's owner, state and level and the owners it may be given to before its dialog opens.
   'OcuPilot.Screen.Descriptor.InteropManagedAlertList': ['update'],
+  // Story 24.17 Batch 2: the two logs' Purge reads the log's record count before its dialog opens.
+  'OcuPilot.Screen.Descriptor.InteropRuleLogList': ['purge'],
+  'OcuPilot.Screen.Descriptor.InteropProcessLogList': ['purge'],
   // Story 24.16: Suspended messages' four actions list what each message would do before the dialog opens, and Edit and resubmit answers its form.
   [INTEROP_SUSPENDED_LIST]: [SUSPENDED_RESUBMIT, SUSPENDED_EDIT_RESUBMIT, SUSPENDED_DISCARD, SUSPENDED_DELETE],
 };
@@ -740,6 +748,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropCredentialList': ['edit', 'password'],
   // Schedule specs' page registers Edit itself, whose dialog sends the schedule, the description and the flag (Story 24.15).
   'OcuPilot.Screen.Descriptor.InteropScheduleList': ['edit'],
+  // Workflow users' page registers Edit itself, whose dialog sends the full name and the flag (Story 24.17 Batch 3a).
+  'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': ['edit'],
   // Purge management data's page registers Purge itself, whose dialog takes the days, and Purge data settings' page registers Set value itself (Story 24.16).
   'OcuPilot.Screen.Descriptor.InteropPurgeList': ['purge'],
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': ['set'],
@@ -748,6 +758,9 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropArchiveSettingList': ['set'],
   // Managed alerts' page registers Update alert itself, whose dialog takes the owner, state, level, next action time and reason (Story 24.17 Batch 1).
   'OcuPilot.Screen.Descriptor.InteropManagedAlertList': ['update'],
+  // The two logs' page registers Purge itself, whose dialog types the namespace (Story 24.17 Batch 2).
+  'OcuPilot.Screen.Descriptor.InteropRuleLogList': ['purge'],
+  'OcuPilot.Screen.Descriptor.InteropProcessLogList': ['purge'],
   // Suspended messages' page registers Edit and resubmit itself, whose form takes the fields and is reviewed before it is sent (Story 24.16).
   [INTEROP_SUSPENDED_LIST]: [SUSPENDED_EDIT_RESUBMIT],
   // An item's Test tab's page registers Send test itself, whose dialog sends the request class and its fields (Story 20.6).
@@ -956,6 +969,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.InteropCredentialList': { remove: STRINGS.x509DeleteConsequence },
   // Story 24.15: a schedule spec's Remove leaves the items that name it running until the production is next updated.
   'OcuPilot.Screen.Descriptor.InteropScheduleList': { remove: STRINGS.interopScheduleRemoveConsequence },
+  // Story 24.17 Batch 3a: a workflow user's Remove takes them out of every workflow role, deletes their worklist and leaves their tasks unassigned.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': { remove: STRINGS.interopWorkflowUserRemoveConsequence },
   // Story 20.23: an abort never delivers the messages it takes: all of a queue's, one waiting message, or the message a job keeps retrying.
   [INTEROP_QUEUE_LIST]: { abort: STRINGS.interopQueueAbortConsequence },
   [INTEROP_QUEUE_MESSAGE_LIST]: { abort: STRINGS.interopMessageAbortConsequence },
@@ -1084,6 +1099,8 @@ const TYPED_NAME_ROWS: Readonly<
   'OcuPilot.Screen.Descriptor.InteropCredentialList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 24.15: a schedule spec is keyed by its name, which its Remove types.
   'OcuPilot.Screen.Descriptor.InteropScheduleList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.17 Batch 3a: a workflow user is keyed by its name, which its Remove types.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 20.23: an abort types the queue's name, the message's id or the job's process id, which each list's name column shows.
   [INTEROP_QUEUE_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   [INTEROP_QUEUE_MESSAGE_LIST]: { name: 'MessageId', field: '', equals: '', advisory: '' },

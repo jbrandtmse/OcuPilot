@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:679 */
+  /** EXPERIENCE.md:681 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -9910,6 +9910,72 @@ export const STRINGS = {
   interopManagedAlertsPrompt4: 'Close this alert with the reason that it is resolved.',
   /** EXPERIENCE.md:634 */
   interopManagedAlertHistoryPrompt1: 'What has happened to this alert so far?',
+  // Story 24.17 Batch 2: the business rule log and business process log screens, the completed column and filter, the two purge consequences, the empty states and the prompts.
+  /** EXPERIENCE.md:636 */
+  interopRuleLogLabel: 'Business rule log',
+  /** EXPERIENCE.md:636 */
+  interopProcessLogLabel: 'Business process log',
+  /** EXPERIENCE.md:636 */
+  interopLogColumnCompleted: 'Is completed',
+  /** EXPERIENCE.md:636 */
+  interopRuleLogPurgeConsequence:
+    'Deletes this namespace\'s business rule log entries older than the days to keep. With 0 days, everything up to the end of today is deleted. It cannot be undone.',
+  /** EXPERIENCE.md:636 */
+  interopProcessLogPurgeConsequence:
+    'Deletes this namespace\'s completed business process records older than the days to keep; a business process still running is kept. With 0 days, every completed one up to the end of today is deleted. It cannot be undone.',
+  /** EXPERIENCE.md:636 */
+  interopRuleLogEmpty: 'No business rule log entries in this namespace.',
+  /** EXPERIENCE.md:636 */
+  interopRuleLogEmptyAgent: 'purge the business rule log',
+  /** EXPERIENCE.md:636 */
+  interopProcessLogEmpty: 'No business process records in this namespace.',
+  /** EXPERIENCE.md:636 */
+  interopProcessLogEmptyAgent: 'purge business process records',
+  /** EXPERIENCE.md:636 */
+  interopRuleLogPrompt1: 'Which rules returned an error recently?',
+  /** EXPERIENCE.md:636 */
+  interopRuleLogPrompt2: 'Which rule fires most often here?',
+  /** EXPERIENCE.md:636 */
+  interopRuleLogPrompt3: 'Purge business rule log entries older than 30 days.',
+  /** EXPERIENCE.md:636 */
+  interopProcessLogPrompt1: 'Which business processes are still running?',
+  /** EXPERIENCE.md:636 */
+  interopProcessLogPrompt2: 'Which business process has the most records?',
+  /** EXPERIENCE.md:636 */
+  interopProcessLogPrompt3: 'Purge completed business process records older than 30 days.',
+
+  // Story 24.17 Batch 3a: the workflow users screen, its dialog's help line, the two consequences, the four refusals, the empty state and the prompts.
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUsersLabel: 'Workflow users',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUserAddAction: 'New workflow user',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUserHelp: 'A workflow user is a user of this instance who can be sent workflow tasks through the workflow roles they belong to.',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUserRemoveConsequence:
+    'Removing this workflow user takes them out of every workflow role, deletes their worklist and leaves each task they hold unassigned. It cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUserInactiveConsequence:
+    'An inactive workflow user is sent no new tasks through their workflow roles; their worklist is deleted and each task they hold is left unassigned.',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUserRefusalSourceControl:
+    'This namespace uses source control, so change workflow users and roles in the classic Workflow Users and Workflow Roles pages.',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUserRefusalName: 'A new workflow user must be a user of this instance, named exactly as the user list spells it.',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUserRefusalTaken: 'This namespace already has a workflow user with that name, in some letter case.',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUserRefusalFullName: 'A full name is at most 128 characters and holds no control characters.',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUsersEmpty: 'This namespace has no workflow users.',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUsersEmptyAgent: 'add a workflow user',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUsersPrompt1: 'Which workflow users are inactive?',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUsersPrompt2: 'Which workflow users belong to no workflow role?',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUsersPrompt3: 'Add a workflow user for a user of this instance.',
 } as const;
 
 /**
