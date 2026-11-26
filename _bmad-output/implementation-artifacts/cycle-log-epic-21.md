@@ -1182,3 +1182,4 @@
 2026-11-26T04:58:05Z	Story 21.27	fresh_check	env=recipe(ci-throwaway_rebuild) tests=47_classes+3_specs result=pass order=forward,reverse head=041605b60
 2026-11-26T07:51:10Z	Story 21.27	gate_step	step=full_sweep+smoke head=041605b60 sweep=18/20(shard3_DW-2862_flake_green_alone;shard19_SqlPort.TestThePortNamesNoSourceCodeApiClass_RED) smoke=50/50 result=fail
 2026-11-26T07:51:11Z	Story 21.27	rework_opened	cycle_iteration=3 iteration=1 trigger=smoke(gate_sweep_red) items=SqlPort_privilege_checks_on(UncheckedRow,UncheckedRows,StatsCount),least-priv_measure,test_strengthen,DW-2892 scope_baseline=4406a7852 ruling=U-174
+2026-11-26T07:53:57Z	Story 21.27	integrated_forward	feature=bd8e47e8a(24.17_B3b) merge=M=90966c125 conflicts=14_m3w_token_unions+screens.generated_regenerated README=One_hundred_and_five(base103+ours1+theirs1;git_auto-merged_104_fixed_by_hand) strings.ts_taskCreate=:682 checks=test:tools_2420/2420,hook_clean
