@@ -959,3 +959,5 @@
 2026-11-26T21:42:28Z	Story 24.18	story_created	scope=batch1_hl7_schemas(of_5) path=_bmad-output/implementation-artifacts/spec-24-18-pex-record-maps-and-hl7-authoring.md commit=fe68d7017 build_status=ready-for-dev warning=oversized epic_context=recompiled
 2026-11-26T21:42:28Z	Story 24.18	ruling	question=batch1_veto_set choice=keep_all(V1-V6) category=veto inbox=U-182 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-26T21:42:28Z	Story 24.18	spec_validated	scope=batch1 ledger_inbox=empty mutates_shared_runtime=false(throwaway_only)
+2026-11-26T21:45:18Z	Story 24.18	integrate_merge	scope=batch1 theirs=feature@ba0fa0702 conflicts=none ci.test=green
+2026-11-26T21:45:18Z	Story 24.18	stage_spawned	stage=implement spawn_at=2026-11-26T21:45:18Z model=sonnet agent_name=24-18-implement-batch1 cycle_iteration=1 story_base=20b07af0f
