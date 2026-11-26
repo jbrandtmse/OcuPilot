@@ -1192,3 +1192,4 @@
 2026-11-26T09:14:31Z	Story 21.27	cr_complete	agent=a8c734314 model=opus iteration=rework1 high=0 med=6 low=12 rows=32 unresolved_high_med=2(DW-1963_occurrence_decision-pending,DW-2893_escalated->resolved_by_runner_AD-51_in_place) patched=7(fetch-time_-99,execute-time_seam,grant_readback,source_scan,roster_pin) final=done protocol_note=one_read-only_git_-C_before_reading_rules(no_change)
 2026-11-26T09:14:31Z	Story 21.27	ledger_adjudicated	owned=2 resolved=2(DW-2892,DW-2893) reowned=0 terminal=0
 2026-11-26T09:14:31Z	Epic 21	spine_updated	ad=AD-51 reason=orchestrator_ruling(U-174,U-175;in-place_on_21.27_line) by=runner story=21-27-the-index-analyzer-and-its-advice lint=preexisting_low_placeholder_only
+2026-11-26T09:16:25Z	Story 21.27	gate_step	step=fresh_check+full_sweep+smoke head=b14244015 started=2026-11-26T09:16:25Z dir=e21-kit/21-27/gate2
