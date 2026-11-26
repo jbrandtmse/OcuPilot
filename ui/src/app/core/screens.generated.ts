@@ -26812,7 +26812,6 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ],
       "sort": {
         "fields": [
-          "TaskId",
           "RoleName",
           "IsComplete",
           "Status",
@@ -26822,7 +26821,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "TimeCreated",
           "TimeCompleted"
         ],
-        "default": "TaskId",
+        "default": "TimeCreated",
         "direction": "desc"
       },
       "paging": "cap"
@@ -27150,7 +27149,6 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ],
       "sort": {
         "fields": [
-          "TaskId",
           "UserName",
           "RoleName",
           "Priority",

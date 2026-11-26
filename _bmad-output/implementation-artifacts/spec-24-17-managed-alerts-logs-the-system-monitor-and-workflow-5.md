@@ -111,6 +111,21 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `447aa3d914b7
 
 ## Review Triage Log
 
+### 2026-11-26 review (Opus; four layers: blind, edge, verification gap, acceptance)
+
+- **HIGH, patched.** Cancel task was sent at once: `cancel` was in neither `DESTRUCTIVE_ACTIONS` nor `DESTRUCTIVE_ON`, so the typed task ID (AC3, V5) never showed. `DESTRUCTIVE_ON` entry; page-spec test.
+- **MED, patched.** The tasks list sorted `TaskId` as text (9 above 10) on the screen and the read tool. Default sort `TimeCreated` desc, `TaskId` out of both lists' sort fields; `InteropWorkflowTaskList.TestTheTasksViewKeepsNewestFirstAcrossIdLengths`.
+- **MED, patched.** The fixture's header and body counter restores could set a counter below a held id. `LowerCounter`: never below the highest held id, never raises; `InteropWorkflowTaskElsewhere.TestTheCounterRestoreNeverGoesBelowAHeldId`.
+- **MED, patched.** A priority-only draft read the assignee of a task it did not open (`<INVALID OREF>` instead of the not-found guard). Guarded; Control leg.
+- **MED, patched.** The cancel's refusals were tested at the port only, and no leg made `AssignedTo` load-bearing. Screen and mint legs for `NOTRUNNING` and `TASKSENDER`; a confirm whose sender stopped waiting closes target-changed (AD-51 precondition rule); a change-of-assignee leg.
+- **MED, patched.** No gate principal lacked database READ. `OcuP2417wtNoDb`.
+- **MED, patched.** The dialog showed the assign sentence on an unassigned task kept Unassigned (a priority change takes the unassign path). The server's `Consequence` was already right: the payload, narrowed to the subject, carries the fresh `User`.
+- **MED, patched.** `LiveTask` returned before the vendor sent the worklist items; `Left` did not count the probe process's rows.
+- **LOW, patched.** Positive `Logged` controls in the fault, switched and cancel legs; `secondaryEntityTypes` asserted; the browser spec's unfalsifiable mutation note removed; doc corrections (tasks re-read on user or member change, `SharedId`, `InteropHostDescriptor` roster, `Governance`, the cancel test's success-leg claim); `ProbeMember` status asserted.
+- **Deferred (ledger):** judge-before-lock race (D1); assign mints over an inactive user, unchanged values or a complete task (D2); task of a removed role (D3); dialog users need `%Ens_WorkflowConfig:READ` (D4); `InteropMessageExportElsewhere` counter dependence (D5); a same-but-inactive assignee with a priority change (D6).
+- **Rejected:** header status in `TASKSENDER` (Task 0 (c) measured delivery); priority-only re-broadcast (spec); 400 `TOOL.ARGUMENTS` for a bad screen or agent value (family pattern, same sentence; the port answers 422); argument check before the read (family pattern); numeric screen values (route contract is text); zero active members (vendor, sentence holds); the worklist's reused prompt (Decided (implement) 3).
+- mutation: the HEAD sort declaration -> `InteropWorkflowTaskList` red (view test). `LowerCounter` ignores held ids -> `InteropWorkflowTaskElsewhere` red. The snippet's unguarded assignee read -> `InteropWorkflowTaskControl` red. `AssignedTo` out of `InteropWorkflowTaskAction.FINGERPRINTSUBJECT` -> `InteropWorkflowTaskCancel` red (change-of-assignee leg). `Status` and `AssignedTo` out of the assign's subject -> `InteropWorkflowTaskControl` red. The `DESTRUCTIVE_ON` entry dropped, and the old consequence condition -> the page and dialog specs red.
+
 ## Veto items
 
 Each is the lead's to take to the veto gate; the recommended option is first.
@@ -170,6 +185,12 @@ No new dependency; nothing is written into another namespace (a cancel's respons
 8. The client's Assign dialog is a screen-action dialog of its own beside Batch 1's alert dialog (which it mirrors), because the task has no create form and a store would add nothing; the user choices extend 3b's member store (`loadChoices`) rather than copy its read.
 9. Test classes are the six the spec names plus the abstract `InteropWorkflowTaskCase` (the shared parameters and calls), which declares no test; the abstract `InteropWorkflowSeam` and `InteropWorkflowCapSeam` take add-only members. `ConfirmNamespaceRoster.CHECKEDFLOOR` is 163, the count its walk answers on this tree (161 before).
 
+**Decided in-stage (review).**
+
+1. The tasks list sorts by `TimeCreated` descending by default (a stable sort, so ties keep the port's `TaskId` order), and neither list offers `TaskId` as a sort, since the ID is text.
+2. The dialog states the unassign sentence whenever the user is Unassigned, chosen or kept, as the server's `Consequence` does.
+3. The fixture lowers a counter it raised only to the highest id the global holds, and never raises one.
+
 **Measured (Task 0, `ocupilot-b-ci`, 2026-11-26, USER and HSCUSTOM, auditing on, probes `OcuP2417w*`; every probe task, item, request, message, process row, log row, user, role, class, principal and the vendor's `sdd` timestamps removed or put back after; no production left running).** Principals ran in a child job after `$System.Security.Login`. Raw output and the live-task recipe: `.worktrees/.coordination/e24-kit/24-17/b4/impl/` (`o-*.txt`, `live-task-recipe.md`, `WfProc.cls`). No halt condition fired.
 
 - (a) An assign, a priority change, a reassign, an unassign and a cancel, each as `irisowner`, `_SYSTEM` and a principal without `%All` (USER) and as `irisowner` and `_SYSTEM` (HSCUSTOM), wrote by process id only the namespace's own database. An assign, reassign or unassign: `^Ens.MessageBodyD` (the task) and `^EnsLib.W.WorklistD`/`I`; a priority change on an assigned task: `^Ens.MessageBodyD` alone; an assign or unassign that changes nothing: no record at all. A cancel with the sender waiting (USER only, as `irisowner`, `_SYSTEM` and the principal; HSCUSTOM runs no production, so its cancel is the refusal below): `^Ens.MessageBodyD`, `^Ens.MessageHeaderD`/`I` (the response), `^Ens.Queue` and the worklist. A refused vendor call (no production, a user the vendor does not hold) wrote `^Ens.Util.LogD`/`I`, the vendor's own error row. **`^Ens.Configuration("sdd")` was written by none**: a task is a message body, so no `SOURCECONTROL` refusal (Decided (plan) 6 stands). Cold only: the SQL statement index in the manager database and `^rINDEXSQL`, as Batch 2 recorded; a principal's first login writes `^SECURITY` in `irissecurity`, which is the login's, not the vendor call's. No vendor audit row (positive control, a resource create and delete: two `ResourceChange` rows); a principal refused for want of database WRITE leaves the system's `%Security/Protect` rows (5 for one live cancel), which the gate keeps from happening. IRISTEMP is not journaled, so a write there is not observable this way. `$ROLES`, `$USERNAME` and `$NAMESPACE` were the same before and after every call, for each principal and for `_SYSTEM`. No vendor call changed `$ROLES`.
@@ -217,6 +238,8 @@ No new dependency; nothing is written into another namespace (a cancel's respons
 
 Status: in-review
 Blocking condition: none.
+
+**Review (2026-11-26).** Findings and patches in the Review Triage Log; decisions under "Decided in-stage (review)". Verified on `ocupilot-b-ci` rebuilt at 13:01 UTC: the six task classes forward and reversed, 3a's and 3b's twelve classes, `InteropMessageExportElsewhere`, the four log purge classes and the 24 rosters, one class per call, green (`Descriptor` after its read-shape rows took the new sort lists, loaded into the rebuilt instance); `ConfirmNamespaceRoster`'s walk checks 163. The tasks and roles browser specs and the structural walk (13 of 13) green on the rebuilt bundle; smoke 49 of 49 (one skipped); no production in `USER` after. `npm run build`, `npm test`, `ci.test.mjs`, `check-objectscript.py` and its harness, and `lint-docs.sh` clean.
 
 **Implement (pass 2, after the empty-state ruling).** Built on `ocupilot-b-ci` against the pass-1 server code (Task 0 results under Design Notes, "Measured"; the decisions under "Decided in-stage (implement)").
 

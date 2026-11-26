@@ -117,8 +117,7 @@ after(async () => {
   }
 });
 
-// Mutation (Rule 19): drop the tasks descriptor's Assign row action, regenerate the mirror, rebuild and redeploy -> the walk finds no Assign entry and the AC9 test goes red;
-// make the worklist's `secondaryEntityTypes` empty -> the worklist is not re-read after the assign and the worklist leg goes red.
+// Mutation (Rule 19): drop the tasks descriptor's Assign row action, regenerate the mirror, rebuild and redeploy -> the walk finds no Assign entry and the AC9 test goes red.
 test('Workflow tasks and Workflow worklist list a probe task under the published headers and both pass the structural checks', async () => {
   drop();
   const id = arrange();

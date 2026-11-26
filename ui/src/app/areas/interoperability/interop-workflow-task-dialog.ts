@@ -103,9 +103,9 @@ export class InteropWorkflowTaskDialog {
 
   protected readonly priorityChosen = computed(() => this.priorityPicked() ?? this.task().priority);
 
-  /** The sentence of what the chosen user does: Unassigned sends the task to its role, a user takes it off every other worklist. */
+  /** The sentence of what the chosen user does: Unassigned, kept or chosen, sends the task to its role; a user takes it off every other worklist. */
   protected readonly consequence = computed(() =>
-    this.userChosen() === '' && this.task().assignee !== '' ? STRINGS.interopWorkflowTaskUnassignConsequence : STRINGS.interopWorkflowTaskAssignConsequence
+    this.userChosen() === '' ? STRINGS.interopWorkflowTaskUnassignConsequence : STRINGS.interopWorkflowTaskAssignConsequence
   );
 
   /** Unassigned, the task's own assignee and the listed active users, each once, in that order. */

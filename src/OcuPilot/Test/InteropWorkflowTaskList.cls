@@ -26,6 +26,7 @@ Method TestTheDeclarationsRegister()
     Do $$$AssertEquals(tTasks.primaryAction.id _ "|" _ tTasks.rowActions.%Get(0).id _ "," _ tTasks.rowActions.%Get(1).id, "|assign,cancel", "no primary action, and Assign and Cancel task as the row actions")
     Do $$$AssertEquals(tWorklist.route _ "|" _ tWorklist.sideBarPosition _ "|" _ tWorklist.archetype _ "|" _ tWorklist.entityType _ "|" _ tWorklist.id.parts.%ToJSON() _ "|" _ tWorklist.rowActions.%Size(), "interoperability/workflow-worklist|28|list||[""TaskId"",""UserName""]|0", "the worklist's route, place, entity-less key and no row action")
     Do $$$AssertEquals(tWorklist.toolIdentifier _ "|" _ tWorklist.table.emptyNextKey, "interop.workflowworklist|tableReadOnlyEmptyNext", "its tool identifier and its read-only empty state")
+    Do $$$AssertEquals(tTasks.secondaryEntityTypes.%ToJSON() _ "|" _ tWorklist.secondaryEntityTypes.%ToJSON(), "[""interop-workflow-user"",""interop-workflow-member""]|[""interop-workflow-task"",""interop-workflow-user"",""interop-workflow-member""]", "the tasks re-read on a workflow user's or member's change, and the worklist on a task's too")
     Do $$$AssertEquals(tTasks.classicPage _ "|" _ tWorklist.classicPage _ "|" _ tTasks.context.secretFields.%ToJSON() _ "|" _ tWorklist.context.secretFields.%ToJSON(), "EnsPortal.WFTasklist|EnsPortal.WFWorklist|[]|[]", "the classic pages and no secret field")
     Set tPairs = "[{""resource"":""%Ens_Portal"",""permission"":""USE""}]"
     Do $$$AssertEquals(tTasks.privileges.%ToJSON() _ tWorklist.privileges.%ToJSON(), tPairs _ tPairs, "their pairs are the classic pages': the portal's alone")
@@ -61,6 +62,19 @@ Method TestTheTasksListAnswersEveryProbeNewestFirst()
         Do $$$AssertEquals(..Read(tBad, "", .tRow, .tFault), "404 PORT.NOTFOUND", "'" _ tBad _ "' is held by no task or not an id this port reads")
     }
     Do $$$AssertEquals(..Read(tThree, "ASSIGNWORKFLOWTASK", .tRow, .tFault), "409 INTEROP.WORKFLOW.TASKCOMPLETE", "a read composed for an assign of the completed task is refused as the write would be")
+}
+
+/// <p>AC1: the tasks screen's declared view keeps the port's newest-first order when task IDs differ in their number of digits, as they do once IDs pass a power of ten, and when two tasks share a
+/// creation time; the ID is text, so a view sorted by it would put 9 above 10.</p>
+/// <p>Mutation (Rule 19): make the tasks screen's default sort <code>TaskId</code> -- this goes red.</p>
+Method TestTheTasksViewKeepsNewestFirstAcrossIdLengths()
+{
+    Set tSC = ##class(OcuPilot.Screen.Descriptor.InteropWorkflowTaskList).DeclarationJson(.tTasks)
+    Do $$$AssertStatusOK(tSC, "the tasks screen declares JSON")
+    If '$IsObject($Get(tTasks)) Quit
+    Set tRows = [{"TaskId": "100", "TimeCreated": "2026-01-01T00:00:03.000"}, {"TaskId": "99", "TimeCreated": "2026-01-01T00:00:03.000"}, {"TaskId": "10", "TimeCreated": "2026-01-01T00:00:02.000"}, {"TaskId": "9", "TimeCreated": "2026-01-01T00:00:01.000"}]
+    Set tView = ##class(OcuPilot.Screen.Read).ApplyView(tRows, tTasks.read)
+    Do $$$AssertEquals(..Names(tView, "TaskId"), "100,99,10,9", "the declared view lists the port's rows newest first")
 }
 
 /// <p>AC1: the worklist answers one row for each user a task was sent to, newest first, with the task, user, role, priority, age and the task's assignee, and none of another namespace's items.</p>

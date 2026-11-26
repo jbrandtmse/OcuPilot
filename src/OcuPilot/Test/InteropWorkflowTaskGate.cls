@@ -7,8 +7,8 @@ Class OcuPilot.Test.InteropWorkflowTaskGate Extends OcuPilot.Test.InteropWorkflo
 
 Parameter GENERATOR = "OcuPilot.Test.InteropArchiveFixture";
 
-/// <p>The principals: all the pairs; no write resource; no portal pair; and READ on <code>USER</code>'s database alone.</p>
-Parameter PRINCIPALS = "OcuP2417wtAll:%Ens_Portal:U,%Ens_WorkflowConfig:RW,%DB_USER:RW,%DB_HSCUSTOM:RW;OcuP2417wtNoWrite:%Ens_Portal:U,%DB_USER:RW,%DB_HSCUSTOM:RW;OcuP2417wtNoPortal:%Ens_WorkflowConfig:RW,%DB_USER:RW,%DB_HSCUSTOM:RW;OcuP2417wtDbRead:%Ens_Portal:U,%Ens_WorkflowConfig:RW,%DB_USER:R,%DB_HSCUSTOM:RW";
+/// <p>The principals: all the pairs; no write resource; no portal pair; READ on <code>USER</code>'s database alone; and nothing on <code>USER</code>'s database.</p>
+Parameter PRINCIPALS = "OcuP2417wtAll:%Ens_Portal:U,%Ens_WorkflowConfig:RW,%DB_USER:RW,%DB_HSCUSTOM:RW;OcuP2417wtNoWrite:%Ens_Portal:U,%DB_USER:RW,%DB_HSCUSTOM:RW;OcuP2417wtNoPortal:%Ens_WorkflowConfig:RW,%DB_USER:RW,%DB_HSCUSTOM:RW;OcuP2417wtDbRead:%Ens_Portal:U,%Ens_WorkflowConfig:RW,%DB_USER:R,%DB_HSCUSTOM:RW;OcuP2417wtNoDb:%Ens_Portal:U,%Ens_WorkflowConfig:RW,%DB_HSCUSTOM:RW";
 
 /// <p>The five legs of every principal, in order: the tasks list, the worklist, one task, an assign of it to the second member and a cancel of it.</p>
 Parameter LEGNAMES = "tasks,worklist,task,assign,cancel";
@@ -53,7 +53,8 @@ ClassMethod Expect(pPair As %String = "", pRefusal As %String = "") As %String
 
 /// <p>AC4: the gate, as real principals in a child process, refuses before any vendor call and before any value is judged, naming the pair, and writes nothing when it refuses. A principal holding every pair
 /// reads, assigns, and is refused a cancel only by the namespace's having no production; one without the write resource reads and is refused each write naming <code>%Ens_WorkflowConfig:WRITE</code>;
-/// one without the portal's pair is refused every leg naming it; one who can only read <code>USER</code>'s database reads and is refused each write naming <code>%DB_USER:WRITE</code>.</p>
+/// one without the portal's pair is refused every leg naming it; one who can only read <code>USER</code>'s database reads and is refused each write naming <code>%DB_USER:WRITE</code>; one with nothing on it is refused each read naming
+/// <code>%DB_USER:READ</code> and each write naming <code>%DB_USER:WRITE</code>.</p>
 /// <p>Mutation (Rule 19): drop <parameter>OcuPilot.Port.InteropPort.WORKFLOWWRITEPAIR</parameter> from the task writes' pairs in <method>OcuPilot.Port.InteropPort.Pairs</method> -- the
 /// <code>NoWrite</code> legs go red; drop the task writes from <method>OcuPilot.Port.InteropPort.IsAnyWrite</method> -- the <code>DbRead</code> legs go red.</p>
 Method TestTheGateRefusesEachPrincipalBeforeAnyVendorCall()
@@ -66,11 +67,13 @@ Method TestTheGateRefusesEachPrincipalBeforeAnyVendorCall()
     Set tWrite = ..Expect("%Ens_WorkflowConfig:WRITE")
     Set tPortal = ..Expect("%Ens_Portal:USE")
     Set tDbWrite = ..Expect("%DB_USER:WRITE")
+    Set tDbRead = ..Expect("%DB_USER:READ")
     ; tasks, worklist, task, assign, cancel
     Set tExpected("OcuP2417wtAll") = $ListBuild(tOk, tOk, tOk, tOk, tNoProduction)
     Set tExpected("OcuP2417wtNoWrite") = $ListBuild(tOk, tOk, tOk, tWrite, tWrite)
     Set tExpected("OcuP2417wtNoPortal") = $ListBuild(tPortal, tPortal, tPortal, tPortal, tPortal)
     Set tExpected("OcuP2417wtDbRead") = $ListBuild(tOk, tOk, tOk, tDbWrite, tDbWrite)
+    Set tExpected("OcuP2417wtNoDb") = $ListBuild(tDbRead, tDbRead, tDbRead, tDbWrite, tDbWrite)
     Set tUser = ""
     For {
         Set tUser = $Order(tExpected(tUser))

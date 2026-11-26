@@ -11953,7 +11953,7 @@ ClassMethod WorkflowTaskSnippet(pType As %String, pId As %String, ByRef pQuery) 
     If tPrioritySent Set tPriorityChanges = "(" _ +pQuery(..#WORKFLOWTASKPRIORITYKEY) _ " '= tTask.%Priority)"
     Set tText = tText _ tNL _ " If tGo, '(" _ tUserChanges _ " || " _ tPriorityChanges _ ") Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWTASKUNCHANGED) _ ")"
     If tPrioritySent Set tText = tText _ tNL _ " If tGo, " _ tPriorityChanges _ " Set tTask.%Priority = " _ +pQuery(..#WORKFLOWTASKPRIORITYKEY)
-    Set tText = tText _ tNL _ " Set tTo = " _ $Select(tUserSent: ..Literal(tUserName), 1: "tTask.%TaskStatus.AssignedTo")
+    Set tText = tText _ tNL _ " Set tTo = " _ $Select(tUserSent: ..Literal(tUserName), 1: "$Select(tGo: tTask.%TaskStatus.AssignedTo, 1: """")")
     Set tText = tText _ tNL _ " If tGo, tTo = """" { Set tSC = ##class(EnsLib.Workflow.Engine).UnassignTask(tTask) If $System.Status.IsOK(tSC) Set tSC = ##class(EnsLib.Workflow.Engine).SendTaskToAll(tTask) }"
     Set tText = tText _ tNL _ " If tGo, tTo '= """" Set tSC = ##class(EnsLib.Workflow.Engine).AssignTask(tTask, tTo)"
     Quit tText _ tNL _ " Set tTask = """""

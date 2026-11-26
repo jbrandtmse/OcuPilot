@@ -140,6 +140,17 @@ describe('the Assign task dialog', () => {
     expect(consequence(host)).toBe(STRINGS.interopWorkflowTaskAssignConsequence);
   });
 
+  // Mutation (Rule 19): state the unassign sentence only when the task has an assignee -> the first assertion goes red.
+  it('states the unassign sentence on an unassigned task kept Unassigned, whose priority change sends it to its role again', () => {
+    const { fixture, host, instance } = mount();
+    instance.task.set({ ...instance.task(), assignee: '' });
+    fixture.detectChanges();
+    expect(consequence(host)).toBe(STRINGS.interopWorkflowTaskUnassignConsequence);
+    choose(host, 'User', 'Admin');
+    fixture.detectChanges();
+    expect(consequence(host)).toBe(STRINGS.interopWorkflowTaskAssignConsequence);
+  });
+
   it('holds Save while a send is in flight and shows a refusal above it', () => {
     const { fixture, host, instance } = mount();
     instance.sending.set(true);

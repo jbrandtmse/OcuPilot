@@ -45,10 +45,11 @@ Method TestThePersonsCancelCompletesALiveTaskAndDeliversItsResponse()
     Do $$$AssertEquals(..TaskRows(tSince, tId, .tData, 2, 1), 1, "and records no row")
 }
 
-/// <p>AC3: the agent's cancel is destructive and ships off: it is refused while the tool's key is off, closes target-changed when the task was assigned after the mint, and, once the key is on, completes
-/// the task, delivers its response, answers a read-back that sent nothing, is ledgered once and marked (AD-15) and records one <code>ConfigChange</code>; its consequence says it cannot be undone.</p>
+/// <p>AC3: the agent's cancel is destructive and ships off: it is refused while the tool's key is off, closes target-changed when the task was assigned, or given to another user, after the mint, is
+/// closed target-changed by the confirm's read when its sender stopped waiting after the mint (a precondition refusal, AD-51), and, once the key is on, completes the task, delivers its response, answers a
+/// read-back that sent nothing, is ledgered once and marked (AD-15) and records one <code>ConfigChange</code>; its consequence says it cannot be undone.</p>
 /// <p>Mutation (Rule 19): turn the cancel tool's baseline key on -- the refusal leg goes red; remove <code>AssignedTo</code> from
-/// <parameter>OcuPilot.Screen.Tool.InteropWorkflowTaskCancel.FINGERPRINTSUBJECT</parameter> -- the moved leg goes red.</p>
+/// <parameter>OcuPilot.Screen.Tool.InteropWorkflowTaskAction.FINGERPRINTSUBJECT</parameter> -- the change-of-assignee leg goes red.</p>
 Method TestTheAgentsCancelIsRefusedWhileOffAndConfirmsOnceOn()
 {
     Set tId = ..Live()
@@ -73,6 +74,22 @@ Method TestTheAgentsCancelIsRefusedWhileOffAndConfirmsOnceOn()
         Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: tHttp), "PROPOSAL.TARGETCHANGED", "the proposal is closed target-changed: " _ $Extract($Get(tRaw), 1, 300))
         Do $$$AssertEquals(..State(tId), "Assigned|0#" _ ..#USERA, "and the task is as the assign left it")
         Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($Get(tTurn))
+        Set tCode = ..MintTask("Cancel", tId, {}, .tReason, .tMoved, .tMovedTurn)
+        Do $$$AssertEquals(tCode, "minted", "a cancel of the assigned task mints: " _ tReason)
+        If '$IsObject($Get(tMoved)) Quit
+        Do $$$AssertEquals(..Assign(tId, ..#USERB, "", .tResult, .tFault), "200 ", "the task is given to another user after the mint, its status still Assigned")
+        Set tStatus = ..Confirm(tMoved.proposalId, .tHttp, .tRaw, .tAnswer)
+        Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: tHttp), "PROPOSAL.TARGETCHANGED", "a change of assignee alone closes the proposal target-changed: " _ $Extract($Get(tRaw), 1, 300))
+        Do $$$AssertEquals(..State(tId), "Assigned|0#" _ ..#USERB, "and the task is as the reassign left it")
+        Set tToken = $ClassMethod(..#FIXTURE, "TokenOf", tId)
+        Set tCode = ..MintTask("Cancel", tId, {}, .tReason, .tSender, .tSenderTurn)
+        Do $$$AssertEquals(tCode, "minted", "a cancel mints while its sender waits: " _ tReason)
+        If '$IsObject($Get(tSender)) Quit
+        Do $$$AssertTrue($ClassMethod(..#FIXTURE, "SetToken", tId, $Piece(tToken, "|", 1) _ "|OtherProduction"), "the token is then made to name another production")
+        Set tStatus = ..Confirm(tSender.proposalId, .tHttp, .tRaw, .tAnswer)
+        Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: tHttp), "PROPOSAL.TARGETCHANGED", "the confirm's read, refused as the sender is not waiting, closes the proposal target-changed, the token being no part of the fingerprint: " _ $Extract($Get(tRaw), 1, 300))
+        Do $$$AssertTrue($ClassMethod(..#FIXTURE, "SetToken", tId, tToken), "the token is put back")
+        Do $$$AssertEquals(..State(tId), "Assigned|0#" _ ..#USERB, "and the task and its worklist are as they were")
         Set tCode = ..MintTask("Cancel", tId, {}, .tReason, .tFresh, .tFreshTurn)
         Do $$$AssertEquals(tCode, "minted", "a fresh cancel mints: " _ tReason)
         If '$IsObject($Get(tFresh)) Quit
@@ -83,19 +100,19 @@ Method TestTheAgentsCancelIsRefusedWhileOffAndConfirmsOnceOn()
         Do $$$AssertEquals(..State(tId), "Cancelled|1#-", "the task reads Cancelled and complete, with no worklist item")
         Do $$$AssertTrue($ClassMethod(..#FIXTURE, "AwaitReceived", 1), "the business process was given a response")
         Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Received"), $Parameter(..#FIXTURE, "PROCNAME") _ "|" _ tId _ "|Cancelled|Cancelled", "which is the task, Cancelled")
-        Do $$$AssertEquals(..TaskRows(tSince, tId, .tData, 2, 1), 2, "the assign and the cancel each recorded one ConfigChange, and the refused confirms none")
+        Do $$$AssertEquals(..TaskRows(tSince, tId, .tData, 3, 1), 3, "the two assigns and the cancel each recorded one ConfigChange, and the refused confirms none")
     } Catch ex {
         Do $$$AssertStatusOK(ex.AsStatus(), "the agent leg raised")
     }
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tPolicy), "the policy found before the test is put back")
-    For tT = $Get(tTurn), $Get(tFreshTurn) {
+    For tT = $Get(tTurn), $Get(tFreshTurn), $Get(tMovedTurn), $Get(tSenderTurn) {
         If tT '= "" Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tT)
     }
 }
 
 /// <p>AC4: a cancel is refused by name, before any vendor call, when its response cannot be delivered: <code>INTEROP.PRODUCTION.NOTRUNNING</code> while the namespace runs no production, whether the
 /// task has a sender or not, and <code>INTEROP.WORKFLOW.TASKSENDER</code> when the production runs and the task has no sender, its token names another production, its request header has no return queue
-/// or the header is gone. Each leaves the task open and its worklist as it was and records no row; once the token and the queue are put back the same cancel succeeds.</p>
+/// or the header is gone. The person's Cancel task and the agent's mint are refused by the same codes. Each leaves the task open and its worklist as it was and records no row.</p>
 /// <p>Mutation (Rule 19): remove the sender test from <method>OcuPilot.Port.InteropPort.WorkflowTaskWriteToken</method> -- the sender legs go red and the worklist is lost.</p>
 Method TestACancelWhoseResponseCannotBeDeliveredIsRefusedByName()
 {
@@ -104,8 +121,12 @@ Method TestACancelWhoseResponseCannotBeDeliveredIsRefusedByName()
     Set tOffline = $ClassMethod(tFx, "ProbeTask", ..#ROLE, "", ..#USERA)
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Do $$$AssertEquals(..Cancel(tOffline, .tResult, .tFault), "409 INTEROP.PRODUCTION.NOTRUNNING", "a task with no sender, while no production runs, is refused: no production")
+    Do $$$AssertEquals(..Act("cancel", tOffline, "", .tAnswer), "409 INTEROP.PRODUCTION.NOTRUNNING", "and so is the person's Cancel task")
+    Do $$$AssertEquals(..MintTask("Cancel", tOffline, {}, .tReason, .tProposal, .tTurn), "INTEROP.PRODUCTION.NOTRUNNING", "and the agent's cancel, at its mint: " _ tReason)
     Do $$$AssertStatusOK($ClassMethod(tFx, "LiveStart", ..#ROLE), "the probe production runs")
     Do $$$AssertEquals(..Cancel(tOffline, .tResult, .tFault), "409 INTEROP.WORKFLOW.TASKSENDER", "the same task, while one runs, is refused: no sender")
+    Do $$$AssertEquals(..Act("cancel", tOffline, "", .tAnswer), "409 INTEROP.WORKFLOW.TASKSENDER", "and so is the person's Cancel task")
+    Do $$$AssertEquals(..MintTask("Cancel", tOffline, {}, .tReason, .tProposal, .tTurn), "INTEROP.WORKFLOW.TASKSENDER", "and the agent's cancel, at its mint: " _ tReason)
     Set tLive = $ClassMethod(tFx, "LiveTask")
     Do $$$AssertTrue(tLive > 0, "a live task is stored")
     If 'tLive Quit
@@ -116,6 +137,7 @@ Method TestACancelWhoseResponseCannotBeDeliveredIsRefusedByName()
     Do $$$AssertTrue((tHeader > 0) && ($Piece(tToken, "|", 2) '= "") && (tQueue '= "") && (tQueue '= "<absent>"), "its token names the request header and the running production, and the header has a return queue: " _ tToken _ " " _ tQueue)
     Do $$$AssertTrue($ClassMethod(tFx, "SetToken", tLive, tHeader _ "|OtherProduction"), "the token is made to name another production")
     Do $$$AssertEquals(..Cancel(tLive, .tResult, .tFault) _ "|" _ ..State(tLive), "409 INTEROP.WORKFLOW.TASKSENDER|" _ tOpen, "a token naming another production is refused and the worklist is kept")
+    Do $$$AssertEquals(..Act("cancel", tLive, "", .tAnswer) _ "|" _ ..State(tLive), "409 INTEROP.WORKFLOW.TASKSENDER|" _ tOpen, "and so is the person's Cancel task")
     Do $$$AssertTrue($ClassMethod(tFx, "SetToken", tLive, tToken), "the token is put back")
     Do $$$AssertTrue($ClassMethod(tFx, "SetHeader", tHeader, ""), "the header's return queue is cleared")
     Do $$$AssertEquals(..Cancel(tLive, .tResult, .tFault) _ "|" _ ..State(tLive), "409 INTEROP.WORKFLOW.TASKSENDER|" _ tOpen, "a header with no return queue is refused and the worklist is kept")

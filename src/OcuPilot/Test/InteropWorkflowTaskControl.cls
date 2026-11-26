@@ -49,7 +49,7 @@ Method TestThePersonsAssignUnassignAndPriorityReadBackAsSent()
 /// <p>AC2: the agent's assign, minted for the HTTP account and confirmed over HTTP, assigns the task, answers one envelope with a read-back that matches, is ledgered once and marked (AD-15), and records
 /// one <code>ConfigChange</code> carrying no subject; its consequence says the task leaves every other worklist, and an unassign's says it goes to every active member; a task reassigned after the mint
 /// closes the confirm target-changed and nothing is written.</p>
-/// <p>Mutation (Rule 19): remove <code>AssignedTo</code> from <parameter>OcuPilot.Screen.Tool.InteropWorkflowTaskAssign.FINGERPRINTSUBJECT</parameter> -- the moved leg goes red.</p>
+/// <p>Mutation (Rule 19): remove <code>Status</code> and <code>AssignedTo</code> from <parameter>OcuPilot.Screen.Tool.InteropWorkflowTaskAssign.FINGERPRINTSUBJECT</parameter> -- the moved leg goes red.</p>
 Method TestTheAgentsAssignAndUnassignConfirmOverHttp()
 {
     Do $$$AssertStatusOK(..Arrange(), "the probe role and users are stored")
@@ -75,7 +75,7 @@ Method TestTheAgentsAssignAndUnassignConfirmOverHttp()
     If '$IsObject($Get(tUnassign)) Quit
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tUnassign.proposalId, "Consequence"), "INTEROP.WORKFLOW.TASKUNASSIGN", "its consequence says the task goes to every active member of its role")
     Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "ProbeUser", "OcuP2417wTd", "Dee", 1, ..#SOURCE, 0), "a user is stored")
-    Set tSC = $ClassMethod(..#FIXTURE, "ProbeMember", ..#ROLE, "OcuP2417wTd")
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "ProbeMember", ..#ROLE, "OcuP2417wTd"), "and made an active member of the role")
     Set tCode = ..MintTask("Assign", tId, {"User": (..#USERA)}, .tReason, .tMoved, .tMovedTurn)
     Do $$$AssertEquals(tCode, "minted", "a second assign mints: " _ tReason)
     If '$IsObject($Get(tMoved)) Quit
@@ -146,6 +146,33 @@ Method TestTheScriptFormsRenderTheGuardsAndRunNothingForABadValue()
     Do $$$AssertEquals($Piece(..Facts(tId), "|", 2) _ "#" _ $Piece(..Facts(tId), "#", 2), "#" _ ..#USERA _ "," _ ..#USERB, "and sends the task to each active member")
     Do $$$AssertEquals(..RunScript($ClassMethod(..#PORT, "Snippet", ..#ENDPOINT, "CANCELWORKFLOWTASK", .tQuery, {})), 0, "a cancel's script stops at its guard while no production runs")
     Do $$$AssertEquals($Piece(..Facts(tId), "|", 4, 5), "Unassigned|0#" _ ..#USERA _ "," _ ..#USERB, "and cancels nothing: " _ ..Facts(tId))
+    Kill tQuery
+    Set tQuery("namespace") = ..#SOURCE
+    Set tQuery("id") = 999999999
+    Set tQuery("taskpriority") = 2
+    Set tStopped = ..ScriptStop($ClassMethod(..#PORT, "Snippet", ..#ENDPOINT, "ASSIGNWORKFLOWTASK", .tQuery, {}))
+    Do $$$AssertTrue(tStopped [ ##class(OcuPilot.Api.Error).#PORTNOTFOUND, "a priority-only script for a task held by none stops at its not-found guard, raising nothing: " _ tStopped)
+}
+
+/// <p>What the script <var>pSteps</var> stops with when run line by line in <code>USER</code>: its status's text, <code>threw</code> when a line raised, or <code>""</code> when it ran.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.WorkflowTaskSnippet</method> read the assignee of a task it did not open -- the not-found leg reads <code>threw</code>.</p>
+ClassMethod ScriptStop(pSteps As %DynamicArray) As %String
+{
+    Set tOrigNS = $NAMESPACE
+    Set tStop = ""
+    XECUTE "Kill tSC"
+    Try {
+        Set tText = pSteps.%Get(0).text
+        For tAt = 1:1:$Length(tText, $Char(10)) {
+            Set tLine = $Piece(tText, $Char(10), tAt)
+            If tLine '= "" XECUTE tLine
+        }
+        If '$System.Status.IsOK($Get(@"tSC")) Set tStop = $System.Status.GetErrorText(@"tSC")
+    } Catch {
+        Set tStop = "threw"
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tStop
 }
 
 }

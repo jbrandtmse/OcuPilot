@@ -855,6 +855,8 @@ const DESTRUCTIVE_ON: Readonly<Record<string, readonly string[]>> = {
   [LOCALE_PROPERTY_LIST]: [LOCALE_LOAD_TABLE],
   // Story 24.12 Batch 3: Remove group removes a group with every element in it, which cannot be restored from OcuPilot.
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': ['remove-group'],
+  // Story 24.17 Batch 4: Cancel task returns the task, canceled, to the business process that sent it, which cannot be undone, so it types the task's ID.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': ['cancel'],
 };
 
 /**

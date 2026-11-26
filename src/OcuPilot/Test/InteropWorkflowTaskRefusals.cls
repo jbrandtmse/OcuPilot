@@ -117,12 +117,14 @@ Method TestAVendorErrorIsNeverA200AndLogsNothingItShouldNot()
     Set ^IRIS.Temp.OcuProbe2417wMode = "fault"
     Do $$$AssertEquals(..Via(tId, ..#USERB, "", .tFault), "500 INTERNAL", "a fault in the assign is 500")
     Do $$$AssertEquals(..TaskRows(tSince, tId, .tData, 2, 1), 2, "and records a second row")
+    Do $$$AssertTrue($ClassMethod(..#SEAM, "Logged") > 0, "the fault was logged")
     Do $$$AssertTrue((tData [ """completed"":false") && (tData '[ tMarker), "reading completed false and no fault text: " _ tData)
     Do $$$AssertTrue(($ClassMethod(..#SEAM, "LoggedText") '[ tMarker) && ($ClassMethod(..#SEAM, "LoggedText") '[ tSubject), "the fault's text and the subject are not in a log line")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "LoggedIn") [ ..#SOURCE, 0, "and no line was logged in the task's namespace")
     Do $ClassMethod(..#SEAM, "ClearLog")
     Set ^IRIS.Temp.OcuProbe2417wMode = "here"
     Do $$$AssertEquals(..Via(tId, ..#USERA, "", .tFault), "500 INTERNAL", "a fault raised inside the switched block is 500")
+    Do $$$AssertTrue($ClassMethod(..#SEAM, "Logged") > 0, "the fault was logged")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "LoggedIn") [ ..#SOURCE, 0, "and logged after the namespace was restored")
     Do $$$AssertEquals(..Facts(tId), ..#ROLE _ "||3|Unassigned|0#" _ ..#USERA _ "," _ ..#USERB, "and the task is as it was")
     Kill ^IRIS.Temp.OcuProbe2417wMode
@@ -140,6 +142,7 @@ Method TestAVendorErrorIsNeverA200AndLogsNothingItShouldNot()
     Set ^IRIS.Temp.OcuProbe2417wMode = "fault"
     Do $$$AssertEquals(..Cancel(tLive, .tResult, .tFault, ..#SOURCE, ..#SEAM), "500 INTERNAL", "a fault in the cancel is 500")
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Received"), "-", "and the waiting process was given nothing")
+    Do $$$AssertTrue($ClassMethod(..#SEAM, "Logged") > 0, "the cancel's failures were logged")
     Do $$$AssertTrue(($ClassMethod(..#SEAM, "LoggedText") '[ tMarker) && ($ClassMethod(..#SEAM, "LoggedText") '[ tSubject), "no cancel log line carries the vendor's text or a subject")
 }
 

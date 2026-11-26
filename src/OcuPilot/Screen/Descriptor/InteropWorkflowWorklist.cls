@@ -41,7 +41,7 @@ XData Declaration
     "source": {"port": "interop", "endpoint": "WorkflowWorklist", "type": "LIST"},
     "fields": ["TaskId", "UserName", "RoleName", "Priority", "TimeCreated", "Age", "AssignedTo", "Subject"],
     "filter": ["UserName", "RoleName", "Subject"],
-    "sort": {"fields": ["TaskId", "UserName", "RoleName", "Priority", "TimeCreated", "AssignedTo"], "default": "TimeCreated", "direction": "desc"},
+    "sort": {"fields": ["UserName", "RoleName", "Priority", "TimeCreated", "AssignedTo"], "default": "TimeCreated", "direction": "desc"},
     "paging": "cap"
   },
   "table": {

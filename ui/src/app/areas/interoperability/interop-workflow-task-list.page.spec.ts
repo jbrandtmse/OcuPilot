@@ -11,6 +11,7 @@ import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { ListPage } from '../../shell/list-page';
+import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { INTEROP_WORKFLOW_TASK_ASSIGN_ACTION, INTEROP_WORKFLOW_TASK_LIST, InteropWorkflowTaskListPage } from './interop-workflow-task-list.page';
 
@@ -194,6 +195,26 @@ describe('the Workflow tasks page', () => {
     expect(host.querySelector('app-interop-workflow-task-dialog')).not.toBeNull();
     expect(host.querySelector('[data-interop-workflow-task-refusal]')?.textContent?.trim()).toBe(STRINGS.interopWorkflowTaskRefusalUnchanged);
     expect(events).toEqual([]);
+  });
+
+  it("types the task's ID before Cancel task, states what canceling it does, and sends the row key only once confirmed", async () => {
+    // Mutation (Rule 19): drop the list's `DESTRUCTIVE_ON` entry -> Cancel task is sent at once and the pending assertion goes red; drop its
+    // TYPED_NAME_ROWS entry -> the dialog asks for no ID and the name assertion goes red.
+    const canceled: JsonResult<unknown> = { kind: 'ok', status: 200, body: { action: 'updated', target: { type: 'interop-workflow-task', scope: 'USER', id: '12' } } };
+    const { fixture, store, actions, calls, events } = mount([canceled]);
+    const handler = TestBed.inject(ScreenActionHandler);
+    store.setSelection(['12']);
+    actions.run(INTEROP_WORKFLOW_TASK_LIST, 'cancel');
+    await settle(fixture);
+    expect(handler.pending()?.kind).toBe('typed-name');
+    expect(handler.pending()?.name).toBe('12');
+    expect(handler.pending()?.consequence).toBe(STRINGS.interopWorkflowTaskCancelConsequence);
+    expect(calls).toHaveLength(0);
+    handler.confirmPending();
+    await settle(fixture);
+    expect(calls).toHaveLength(1);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'cancel', id: '12' });
+    expect(events.map((event) => `${event.type}/${event.action}`)).toEqual(['interop-workflow-task/updated']);
   });
 
   it('closes on Cancel without sending, and opens no second dialog over the first', async () => {

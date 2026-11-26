@@ -113,7 +113,7 @@ ClassMethod SetPriority(pId As %String, pPriority As %Integer, pNamespace As %St
     Quit tOk
 }
 
-/// <p>The id both namespaces can store a probe task under: one above the higher of their message body counters.</p>
+/// <p>The id both namespaces can store a probe task under: two above the higher of their message body counters, the task's request taking the id below it.</p>
 ClassMethod SharedId() As %Integer
 {
     Set tMax = 0
@@ -342,7 +342,8 @@ ClassMethod TopTask() As %Integer
     Quit tTop
 }
 
-/// <p>Send one task through the live business process, wait up to ten seconds until it is stored, and answer its id, 0 when none came.</p>
+/// <p>Send one task through the live business process, wait up to ten seconds until it is stored and sits on a worklist (the vendor saves the task before it sends the items), and answer its
+/// id, 0 when none came.</p>
 ClassMethod LiveTask() As %Integer
 {
     Set tProbe = "OcuPilot.Test.ProductionProbe"
@@ -352,7 +353,7 @@ ClassMethod LiveTask() As %Integer
     Set tId = 0
     For tTry = 1:1:40 {
         Set tTop = ..TopTask()
-        If tTop > tBefore {
+        If (tTop > tBefore) && (..ItemUsers(..#SOURCE, tTop) '= "-") {
             Set tId = tTop
             Quit
         }
@@ -413,15 +414,13 @@ ClassMethod DropLive()
         Set $NAMESPACE = tOrigNS
     }
     Do $ClassMethod(tProbe, "Remove")
-    ; The headers the live state made are gone, so the namespace's header counter goes back to where it stood: a suite that reads the ids of two namespaces' headers as different
-    ; would otherwise meet them equal when this one moved the counter of USER alone.
+    ; The headers the live state made are gone, so the namespace's header counter goes back toward where it stood: a suite that reads the ids of two namespaces' headers as different
+    ; would otherwise meet them equal when this one moved the counter of USER alone. It never goes below the highest header id USER holds.
     Set tCounter = +$Get(^IRIS.Temp.OcuP2417wLive("counter"))
     If (tMark '= "") && (tCounter > 0) {
-        Set tHeaderMark = +$Piece(tMark, "|", 1)
         Try {
             Set $NAMESPACE = ..#SOURCE
-            Set tRS = ##class(%SQL.Statement).%ExecDirectNoPriv(, "SELECT COUNT(*) FROM Ens.MessageHeader WHERE ID > ?", tHeaderMark)
-            If (tRS.%SQLCODE = 0) && tRS.%Next() && (+tRS.%GetData(1) = 0) && (+$Get(^Ens.MessageHeaderD) > tCounter) Set ^Ens.MessageHeaderD = tCounter
+            Do ..LowerCounter("^Ens.MessageHeaderD", tCounter, "")
             Set $NAMESPACE = tOrigNS
         } Catch {
             Set $NAMESPACE = tOrigNS
@@ -431,8 +430,8 @@ ClassMethod DropLive()
     Kill ^IRIS.Temp.OcuP2417wLive
 }
 
-/// <p>How many probes are left: <method>OcuPilot.Test.InteropWorkflowFixture.Left</method>'s, and one for each of the live state's flag, the process's received responses, the process's class and
-/// the probe production while it is <code>USER</code>'s current one.</p>
+/// <p>How many probes are left: <method>OcuPilot.Test.InteropWorkflowFixture.Left</method>'s, and one for each of the live state's flag, the process's received responses, the process's class,
+/// the probe production while it is <code>USER</code>'s current one and each row of the probe process.</p>
 ClassMethod Left() As %Integer
 {
     Set tLeft = ##super()
@@ -446,6 +445,9 @@ ClassMethod Left() As %Integer
         If ##class(%Dictionary.ClassDefinition).%ExistsId(..#PROCCLASS) Set tLeft = tLeft + 1
         Do ##class(Ens.Director).GetProductionStatus(.tCurrent, .tState, 2)
         If $Get(tCurrent) = tProduction Set tLeft = tLeft + 1
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM Ens.BusinessProcess WHERE %ConfigName %STARTSWITH ?", ..#MARKER)
+        If (tRS.%SQLCODE '= 0) || 'tRS.%Next() Throw ##class(%Exception.General).%New("the probe process's rows could not be counted")
+        Set tLeft = tLeft + tRS.%GetData(1)
         Set $NAMESPACE = tOrigNS
     } Catch {
         Set $NAMESPACE = tOrigNS
@@ -463,8 +465,8 @@ ClassMethod DropProbes() As %Boolean
     Quit tLeft
 }
 
-/// <p>Put back each namespace's message body counter that <method>ProbeTaskWithId</method> raised, when nothing has moved it since and the probe tasks are gone, so the two namespaces do not
-/// keep the one counter for another suite to read.</p>
+/// <p>Put back each namespace's message body counter that <method>ProbeTaskWithId</method> raised, when nothing has moved it since, so the two namespaces do not keep the one counter for another
+/// suite to read. It never goes below the highest body id the namespace holds, so a probe that was not dropped keeps its id.</p>
 ClassMethod RestoreBodyCounters()
 {
     Set tOrigNS = $NAMESPACE
@@ -474,13 +476,30 @@ ClassMethod RestoreBodyCounters()
         If tNamespace = "" Quit
         Try {
             Set $NAMESPACE = tNamespace
-            If +$Get(^Ens.MessageBodyD) = $List(tKept, 2) Set ^Ens.MessageBodyD = $List(tKept, 1)
+            Do ..LowerCounter("^Ens.MessageBodyD", $List(tKept, 1), $List(tKept, 2))
             Set $NAMESPACE = tOrigNS
         } Catch {
             Set $NAMESPACE = tOrigNS
         }
         Kill ^IRIS.Temp.OcuP2417wBody(tNamespace)
     }
+}
+
+/// <p>Lower the id counter <var>pGlobal</var> of the current namespace to <var>pTo</var>, or to the highest id the global holds when that is above it, and never raise it; with <var>pAfter</var>
+/// only while the counter still reads that value. Answers the counter as left.</p>
+ClassMethod LowerCounter(pGlobal As %String, pTo As %Integer, pAfter As %String = "") As %Integer
+{
+    Set tNow = +$Get(@pGlobal)
+    If (pAfter '= "") && (tNow '= pAfter) Quit tNow
+    ; The highest numeric id: a string subscript would sort after every number.
+    Set tTop = ""
+    For {
+        Set tTop = $Order(@pGlobal@(tTop), -1)
+        If (tTop = "") || (tTop = +tTop) Quit
+    }
+    Set tTo = $Select(+tTop > pTo: +tTop, 1: +pTo)
+    If tTo < tNow Set @pGlobal = tTo
+    Quit +$Get(@pGlobal)
 }
 
 }
