@@ -2,7 +2,7 @@
 title: 'Story 24.17: Managed alerts, logs, the system monitor and workflow (Batch 5: the Interoperability System Monitor and the README)'
 type: 'feature'
 created: '2026-11-26'
-status: 'blocked'
+status: 'ready-for-dev'
 baseline_revision: 'aeb9826d5a0c0dac22d426e6f7a44aef73093272'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -110,7 +110,7 @@ Each is the lead's to take to the veto gate; the recommended option is first.
    - EXPERIENCE.md :932, the auto-refresh list: "Production monitor, Queues, Jobs" becomes "Production monitor, System monitor, Queues, Jobs".
    - Alternative label: "Interoperability system monitor", since Logs already lists "System Monitor log", which is IRIS's own System Monitor.
 2. **Security posture: stricter than the classic page.** `%Ens_Portal:USE`, `%Ens_Dashboard:USE` and `%DB_IRISSYS:READ`. The classic page asks `%Ens_Dashboard:USE` alone (`EnsembleMonitor.cls:21`, `Ensemble.cls:193`). `%Ens_Portal:USE` is held by both stock roles that list `%Ens_Dashboard` (`%EnsRole_Monitor`, `%EnsRole_Operator`, measured at plan). `%DB_IRISSYS:READ` is the switch to `%SYS` (AD-29, measured for MonitorPort); its public permission is empty here and `%EnsRole_Monitor` lacks it, so a holder of that role alone is refused unless Task 0 (b) shows the classic page refuses it too (inference). Every holder sees every namespace's productions, queues and processes, the license and the upcoming tasks, as the classic page shows them through the vendor's `%All`. Alternative: `%Ens_Dashboard:USE` and `%DB_IRISSYS:READ`.
-3. **The vendor's escalation and bookkeeping.** `GetEnsMetrics` adds `%All` for itself in its own frame; OcuPilot contains it in `PurgeFrame` and adds no role. Its metrics cache in IRISTEMP is the vendor's own record, written on each call as on each classic refresh (inference until Task 0 (a)), not an OcuPilot write.
+3. **The vendor's escalation and bookkeeping.** `GetEnsMetrics` adds `%All` for itself in its own frame; OcuPilot contains it in `PurgeFrame` and adds no role. Each call journals the vendor's own `^SYS.EnsMetrics(...)` maintenance records (Task 0 (a): in IRISSYS with no production running, in the namespace's own database with one running; IRISTEMP untouched; no audit row), as each classic refresh does; they are not an OcuPilot write.
 4. **AD amendments (story end, the lead writes them, add-only, `[AMENDED <date>, Story 24.17, Rule 20]`).** AD-9, after the second `New $ROLES` paragraph: "`PurgeFrame` also contains the Interoperability system monitor's read (Story 24.17): `%SYS.Ensemble.GetEnsMetrics` adds `%All` for itself in a frame of its own, and the frame gives the process's roles back on every exit, as it does for the purges. OcuPilot adds no role, and calls only the vendor while switched to `%SYS`." AD-62, the item after Batch 4's: "**The system monitor** (Story 24.17). `InteropPort` gains `SystemMonitor` and three drill-downs over one instance-wide call of `%SYS.Ensemble.GetEnsMetrics`, the classic Interoperability System Monitor's own, made in `%SYS` inside `PurgeFrame`, behind `%Ens_Portal:USE`, `%Ens_Dashboard:USE` and `%DB_IRISSYS:READ`. It takes no namespace, so item 3's interoperability test and item 2's database pair do not apply; its tables are cut at a named limit."
 
 No new dependency; no destructive act; no governance key; nothing is written into another namespace by OcuPilot.
@@ -121,6 +121,13 @@ No new dependency; no destructive act; no governance key; nothing is written int
 - **V2:** kept, the stricter posture: `%Ens_Portal:USE`, `%Ens_Dashboard:USE` and `%DB_IRISSYS:READ`. Task 0 (b) records whether a holder of `%EnsRole_Monitor` alone, admitted by the classic page, is refused here; that is the stricter posture the ruling accepts, not a HALT.
 - **V3:** kept. The vendor's `%All` is contained in `PurgeFrame` exactly as the purges' (the orchestrator accepted the `PurgeFrame` extension for Batch 2 on the same method and allowlist); any frame leak in Task 0 (a) is a HALT.
 - **V4:** kept for story end; the lead writes the lines and reports them to the orchestrator.
+
+**Orchestrator ruling after Task 0's halt at (a) (2026-11-26, veto, policy b9ff703e; ruled as U-159 was).** The `^SYS.EnsMetrics` journal records are the vendor's own maintenance records, written by the classic System Monitor's own call on every refresh: not an OcuPilot write into another namespace and not an AD-9 store. Binding conditions:
+
+1. The story-end AD-9 line names `^SYS.EnsMetrics` (in IRISSYS with no production running, in the namespace's database with one running) as the known effect of the one vendor call. The tests allow exactly those SETs and fail on any other global, in IRISSYS or anywhere, and on any audit row. Task 0's frame checks (`$ROLES`, `$USERNAME`, `$NAMESPACE` unchanged; no process started) are kept as tests.
+2. Each call writes, so OcuPilot never polls it faster than the classic page refreshes: either no automatic refresh (reads only when the person asks), or an interval no shorter than the classic System Monitor's default, read from its source and cited. The agent read is one call per tool invocation, never looped inside the tool.
+3. With a production running, the call raises `<UNDEFINED>cspLink ... %request` outside a web request. The screen path (a REST request) has `%request`. The agent's turn runs in a background job (AD-7), not a CSP request: measure the turn-job path with a production running first. If the call raises there, the port handles it (for example a minimal request context, as Story 21.27 hoisted the null-device helper), with a test on the turn-job path; if no safe handling exists, HALT with `## Clarification Needed` before building the agent read.
+4. Task 0's running-production leg and the read tests reach the real call through the HTTP route on 52777, or through the turn-job path of condition 3.
 
 ## Design Notes
 
