@@ -2,7 +2,7 @@
 title: 'Story 21.28: Alternate show plans'
 type: 'feature'
 created: '2026-11-25'
-status: 'blocked'
+status: 'in-progress'
 baseline_revision: '59243ea80bcfd513b4bf83fbbddfd080b8e09c41'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -203,6 +203,14 @@ deferred: []
   4. **Show one plan** uses `Explain` with the plain id text (ruling 4) after the list; the list is `possiblePlans` on the caller's text.
   5. **Empty state.** `Plan` answers `noplan` for CALL and SET OPTION before the list is reached, and every query or DML statement measured answered at least one plan: string 6 is not shipped.
   6. **Privilege.** `possiblePlans` and `possiblePlansStats` are prepared as checked class queries (`%PrepareClassQuery`); a -99 is the 403 EXECUTE refusal of ruling 2.
+
+- 2026-11-26, orchestrator ruling on the compare time limit (round 2; veto U-166/U-178, no new inbox item per the orchestrator), authoritative:
+  - Compare stays a person's action on SQL query, in its request under the named gateway limit (21.27 Gather precedent); "stopped" is an after-the-fact answer only, as measured.
+  - `%NOPARALLEL` is inserted SQL-aware, through the console's own tokenizer or parser, never a text replace; tests: FROM inside SUBSTRING, TRIM and EXTRACT, a subquery FROM, and a quoted identifier named from; 0 workers busy after a compare is recorded.
+  - The 4-table/4-condition bound applies to Compare too.
+  - Compare also refuses a statement whose counted conditions are fewer than its tables minus one (a cross product): "Compare plans takes a statement that joins each table by a condition.", tested at the boundary. If the scanner cannot count it reliably, HALT and report instead of building it.
+  - Compare note: "Compare plans runs the statement once for each plan, without its values, so a filtered query can show zero rows. Comparing can take longer than the page waits; the result is lost if it does." Measure-first on the ending: if a finished compare's result can be read back afterwards, say that instead.
+  - List, show and the scanner land as measured (4 tables, 4 conditions; list worst 27.6 s, show 14.7 s).
 
 ## Review Triage Log
 
