@@ -102,7 +102,8 @@ const NO_TABLE: TableView = {
  * skeleton until the first read lands, carries the current fault in its tooltip and never animates; a tick updates them silently, with no live region.
  *
  * **Three groups draw a table from a drill-down's own declared read** (AD-5, as the Dashboard draws Upcoming tasks): Most active processes under Production jobs, Most active queues under Production
- * queues and Upcoming tasks under Task manager. Each is read once per tick at five rows, into the page's own store for it -- never the drill-down's, which no other screen writes (AD-19) -- and
+ * queues and Upcoming tasks under Task manager. Each is read once per tick at five rows, after the row has answered and one table after another, since two vendor calls in flight together
+ * can answer the instance as idle; into the page's own store for it -- never the drill-down's, which no other screen writes (AD-19) -- and
  * drawn as its cells under the labels the drill-down declares through the shared `cellView` rule. Only the answer to the latest read issued by a live page is applied. A caller that screen
  * refuses sees "Requires <pair>" and nothing is read. The group's link opens the drill-down, gated as the side bar gates an entry.
  *
@@ -252,8 +253,9 @@ export class InteropSystemMonitorPage {
 
     const read = createScreenRead(this.api, screen);
     const tick: RefreshRead = async (options) => {
-      for (const source of this.sources) void this.loadTable(source);
-      return read(options);
+      const result = await read(options);
+      void this.loadTables();
+      return result;
     };
     this.refresh.bind(screen, tick);
     if (this.scope.loaded()) void this.refresh.readNow();
@@ -278,6 +280,14 @@ export class InteropSystemMonitorPage {
       stopRefreshAction();
       if (this.refresh.descriptor() === screen.descriptor) this.refresh.unbind();
     });
+  }
+
+  /** The three tables' reads, one after another; none is issued once the page is gone. */
+  private async loadTables(): Promise<void> {
+    for (const source of this.sources) {
+      if (this.destroyed) return;
+      await this.loadTable(source);
+    }
   }
 
   /**

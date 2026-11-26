@@ -16278,7 +16278,8 @@ ClassMethod AdmitInstance(pEndpoint As %String, pType As %String, Output pHttpSt
 /// <p>The vendor's meters, read as the classic Interoperability System Monitor reads them: <code>%SYS.Ensemble.GetEnsMetrics</code> with no id, a count of 0 and the vendor's default interval, called in
 /// <code>%SYS</code>, where OcuPilot is not compiled, so nothing of OcuPilot's runs while switched. <var>pValues</var> is the vendor's value for each meter; the vendor's per-meter status and message
 /// are not carried. The vendor adds <code>%All</code> for itself in a frame of its own and drops it. Overridable so a fixture can answer a fault; production never overrides it. Reached only through
-/// <method>PurgeFrame</method>. A raise leaves the process in <code>%SYS</code>: the caller restores its namespace first.</p>
+/// <method>PurgeFrame</method>. It gives the vendor's locks back and restores the caller's namespace before it returns or rethrows a raise; the caller restores its own namespace as well, since an
+/// override may not.</p>
 ClassMethod VendorMetrics(Output pValues) As %Status
 {
     ; With a production running the vendor builds links through the web request, response and session, which a background job (the agent's turn) does not have: the call then answers an error
@@ -16297,8 +16298,8 @@ ClassMethod VendorMetrics(Output pValues) As %Status
     } Catch ex {
         Set tCaught = ex
     }
-    ; Each call leaves one exclusive and one shared lock on the vendor's metrics global that only the end of a web request lets go of, and while they are held every other process reads the instance as idle.
-    ; A background job lives for a whole turn, so the call's own locks are given back here, on every exit.
+    ; Each call leaves its locks on the vendor's metrics global held, which only the end of a web request lets go of, and while they are held every other process reads the instance as idle.
+    ; A background job lives for a whole turn, so the call's own locks are given back here, on every exit. OcuPilot takes no lock on that global of its own.
     Lock -^SYS.EnsMetrics
     Lock -^SYS.EnsMetrics#"S"
     Set $NAMESPACE = tOrigNS
@@ -16321,7 +16322,7 @@ ClassMethod ReadMetrics(Output pValues, Output pHttpStatus As %Integer, Output p
         Set $NAMESPACE = tOrigNS
         Set tCaught = ex
     }
-    If $IsObject(tCaught) Quit ..LogMapped(tCaught, "the system monitor read failed", .pHttpStatus, .pFault)
+    If $IsObject(tCaught) Quit ..Statused(..VendorCodesStatus(tCaught.AsStatus(), "the system monitor read"), "the system monitor read failed", .pHttpStatus, .pFault)
     If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the system monitor read"), "the system monitor read failed", .pHttpStatus, .pFault)
     Set pHttpStatus = 200
     Quit $$$OK

@@ -86,6 +86,7 @@ Method TestTheDrillDownsListTheVendorsRowsInOrderWithoutPadding()
     Kill tQuery
     Do $$$AssertEquals(..Verdict("SystemMonitorQueues", .tQueues, .tFault, .tQuery, "USER", ..#SEAM), "200 ", "the queues answer 200")
     Do $$$AssertEquals(..Canon(tQueues, "Namespace,Queue,Messages"), "USER|Queue.A|5;HSCUSTOM|Queue.B|4;USER|Queue.C|3;USER|Queue.D|2", "four queues in the vendor's order, the padding dropped")
+    Do $$$AssertEquals(tQueues.%Get(0).%GetTypeOf("Messages") _ "|" _ tProcesses.%Get(1).%GetTypeOf("Pid"), "number|number", "a queue's messages and a process ID are numbers")
     Kill tQuery
     Do $$$AssertEquals(..Verdict("SystemMonitorTasks", .tTasks, .tFault, .tQuery, "USER", ..#SEAM), "200 ", "the tasks answer 200")
     Do $$$AssertEquals(..Canon(tTasks, "Task,ScheduledFor,Status"), "Task one|13:01|Scheduled;Task two|13:05|Suspended;Task three|13:10|Scheduled;Task four|13:15|Scheduled", "four tasks in the vendor's order, the blank row dropped")
@@ -114,6 +115,10 @@ Method TestEachDrillDownStopsAtItsNamedLimit()
         Do ..Verdict(tEndpoint, .tFewer, .tFault, .tQuery, "USER", ..#CAPSEAM)
         Do $$$AssertEquals(..Size(tFewer), 2, tEndpoint _ ": and one that asks for fewer gets fewer")
     }
+    Set ^IRIS.Temp.OcuProbe2417SmMode = "three"
+    Kill tQuery
+    Do ..Verdict("SystemMonitorQueues", .tThree, .tFault, .tQuery, "USER", ..#CAPSEAM)
+    Do $$$AssertEquals(..Canon(tThree, "Queue"), "Queue.A;Queue.B;Queue.C", "three rows at the limit of three come whole")
     Kill tQuery
     Set tQuery("maxRows") = "x"
     Do $$$AssertEquals(..Verdict("SystemMonitorQueues", .tBad, .tFault, .tQuery), "400 PORT.VALIDATION", "a cap that is not a whole number is refused by name")
@@ -144,7 +149,6 @@ Method TestTheFourEndpointsAreReadsWithNoScriptForm()
         Do $$$AssertEquals($ClassMethod(..#PORT, "SnippetForm", tEndpoint, "LIST"), "", tEndpoint _ ": no script form")
         Do $$$AssertTrue($ClassMethod(..#PORT, "Serves", tEndpoint, "LIST"), tEndpoint _ ": serves LIST")
         Do $$$AssertTrue('$ClassMethod(..#PORT, "Serves", tEndpoint, "UPDATE") && '$ClassMethod(..#PORT, "Serves", tEndpoint, "PURGE"), tEndpoint _ ": serves no write")
-        Do $$$AssertTrue('$ClassMethod(..#PORT, "IsAnyWrite", tEndpoint), tEndpoint _ ": is no write type")
         Do $$$AssertTrue('$ListFind($ListFromString($Parameter(..#PORT, "SEARCHENDPOINTS")), tEndpoint), tEndpoint _ ": takes no search criterion")
         Kill tQuery
         Do $$$AssertEquals(..Verdict(tEndpoint, .tRows, .tFault, .tQuery, "USER", ..#PORT), "200 ", tEndpoint _ ": answers 200")

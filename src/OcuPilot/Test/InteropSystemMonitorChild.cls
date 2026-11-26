@@ -82,7 +82,9 @@ ClassMethod Probe(pParent As %Integer, pUsername As %String, pMode As %String, p
             Do tOut.%Set("queues", ..Leg("SystemMonitorQueues", pClass))
             Do tOut.%Set("sameRoles", (tBefore = $ROLES), "boolean")
             Do tOut.%Set("sameNamespace", (tNamespace = $NAMESPACE), "boolean")
-            Do tOut.%Set("sessionLeft", ''$Data(^%cspSession($Parameter(pClass, "METRICSSESSIONID"))), "boolean")
+            ; A session left behind is a session object still held, an id on this process's entry in the process table, or a saved session's row.
+            Set tSessionId = ##class(%SYS.ProcessQuery).%OpenId($Job).CSPSessionID
+            Do tOut.%Set("sessionLeft", $IsObject($Get(%session)) || (tSessionId '= "") || $Data(^%cspSession($Parameter(pClass, "METRICSSESSIONID"))), "boolean")
             Do tOut.%Set("requestAfter", ''$IsObject($Get(%request)), "boolean")
         }
     } Catch ex {

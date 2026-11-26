@@ -7,11 +7,6 @@ import { dirname, join } from 'node:path';
 // meters in the classic page's order, each field one the descriptor reads and each meter read once, the three tables each naming a built
 // drill-down and fields that drill-down declares, and the two meter kinds' resolved views -- a value meter carrying the vendor's text and no
 // state, an empty value as the dash, a status meter carrying the vendor's word and its state, an unknown word shown as warning.
-//
-// Mutations (Rule 19):
-// - give `EnsJobs` the status kind -> "a value meter carries the vendor's text and no state" goes red.
-// - drop `EnsErrors` from the alerts group -> "every field the descriptor reads is drawn once" goes red.
-// - swap the labels of `EnsIncomingRequests` and `EnsOutgoingRequests` -> "each meter shows the label and kind the spec places it under" goes red.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const store = await import(join(uiRoot, 'src', 'app', 'areas', 'interoperability', 'interop-system-monitor.store.ts'));

@@ -19,9 +19,6 @@ import { InteropSystemMonitorPage } from './interop-system-monitor.page';
 /**
  * System monitor (Story 24.17 Batch 5), wired end to end over a stub of the HTTP answer, with the real `RefreshService`, `ScreenStores` and `createScreenRead`, rendering the shipped descriptor out of
  * the mirror and answering each drill-down's own read for the three tables.
- *
- * Mutations (Rule 19): bind the Production monitor row's Productions running meter to `EnsJobs` -> the meters case goes red; apply a table's answer into the drill-down's own store -> the own-store case
- * goes red; drop the latest-read check in `loadTable` -> the latest-read case goes red; drop the destroyed check -> the destroyed case goes red; declare more than the one 60-second rate in `InteropSystemMonitor.cls` and regenerate the mirror -> the refresh case goes red.
  */
 
 const DESCRIPTOR = 'OcuPilot.Screen.Descriptor.InteropSystemMonitor';
@@ -93,6 +90,8 @@ interface MountOptions {
   readonly queuesFail?: boolean;
   /** Most active queues' first read stays pending until `releaseFirstQueues` and then answers a row no later read does. */
   readonly holdFirstQueues?: boolean;
+  /** Each answered read stays out this many milliseconds, so two reads issued together are seen in flight together. */
+  readonly delay?: number;
 }
 
 const STALE_QUEUE_ROWS = [{ Namespace: 'USER', Queue: 'StaleQueue', Messages: 99 }];
@@ -110,6 +109,8 @@ async function mount(options: MountOptions = {}) {
   };
   let queuesHeld = false;
   let releaseFirstQueues: () => void = () => {};
+  let inFlight = 0;
+  let maxInFlight = 0;
   const api = {
     requestJson: async <T,>(path: string): Promise<JsonResult<T>> => {
       paths.push(path);
@@ -124,6 +125,12 @@ async function mount(options: MountOptions = {}) {
       }
       if ((base === READ_PATH && options.failFirst === true) || (base === QUEUES_PATH && options.queuesFail === true)) {
         return { kind: 'error', status: 500, code: 'SERVER.INTERNAL', reason: null, detail: null };
+      }
+      if (options.delay !== undefined) {
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, options.delay));
+        inFlight -= 1;
       }
       return { kind: 'ok', status: 200, body: { fields: [], rows: answers[base] ?? [], truncated: false, banner: '' } as T };
     },
@@ -170,6 +177,7 @@ async function mount(options: MountOptions = {}) {
     stores,
     host: fixture.nativeElement as HTMLElement,
     releaseFirstQueues: () => releaseFirstQueues(),
+    maxInFlight: () => maxInFlight,
     /** One read now, as the command bar's Refresh asks for it (the tick the timer would fire reads the same). */
     fireTick: async () => {
       await refresh.readNow();
@@ -209,6 +217,12 @@ describe('InteropSystemMonitorPage', () => {
     for (const path of [READ_PATH, PROCESSES_PATH, QUEUES_PATH, TASKS_PATH]) {
       expect(paths.filter((item) => item.startsWith(path)), path).toHaveLength(1);
     }
+  });
+
+  it('issues one read at a time, the row first and then each table, so no two vendor calls are in flight together', async () => {
+    const { paths, maxInFlight } = await mount({ delay: 5 });
+    expect(maxInFlight()).toBe(1);
+    expect(paths.map((path) => path.split('?')[0])).toEqual([READ_PATH, PROCESSES_PATH, QUEUES_PATH, TASKS_PATH]);
   });
 
   it('draws the vendor text on each meter, its word on a status meter, and a dash for an empty value', async () => {

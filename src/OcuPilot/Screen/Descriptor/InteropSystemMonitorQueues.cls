@@ -1,4 +1,4 @@
-/// <p>Most active queues: the production queues that hold messages, one row each, read through <class>OcuPilot.Port.InteropPort</class> (source kind <code>interop</code>, endpoint
+/// <p>Most active queues: the running productions' queues the vendor lists, with the messages each holds, one row each, read through <class>OcuPilot.Port.InteropPort</class> (source kind <code>interop</code>, endpoint
 /// <code>SystemMonitorQueues</code>) from the table the vendor's <code>%SYS.Ensemble.GetEnsMetrics</code> answers, most messages first (AD-5, AD-36, AD-62, Story 24.17 Batch 5). An unlisted
 /// drill-down of System monitor; the page draws the same table from this declared read.</p>
 /// <p>It administers nothing: <code>entityType</code> is <code>""</code>, its <code>id</code> is <code>none</code>, its scope is <code>instance</code>, it declares no action, it does not refresh

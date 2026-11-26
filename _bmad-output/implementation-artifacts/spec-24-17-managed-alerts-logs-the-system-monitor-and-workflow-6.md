@@ -126,6 +126,45 @@ Paths under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `bf1dcdf71`).
   - `[low]` `[reject]` The browser spec runs on an idle instance — the field-level pins are in the component and store tests.
   - `[maybe-false]` `[defer]` Four reads per refresh against one call per reader — grouped with the overlap entry above.
 
+### 2026-11-26 — Code review (Opus, four layers)
+
+- verdicts: 34 findings — high 0, medium 3, low 31; 13 patched, 1 escalated, 3 deferred, 17 rejected
+- findings:
+  - `[medium]` `[patch]` The page's four reads in flight together answer tables empty while a production runs — measured on 52777 with the probe production: 4 of 8 rounds empty one or more tables together, 0 of 8 one after another; the page now reads the row, then each table in turn. Closes the frontmatter `deferred` entry.
+  - `[medium]` `[patch]` The background-job test's "no session left" leg could not fail (the session is made unsaved) — it now also reads `%session` and the process table's session id.
+  - `[medium]` `[escalate]` AD-43 enumerates thirteen auto-refreshing screens; System monitor joins as a fourteenth at one rate — an amendment line beside veto item 4's.
+  - `[low]` `[patch]` `VendorMetrics`'s doc said a raise leaves the process in `%SYS`, and its comment counted the locks (idle leaves one shared lock, measured) — both corrected.
+  - `[low]` `[patch]` A raise in the read was logged as "the log call" — it names the system monitor read.
+  - `[low]` `[patch]` `Messages` and `Pid` were never asserted to be numbers — asserted.
+  - `[low]` `[patch]` The journal check had no positive control — the running leg asserts the vendor's own records are seen.
+  - `[low]` `[patch]` The cap row's "three rows come whole" had no three-row input — a seam mode of three rows.
+  - `[low]` `[patch]` `IsAnyWrite` was asserted with an endpoint name, which cannot fail — removed; `Serves` and the 501 pin no write.
+  - `[low]` `[patch]` `navigation.test.mjs`'s two messages did not name System monitor after the index edit — they do.
+  - `[low]` `[patch]` The page-spec and store-test headers named mutations that were not run — removed.
+  - `[low]` `[patch]` Most active queues' doc said it lists the queues that hold messages; the vendor lists empty ones — corrected.
+  - `[low]` `[patch]` The Auto Run Result counted 27 strings; the diff adds 26 — corrected.
+  - `[low]` `[patch]` Conditions 1 and 3 had no recorded mutation — run and recorded under Verification.
+  - `[low]` `[defer]` Upcoming tasks sorts `ScheduledFor` as text, so a list crossing midnight is reordered; a descriptor must name a default sort field (`Registry.cls:1809`) — ledger candidate.
+  - `[low]` `[reject]` Task 0 (b) did not load the classic page over HTTP — its `RESOURCE` is `%Ens_Dashboard:USE` and `/csp/sys` has no resource (measured at plan), so the gate's three pairs are a superset (inference).
+  - `[low]` `[reject]` `ci-throwaway.sh` takes two comment lines beside the `# classes:` line — add-only, in every sibling entry's shape.
+  - `[low]` `[reject]` The principals are `OcuP2417s*`, not the spec's `OcuP2417m*` — no other class uses either prefix, so no fixture id moves.
+  - `[low]` `[reject]` `taskCreate`'s citation moved in `strings.ts` — tool-derived and settled at the lead's merge; `test:tools` green.
+  - `[low]` `[reject]` The 403 path logs IRIS's privilege text — `Statused` is the mapping the spec names, and the gate refuses first.
+  - `[low]` `[reject]` The footprint test admits kills on `^SYS.EnsMetrics` and does not read IRISTEMP — the ruling fails on any other global, which it pins; IRISTEMP was measured untouched at Task 0.
+  - `[low]` `[reject]` `maxRows` above the named limit is honored — the family's convention (`AlertCap`).
+  - `[low]` `[reject]` Every background caller's unsaved session has the same id — no lock, no row, the id lives on the caller's own process entry.
+  - `[low]` `[reject]` `SYSTEMMONITORPAIRS` repeats `MONITORPAIRS` — veto item 2 rules the triple on its own; `Read` and `Gate` pin it.
+  - `[low]` `[reject]` Twenty-five filter and sort fields on a one-row screen — the Dashboard's shape.
+  - `[low]` `[reject]` "The system monitor is unavailable." is never drawn by the page — a ruled string the descriptor contract requires, as the Dashboard's.
+  - `[low]` `[reject]` A request with `%request` but no `%session` — a CSP request carries all three.
+  - `[low]` `[reject]` Padding of spaces, or spaces in a number cell — the measured encoding has none (Task 0 (c)).
+  - `[low]` `[reject]` `VendorBeside` keeps the locks on a raise — the raise fails the test, and `%UnitTest` reports a leftover lock (run 1086).
+  - `[low]` `[reject]` `Mark` raises without journaling — the class requires journaling.
+  - `[low]` `[reject]` `VendorMetrics`'s `Catch` does not restore the namespace first — the restore follows the block before anything else runs.
+  - `[low]` `[defer]` The process check compares the whole instance's process list — ledger candidate.
+  - `[low]` `[defer]` The production counts are literal, so a production running outside USER reddens them — ledger candidate.
+  - `[low]` `[reject]` Four vendor calls per refresh against condition 2 — the rate is ruled (60 s, off by default), and four declared reads are the plan's design (Decided in-stage (plan) 5).
+
 ## Veto items
 
 Each is the lead's to take to the veto gate; the recommended option is first.
@@ -184,6 +223,12 @@ No new dependency; no destructive act; no governance key; nothing is written int
 7. `InteropSystemMonitorCapSeam` carries the lowered limit, since the one seam's `values` mode is also read at the shipped limit. The arming roster takes one add-only `# classes:` line naming the case class alone.
 8. `ui/tools/screen-mirror.mjs` regenerated the mirror and `Titles.cls`; every other file was written with Edit or Write, except two in-place `sed` calls on a repo file (identical text) and `ui/tools/navigation.test.mjs` (a one-number change), which the report names.
 
+**Decided in-stage (review).**
+
+1. The page reads its row, then each table one after another, rather than one vendor call shared by the four: a shared call would change the row's declared read or add a read, against each drill-down's own declared read (plan 5). Two Refresh clicks inside one tick's few hundred milliseconds can still overlap.
+2. EXPERIENCE.md's auto-refresh sentence on System monitor is kept: it records condition 2's ruled behavior in the UX roster, and no string a person reads in the product comes of it.
+3. The `sed` edits (implement 8) were re-read line by line: the index moves are right; the two messages are corrected by Edit.
+
 **Measured at plan (`ocupilot-b-ci`, read-only).** `SYS.EnsMetrics` and `SYS.Metrics` are deployed (no source); OcuPilot is not compiled in `%SYS`; `/csp/sys` has no resource and no matching roles; `%DB_IRISSYS` and `%Ens_Dashboard` have no public permission; the roles listing `%Ens_Dashboard` are `%EnsRole_Monitor` (`%Ens_Dashboard:U,%Ens_MsgBank_Dashboard:U,%Ens_Portal:U`) and `%EnsRole_Operator`; IRISTEMP holds `^IRIS.Temp.SysMetrics` and `^IRIS.Temp.Ens*` globals. `node --test --test-name-pattern="README states the count" tools/interop.test.mjs` passes at "One hundred and five" (116 `false` keys less 11 person-only).
 
 **Measured (Task 0, `ocupilot-b-ci`, 2026-11-26, auditing on; the idle legs by the first pass, the running and background-job legs by this one, and the footprint legs again by `InteropSystemMonitorFrame`).**
@@ -228,6 +273,7 @@ No new dependency; no destructive act; no governance key; nothing is written int
 - mutation: the Productions running meter bound to `Processes` in `interop-system-monitor.store.ts`, on a rebuilt and redeployed bundle -> `interop-system-monitor.browser-spec.mjs` first test red, and `interop-system-monitor-store.test.mjs` red (AC8; `EnsJobs`, the plan's field, reads 0 as does Productions running on an idle instance).
 - mutation: the case's `OnAfterOneTest` no longer removes the probe production -> `InteropSystemMonitorRead` red on its after-test assertion and on the next test's start (AC9).
 - mutation (review patches, run the same way): the two `Lock -` lines of `VendorMetrics` removed -> `InteropSystemMonitorFrame.TestAnotherProcessStillReadsTheProductionWhileTheFirstReaderLives` red; `EnsOutgoingRequests` misspelt in `SYSTEMMONITORMETERS` -> `InteropSystemMonitorRead.TestTheRowEqualsTheVendorBesideItWithTheProbeProductionRunningAndStopped` red; two meters' labels swapped in `interop-system-monitor.store.ts` -> `interop-system-monitor-store.test.mjs` "each meter shows the label and kind the spec places it under" red; the latest-read check, the destroyed check and the page's own table store each dropped in `interop-system-monitor.page.ts` -> the matching page-spec case red, one at a time, each reverted and `cmp`-identical.
+- mutation (code review, on scratch copies loaded into `ocupilot-b-ci` and compiled with subclasses; the repo file never changed): a `Set ^OcuP2417SmMut` after the vendor call in `VendorMetrics` -> `InteropSystemMonitorFrame.TestTheRealCallWritesOnlyTheVendorsOwnBookkeeping` red, idle and running (condition 1, run 1083); `New %request, %response, %session` dropped -> `TestABackgroundJobReadsWithAProductionRunning` red (condition 3, run 1084); the minimal context dropped -> the same red on 200, with the second-reader and real-call tests (run 1085); `%session` dropped from the `New` alone -> the same red on "no session is stored" (run 1090); the two `Lock -` lines dropped -> `TestAnotherProcessStillReadsTheProductionWhileTheFirstReaderLives` red, and `%UnitTest` reports the lock left (run 1086); `Messages` dropped from the numeric columns -> `InteropSystemMonitorRead.TestTheDrillDownsListTheVendorsRowsInOrderWithoutPadding` red (run 1091); `MonitorTableRows` cut at one under its cap -> `TestEachDrillDownStopsAtItsNamedLimit` red (AC2, run 1092); the page's four reads issued together again -> `interop-system-monitor.page.spec.ts` "issues one read at a time" red (4 in flight against 1), reverted `cmp`-identical.
 
 ## Auto Run Result
 
@@ -237,10 +283,10 @@ Blocking condition: none.
 **Implement pass (2026-11-26, after the orchestrator's ruling U-177).** Task 0's running-production leg through the HTTP route on 52777 and condition 3's background job are measured and recorded under Design Notes, Measured. Two things beyond the spec came of them: the port gives back the exclusive and shared lock the vendor leaves on `^SYS.EnsMetrics`, and a caller with no web request gets a minimal request context for the call. Built to the spec:
 
 - **Port:** `InteropPort` gains the four endpoints, the instance gate of pairs alone, `SystemMonitorRow`, `MonitorTableRows`, `ReadMetrics`, the overridable `VendorMetrics` and `PurgeFrame`'s kind `metrics`; descriptors `InteropSystemMonitor` (side bar 29, `meters`, one 60-second rate) and the three drill-downs; mirror and `Titles.cls` regenerated.
-- **Client:** `interop-system-monitor.page.ts` and `.store.ts` with specs, the outlet registration, 27 strings and EXPERIENCE.md's row and auto-refresh bullet; README's Interoperability paragraph and `interop.test.mjs`'s assertion, count unchanged.
+- **Client:** `interop-system-monitor.page.ts` and `.store.ts` with specs, the outlet registration, 26 strings and EXPERIENCE.md's row and auto-refresh bullet; README's Interoperability paragraph and `interop.test.mjs`'s assertion, count unchanged.
 - **Tests:** `InteropSystemMonitorCase`, `Seam`, `CapSeam`, `Child`, `Read` (7 tests), `Frame` (4), `Gate` (2); the browser spec; the rosters `ReadTool` (647 tools), `SurfaceCoverage`, `StageTwoTools`, `Descriptor`, `InteropDescriptor`, `InteropHostDescriptor`, `Navigation`, `screen-mirror.test.mjs`, `navigation.test.mjs` and one `# classes:` line.
 - **Verified on `ocupilot-b-ci`:** the three new classes green in both orders; the full sweep, shards 1 to 17, 924 classes and 6,907 tests, green (shard 15 once red on the Frame class's own journal window, fixed and run again green); smoke 49 of 49; the browser spec and `dashboard-drill-downs` green on a rebuilt bundle; `npm test` (2,426 tool tests and 4,094 component tests), `npm run build`, `check-objectscript.py`, its harness and `lint-docs.sh` clean. Each AC has one mutation (Verification). USER holds no production and no `OcuP2417*` principal or role remains.
 
-**Review pass (2026-11-26).** Seventeen findings, none high: four medium patched (lock release pinned by a second reader beside a living first one, the page's own-store and stale-answer guards, the 25 meter names against the vendor's array, the 25 label and kind bindings), one low patched (unrun mutation lines removed from test headers), two maybe-false deferred as one entry (overlapping vendor calls from the page's four reads), two false and seven low rejected with their reasons in the Review Triage Log. Re-verified after the patches: `InteropSystemMonitorFrame` (5 tests), `Read` (7), `Gate` (2), each green with one mutation red and reverted `cmp`-identical; `interop-system-monitor.page.spec.ts` (11) and the store test (7); `npm test` tools 2,427 and components 4,097 green; `check-objectscript.py` clean. Follow-up review recommended: four medium patches, and the new lock case depends on a second process's timing.
+**Code review (2026-11-26, Opus, four layers).** Thirty-four findings, none high (Review Triage Log). Patched: the page reads its row, then each table in turn, after a measurement on 52777 with the probe production running showed reads in flight together emptying tables in 4 of 8 rounds and one after another in none; the background-job test's session leg made falsifiable; `VendorMetrics`'s comments and the read's raise log wording; the numeric columns, the journal's positive control and the three-row cap pinned; a vacuous assertion removed; stale test messages and headers; the string count. Escalated: an AD-43 amendment line. A probe of the lock table showed the port leaves no `^SYS.EnsMetrics` lock and keeps one the process held before. Verified on `ocupilot-b-ci` rebuilt at 20:07:47 UTC on the reviewed tree: the three Batch 5 classes green forward and reversed, Batch 4's six and Batch 2's four classes, the 23 rosters and `InteropHostDescriptor`; `interop-system-monitor`, `dashboard-drill-downs` and `a11y-structural-invariants` (13 tests, 259 screens walked) browser specs; smoke 49 of 49; `npm run build`, `npm test` (tools 2,428, components 4,116), `check-objectscript.py` clean; eight mutations red and reverted (Verification).
 
 **Plan.** Batch 5: System monitor and its three drill-downs through `InteropPort`, one instance-wide `GetEnsMetrics` call each in `%SYS` inside `PurgeFrame`, and the README's Interoperability clauses for the five batches. Veto items 1 to 4; decided-in-stage list under Design Notes. Read-only check on `ocupilot-b-ci` (52777, 2026.2 build 221U); nothing was written to the instance.

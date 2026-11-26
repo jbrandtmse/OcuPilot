@@ -1,6 +1,6 @@
 /// <p><class>OcuPilot.Port.InteropPort</class> whose <method>LogFault</method> keeps the text of each line the port would log, with the namespace it was written in, so a test reads what a failed
 /// read put in the log (Story 24.17 Batch 5); whose <method>VendorMetrics</method> answers what <code>^IRIS.Temp.OcuProbe2417SmMode</code> says: <code>values</code> for fixed meters and tables (the
-/// tables with padding rows), <code>status</code> for an error status that carries a marker text, <code>fault</code> to switch to <code>%SYS</code> and raise, <code>roles</code> to change the
+/// tables with padding rows), <code>three</code> for a queues table of exactly three rows, <code>status</code> for an error status that carries a marker text, <code>fault</code> to switch to <code>%SYS</code> and raise, <code>roles</code> to change the
 /// process's roles and answer success, <code>rolesfault</code> to change them and then raise, anything else the vendor's own call. Each call adds one to the mode's
 /// <code>calls</code> subscript, and the namespace and roles before the call are kept under <code>ranIn</code> and <code>before</code>. <method>ClearLog</method> forgets the lines.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
@@ -69,6 +69,10 @@ ClassMethod VendorMetrics(Output pValues) As %Status
         Set pValues("EnsBusyProcesses") = ";[System];1879;1,200^USER;OcuItem;42;9^USER;OcuItemTwo;43;8^USER;OcuItemThree;44;7^;;;^;;;"
         Set pValues("EnsBusyQueues") = "USER;Queue.A;5^HSCUSTOM;Queue.B;4^USER;Queue.C;3^USER;Queue.D;2^^;;"
         Set pValues("UpcomingTasks") = "Task one;13:01;Scheduled^Task two;13:05;Suspended^^Task three;13:10;Scheduled^Task four;13:15;Scheduled"
+        Quit $$$OK
+    }
+    If tMode = "three" {
+        Set pValues("EnsBusyQueues") = "USER;Queue.A;5^USER;Queue.B;4^USER;Queue.C;3"
         Quit $$$OK
     }
     If tMode = "status" Quit $$$ERROR($$$GeneralError, ..#MARKER _ " answered")

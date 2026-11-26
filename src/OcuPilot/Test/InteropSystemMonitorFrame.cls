@@ -172,6 +172,7 @@ Method TestTheRealCallWritesOnlyTheVendorsOwnBookkeeping()
             If tGlobal '= "^SYS.EnsMetrics" Set tOther = tOther _ tGlobal _ ","
         }
         Do $$$AssertEquals(tOther, "", tLeg _ ": no journal record names a global but the vendor's ^SYS.EnsMetrics bookkeeping: " _ tOther)
+        If tLeg = "running" Do $$$AssertTrue(tJournal [ ",^SYS.EnsMetrics,", "running: the journal read sees the vendor's own records, so it would see any other: " _ tJournal)
     }
     ; The positive control: the same audit query sees a security change this process makes.
     Set tNs = $NAMESPACE
