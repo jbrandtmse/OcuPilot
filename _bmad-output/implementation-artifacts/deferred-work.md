@@ -8500,6 +8500,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-24T03:39:25Z status=routed owner=21-40-the-governance-page-s-render-cost by=orchestrator note=fix-forward Story 21.40 (Rule 27): browser 1/5 attempt 1 red on 3 of 4 21.31 heads vs 1 of 26 others; measure render cost at 3 trees and 4x CPU throttle, fix in the page
 - 2026-11-25T18:38:49Z status=routed owner=burndown by=runner note=21.40 end (re-owned, not resolved): governance render at 4x is one long task of 127-248 ms and settle about 1.7-1.8 s; the read is about 1.2 s after the single-parse fix (1.6 s before); the stall is not render cost (spec-21-40 measurements). Walk order is identical at failing and passing heads (governance is the 3rd screen walked); ui/src registers no beforeunload and calls no native dialog. Next capture: a browser-level CDP session (SystemInfo.getProcessInfo, Target.getTargets, Tracing flushed on an abandoned call), a Page.javascriptDialogOpening listener, and from the runner shell at the stall: chrome ps (pid,stat,rss,pcpu,etime), free -m, dmesg OOM lines, docker stats --no-stream
 - 2026-11-26T02:06:32Z occurrence=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=runner note=run_45730527156(24.17_B3a_head_c08571e7d)_browser_1/5_a11y_AC5_governance_settle_stall_on_attempt_1_AND_attempt_2(renderer_and_main_thread_unresponsive);B3a_touches_no_governance_file;asked_orchestrator
+- 2026-11-26T13:26:51Z status=routed owner=burndown by=runner note=occurrences: run 45630536343 att1 (feature f441bbb11, pre-21.40); run 45730527156 att1+2 (Epic 24 B3a c08571e7d, post 21.40/21.26); run 45820743109 att1 job 139912027480 (21.27 code head b14244015): browser 1/5 a11y AC5 governance 1280 light, renderer unresponsive to Performance.enable, light+dark retry stalled; 21.40, 21.26 and 24.17 B2 green heads did not stall
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -9368,6 +9369,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 19.5 plan on ocupilot-a2-ci: %Api.Atelier.v6:229 calls %SQL.Statement.%Prepare(query,0); a principal with %Development:USE and %DB_USER:RW and no SQL grant read rows from an ungranted table and ran an UPDATE that persisted; with checkPriv=1 both answer SQLCODE -99
 - 2026-10-03T01:39:20Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with DW-1905, DW-1926, DW-1957 and DW-1958
 - 2026-10-05T18:41:41Z status=decision-pending owner=burndown by=owner note=owner hold 2026-10-05 (relayed by the Planner): IRIS defect candidates stay on hold, no report to InterSystems for now
+- 2026-11-26T09:11:31Z occurrence=21-27-the-index-analyzer-and-its-advice
 
 ### DW-1964: The query console (19.6) and the agent's SQL tool (19.11) must enforce the caller's SQL privileges themselves and never pass caller SQL through Atelier's action/query, which prepares with privilege checks off
 - source: spec-19-5-the-sql-catalog-browser.md | severity: high | fix-risk: med | footprint: in-epic
@@ -14597,6 +14599,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 21.31 gate2 sweep (runner) | severity: low | fix-risk: low | footprint: cross-story
 - evidence: Sweep on 79ad64ee2 shard 8/20 (run 371): TestTheStatementAndPurgeReadsAnswerTheirShapes failed '%sqlcq.USER.cls90: the cached queries it holds'; green alone right after (ci-runner, same throwaway); 21.31 touches no statement or purge path; gate1's sweep was green
 - 2026-11-23T22:19:17Z status=routed owner=burndown by=runner note=order-dependent (inference): a class earlier in the shard leaves or shares a cached-query class; measure beside DW-2843
+- 2026-11-26T07:51:10Z status=routed owner=burndown by=runner note=occurrence: 21.27 gate sweep on 041605b60 shard 3/20 (run 172 on ocupilot-ci), TestTheStatementAndPurgeReadsAnswerTheirShapes; green alone right after
 
 ### DW-2859: CI's gates 'client suite' step bound (timeout-minutes 12) is below 1.5x its duration on a slow runner as the component suite grows, so a slower node-22 runner times the step out mid-suite though nothing hangs
 - source: ci run 45197647823 (24.16 Batch 3 code head 92f0235be) | severity: medium | fix-risk: low | footprint: cross-story
@@ -14672,6 +14675,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ConfigPort.SqlStatsState reads only ptInfo(terminate,mins); the classic page saves T:<YYYYMMDD HHMM>:<raf> (RuntimeStatsSettings.cls:328, Utils.cls:42-60); mins empty for a T: stop is (inference), unmeasured; a level-after-stop of 2 or 3 set through the API reads as Off
 - 2026-11-25T19:49:55Z status=decision-pending owner=burndown by=cr note=owner call: refuse a set while a time stop is held (new sentence), or show the time stop; the spec rules out sending T:
 
+### DW-2874: Do 21.26's and 21.27's SQL query console actions honour a custom resource an operator puts on their classic pages, as Story 21.28's alternate plans do for ShowPlanAlt?
+- source: spec-21-28-alternate-show-plans.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Story 21.28 honours a custom resource on QButtons.ShowPlanAlt (orchestrator ruling U-166); 21.26's Plan with statistics and 21.27's Advise do not check their pages' custom resources (21.28 Task 0 measurement to be appended)
+- 2026-11-25T20:32:14Z status=routed owner=burndown by=runner note=orchestrator ruling 2026-11-25 (21.28 plan gate)
+
+### DW-2882: The SQL query screen does not show that the advice list was cut at its cap
+- source: spec-21-27-the-index-analyzer-and-its-advice.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlPort.Advised sets advice.truncated at 200 findings or 20 tables; sql-answer.ts and sql-query.page.ts carry no member for it; a note needs a ruled string
+- 2026-11-26T03:54:49Z status=open owner=21-27-the-index-analyzer-and-its-advice by=harvest note=string sent to the orchestrator; code review patches it once ruled
+- 2026-11-26T04:29:38Z status=resolved-by:21-27-the-index-analyzer-and-its-advice
+- 2026-11-26T04:29:47Z status=resolved-by:21-27-the-index-analyzer-and-its-advice by=cr note=SQL query shows the ruled cut note on advice.truncated; self-protection.test.mjs holds its numbers to the caps
+
 ### DW-2875: Workflow user Save route and tool argument check judge full name and shape before source control and the name refusals (refusal order differs from the matrix; same in sibling families)
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-3.md | severity: low | fix-risk: low | footprint: in
 - evidence: 24.17 B3a review R9: ItemSave.Create runs Violations before the absence read
@@ -14710,6 +14725,34 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-3.md | severity: low | fix-risk: med | footprint: out
 - evidence: 24.17 B3a review R15; product now removes memberships itself (U-168)
 - 2026-11-26T00:38:36Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=a class reddens because USER lacks the RoleMembership registry
+
+### DW-2883: AD-7's Story 21.27 clause says the advice writes nothing, but an Advise records the statement in the namespace's statement index
+- source: spec-21-27-the-index-analyzer-and-its-advice.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Measured on ocupilot-ci 2026-11-26: an Advise of a new statement added its row to INFORMATION_SCHEMA.STATEMENTS (the typing prepare Plan shares); spine AD-7 line 256 ends 'it writes nothing (measured)'
+- 2026-11-26T04:29:59Z status=escalated owner=burndown by=cr note=spine correction is an AD amendment; recommend restoring the proposed clause naming the statement-index row
+- 2026-11-26T04:38:53Z status=resolved-by:21-27-the-index-analyzer-and-its-advice owner=21-27-the-index-analyzer-and-its-advice by=runner note=spine AD-7 21.27 clause corrected in place to U-165's allowed wording (only side effect the statement-index row, measured); the line is the runner's own, not on feature; veto U-171
+
+### DW-2884: Advice attributes a join's conditions to every table the plan scans, so a missing-index finding can name a field of another table
+- source: spec-21-27-the-index-analyzer-and-its-advice.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: SqlAdvice.Findings tests every condition against each scanned table, as the harvested advisor does (spec Batch 2 Gaps, inference)
+- 2026-11-26T04:30:03Z status=wontfix-accepted owner=21-27-the-index-analyzer-and-its-advice by=cr note=reopen_if=an Advise of a two-table join names a field of one table in a missing-index finding for the other
+
+### DW-2885: Advice compares the plan's SQL names with the dictionary's class-side index and property names
+- source: spec-21-27-the-index-analyzer-and-its-advice.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ADVICEINDEXQUERY reads CompiledIndex Name and Properties; a table with an SqlName or SqlFieldName override would read as an unused or missing index (inference)
+- 2026-11-26T04:30:06Z status=wontfix-accepted owner=21-27-the-index-analyzer-and-its-advice by=cr note=reopen_if=an Advise on a table whose index or field has an SqlName override reports the index the plan reads as unused
+
+### DW-2886: An index analyzer report run in OcuPilot during a classic-page gathering of the same namespace is not refused
+- source: spec-21-27-the-index-analyzer-and-its-advice.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: SqlPort.AnalysisLocked takes only the SQLAnlsys lock; a gathering holds none of it (Task 0 (f)), so OcuPilot's own writes are serialized but a classic-page gathering is not seen (inference)
+- 2026-11-26T04:30:10Z status=wontfix-accepted owner=21-27-the-index-analyzer-and-its-advice by=cr note=reopen_if=a report run in OcuPilot while the classic page gathers the same namespace answers 200 with no rows
+
+### DW-2892: 21.26's SqlPort.StatsCount prepares with privilege checks off, against 19.6's console invariant; the test grepped the literal pText
+- source: spec-21-26-runtime-statistics.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: 21.27 gate sweep shard 19/20 (run 903 on ocupilot-ci, head 041605b60): SqlPort.TestThePortNamesNoSourceCodeApiClass red on 21.27's UncheckedRow/UncheckedRows %Prepare(pText, 0); 21.26's StatsCount %Prepare(tText, 0) on feature evaded the literal check
+- 2026-11-26T07:50:20Z status=open owner=21-27-the-index-analyzer-and-its-advice by=runner note=orchestrator ruling 2026-11-26: rework 1 of 21.27 prepares every SqlPort catalog read with checks on and strengthens the test; veto U-174
+- 2026-11-26T08:08:39Z status=open owner=21-27-the-index-analyzer-and-its-advice by=runner note=behavior change (orchestrator ruling, veto U-175): with checks on, least-privileged users get the 403 refusal naming the SQL SELECT privilege until granted, on 21.26's runtime statistics list as well as 21.27's reads
+- 2026-11-26T09:14:23Z status=resolved-by:21-27-the-index-analyzer-and-its-advice owner=21-27-the-index-analyzer-and-its-advice by=runner note=f6d29ec7f+85984afc6+re-review: every SqlPort catalog read checked; StatsCount included; test refuses any no-privilege prepare; -99 -> 403
 
 ### DW-2887: InteropMessageExportElsewhere (Story 24.16) fails on a long-lived instance once HSCUSTOM's next message id falls inside the ids USER holds (counters 89 vs 252 after a full local sweep); the fixture's cross-namespace id guard does not raise the counter first (inference)
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-4.md | severity: med | fix-risk: low | footprint: in
@@ -14763,3 +14806,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-5.md | severity: low | fix-risk: low | footprint: in
 - evidence: 24.17 B4 review D6
 - 2026-11-26T13:27:39Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=the owner wants inactive assignees refused on any change
+
+### DW-2893: The spine does not record that SqlPort catalog reads check SQL privileges and refuse 403 SQL.SELECT.PRIVILEGE naming their tables (ruling U-175)
+- source: spec-21-27-the-index-analyzer-and-its-advice.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: AD-51's Story 21.26 and 21.27 cases describe the STATS and ANALYSIS fresh reads without the checks-on prerequisite, which now refuses a gated principal without SELECT the purge, gather, run and purge-analysis writes; the rule lives only in the 21.27 spec's Security note.
+- 2026-11-26T09:11:34Z status=escalated owner=burndown by=cr note=lead Rule 20: amend AD-51 (veto window) or decline
+- 2026-11-26T09:14:23Z status=resolved-by:21-27-the-index-analyzer-and-its-advice owner=21-27-the-index-analyzer-and-its-advice by=runner note=AD-51 Story 21.27 case amended in place (runner's own line, U-174/U-175): checks on, -99 answers 403 naming the port's tables

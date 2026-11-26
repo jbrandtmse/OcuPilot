@@ -51,6 +51,8 @@ export const PARAMETERS_VALUE = 'parameters';
 export const MAX_ROWS_VALUE = 'maxRows';
 /** The plan route's flag that asks for Plan with statistics (Story 21.26). */
 export const STATS_VALUE = 'stats';
+/** The plan route's flag that asks for Advise: the plan's findings (Story 21.27). */
+export const ADVISE_VALUE = 'advise';
 
 /** Max rows before the person changes it. */
 export const DEFAULT_MAX_ROWS = '1000';
@@ -106,6 +108,38 @@ export function consequenceFor(confirm: SqlConfirm): string {
   if (confirm.kind === 'ddl') return STRINGS.explorerSqlConfirmDdl;
   if (confirm.kind === 'call') return STRINGS.explorerSqlConfirmCall;
   return STRINGS.explorerSqlConfirmOther;
+}
+
+/** The name a finding's kind code is shown as (Story 21.27); a code this client does not know is shown as sent. */
+export function adviceKindLabel(kind: string): string {
+  switch (kind) {
+    case 'fullscan':
+      return STRINGS.sqlAdviceKindFullScan;
+    case 'missingindex':
+      return STRINGS.sqlAdviceKindMissingIndex;
+    case 'nottuned':
+      return STRINGS.sqlAdviceKindNotTuned;
+    case 'tempfile':
+      return STRINGS.sqlAdviceKindTempFile;
+    case 'unusedindex':
+      return STRINGS.sqlAdviceKindUnusedIndex;
+    default:
+      return kind;
+  }
+}
+
+/** The name a finding's confidence code is shown as (Story 21.27); a code this client does not know is shown as sent. */
+export function adviceConfidenceLabel(confidence: string): string {
+  switch (confidence) {
+    case 'high':
+      return STRINGS.taskPriorityHigh;
+    case 'medium':
+      return STRINGS.sqlAdviceConfidenceMedium;
+    case 'low':
+      return STRINGS.taskPriorityLow;
+    default:
+      return confidence;
+  }
 }
 
 /** The sentence a refusal shows: a privilege denial names the pair it lacks (AD-8), any other the envelope's own (AD-39). */
@@ -280,6 +314,16 @@ export class SqlQueryState {
     this.adopt(answer);
   }
 
+  /**
+   * Advise (Story 21.27): post the statement and `advise: true` to the plan route and show the plan with the findings the instance read from it.
+   * The route reads a query's plan only and refuses any other statement before its plan is read; nothing runs.
+   */
+  async advise(deps: SqlQueryDeps): Promise<void> {
+    const result = await this.post(deps, SQL_PLAN_PATH, false, false, true);
+    if (result === null) return;
+    this.adopt(answerOf(result));
+  }
+
   /** Proceed: send the confirmed run as the screen action, and show what the instance answered. */
   async proceed(deps: SqlQueryDeps): Promise<boolean> {
     if (this.confirmValue === null) return false;
@@ -358,8 +402,9 @@ export class SqlQueryState {
   }
 
   /** The request a Run or Explain plan posts: the statement, its values and, for a run, Max rows. */
-  private body(withMaxRows: boolean, stats = false): string {
+  private body(withMaxRows: boolean, stats = false, advise = false): string {
     if (stats) return JSON.stringify({ [STATEMENT_VALUE]: this.textValue, [STATS_VALUE]: true });
+    if (advise) return JSON.stringify({ [STATEMENT_VALUE]: this.textValue, [ADVISE_VALUE]: true });
     const maxRows = this.maxRowsValue.trim();
     const body: Record<string, unknown> = { [STATEMENT_VALUE]: this.textValue, [PARAMETERS_VALUE]: this.valuesValue };
     if (withMaxRows) body[MAX_ROWS_VALUE] = /^[0-9]+$/.test(maxRows) ? Number(maxRows) : maxRows;
@@ -367,7 +412,7 @@ export class SqlQueryState {
   }
 
   /** Post to `path`; the answer's body, or `null` after a refusal or an older request's answer. */
-  private async post(deps: SqlQueryDeps, path: string, withMaxRows: boolean, stats = false): Promise<unknown> {
+  private async post(deps: SqlQueryDeps, path: string, withMaxRows: boolean, stats = false, advise = false): Promise<unknown> {
     if (this.runningValue) return null;
     const generation = ++this.generation;
     this.runningValue = true;
@@ -377,7 +422,7 @@ export class SqlQueryState {
     const result: JsonResult<unknown> = await deps.api.requestJson<unknown>(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: this.body(withMaxRows, stats),
+      body: this.body(withMaxRows, stats, advise),
       scope: deps.scope(),
     });
     if (generation !== this.generation) return null;

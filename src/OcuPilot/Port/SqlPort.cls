@@ -48,6 +48,9 @@ Include %msql
 /// <p><b>Runtime statistics are counted and purged here too</b> (AD-51's Story 21.26 case): <method>TuningInvoke</method> answers a namespace's
 /// runtime statistics row count (<code>STATS</code>) and, as <code>PURGESTATS</code>, removes every row with <code>clearStatsSQL</code> called
 /// with the namespace alone (<method>StatementCall</method>).</p>
+/// <p><b>The index analyzer is read and written here too</b> (AD-51's Story 21.27 case): <method>TuningInvoke</method> answers the namespace's gathered
+/// statement count and each report's row count (<code>ANALYSIS</code>) and makes the three writes <parameter>ANALYSISWRITES</parameter>, each in the
+/// request, under the namespace's analysis lock and the null device, with the declared report and flags alone (<method>AnalysisCall</method>).</p>
 /// <p>Seams a fixture subclass overrides: <method>GateClass</method>, <method>BoundSeconds</method>, <method>StatementCall</method> and
 /// <method>TableCall</method>. Production overrides none.</p>
 Class OcuPilot.Port.SqlPort Extends (%RegisteredObject, OcuPilot.Kernel.RowFetch)
@@ -66,7 +69,44 @@ Parameter TYPERUN = "RUN";
 /// <p>The writes this port composes from the caller's declared values, as <code>endpoint/type</code>
 /// (AD-51): the run, from its statement, values and Max rows; and the data browser's save, from its
 /// schema, table and staged changes.</p>
-Parameter COMPOSEDTYPES = "Sql/RUN,SqlData/RUN,Statements/FREEZE,Statements/UNFREEZE,Statements/CLEARSTATISTICS,Statements/CLEARERROR,Statements/CLEAN,CachedQueries/PURGEQUERIES,Tables/REBUILD,Tables/REBUILDALL,Tables/TUNE,Tables/CLEARSTATS,Tables/TUNESCHEMA,Tables/SETEXTENT,Tables/SETSELECTIVITY,Tables/SETMAPSIZE,RuntimeStats/PURGESTATS";
+Parameter COMPOSEDTYPES = "Sql/RUN,SqlData/RUN,Statements/FREEZE,Statements/UNFREEZE,Statements/CLEARSTATISTICS,Statements/CLEARERROR,Statements/CLEAN,CachedQueries/PURGEQUERIES,Tables/REBUILD,Tables/REBUILDALL,Tables/TUNE,Tables/CLEARSTATS,Tables/TUNESCHEMA,Tables/SETEXTENT,Tables/SETSELECTIVITY,Tables/SETMAPSIZE,RuntimeStats/PURGESTATS,IndexAnalysis/GATHER,IndexAnalysis/RUNREPORT,IndexAnalysis/PURGEANALYSIS";
+
+/// <p>The index analyzer endpoint (Story 21.27, AD-51): <parameter>TYPEANALYSIS</parameter> answers how many statements the namespace has gathered
+/// and how many rows each report holds, for the target <parameter>ALLID</parameter>. Its writes are <parameter>ANALYSISWRITES</parameter>:
+/// <code>GATHER</code> replaces the gathered statements and every report's rows, <code>RUNREPORT</code> replaces one report's rows, and
+/// <code>PURGEANALYSIS</code> removes both. Each is made in the request, under the namespace's analysis lock, which a second writer finds held and is
+/// refused.</p>
+Parameter ENDPOINTINDEXANALYSIS = "IndexAnalysis";
+
+Parameter TYPEANALYSIS = "ANALYSIS";
+
+Parameter TYPEGATHER = "GATHER";
+
+Parameter TYPERUNREPORT = "RUNREPORT";
+
+Parameter TYPEPURGEANALYSIS = "PURGEANALYSIS";
+
+Parameter ANALYSISWRITES = "GATHER,RUNREPORT,PURGEANALYSIS";
+
+/// <p>The declared values of the analysis writes: the report, as one of <parameter>REPORTCODES</parameter>, and three booleans sent as
+/// <code>true</code> or <code>false</code>, each <code>true</code> when absent.</p>
+Parameter REPORTKEY = "Report";
+
+Parameter SKIPSYSTEMKEY = "SkipSystem";
+
+Parameter SKIPINSERTSKEY = "SkipInserts";
+
+Parameter SKIPIDKEYSKEY = "SkipIdKeys";
+
+/// <p>The reports, as the vendor stores them: index usage, table scans, temporary indices, join indices and outlier indices.</p>
+Parameter REPORTCODES = "IU,TS,TI,JI,OI";
+
+/// <p>The vendor class whose gather, reports and clears the analysis writes call.</p>
+Parameter ANALYSISCLASS = "%SYS.PTools.UtilSQLAnalysis";
+
+/// <p>The counts <parameter>TYPEANALYSIS</parameter> reads: the gathered statements and each report's rows in the current namespace, one fixed
+/// statement with nothing bound, prepared with SQL privilege checks on as <parameter>STATSCOUNTQUERY</parameter> is.</p>
+Parameter ANALYSISCOUNTQUERY = "SELECT (SELECT COUNT(*) FROM %SYS_PTools.UtilSQLStatements), COUNT(CASE OptionName WHEN 'IU' THEN 1 END), COUNT(CASE OptionName WHEN 'TS' THEN 1 END), COUNT(CASE OptionName WHEN 'TI' THEN 1 END), COUNT(CASE OptionName WHEN 'JI' THEN 1 END), COUNT(CASE OptionName WHEN 'OI' THEN 1 END) FROM %SYS_PTools.UtilSQLAnalysisDB";
 
 /// <p>The runtime statistics endpoint (Story 21.26, AD-51): <parameter>TYPESTATS</parameter> answers how many runtime statistics rows the namespace holds
 /// for the target <parameter>ALLID</parameter>, and <parameter>TYPEPURGESTATS</parameter> removes every one of them with
@@ -78,7 +118,7 @@ Parameter TYPESTATS = "STATS";
 Parameter TYPEPURGESTATS = "PURGESTATS";
 
 /// <p>The count <parameter>TYPESTATS</parameter> reads: the runtime statistics rows of one namespace, a fixed statement with the namespace bound, prepared
-/// without SQL privilege checks as the source code API's query route prepares the statistics list's read, which the gate has already admitted.</p>
+/// with SQL privilege checks on, after the gate has admitted the caller.</p>
 Parameter STATSCOUNTQUERY = "SELECT COUNT(*) FROM %SYS_PTools.StatsSQL WHERE NameSpace = ?";
 
 /// <p>The vendor class whose <code>clearStatsSQL</code> the purge calls.</p>
@@ -260,6 +300,25 @@ Parameter MAXROWSKEY = "maxRows";
 
 /// <p>The plan route's body key that asks for Plan with statistics: a boolean.</p>
 Parameter STATSKEY = "stats";
+
+/// <p>The plan route's body key that asks for the advice on the plan (Story 21.27): a boolean.</p>
+Parameter ADVISEKEY = "advise";
+
+/// <p>The two dictionary reads behind the advice, both fixed statements with their values bound: the compiled class of a table, from its SQL schema
+/// and name, and that class's indices.</p>
+Parameter ADVICECLASSQUERY = "SELECT Name FROM %Dictionary.CompiledClass WHERE SqlSchemaName = ? AND SqlTableName = ?";
+
+Parameter ADVICEINDEXQUERY = "SELECT Name, Properties, Type, PrimaryKey, IdKey FROM %Dictionary.CompiledIndex WHERE parent = ? ORDER BY Name";
+
+/// <p>The tables each fixed read above names, comma-separated, as the sentence of a refused read lists them
+/// (<method>SelectRefusal</method>): the port's own list, kept equal to each statement's text by a test and never read from the instance's error.</p>
+Parameter STATSTABLES = "%SYS_PTools.StatsSQL";
+
+Parameter ANALYSISTABLES = "%SYS_PTools.UtilSQLStatements,%SYS_PTools.UtilSQLAnalysisDB";
+
+Parameter ADVICECLASSTABLES = "%Dictionary.CompiledClass";
+
+Parameter ADVICEINDEXTABLES = "%Dictionary.CompiledIndex";
 
 /// <p>The save's query keys: the table's schema and name, and its staged changes as JSON array
 /// text.</p>
@@ -793,13 +852,20 @@ ClassMethod Run(pNamespace As %String, pText As %String, pValues As %DynamicArra
 /// refused (422 <code>EXPLORER.SQL.PLANSTATS</code>) before anything runs. The run is bounded at
 /// <method>BoundSeconds</method>, and an overrun answers <code>{outcome: stopped, kind, seconds}</code>
 /// as <method>Run</method> does. The statement runs without values.</p>
-ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pStats As %Boolean = 0) As %Status
+/// <p>With <var>pAdvise</var> 1 the plan also carries <code>advice: {recognized, tables, findings, truncated}</code> (<method>Advised</method>),
+/// read from the plan as the instance explains it, which runs nothing. Only a <parameter>KINDQUERY</parameter> is taken: any other kind is refused
+/// (422 <code>EXPLORER.SQL.ADVICE</code>) before the plan is read, and <var>pAdvise</var> with <var>pStats</var> is the input refusal.</p>
+ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pStats As %Boolean = 0, pAdvise As %Boolean = 0) As %Status
 {
     Set pAnswer = ""
     Set pHttpStatus = 0
     Set pFault = ""
     Set tSC = $$$OK
     Try {
+        If pAdvise && pStats {
+            Set tSC = ..RefuseFor("input", .pHttpStatus, .pFault)
+            Quit
+        }
         Set tSC = ..Classify(pNamespace, pText, .tGuard, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
         If tGuard.%GetTypeOf("error") = "object" {
@@ -809,6 +875,10 @@ ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %Dyn
         Set tKind = tGuard.%Get("Kind")
         If pStats && (tKind '= ..#KINDQUERY) {
             Set tSC = ..RefuseFor("planstats", .pHttpStatus, .pFault)
+            Quit
+        }
+        If pAdvise && (tKind '= ..#KINDQUERY) {
+            Set tSC = ..RefuseFor("advice", .pHttpStatus, .pFault)
             Quit
         }
         Set pAnswer = {}
@@ -836,11 +906,162 @@ ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %Dyn
         Do pAnswer.%Set("outcome", ..#OUTCOMEPLAN, "string")
         Do pAnswer.%Set("plan", $Extract(tPlan, 1, ..#MAXANSWER), "string")
         Do pAnswer.%Set("truncated", ($Length(tPlan) > ..#MAXANSWER), "boolean")
+        If pAdvise {
+            Set tSC = ..Advised(pNamespace, tPlan, .tAdvice, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) {
+                Set pAnswer = ""
+                Quit
+            }
+            Do pAnswer.%Set("advice", tAdvice)
+        }
     } Catch ex {
         Set pAnswer = ""
         Set tSC = ..Fail("the statement's plan could not be read", $$$ERROR($$$GeneralError, ex.Name), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>The advice for <var>pPlan</var>, the text of a query's plan in <var>pNamespace</var>: <code>{recognized, tables, findings, truncated}</code>.
+/// <code>tables</code> is each table the plan reads, at most <parameter>OcuPilot.Port.SqlAdvice.MAXTABLES</parameter>, as <code>{Schema, Table,
+/// Class}</code>, with <code>Class</code> the compiled class the dictionary holds for it or <code>""</code>; <code>findings</code> are
+/// <method>OcuPilot.Port.SqlAdvice.Findings</method>'s, read from the plan and those tables' indices. A plan the advice does not recognize answers no
+/// tables and no findings. The dictionary is read through <parameter>ADVICECLASSQUERY</parameter> and <parameter>ADVICEINDEXQUERY</parameter> alone, with the
+/// schema, table and class bound, and nothing is composed from the statement or the plan into SQL text. A caller without the SQL SELECT privilege on a
+/// dictionary table is the 403 of <method>SelectRefusal</method>; any other failed dictionary read is the internal fault.</p>
+ClassMethod Advised(pNamespace As %String, pPlan As %String, Output pAdvice As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pAdvice = ""
+    Set tSC = $$$OK
+    Set tAdvisor = ..AdvisorClass()
+    Set tRecognized = $ClassMethod(tAdvisor, "Recognized", pPlan)
+    Set tAdvice = {}
+    Do tAdvice.%Set("recognized", tRecognized, "boolean")
+    Set tTables = []
+    Set tGroups = []
+    Set tTruncated = 0
+    If tRecognized {
+        Set tRead = $ClassMethod(tAdvisor, "Tables", pPlan)
+        Set tMax = $Parameter(tAdvisor, "MAXTABLES")
+        If tRead.%Size() > tMax Set tTruncated = 1
+        Set tIterator = tRead.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tRef) {
+            If tKey >= tMax Quit
+            Set tSC = ..Indexed(pNamespace, tRef.%Get("Schema"), tRef.%Get("Table"), .tClass, .tRows, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            Set tTable = {}
+            Do tTable.%Set("Schema", tRef.%Get("Schema"), "string")
+            Do tTable.%Set("Table", tRef.%Get("Table"), "string")
+            Do tTable.%Set("Class", tClass, "string")
+            Do tTables.%Push(tTable)
+            Set tGroup = {}
+            Do tGroup.%Set("Schema", tRef.%Get("Schema"), "string")
+            Do tGroup.%Set("Table", tRef.%Get("Table"), "string")
+            If $IsObject(tRows) Do tGroup.%Set("Rows", tRows)
+            Do tGroups.%Push(tGroup)
+        }
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Set tFindings = $ClassMethod(tAdvisor, "Findings", pPlan, tGroups, .tCut)
+    Do tAdvice.%Set("tables", tTables)
+    Do tAdvice.%Set("findings", tFindings)
+    Do tAdvice.%Set("truncated", ''(tTruncated || tCut), "boolean")
+    Set pAdvice = tAdvice
+    Quit $$$OK
+}
+
+/// <p>The class whose heuristics and caps <method>Advised</method> applies, <class>OcuPilot.Port.SqlAdvice</class>. Overridable so a fixture can lower
+/// a cap; production overrides none.</p>
+ClassMethod AdvisorClass() As %String
+{
+    Quit "OcuPilot.Port.SqlAdvice"
+}
+
+/// <p>The compiled class and the indices of the table <var>pSchema</var>.<var>pTable</var> in <var>pNamespace</var>, as <var>pClass</var> (<code>""</code>
+/// when the dictionary holds none, as for a view) and <var>pRows</var>, an array of <code>{Name, Properties, Type, PrimaryKey, IdKey}</code> or
+/// <code>""</code> when there is no class. A name the dictionary does not hold, such as one with a quote, resolves nothing and raises nothing. A table in a
+/// system schema is not read. The caller is gated here (AD-29), and both reads are prepared with SQL privilege checks on.</p>
+ClassMethod Indexed(pNamespace As %String, pSchema As %String, pTable As %String, Output pClass As %String, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pClass = ""
+    Set pRows = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tSC = ..Gate(pNamespace, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If ($Extract(pSchema, 1) = "%") || ($ZConvert(pSchema, "U") = "INFORMATION_SCHEMA") Quit $$$OK
+    Set tSC = ..CheckedRows(pNamespace, ..#ADVICECLASSQUERY, [(pSchema), (pTable)], 1, "the class of an advised table", ..#ADVICECLASSTABLES, .tClasses, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If tClasses.%Size() = 0 Quit $$$OK
+    Set pClass = tClasses.%Get(0).%Get(0)
+    Set tSC = ..CheckedRows(pNamespace, ..#ADVICEINDEXQUERY, [(pClass)], ..#MAXROWS, "the indices of an advised table", ..#ADVICEINDEXTABLES, .tIndices, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pRows = []
+    Set tIterator = tIndices.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tRow) {
+        Set tIndex = {}
+        Do tIndex.%Set("Name", tRow.%Get(0), "string")
+        Do tIndex.%Set("Properties", tRow.%Get(1), "string")
+        Do tIndex.%Set("Type", tRow.%Get(2), "string")
+        Do tIndex.%Set("PrimaryKey", ''tRow.%Get(3), "boolean")
+        Do tIndex.%Set("IdKey", ''tRow.%Get(4), "boolean")
+        Do pRows.%Push(tIndex)
+    }
+    Quit $$$OK
+}
+
+/// <p>The rows of the fixed statement <var>pText</var> run in <var>pNamespace</var> with <var>pValues</var> bound, at most <var>pMax</var>, as
+/// <var>pRows</var>, an array of arrays of text cells; prepared with SQL privilege checks on, after the gate has admitted the caller. A statement the
+/// instance refuses for want of the SQL SELECT privilege is the 403 of <method>SelectRefusal</method> naming <var>pTables</var>, the fixed statement's own
+/// tables; any other refusal or a failed read is the internal fault, named by <var>pWhat</var>. The switched region calls vendor classes only.</p>
+ClassMethod CheckedRows(pNamespace As %String, pText As %String, pValues As %DynamicArray, pMax As %Integer, pWhat As %String, pTables As %String, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = []
+    Set tCode = 0
+    Set tRefused = 0
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare(pText, 1)
+        If $$$ISERR(tSC) {
+            Set tRefused = ($System.Status.StatusToSQLCODE(tSC) = ..#PRIVILEGESQLCODE)
+        } Else {
+            Set tResult = $Case(pValues.%Size(), 1: tStatement.%Execute(pValues.%Get(0)), 2: tStatement.%Execute(pValues.%Get(0), pValues.%Get(1)), : tStatement.%Execute())
+            Set tCode = tResult.%SQLCODE
+            While (tCode >= 0) && (pRows.%Size() < pMax) && tResult.%Next() {
+                Set tRow = []
+                For tI = 1:1:tResult.%ResultColumnCount Do tRow.%Push(tResult.%GetData(tI), "string")
+                Do pRows.%Push(tRow)
+            }
+            If tCode >= 0 Set tCode = tResult.%SQLCODE
+            Set tRefused = (tCode = ..#PRIVILEGESQLCODE)
+        }
+        Set (tResult, tStatement) = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = $$$ERROR($$$GeneralError, pWhat _ " raised " _ ex.Name)
+    }
+    If tRefused Quit ..SelectRefusal(pTables, .pHttpStatus, .pFault)
+    If $$$ISOK(tSC) && (tCode < 0) Set tSC = $$$ERROR($$$GeneralError, pWhat _ " answered SQLCODE " _ tCode)
+    If $$$ISERR(tSC) Quit ..Fail(pWhat _ " failed", tSC, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The 403 of a fixed read the instance refused the caller for want of the SQL SELECT privilege (SQLCODE <parameter>PRIVILEGESQLCODE</parameter>):
+/// <code>SQL.SELECT.PRIVILEGE</code> with the sentence <method>OcuPilot.Api.AtelierError.SelectPrivilegeReason</method> composes naming
+/// <var>pTables</var>, the read's own tables from this port's list, comma-separated, listed in order joined by <code>and</code>. The same sentence is
+/// <code>detail.reason</code>, beside <code>detail.tables</code>, which is what an agent's tool result carries. Nothing of the instance's error text
+/// reaches the answer.</p>
+ClassMethod SelectRefusal(pTables As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tNames = $Replace(pTables, ",", " and ")
+    Set tReason = ##class(OcuPilot.Api.AtelierError).SelectPrivilegeReason(tNames)
+    Set tDetail = {}
+    Do tDetail.%Set("tables", tNames, "string")
+    Do tDetail.%Set("reason", tReason, "string")
+    Quit ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.AtelierError).#SQLSELECTPRIVILEGE, tReason, .pHttpStatus, .pFault, tDetail)
 }
 
 /// <p>Serve <var>pEndpoint</var> (<parameter>ENDPOINTSQL</parameter> or
@@ -865,7 +1086,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Set pFault = ""
     Set tSC = $$$OK
     Try {
-        If (pEndpoint = ..#ENDPOINTSTATEMENTS) || (pEndpoint = ..#ENDPOINTCACHEDQUERIES) || (pEndpoint = ..#ENDPOINTRUNTIMESTATS) {
+        If (pEndpoint = ..#ENDPOINTSTATEMENTS) || (pEndpoint = ..#ENDPOINTCACHEDQUERIES) || (pEndpoint = ..#ENDPOINTRUNTIMESTATS) || (pEndpoint = ..#ENDPOINTINDEXANALYSIS) {
             Set tSC = ..TuningInvoke(pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             If $$$ISOK(tSC) Set pHttpStatus = 200
             Quit
@@ -945,11 +1166,15 @@ ClassMethod TuningInvoke(pEndpoint As %String, pType As %String, ByRef pQuery, O
     Set pHttpStatus = 0
     Set pFault = ""
     Set tStatementWrite = ''$ListFind($ListFromString(..#STATEMENTWRITES), pType)
+    Set tAnalysisWrite = ''$ListFind($ListFromString(..#ANALYSISWRITES), pType)
     Set tWrite = tStatementWrite || (pType = ..#TYPEPURGEQUERIES) || (pType = ..#TYPEPURGESTATS)
+    If pEndpoint = ..#ENDPOINTINDEXANALYSIS Set tWrite = tAnalysisWrite
     If pEndpoint = ..#ENDPOINTSTATEMENTS {
         Set tServed = (pType = ..#TYPESTATEMENT) || tStatementWrite
     } ElseIf pEndpoint = ..#ENDPOINTRUNTIMESTATS {
         Set tServed = (pType = ..#TYPESTATS) || (pType = ..#TYPEPURGESTATS)
+    } ElseIf pEndpoint = ..#ENDPOINTINDEXANALYSIS {
+        Set tServed = (pType = ..#TYPEANALYSIS) || tAnalysisWrite
     } Else {
         Set tServed = (pType = ..#TYPEPURGE) || (pType = ..#TYPEPURGEQUERIES)
     }
@@ -961,6 +1186,15 @@ ClassMethod TuningInvoke(pEndpoint As %String, pType As %String, ByRef pQuery, O
     Set tSC = ..Gate(tNamespace, .pHttpStatus, .pFault, tWrite)
     If $$$ISERR(tSC) Quit tSC
     Set tId = $Get(pQuery(..#IDKEY))
+    If pEndpoint = ..#ENDPOINTINDEXANALYSIS {
+        If tId '= ..#ALLID {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Api.Error).#REASONPORTFIELDSHAPE, .pHttpStatus, .pFault)
+        }
+        If pType = ..#TYPEANALYSIS Quit ..AnalysisRead(tNamespace, .pResult, .pHttpStatus, .pFault)
+        Set tSC = ..AnalysisValues(pType, .pQuery, .tValues, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        Quit ..AnalysisWrite(tNamespace, pType, tId, tValues, .pResult, .pHttpStatus, .pFault)
+    }
     If pEndpoint = ..#ENDPOINTRUNTIMESTATS {
         If tId '= ..#ALLID {
             Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Api.Error).#REASONPORTFIELDSHAPE, .pHttpStatus, .pFault)
@@ -1084,14 +1318,15 @@ ClassMethod SetNumber(pObject As %DynamicObject, pName As %String, pValue As %St
 /// <p>The statement write <var>pType</var> (<parameter>STATEMENTWRITES</parameter>) on <var>pId</var>, a hash or, for
 /// <parameter>TYPECLEAN</parameter>, <parameter>ALLID</parameter>, in <var>pNamespace</var>. The write is the one vendor call
 /// <method>StatementCall</method> makes; a refusal that call answers is 409 <code>SQL.STATEMENT.VENDOR</code>.</p>
-ClassMethod StatementWrite(pNamespace As %String, pType As %String, pId As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+ClassMethod StatementWrite(pNamespace As %String, pType As %String, pId As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pValues As %String = "") As %Status [ Private ]
 {
     Set pAnswer = ""
-    Set tSC = ..Applied(pNamespace, pType, pId, .tStatus)
+    Set tSC = ..Applied(pNamespace, pType, pId, .tStatus, pValues)
     If $$$ISERR(tSC) Quit ..Fail("a statement write failed", tSC, .pHttpStatus, .pFault)
     If $$$ISERR(tStatus) {
         Set tDetail = {}
         Do tDetail.%Set("message", $System.Status.GetErrorText(tStatus), "string")
+        If $ListFind($ListFromString(..#ANALYSISWRITES), pType) Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#INDEXANALYSISVENDOR, ##class(OcuPilot.Api.AtelierError).#REASONINDEXANALYSISVENDOR, .pHttpStatus, .pFault, tDetail)
         If pType = ..#TYPEPURGESTATS Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#RUNTIMESTATSVENDOR, ##class(OcuPilot.Api.AtelierError).#REASONRUNTIMESTATSVENDOR, .pHttpStatus, .pFault, tDetail)
         Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#STATEMENTVENDOR, ##class(OcuPilot.Api.AtelierError).#REASONSTATEMENTVENDOR, .pHttpStatus, .pFault, tDetail)
     }
@@ -1117,45 +1352,162 @@ ClassMethod RuntimeStatsRead(pNamespace As %String, Output pAnswer As %DynamicOb
 }
 
 /// <p>How many runtime statistics rows <var>pNamespace</var> holds, as <var>pCount</var>, from <parameter>STATSCOUNTQUERY</parameter> with the
-/// namespace bound, prepared without SQL privilege checks and run in <var>pNamespace</var>. A statement the instance refuses or a failed read is
-/// the internal fault. The switched region calls vendor classes only.</p>
+/// namespace bound, prepared with SQL privilege checks on and run in <var>pNamespace</var>. A caller without the SQL SELECT privilege on the table is the
+/// 403 of <method>SelectRefusal</method>; any other refusal or a failed read is the internal fault. The switched region calls vendor classes only.</p>
 ClassMethod StatsCount(pNamespace As %String, Output pCount As %Integer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pCount = 0
-    Set tText = ..#STATSCOUNTQUERY
-    Set tBound = $ZConvert(pNamespace, "U")
+    Set tSC = ..CheckedRow(pNamespace, ..#STATSCOUNTQUERY, 1, "the runtime statistics count", ..#STATSTABLES, .tRow, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pCount = +$ListGet(tRow, 1)
+    Quit $$$OK
+}
+
+/// <p>The first row of the fixed statement <var>pText</var> as a list of its column values, <var>pRow</var>, run in <var>pNamespace</var>, prepared
+/// with SQL privilege checks on (after the gate has admitted the caller) and with the namespace's upper-case name bound when
+/// <var>pBindNamespace</var> is 1. <var>pRow</var> is <code>""</code> for a statement that answers none. A statement the instance refuses for want of the
+/// SQL SELECT privilege is the 403 of <method>SelectRefusal</method> naming <var>pTables</var>, the fixed statement's own tables; any other refusal or a
+/// failed read is the internal fault, named by <var>pWhat</var>. The switched region calls vendor classes only.</p>
+ClassMethod CheckedRow(pNamespace As %String, pText As %String, pBindNamespace As %Boolean, pWhat As %String, pTables As %String, Output pRow As %List, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
     Set tCode = 0
+    Set tRefused = 0
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
         Set tStatement = ##class(%SQL.Statement).%New()
-        Set tSC = tStatement.%Prepare(tText, 0)
-        If $$$ISOK(tSC) {
-            Set tResult = tStatement.%Execute(tBound)
+        Set tSC = tStatement.%Prepare(pText, 1)
+        If $$$ISERR(tSC) {
+            Set tRefused = ($System.Status.StatusToSQLCODE(tSC) = ..#PRIVILEGESQLCODE)
+        } Else {
+            If pBindNamespace {
+                Set tResult = tStatement.%Execute($ZConvert(pNamespace, "U"))
+            } Else {
+                Set tResult = tStatement.%Execute()
+            }
             Set tCode = tResult.%SQLCODE
-            If (tCode >= 0) && tResult.%Next() Set pCount = +tResult.%GetData(1)
+            If (tCode >= 0) && tResult.%Next() {
+                Set tColumns = tResult.%ResultColumnCount
+                For tI = 1:1:tColumns Set pRow = pRow _ $ListBuild(tResult.%GetData(tI))
+            }
+            If tCode >= 0 Set tCode = tResult.%SQLCODE
+            Set tRefused = (tCode = ..#PRIVILEGESQLCODE)
         }
         Set (tResult, tStatement) = ""
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
-        Set tSC = $$$ERROR($$$GeneralError, "the runtime statistics count raised " _ ex.Name)
+        Set tSC = $$$ERROR($$$GeneralError, pWhat _ " raised " _ ex.Name)
     }
-    If $$$ISOK(tSC) && (tCode < 0) Set tSC = $$$ERROR($$$GeneralError, "the runtime statistics count answered SQLCODE " _ tCode)
-    If $$$ISERR(tSC) Quit ..Fail("the runtime statistics count failed", tSC, .pHttpStatus, .pFault)
+    If tRefused Quit ..SelectRefusal(pTables, .pHttpStatus, .pFault)
+    If $$$ISOK(tSC) && (tCode < 0) Set tSC = $$$ERROR($$$GeneralError, pWhat _ " answered SQLCODE " _ tCode)
+    If $$$ISERR(tSC) Quit ..Fail(pWhat _ " failed", tSC, .pHttpStatus, .pFault)
     Quit $$$OK
+}
+
+/// <p>The index analysis read (<parameter>TYPEANALYSIS</parameter>): <code>{Namespace, Statements, IndexUsage, TableScans, TempIndices, JoinIndices,
+/// OutlierIndices, Rows}</code>, the statements <var>pNamespace</var> has gathered and each report's rows, from
+/// <parameter>ANALYSISCOUNTQUERY</parameter>. <code>Rows</code> is the five reports' rows together. The four declared values of the writes are answered
+/// <code>null</code> beside them, as a mint merges the caller's values over members of the read.</p>
+ClassMethod AnalysisRead(pNamespace As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pAnswer = ""
+    Set tSC = ..CheckedRow(pNamespace, ..#ANALYSISCOUNTQUERY, 0, "the index analysis count", ..#ANALYSISTABLES, .tRow, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pAnswer = {}
+    Do pAnswer.%Set("Namespace", pNamespace, "string")
+    Set tNames = $ListBuild("Statements", "IndexUsage", "TableScans", "TempIndices", "JoinIndices", "OutlierIndices")
+    Set tRows = 0
+    For tI = 1:1:$ListLength(tNames) {
+        Set tCount = +$ListGet(tRow, tI)
+        If tI > 1 Set tRows = tRows + tCount
+        Do pAnswer.%Set($List(tNames, tI), tCount, "number")
+    }
+    Do pAnswer.%Set("Rows", tRows, "number")
+    For tKey = ..#REPORTKEY, ..#SKIPSYSTEMKEY, ..#SKIPINSERTSKEY, ..#SKIPIDKEYSKEY Do pAnswer.%Set(tKey, "", "null")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The declared values of analysis write <var>pType</var> read from <var>pQuery</var>, as <var>pValues</var>, a JSON object holding
+/// <code>Report</code> (a <parameter>TYPERUNREPORT</parameter> only) and the flags the write takes as <code>1</code> or <code>0</code>: <code>SkipSystem</code>
+/// and <code>SkipInserts</code> for a gather, and those and <code>SkipIdKeys</code> for a report. An absent flag is <code>1</code> and a purge takes none.
+/// Each value is checked by <method>ValueProblem</method> before any call: a report outside <parameter>REPORTCODES</parameter> is 400 with its own
+/// published sentence, and a flag that is not <code>true</code> or <code>false</code> is 400 <code>PORT.VALIDATION</code>.</p>
+ClassMethod AnalysisValues(pType As %String, ByRef pQuery, Output pValues As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pValues = ""
+    Set tSet = {}
+    Set tNames = $Case(pType, ..#TYPERUNREPORT: ..#REPORTKEY _ "," _ ..#SKIPSYSTEMKEY _ "," _ ..#SKIPINSERTSKEY _ "," _ ..#SKIPIDKEYSKEY, ..#TYPEGATHER: ..#SKIPSYSTEMKEY _ "," _ ..#SKIPINSERTSKEY, : "")
+    For tI = 1:1:$Length(tNames, ",") {
+        Set tName = $Piece(tNames, ",", tI)
+        If tName = "" Continue
+        Set tText = $Get(pQuery(tName))
+        If tName = ..#REPORTKEY {
+            Set tReason = ..ValueProblem(tName, tText, .tCode)
+            If tReason '= "" Quit
+            Do tSet.%Set(tName, tText, "string")
+            Continue
+        }
+        If tText = "" {
+            Do tSet.%Set(tName, 1, "number")
+            Continue
+        }
+        Set tReason = ..ValueProblem(tName, tText, .tCode)
+        If tReason '= "" Quit
+        Do tSet.%Set(tName, $Select(tText = "true": 1, 1: 0), "number")
+    }
+    If $Get(tReason) '= "" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, tCode, tReason, .pHttpStatus, .pFault)
+    Set pValues = tSet.%ToJSON()
+    Quit $$$OK
+}
+
+/// <p>Analysis write <var>pType</var> made under the namespace's analysis lock (<method>AnalysisLocked</method>), which is taken with no wait and
+/// released on every path: a namespace whose lock another process holds answers 409 <code>SQL.INDEXANALYSIS.BUSY</code> and nothing is called. The
+/// write itself is <method>StatementWrite</method>'s, with <var>pValues</var> as the call's arguments.</p>
+ClassMethod AnalysisWrite(pNamespace As %String, pType As %String, pId As %String, pValues As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pAnswer = ""
+    If '..AnalysisLocked(pNamespace, 1) {
+        Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#INDEXANALYSISBUSY, ##class(OcuPilot.Api.AtelierError).#REASONINDEXANALYSISBUSY, .pHttpStatus, .pFault)
+    }
+    Try {
+        Set tSC = ..StatementWrite(pNamespace, pType, pId, .pAnswer, .pHttpStatus, .pFault, pValues)
+    } Catch ex {
+        Set pAnswer = ""
+        Set tSC = ..Fail("an index analysis write failed", $$$ERROR($$$GeneralError, ex.Name), .pHttpStatus, .pFault)
+    }
+    Do ..AnalysisLocked(pNamespace, 0)
+    Quit tSC
+}
+
+/// <p>Takes (<var>pTake</var> 1, answering whether it was free) or releases (0) the lock the vendor's analysis holds while it runs,
+/// <code>^%sqlcq(namespace, "PTools", "util", "SQLAnlsys")</code>. A report holds it for its whole run, and a gather or a purge that starts during one
+/// empties the report's input, so all three writes take it first, with no wait.</p>
+ClassMethod AnalysisLocked(pNamespace As %String, pTake As %Boolean) As %Boolean
+{
+    Set tNamespace = $ZConvert(pNamespace, "U")
+    If 'pTake {
+        Lock -^%sqlcq(tNamespace, "PTools", "util", "SQLAnlsys")
+        Quit 1
+    }
+    Lock +^%sqlcq(tNamespace, "PTools", "util", "SQLAnlsys"):0
+    Quit $Test
 }
 
 /// <p>The one vendor call of statement write <var>pType</var> on <var>pHash</var>, in <var>pNamespace</var>, as its status:
 /// <code>FreezeStatement</code>, <code>UnfreezeStatement</code> and <code>ClearStatement</code> with the hash alone, the plan
 /// error update with the hash and an empty error, <code>Clean</code>, which takes no argument and cleans the namespace's stale
 /// entries, and the runtime statistics purge (<code>clearStatsSQL</code> with the namespace alone, which answers the rows it removed or an error
-/// status). A call that answers no status is <code>$$$OK</code>. The namespace is switched by save and restore around the vendor
+/// status). The index analysis writes (<parameter>ANALYSISWRITES</parameter>) are <method>AnalysisCall</method> with the JSON <var>pValues</var>. A call
+/// that answers no status is <code>$$$OK</code>. The namespace is switched by save and restore around the vendor
 /// call alone, restored first when it throws, and the throw is passed on. Overridable so a fixture can feed an error status;
 /// production overrides none.</p>
-ClassMethod StatementCall(pType As %String, pHash As %String, pNamespace As %String) As %Status
+ClassMethod StatementCall(pType As %String, pHash As %String, pNamespace As %String, pValues As %String = "") As %Status
 {
+    If $ListFind($ListFromString(..#ANALYSISWRITES), pType) Quit ..AnalysisCall(pType, pNamespace, pValues)
     Set tStatus = $$$ERROR($$$GeneralError, "no statement call for " _ pType)
     Set tOrigNS = $NAMESPACE
     Try {
@@ -1184,11 +1536,49 @@ ClassMethod StatementCall(pType As %String, pHash As %String, pNamespace As %Str
     Quit tStatus
 }
 
+/// <p>The vendor calls of index analysis write <var>pType</var> in <var>pNamespace</var> with the JSON <var>pValues</var>, as the status of the first that
+/// answers an error: a gather clears the statements and the reports' rows of the namespace and gathers again with <code>SkipSystem</code> and
+/// <code>SkipInserts</code>; a report is the one method <code>Report</code> names, with the arguments the classic page passes, one at a time, and
+/// <code>SkipIdKeys</code> for the index usage report alone; a purge is the two clears. Every call is made under the null device and in the namespace,
+/// both restored whatever the call does (<method>OcuPilot.Kernel.Utils.CallWithNullDevice</method>).</p>
+ClassMethod AnalysisCall(pType As %String, pNamespace As %String, pValues As %String) As %Status [ Private ]
+{
+    Set tValues = $Select(pValues = "": {}, 1: ##class(%DynamicObject).%FromJSON(pValues))
+    Set tNamespace = $ZConvert(pNamespace, "U")
+    Set tSystem = $Select(tValues.%Get(..#SKIPSYSTEMKEY) = 0: 0, 1: 1)
+    Set tInserts = $Select(tValues.%Get(..#SKIPINSERTSKEY) = 0: 0, 1: 1)
+    Set tIdKeys = $Select(tValues.%Get(..#SKIPIDKEYSKEY) = 0: 0, 1: 1)
+    If (pType = ..#TYPEGATHER) || (pType = ..#TYPEPURGEANALYSIS) {
+        Set tStatus = ..AnalysisVendor(pNamespace, "clearSQLStatements", tNamespace)
+        If $$$ISOK(tStatus) Set tStatus = ..AnalysisVendor(pNamespace, "clearSQLAnalysisDB", tNamespace)
+        If $$$ISOK(tStatus) && (pType = ..#TYPEGATHER) Set tStatus = ..AnalysisVendor(pNamespace, "getAllSQLStmts", 1, tSystem, tInserts, 0, 0)
+        Quit tStatus
+    }
+    Set tReport = tValues.%Get(..#REPORTKEY)
+    If tReport = "IU" Quit ..AnalysisVendor(pNamespace, "indexUsage", 1, 1, 0, tSystem, tIdKeys, tInserts, 0)
+    If tReport = "TS" Quit ..AnalysisVendor(pNamespace, "tableScans", 1, 0, tSystem, tInserts, 0)
+    If tReport = "TI" Quit ..AnalysisVendor(pNamespace, "tempIndices", 1, 0, tSystem, tInserts, 0)
+    If tReport = "JI" Quit ..AnalysisVendor(pNamespace, "joinIndices", 1, 0, tSystem, tInserts, 0)
+    If tReport = "OI" Quit ..AnalysisVendor(pNamespace, "outlierIndices", 1, 0, tSystem, tInserts, 0)
+    Quit $$$ERROR($$$GeneralError, "no index analysis report for " _ tReport)
+}
+
+/// <p>The one <parameter>ANALYSISCLASS</parameter> method <var>pMethod</var> called with <var>pArgs</var> in <var>pNamespace</var> under the null device
+/// (the vendor writes a line to the current device when a request is present), as its status: a call that answers none is <code>$$$OK</code>, and a raise
+/// or an unopened device is that failure.</p>
+ClassMethod AnalysisVendor(pNamespace As %String, pMethod As %String, pArgs...) As %Status [ Private ]
+{
+    Set tSC = ##class(OcuPilot.Kernel.Utils).CallWithNullDevice(pNamespace, ..#ANALYSISCLASS, pMethod, 1, .tResult, pArgs...)
+    If $$$ISERR(tSC) Quit tSC
+    If tResult = "" Quit $$$OK
+    Quit tResult
+}
+
 /// <p>The call of <var>pType</var> in <var>pNamespace</var>: <method>StatementCall</method> with <var>pArgument</var>, a hash, or
 /// <parameter>PURGECLASS</parameter>'s <code>PurgeCachedQueries</code> with <var>pArgument</var>, the qualifiers, answering the call's
 /// own status as <var>pStatus</var>. Each call is named <var>pNamespace</var> and switches to it around its vendor call alone, so no
 /// OcuPilot class is called while switched; the returned status is an unexpected failure.</p>
-ClassMethod Applied(pNamespace As %String, pType As %String, pArgument, Output pStatus As %Status) As %Status [ Private ]
+ClassMethod Applied(pNamespace As %String, pType As %String, pArgument, Output pStatus As %Status, pValues As %String = "") As %Status [ Private ]
 {
     Set pStatus = $$$OK
     Set tSC = $$$OK
@@ -1196,7 +1586,7 @@ ClassMethod Applied(pNamespace As %String, pType As %String, pArgument, Output p
         If pType = ..#TYPEPURGEQUERIES {
             Set pStatus = $ClassMethod(..#PURGECLASS, "PurgeCachedQueries", pArgument, pNamespace)
         } Else {
-            Set pStatus = ..StatementCall(pType, pArgument, pNamespace)
+            Set pStatus = ..StatementCall(pType, pArgument, pNamespace, pValues)
         }
     } Catch ex {
         Set tSC = $$$ERROR($$$GeneralError, "the write raised " _ ex.Name)
@@ -1443,7 +1833,8 @@ ClassMethod OptionalProblem(pSet As %DynamicObject, pFacts As %DynamicObject, Ou
 /// selectivity or outlier selectivity is <code>1</code> or a percentage over 0 and up to <parameter>MAXSELECTIVITY</parameter>, with or without its
 /// <code>%</code>. An average size is a whole number of <parameter>WHOLEPATTERN</parameter> and a map's size one of <parameter>POSITIVEPATTERN</parameter>.
 /// An outlier value is plain data of at most <parameter>MAXOUTLIERVALUE</parameter> characters holding no control character; it is never run
-/// (<method>OutlierExpression</method>). Pure.</p>
+/// (<method>OutlierExpression</method>). A report is one of <parameter>REPORTCODES</parameter>, and a flag of an index analysis write is
+/// <code>true</code> or <code>false</code>. Pure.</p>
 ClassMethod ValueProblem(pName As %String, pValue As %String, Output pCode As %String) As %String
 {
     Set tError = "OcuPilot.Api.AtelierError"
@@ -1456,6 +1847,13 @@ ClassMethod ValueProblem(pName As %String, pValue As %String, Output pCode As %S
         If '$Match(pValue, ..#POSITIVEPATTERN) Set pCode = $Parameter(tError, "TABLEMAPSIZE")
     } ElseIf pName = ..#AVERAGESIZEKEY {
         If '$Match(pValue, ..#WHOLEPATTERN) Set pCode = $Parameter(tError, "TABLEWHOLENUMBER")
+    } ElseIf pName = ..#REPORTKEY {
+        If '$ListFind($ListFromString(..#REPORTCODES), pValue) Set pCode = $Parameter(tError, "INDEXANALYSISREPORT")
+    } ElseIf (pName = ..#SKIPSYSTEMKEY) || (pName = ..#SKIPINSERTSKEY) || (pName = ..#SKIPIDKEYSKEY) {
+        If (pValue '= "true") && (pValue '= "false") {
+            Set pCode = ##class(OcuPilot.Api.Error).#PORTVALIDATION
+            Quit ##class(OcuPilot.Api.Error).#REASONPORTFIELDSHAPE
+        }
     } ElseIf pName = ..#OUTLIERVALUEKEY {
         If $Length(pValue) > ..#MAXOUTLIERVALUE {
             Set pCode = $Parameter(tError, "TABLEOUTLIERVALUE")
@@ -2031,6 +2429,31 @@ ClassMethod TuningSnippet(pType As %String, ByRef pQuery) As %DynamicArray [ Pri
     Quit [(tStep)]
 }
 
+/// <p>The index analysis write <var>pType</var> as a script (AD-59) in the namespace <code>namespace</code> names: the vendor calls
+/// <method>AnalysisCall</method> makes, in the same order and with the same arguments, each status shown, the namespace and the report shown as string
+/// literals and each flag as <code>1</code> unless the query carries <code>false</code>, so nothing the query carries runs as code. The script gives
+/// the vendor no device, so the output a request would hide is the terminal's.</p>
+ClassMethod AnalysisSnippet(pType As %String, ByRef pQuery) As %DynamicArray [ Private ]
+{
+    Set tNamespace = $ZConvert($Get(pQuery(..#NAMESPACEKEY)), "U")
+    Set tSystem = $Select($Get(pQuery(..#SKIPSYSTEMKEY)) = "false": 0, 1: 1)
+    Set tInserts = $Select($Get(pQuery(..#SKIPINSERTSKEY)) = "false": 0, 1: 1)
+    Set tIdKeys = $Select($Get(pQuery(..#SKIPIDKEYSKEY)) = "false": 0, 1: 1)
+    Set tClass = "##class(" _ ..#ANALYSISCLASS _ ")."
+    Set tShow = $Char(10) _ " If $System.Status.IsError(tSC) Do $System.Status.DisplayError(tSC)"
+    Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
+    If pType '= ..#TYPERUNREPORT {
+        Set tText = tText _ $Char(10) _ " Set tSC = " _ tClass _ "clearSQLStatements(" _ ..Literal(tNamespace) _ ")" _ tShow
+        Set tText = tText _ $Char(10) _ " Set tSC = " _ tClass _ "clearSQLAnalysisDB(" _ ..Literal(tNamespace) _ ")" _ tShow
+        If pType = ..#TYPEGATHER Set tText = tText _ $Char(10) _ " Set tSC = " _ tClass _ "getAllSQLStmts(1, " _ tSystem _ ", " _ tInserts _ ", 0, 0)" _ tShow
+        Quit ..SnippetSteps(tText)
+    }
+    Set tReport = $Get(pQuery(..#REPORTKEY))
+    Set tCall = $Case(tReport, "IU": "indexUsage(1, 1, 0, " _ tSystem _ ", " _ tIdKeys _ ", " _ tInserts _ ", 0)", "TS": "tableScans(1, 0, " _ tSystem _ ", " _ tInserts _ ", 0)", "TI": "tempIndices(1, 0, " _ tSystem _ ", " _ tInserts _ ", 0)", "JI": "joinIndices(1, 0, " _ tSystem _ ", " _ tInserts _ ", 0)", "OI": "outlierIndices(1, 0, " _ tSystem _ ", " _ tInserts _ ", 0)", : "")
+    If tCall = "" Quit []
+    Quit ..SnippetSteps(tText _ $Char(10) _ " Set tSC = " _ tClass _ tCall _ tShow)
+}
+
 /// <p><var>pText</var>, JSON array text, as a <class>%DynamicArray</class>, with
 /// <var>pReadable</var> 0 when it is not an array; <code>""</code> and an absent key read as no
 /// values.</p>
@@ -2057,6 +2480,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTSTATEMENTS) && $ListFind($ListFromString(..#STATEMENTWRITES), pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTCACHEDQUERIES) && (pType = ..#TYPEPURGEQUERIES) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTRUNTIMESTATS) && (pType = ..#TYPEPURGESTATS) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTINDEXANALYSIS) && $ListFind($ListFromString(..#ANALYSISWRITES), pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTTABLES) && $ListFind($ListFromString(..#TABLEWRITES), pType) Quit "objectscript"
     Quit ""
 }
@@ -2073,6 +2497,7 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     If pEndpoint = ..#ENDPOINTDATA Quit ..SaveSnippet(.pQuery)
     If (pEndpoint = ..#ENDPOINTSTATEMENTS) || (pEndpoint = ..#ENDPOINTCACHEDQUERIES) || (pEndpoint = ..#ENDPOINTRUNTIMESTATS) Quit ..TuningSnippet(pType, .pQuery)
     If pEndpoint = ..#ENDPOINTTABLES Quit ..TableSnippet(pType, .pQuery)
+    If pEndpoint = ..#ENDPOINTINDEXANALYSIS Quit ..AnalysisSnippet(pType, .pQuery)
     Set tValues = ..ValuesFrom($Get(pQuery(..#PARAMETERSKEY)), .tReadable)
     Set tList = ""
     Set tIterator = tValues.%GetIterator()
@@ -2541,7 +2966,8 @@ ClassMethod Closed(pNamespace As %String, ByRef pStatement) [ Private ]
 /// <code>changes</code> (422 <code>EXPLORER.SQL.CHANGES</code>), <code>reads</code> (422
 /// <code>EXPLORER.SQL.READS</code>), <code>agentcode</code> (422 <code>EXPLORER.SQL.AGENTCODE</code>),
 /// <code>notprepared</code> (422 <code>EXPLORER.SQL.NOTPREPARED</code>) and <code>parameters</code>
-/// (422 <code>EXPLORER.SQL.PARAMETERS</code>), <var>pDetail</var> becoming the fault's
+/// (422 <code>EXPLORER.SQL.PARAMETERS</code>), <code>planstats</code> (422 <code>EXPLORER.SQL.PLANSTATS</code>) and <code>advice</code> (422
+/// <code>EXPLORER.SQL.ADVICE</code>), <var>pDetail</var> becoming the fault's
 /// <code>detail</code> when supplied. A tool names this method rather than the error class, which only
 /// a port may name.</p>
 ClassMethod RefuseFor(pWhich As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pDetail As %DynamicObject = "") As %Status
@@ -2555,6 +2981,7 @@ ClassMethod RefuseFor(pWhich As %String, Output pHttpStatus As %Integer, Output 
     If pWhich = "notprepared" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLNOTPREPARED"), $Parameter(tError, "REASONSQLNOTPREPARED"), .pHttpStatus, .pFault, pDetail)
     If pWhich = "parameters" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLPARAMETERS"), $Parameter(tError, "REASONSQLPARAMETERS"), .pHttpStatus, .pFault, pDetail)
     If pWhich = "planstats" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLPLANSTATS"), $Parameter(tError, "REASONSQLPLANSTATS"), .pHttpStatus, .pFault, pDetail)
+    If pWhich = "advice" Quit ..Refuse(422, tSlug, $Parameter(tError, "SQLADVICE"), $Parameter(tError, "REASONSQLADVICE"), .pHttpStatus, .pFault, pDetail)
     Quit ..Fail("an agent tool asked for a refusal the port does not publish", $$$ERROR($$$GeneralError, pWhich), .pHttpStatus, .pFault)
 }
 

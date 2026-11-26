@@ -420,6 +420,99 @@ describe('SQL query', () => {
     expect(el(mounted.host, 'plan')).toBeNull();
   });
 
+  // Mutation (Rule 19): post the advice without `advise: true` -> the posted body assertion goes red.
+  it('advises: the statement and the advise flag posted to the plan route in scope, and one row for each finding under the plan', async () => {
+    const mounted = await mount();
+    expect(el(mounted.host, 'advise').getAttribute('aria-disabled')).toBe('true');
+    expect(el(mounted.host, 'advise').textContent?.trim()).toBe(STRINGS.sqlAdviceAction);
+    const detail = 'The plan reads every row of OcuProbe227.Scan and tests a condition on each one.';
+    const recommendation = 'Check whether an index on the condition\'s fields would let the plan skip this scan.';
+    mounted.answer = {
+      ok: {
+        outcome: 'plan',
+        kind: 'query',
+        plan: 'Read master map OcuProbe227.Scan.IDKEY, looping on ID.\n',
+        truncated: false,
+        advice: {
+          recognized: true,
+          tables: [],
+          truncated: false,
+          findings: [
+            { Kind: 'fullscan', Confidence: 'medium', Table: 'OcuProbe227.Scan', Fields: 'Name', Index: '', Detail: detail, Recommendation: recommendation, Excerpt: '' },
+            { Kind: 'missingindex', Confidence: 'high', Table: 'OcuProbe227.Scan', Fields: 'Name', Index: '', Detail: 'No index.', Recommendation: 'Consider one.', Excerpt: '' },
+          ],
+        },
+      },
+    };
+    await type(mounted, "SELECT ID FROM OcuProbe227.Scan WHERE Name = 'x'");
+    expect(el(mounted.host, 'advise').getAttribute('aria-disabled')).toBe('false');
+    expect(el(mounted.host, 'advice')).toBeNull();
+    el<HTMLButtonElement>(mounted.host, 'advise').click();
+    await settle(mounted.fixture);
+    expect(mounted.posts).toEqual([{ path: SQL_PLAN_PATH, body: { statement: "SELECT ID FROM OcuProbe227.Scan WHERE Name = 'x'", advise: true }, scope: 'USER' }]);
+    expect(el(mounted.host, 'plan').textContent).toBe('Read master map OcuProbe227.Scan.IDKEY, looping on ID.\n');
+    expect(el(mounted.host, 'advice-note').textContent?.trim()).toBe(STRINGS.sqlAdviceNote);
+    expect(el(mounted.host, 'advice-truncated')).toBeNull();
+    const rows = Array.from(mounted.host.querySelectorAll('[data-ocu-sql="finding"]')) as HTMLElement[];
+    expect(rows.map((row) => row.getAttribute('data-ocu-kind'))).toEqual(['fullscan', 'missingindex']);
+    const cells = Array.from(rows[0].querySelectorAll('td')).map((cell) => cell.textContent?.replace(/\s+/g, ' ').trim());
+    expect(cells).toEqual([`${STRINGS.sqlAdviceKindFullScan} ${detail}`, STRINGS.sqlAdviceConfidenceMedium, 'OcuProbe227.Scan', recommendation]);
+    expect(rows[1].querySelector('td')?.textContent).toContain(STRINGS.sqlAdviceKindMissingIndex);
+    expect(rows[1].querySelectorAll('td')[1].textContent?.trim()).toBe(STRINGS.taskPriorityHigh);
+    const headers = Array.from(mounted.host.querySelectorAll('[data-ocu-sql="findings"] th')).map((cell) => cell.textContent?.trim());
+    expect(headers).toEqual([STRINGS.sqlAdviceColumnFinding, STRINGS.sqlAdviceColumnConfidence, STRINGS.explorerSqlColumnTable, STRINGS.securityAdvisorColumnRecommendation]);
+    expect(el(mounted.host, 'stats-note')).toBeNull();
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: 'Read master map OcuProbe227.Scan.IDKEY, looping on ID.\n', truncated: false } };
+    el<HTMLButtonElement>(mounted.host, 'explain').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'advice')).toBeNull();
+  });
+
+  // Mutation (Rule 19): `adviceStatus` answers the empty sentence for an unrecognized plan -> the second assertion goes red.
+  it('says when a recognized plan holds nothing to advise on and when the plan is not recognized, each with the note', async () => {
+    const mounted = await mount();
+    await type(mounted, 'SELECT 1');
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: 'Read master map A.B.IDKEY.\n', truncated: false, advice: { recognized: true, tables: [], findings: [], truncated: false } } };
+    el<HTMLButtonElement>(mounted.host, 'advise').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'advice-status').textContent?.trim()).toBe(STRINGS.sqlAdviceEmpty);
+    expect(el(mounted.host, 'advice-note').textContent?.trim()).toBe(STRINGS.sqlAdviceNote);
+    expect(el(mounted.host, 'findings')).toBeNull();
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: 'Strange.\n', truncated: false, advice: { recognized: false, tables: [], findings: [], truncated: false } } };
+    el<HTMLButtonElement>(mounted.host, 'advise').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'advice-status').textContent?.trim()).toBe(STRINGS.sqlAdviceUnrecognized);
+    expect(el(mounted.host, 'advice-note').textContent?.trim()).toBe(STRINGS.sqlAdviceNote);
+  });
+
+  // Mutation (Rule 19): `adviceOf` drops `truncated` -> the cut note is never drawn and this goes red.
+  it('says when the instance cut the advice at its caps, and only then', async () => {
+    const mounted = await mount();
+    await type(mounted, 'SELECT 1');
+    const finding = { Kind: 'fullscan', Confidence: 'medium', Table: 'A.B', Fields: '', Index: '', Detail: 'd', Recommendation: 'r', Excerpt: '' };
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: 'Read master map A.B.IDKEY.\n', truncated: false, advice: { recognized: true, tables: [], findings: [finding], truncated: true } } };
+    el<HTMLButtonElement>(mounted.host, 'advise').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'advice-truncated').textContent?.trim()).toBe(STRINGS.sqlAdviceTruncated);
+    expect(mounted.host.querySelectorAll('[data-ocu-sql="finding"]').length).toBe(1);
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: 'Read master map A.B.IDKEY.\n', truncated: false, advice: { recognized: true, tables: [], findings: [finding], truncated: false } } };
+    el<HTMLButtonElement>(mounted.host, 'advise').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'advice-truncated')).toBeNull();
+  });
+
+  // Mutation (Rule 19): drop the refusal's `adopt` path in `post` -> no refusal is drawn and this goes red.
+  it('shows the refusal of advice on a statement that is not a query as the envelope sent it, and draws no findings', async () => {
+    const mounted = await mount();
+    mounted.answer = { status: 422, code: 'EXPLORER.SQL.ADVICE', reason: STRINGS.sqlAdviceRefusal };
+    await type(mounted, 'UPDATE OcuProbe227.Scan SET Name = 3');
+    el<HTMLButtonElement>(mounted.host, 'advise').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'refusal').getAttribute('role')).toBe('alert');
+    expect(el(mounted.host, 'refusal').textContent?.trim()).toBe(STRINGS.sqlAdviceRefusal);
+    expect(el(mounted.host, 'advice')).toBeNull();
+  });
+
   it("shows a refusal as an alert: the envelope's sentence, a missing pair named, and a refused confirmed run's own", async () => {
     const mounted = await mount();
     mounted.answer = { status: 422, code: 'EXPLORER.SQL.SESSION', reason: STRINGS.explorerSqlSessionReason };

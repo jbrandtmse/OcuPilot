@@ -211,6 +211,7 @@ XData Elsewhere
 <screen name="ExplorerSqlData"/>
 <screen name="ExplorerSqlFieldStatistics"/>
 <screen name="ExplorerSqlFields"/>
+<screen name="ExplorerSqlIndexAnalysis"/>
 <screen name="ExplorerSqlIndices"/>
 <screen name="ExplorerSqlPartitionMappings"/>
 <screen name="ExplorerSqlPartitions"/>

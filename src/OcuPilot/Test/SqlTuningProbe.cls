@@ -478,6 +478,21 @@ ClassMethod Run(pText As %String) As %Status
     Quit $$$OK
 }
 
+/// <p>Run <var>pText</var> in <var>pNamespace</var>, to its end, and come back to the namespace the caller was in.</p>
+ClassMethod RunIn(pNamespace As %String, pText As %String) As %Status
+{
+    Set tOrigNS = $NAMESPACE
+    Set tSC = $$$OK
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ..Run(pText)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
 /// <p>The hash of the statement of <var>pNamespace</var>'s index whose text holds <var>pToken</var> and that reads <var>pRelation</var>, or
 /// <code>""</code>. The index keeps a statement's text normalized, so <code>SELECT A , B FROM</code> reads the one that selects two columns.</p>
 ClassMethod HashOf(pNamespace As %String, pToken As %String, pRelation As %String = "OCUPROBE216.T1") As %String
@@ -655,6 +670,207 @@ ClassMethod RemoveStats(pNamespace As %String, pToken As %String = {..#STATSTOKE
         Set tRemoved = -1
     }
     Quit tRemoved
+}
+
+/// <p>Story 21.27's probe: the table <parameter>ANALYSISTABLE</parameter>, with two indexed columns (<code>A</code> and <code>C</code>), one unindexed
+/// column (<code>B</code>) and one row, and the class <parameter>ANALYSISCLASS</parameter>, whose methods hold the embedded SQL the index analyzer
+/// gathers: a scan of the table on the unindexed column, a join of the table with itself on the indexed column <code>C</code>, which the join report finds
+/// an exact index for, a join on the unindexed column, and an <code>INSERT</code> that a gathering skips only when asked to skip inserts.</p>
+Parameter ANALYSISSCHEMA = "OcuProbe227";
+
+Parameter ANALYSISTABLE = "OcuProbe227.T";
+
+Parameter ANALYSISCLASS = "OcuProbe227.Scan";
+
+/// <p>Create <parameter>ANALYSISTABLE</parameter> and <parameter>ANALYSISCLASS</parameter> in <var>pNamespace</var>, after removing any an earlier run left
+/// (<method>RemoveAnalysis</method>). The statements are gathered by the index analyzer's own gather, never by this method.</p>
+ClassMethod MakeAnalysis(pNamespace As %String) As %Status
+{
+    Set tSC = ..RemoveAnalysis(pNamespace)
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ..Run("CREATE TABLE " _ ..#ANALYSISTABLE _ " (A INTEGER, B VARCHAR(20), C VARCHAR(20))")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run("CREATE INDEX IdxA ON " _ ..#ANALYSISTABLE _ " (A)")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run("CREATE INDEX IdxC ON " _ ..#ANALYSISTABLE _ " (C)")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run("INSERT INTO " _ ..#ANALYSISTABLE _ " (A, B, C) VALUES (1, 'x', 'y')")
+        If $$$ISERR(tSC) Quit
+        Set tClass = ##class(%Dictionary.ClassDefinition).%New(..#ANALYSISCLASS)
+        Set tClass.Super = "%RegisteredObject"
+        For tMethod = $ListBuild("Scan", "SELECT COUNT(*) INTO :c FROM " _ ..#ANALYSISTABLE _ " WHERE B = 'x'"), $ListBuild("Join", "SELECT COUNT(*) INTO :c FROM " _ ..#ANALYSISTABLE _ " a, " _ ..#ANALYSISTABLE _ " b WHERE a.C = b.C"), $ListBuild("JoinB", "SELECT COUNT(*) INTO :c FROM " _ ..#ANALYSISTABLE _ " a, " _ ..#ANALYSISTABLE _ " b WHERE a.B = b.B"), $ListBuild("Add", "INSERT INTO " _ ..#ANALYSISTABLE _ " (A, B, C) VALUES (2, 'z', 'w')", 0) {
+            Set tDefinition = ##class(%Dictionary.MethodDefinition).%New(..#ANALYSISCLASS _ "||" _ $List(tMethod, 1))
+            Set tDefinition.parent = tClass
+            Set tDefinition.Name = $List(tMethod, 1)
+            Set tDefinition.ClassMethod = 1
+            Set tDefinition.ReturnType = "%Integer"
+            Do tDefinition.Implementation.WriteLine(" &sql(" _ $List(tMethod, 2) _ ")")
+            Do tDefinition.Implementation.WriteLine(" Quit " _ $Select($ListLength(tMethod) > 2: $List(tMethod, 3), 1: "c"))
+        }
+        Set tSC = tClass.%Save()
+        If $$$ISERR(tSC) Quit
+        Set tSC = $System.OBJ.Compile(..#ANALYSISCLASS, "ck-d")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Put <var>pNamespace</var> back as an unmade probe has it: the namespace's gathered statements and every report's rows cleared through the vendor, the
+/// class deleted and the table dropped after its cached queries are purged. A table or a class that is already gone is not an error.</p>
+ClassMethod RemoveAnalysis(pNamespace As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ##class(%SYS.PTools.UtilSQLAnalysis).clearSQLStatements($ZConvert(pNamespace, "U"))
+        Do ##class(%SYS.PTools.UtilSQLAnalysis).clearSQLAnalysisDB($ZConvert(pNamespace, "U"))
+        If ##class(%Dictionary.ClassDefinition).%ExistsId(..#ANALYSISCLASS) Do $System.OBJ.Delete(..#ANALYSISCLASS, "-d")
+        Do $SYSTEM.SQL.PurgeQueries({"table": [(..#ANALYSISTABLE)]})
+        Do ..Run("DROP TABLE " _ ..#ANALYSISTABLE)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Gather <var>pNamespace</var>'s statements, system classes and INSERT statements skipped, and, when <var>pRun</var> is 1, run the index usage report
+/// over them, as the vendor's own calls do, so a screen opened afterwards lists the probe table's rows. A process that is not serving a request writes
+/// nothing to its device.</p>
+ClassMethod SeedAnalysis(pNamespace As %String, pRun As %Boolean = 1) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tName = $ZConvert(pNamespace, "U")
+        Do ##class(%SYS.PTools.UtilSQLAnalysis).clearSQLStatements(tName)
+        Do ##class(%SYS.PTools.UtilSQLAnalysis).clearSQLAnalysisDB(tName)
+        Set tResult = ##class(%SYS.PTools.UtilSQLAnalysis).getAllSQLStmts(1, 1, 1, 0, 0)
+        If (tResult '= "") && $$$ISERR(tResult) Set tSC = tResult
+        If $$$ISOK(tSC) && pRun {
+            Set tResult = ##class(%SYS.PTools.UtilSQLAnalysis).indexUsage(1, 1, 0, 1, 1, 1, 0)
+            If (tResult '= "") && $$$ISERR(tResult) Set tSC = tResult
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The rows of the vendor's own result table in <var>pNamespace</var> for the probe table, or for every table when <var>pAllTables</var> is 1, counted
+/// directly, by report code, and the namespace's gathered statements: <code>{Statements, IU, TS, TI, JI, OI}</code>, or <code>-1</code> for a count that
+/// could not be read.</p>
+ClassMethod AnalysisCounts(pNamespace As %String, pAllTables As %Boolean = 0) As %DynamicObject
+{
+    Set tCounts = {"Statements": -1, "IU": -1, "TS": -1, "TI": -1, "JI": -1, "OI": -1}
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT COUNT(*) FROM %SYS_PTools.UtilSQLStatements", 0)
+        If $$$ISOK(tSC) {
+            Set tResult = tStatement.%Execute()
+            If tResult.%Next() Do tCounts.%Set("Statements", +tResult.%GetData(1), "number")
+        }
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT OptionName, COUNT(*) FROM %SYS_PTools.UtilSQLAnalysisDB WHERE (? = 1) OR (SchemaName = ? AND TableName = ?) GROUP BY OptionName", 0)
+        If $$$ISOK(tSC) {
+            For tCode = "IU", "TS", "TI", "JI", "OI" Do tCounts.%Set(tCode, 0, "number")
+            Set tResult = tStatement.%Execute(''pAllTables, ..#ANALYSISSCHEMA, "T")
+            While tResult.%Next() {
+                Do tCounts.%Set(tResult.%GetData(1), +tResult.%GetData(2), "number")
+            }
+        }
+        Set (tResult, tStatement) = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tCounts
+}
+
+/// <p>Story 21.27's advice probe: the table <parameter>ADVICETABLE</parameter>, never tuned, with two indexed columns (<code>A</code> and <code>C</code>),
+/// one unindexed column (<code>B</code>) and one row. It touches no analyzer store.</p>
+Parameter ADVICESCHEMA = "OcuProbe227Advice";
+
+Parameter ADVICETABLE = "OcuProbe227Advice.T";
+
+/// <p>Create <parameter>ADVICETABLE</parameter> in <var>pNamespace</var>, after removing any an earlier run left (<method>RemoveAdvice</method>).</p>
+ClassMethod MakeAdvice(pNamespace As %String) As %Status
+{
+    Set tSC = ..RemoveAdvice(pNamespace)
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ..Run("CREATE TABLE " _ ..#ADVICETABLE _ " (A INTEGER, B VARCHAR(20), C VARCHAR(20))")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run("CREATE INDEX IdxA ON " _ ..#ADVICETABLE _ " (A)")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run("CREATE INDEX IdxC ON " _ ..#ADVICETABLE _ " (C)")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run("INSERT INTO " _ ..#ADVICETABLE _ " (A, B, C) VALUES (1, 'x', 'y')")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Purge <parameter>ADVICETABLE</parameter>'s cached queries, then drop it, in <var>pNamespace</var>; a table that is already gone is not an error.</p>
+ClassMethod RemoveAdvice(pNamespace As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do $SYSTEM.SQL.PurgeQueries({"table": [(..#ADVICETABLE)]})
+        Do ..Run("DROP TABLE " _ ..#ADVICETABLE)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>How many of the tables named <parameter>ADVICETABLE</parameter> <var>pNamespace</var> holds, and the value of its row's <code>B</code>:
+/// <code>count|value</code>, with <code>-1</code> for a count that could not be read.</p>
+ClassMethod AdviceState(pNamespace As %String) As %String
+{
+    Set tAnswer = "-1|"
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ?", 0)
+        Set tResult = tStatement.%Execute(..#ADVICESCHEMA)
+        If tResult.%Next() Set tAnswer = tResult.%GetData(1) _ "|"
+        Set tValue = ""
+        If +tAnswer {
+            Set tStatement = ##class(%SQL.Statement).%New()
+            Set tSC = tStatement.%Prepare("SELECT B FROM " _ ..#ADVICETABLE, 0)
+            Set tResult = tStatement.%Execute()
+            If tResult.%Next() Set tValue = tResult.%GetData(1)
+            Set tAnswer = +tAnswer _ "|" _ tValue
+        }
+        Set (tResult, tStatement) = ""
+    } Catch {
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tAnswer
 }
 
 /// <p>Run the statement over OcuPilot's own table in <var>pNamespace</var>, the install namespace, and answer its hash.</p>

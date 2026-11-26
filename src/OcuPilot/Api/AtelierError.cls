@@ -425,6 +425,66 @@ Parameter RUNTIMESTATSSET = "SQL.RUNTIMESTATS.SET";
 
 Parameter REASONRUNTIMESTATSSET = "This applies to every namespace on the instance. A query prepared while collection was set to Off records nothing once collection is turned on, until its cached query is purged.";
 
+/// <p>Envelope code: the instance answered an error status for a gather, a report or a purge of the SQL index analyzer (Story 21.27). Rendered on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, the instance's message in <code>detail</code> alone and never logged
+/// (AD-39).</p>
+Parameter INDEXANALYSISVENDOR = "SQL.INDEXANALYSIS.VENDOR";
+
+Parameter REASONINDEXANALYSISVENDOR = "The instance did not complete this index analysis.";
+
+/// <p>Envelope code: another process holds the namespace's analysis lock, so a gather, a report or a purge is refused before anything is called. Rendered
+/// on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409.</p>
+Parameter INDEXANALYSISBUSY = "SQL.INDEXANALYSIS.BUSY";
+
+Parameter REASONINDEXANALYSISBUSY = "An index analysis is already running in this namespace.";
+
+/// <p>The precondition refusals: a purge of a namespace that holds no gathered statement and no report row, and a report run before the namespace's
+/// statements were gathered.</p>
+Parameter INDEXANALYSISNOROWS = "SQL.INDEXANALYSIS.NOROWS";
+
+Parameter REASONINDEXANALYSISNOROWS = "This namespace holds no index analysis.";
+
+Parameter INDEXANALYSISNOSTATEMENTS = "SQL.INDEXANALYSIS.NOSTATEMENTS";
+
+Parameter REASONINDEXANALYSISNOSTATEMENTS = "Gather this namespace's statements before running this report.";
+
+/// <p>Envelope code: a report outside the five the analyzer runs, 400 on the <parameter>OcuPilot.Api.Error.BADREQUEST</parameter> slug before any call,
+/// from either caller.</p>
+Parameter INDEXANALYSISREPORT = "SQL.INDEXANALYSIS.REPORT";
+
+Parameter REASONINDEXANALYSISREPORT = "Choose Index usage, Table scan, Temporary index, Missing join index or Outlier index.";
+
+/// <p>Envelope code: Advise sent a statement that is not a query (Story 21.27). Rendered on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422, before the plan is read.</p>
+Parameter SQLADVICE = "EXPLORER.SQL.ADVICE";
+
+Parameter REASONSQLADVICE = "Advice reads a query's plan, so it takes a query only.";
+
+/// <p>Envelope code: a read OcuPilot makes of a fixed system table was refused the caller for want of the SQL SELECT privilege on it. Rendered on the
+/// <parameter>OcuPilot.Api.Error.FORBIDDEN</parameter> slug with 403, naming the table or tables the read uses in the sentence and in <code>detail</code>.
+/// <code>%1</code> is the table list <method>SelectPrivilegeReason</method> fills in.</p>
+Parameter SQLSELECTPRIVILEGE = "SQL.SELECT.PRIVILEGE";
+
+Parameter REASONSQLSELECTPRIVILEGE = "Reading this needs the SQL SELECT privilege on %1.";
+
+/// <p>The consequence codes the proposal card and the dialog of the analyzer's writes carry (Story 21.27). A gather states the first sentence, and the
+/// second too when it includes system classes and routines, which take longer than the page waits.</p>
+Parameter INDEXANALYSISGATHER = "SQL.INDEXANALYSIS.GATHER";
+
+Parameter REASONINDEXANALYSISGATHER = "A new gathering of this namespace's cached queries, class methods, class queries and routines replaces its gathered statements and every report's results, and rebuilds its class dependency data.";
+
+Parameter INDEXANALYSISGATHERSYSTEM = "SQL.INDEXANALYSIS.GATHERSYSTEM";
+
+Parameter REASONINDEXANALYSISGATHERSYSTEM = "A new gathering of this namespace's cached queries, class methods, class queries and routines replaces its gathered statements and every report's results, and rebuilds its class dependency data. Gathering system classes and routines can take longer than the page waits; the list shows the result when it finishes.";
+
+Parameter INDEXANALYSISRUN = "SQL.INDEXANALYSIS.RUN";
+
+Parameter REASONINDEXANALYSISRUN = "This report's earlier results in this namespace are replaced.";
+
+Parameter INDEXANALYSISPURGE = "SQL.INDEXANALYSIS.PURGE";
+
+Parameter REASONINDEXANALYSISPURGE = "This namespace's gathered statements and every report's results are removed. Gather statements again before running a report.";
+
 /// <p>Envelope code: the instance answered an error status for a table write -- an index rebuild (Story 21.25). Rendered on the
 /// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, the instance's message in <code>detail</code> alone and never logged
 /// (AD-39).</p>
@@ -500,8 +560,8 @@ Parameter REASONTABLEMAPSIZE = "Enter a whole number, 1 or more.";
 /// <p>The reason of a <code>SQL.TABLE.VENDOR</code> refusal of a setter after the table's collected statistics were saved as its fixed statistics.</p>
 Parameter REASONTABLESETUNAPPLIED = "The table's collected statistics were saved as its fixed statistics, but the new value was not set.";
 
-/// <p>The sentence <var>pCode</var>, one of the <code>SQL.STATEMENT.*</code>, <code>SQL.CACHEDQUERY.*</code> and <code>SQL.TABLE.*</code> codes above,
-/// carries, or <code>""</code> for any other code (Stories 21.6, 21.25 and 21.31).</p>
+/// <p>The sentence <var>pCode</var>, one of the <code>SQL.*</code> codes above, carries, or <code>""</code> for any other code;
+/// <code>SQL.SELECT.PRIVILEGE</code>'s still holds its <code>%1</code>.</p>
 ClassMethod SqlReasonFor(pCode As %String) As %String
 {
     If (pCode = ..#TABLESETEXTENTSIZE) || (pCode = ..#TABLESETSELECTIVITY) || (pCode = ..#TABLESETMAPSIZE) Quit ..#REASONTABLESET
@@ -534,7 +594,23 @@ ClassMethod SqlReasonFor(pCode As %String) As %String
     If pCode = ..#RUNTIMESTATSNOROWS Quit ..#REASONRUNTIMESTATSNOROWS
     If pCode = ..#RUNTIMESTATSPURGE Quit ..#REASONRUNTIMESTATSPURGE
     If pCode = ..#RUNTIMESTATSSET Quit ..#REASONRUNTIMESTATSSET
+    If pCode = ..#INDEXANALYSISVENDOR Quit ..#REASONINDEXANALYSISVENDOR
+    If pCode = ..#INDEXANALYSISBUSY Quit ..#REASONINDEXANALYSISBUSY
+    If pCode = ..#INDEXANALYSISNOROWS Quit ..#REASONINDEXANALYSISNOROWS
+    If pCode = ..#INDEXANALYSISNOSTATEMENTS Quit ..#REASONINDEXANALYSISNOSTATEMENTS
+    If pCode = ..#INDEXANALYSISREPORT Quit ..#REASONINDEXANALYSISREPORT
+    If pCode = ..#INDEXANALYSISGATHER Quit ..#REASONINDEXANALYSISGATHER
+    If pCode = ..#INDEXANALYSISGATHERSYSTEM Quit ..#REASONINDEXANALYSISGATHERSYSTEM
+    If pCode = ..#INDEXANALYSISRUN Quit ..#REASONINDEXANALYSISRUN
+    If pCode = ..#INDEXANALYSISPURGE Quit ..#REASONINDEXANALYSISPURGE
+    If pCode = ..#SQLSELECTPRIVILEGE Quit ..#REASONSQLSELECTPRIVILEGE
     Quit ""
+}
+
+/// <p>The sentence of <parameter>SQLSELECTPRIVILEGE</parameter> naming <var>pTables</var>, the table or tables a read needs the SQL SELECT privilege on.</p>
+ClassMethod SelectPrivilegeReason(pTables As %String) As %String
+{
+    Quit $Replace(..#REASONSQLSELECTPRIVILEGE, "%1", pTables)
 }
 
 /// <p>The sentence <var>pCode</var>, one of the seven <code>EXPLORER.UNITTEST.*</code> codes above or one of the five

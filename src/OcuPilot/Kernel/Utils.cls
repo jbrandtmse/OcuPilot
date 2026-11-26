@@ -516,6 +516,60 @@ ClassMethod DocumentLines(pDocName As %String, Output pLines) As %Status
     Quit tSC
 }
 
+/// <p>The class method <var>pMethod</var> of <var>pClass</var> called with <var>pArgs</var> while the null device is current, in
+/// <var>pNamespace</var> (the caller's namespace when it is <code>""</code>). Several vendor methods write a line to the current device, which in a
+/// request is the response; the output is discarded. <var>pReturns</var> is 1 for a method that answers a value, which is
+/// <var>pResult</var>, and 0 for one that answers none. The returned status is the helper's own: the null device could not be opened, or the
+/// call raised, in which case it is the raise as a status and <var>pResult</var> is <code>""</code>.</p>
+/// <p>The process is left as it was found. The null device is opened only when the process does not hold it, and closed only when this method
+/// opened it. The caller's device, with its mnemonic space and output redirection, and its namespace are restored on every path, a raise
+/// included.</p>
+ClassMethod CallWithNullDevice(pNamespace As %String, pClass As %String, pMethod As %String, pReturns As %Boolean, Output pResult, pArgs...) As %Status
+{
+    Set pResult = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Set tDevice = $IO
+    Set tMnemonic = ##class(%Library.Device).GetMnemonicRoutine()
+    Set tNull = ##class(%Library.Device).GetNullDevice()
+    Set (tOpened, tSwitched) = 0
+    Set tRedirected = ##class(%Library.Device).ReDirectIO(0)
+    Try {
+        If $Piece(tDevice, ":", 1) '= tNull {
+            If '..DeviceIsOpen(tNull) {
+                Open tNull::1
+                If '$Test {
+                    Set tSC = $$$ERROR($$$GeneralError, "the null device could not be opened")
+                    Quit
+                }
+                Set tOpened = 1
+            }
+            Use tNull
+            Set tSwitched = 1
+        }
+        If pNamespace '= "" Set $NAMESPACE = pNamespace
+        If pReturns {
+            Set pResult = $ClassMethod(pClass, pMethod, pArgs...)
+        } Else {
+            Do $ClassMethod(pClass, pMethod, pArgs...)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    If tSwitched {
+        If tMnemonic '= "" {
+            Use tDevice::("^" _ tMnemonic)
+        } Else {
+            Use tDevice
+        }
+    }
+    If tOpened Close tNull
+    Do ##class(%Library.Device).ReDirectIO(tRedirected)
+    Quit tSC
+}
+
 /// <p>Whether this process has <var>pDevice</var> open, which a <code>Use</code> that raises
 /// <code>&lt;NOTOPEN&gt;</code> answers no; any other raise is the caller's. The current device is the
 /// same after the call. A caller that opens a device only when this answers no, and closes it only then,
