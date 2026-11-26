@@ -952,3 +952,5 @@
 2026-11-26T20:48:04Z	Story 24.17	spine_updated	ad=AD-62(items23-28),AD-7,AD-9,AD-15,AD-22 reason=story_end_owner_kept_vetoes(U-179) commit=4d53ca0f0 lint=ok_except_preexisting_{id}
 2026-11-26T20:48:04Z	Story 24.17	spine_updated	ad=AD-43(thirteen->fourteen,in_place),AD-7(metrics_records_bullet;shapes_six->eight) reason=unattended_ruling inbox=U-181 lint=ok_except_preexisting_{id} roster_test=none_found
 2026-11-26T20:50:34Z	Story 24.17	note	story_end_spine: AD-7 shapes sentence read six while the wallet use row (Story 18.41) had made seven; U-181 corrected it to eight with the metrics bullet; marker trimmed to the standard form (orchestrator)
+2026-11-26T21:23:39Z	Story 24.17	ci_resolved	story=24.17-batch5 sha=de6eef2d0 runs=45892451647 result=success failed=none resolved_at=story_end
+2026-11-26T21:23:39Z	Story 24.17	story_complete	batches=1,2,3a,3b,4,5 code_head=de6eef2d0 spine=4d53ca0f0,944b294d0(+marker_trim) tracker=done
