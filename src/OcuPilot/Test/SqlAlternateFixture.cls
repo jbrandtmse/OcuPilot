@@ -71,6 +71,12 @@ ClassMethod BoundSeconds() As %Integer
     Quit $Get(^||OcuPilotSqlAlt("bound"), ##super())
 }
 
+/// <p>The vendor read <method>PlansVendor</method> answers, called from a test; it counts and records the call as the port's own calls are.</p>
+ClassMethod VendorRead(pNamespace As %String, pQuery As %String, pText As %String, pIds As %String, Output pRows As %DynamicArray, Output pCode As %Integer, Output pMessage As %String) As %Status
+{
+    Quit ..PlansVendor(pNamespace, pQuery, pText, pIds, .pRows, .pCode, .pMessage)
+}
+
 ClassMethod PlansVendor(pNamespace As %String, pQuery As %String, pText As %String, pIds As %String, Output pRows As %DynamicArray, Output pCode As %Integer, Output pMessage As %String) As %Status [ Private ]
 {
     Set tNumber = $Increment(^||OcuPilotSqlAlt("calls"))

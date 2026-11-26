@@ -1105,76 +1105,69 @@ ClassMethod PlansRead(pNamespace As %String, pQuery As %String, pText As %String
 /// <p>The class query <var>pQuery</var> of <parameter>STATSCLASS</parameter> run in <var>pNamespace</var>, prepared with the instance's privilege check
 /// (<code>%PrepareClassQuery</code>), with <var>pText</var> and, when it is not empty, <var>pIds</var> as its values: every row as an array of text
 /// cells in <var>pRows</var>, and in <var>pCode</var> and <var>pMessage</var> the SQLCODE of the prepare or the run, 0 when it succeeded. The
-/// instance writes a page to the current device for a statement it cannot explain, so the run is made under the null device, which is restored with the
-/// namespace on every path; a transaction it leaves open is rolled back and <code>%AltPlan</code>, which the query leaves behind, is killed. The
-/// returned status is an unexpected failure. Overridable so a fixture can count the calls; production overrides none. The switched region calls vendor
-/// classes only.</p>
+/// instance writes a page to the current device for a statement it cannot explain, so the run is made under the null device
+/// (<method>OcuPilot.Kernel.Utils.CallWithNullDevice</method>), which is restored with the namespace on every path; a transaction it leaves open is
+/// rolled back and <code>%AltPlan</code>, which the query leaves behind, is killed. The returned status is an unexpected failure. Overridable so a fixture
+/// can count the calls; production overrides none.</p>
 ClassMethod PlansVendor(pNamespace As %String, pQuery As %String, pText As %String, pIds As %String, Output pRows As %DynamicArray, Output pCode As %Integer, Output pMessage As %String) As %Status [ Private ]
 {
     Set pRows = []
     Set pCode = 0
     Set pMessage = ""
-    Set tSC = $$$OK
+    Set tSC = ##class(OcuPilot.Kernel.Utils).CallWithNullDevice("", "OcuPilot.Port.SqlPort", "PlansCall", 1, .tAnswer, pNamespace, pQuery, pText, pIds)
+    If $$$ISERR(tSC) Quit $$$ERROR($$$GeneralError, "the possible plans read raised " _ $System.Status.GetOneStatusText(tSC))
+    Set pRows = tAnswer.rows
+    Set pCode = tAnswer.code
+    Set pMessage = tAnswer.message
+    Quit $$$OK
+}
+
+/// <p>The vendor call of <method>PlansVendor</method>, the class query <var>pQuery</var> of <parameter>STATSCLASS</parameter> run in
+/// <var>pNamespace</var> and prepared with the instance's privilege check, as <code>{rows, code, message}</code>: <code>rows</code> the rows as arrays of
+/// text cells, <code>code</code> the SQLCODE of the prepare or the run (0 when it succeeded) and <code>message</code> its text. The namespace is restored,
+/// <code>%AltPlan</code> killed and a transaction the run left open rolled back on every path, a raise included, which is then thrown. The switched
+/// region calls vendor classes only.</p>
+ClassMethod PlansCall(pNamespace As %String, pQuery As %String, pText As %String, pIds As %String) As %DynamicObject
+{
+    Set tRows = []
+    Set tCode = 0
+    Set tMessage = ""
+    Set tRaised = ""
     Set tOrigNS = $NAMESPACE
-    Set tDevice = $IO
-    Set tMnemonic = ##class(%Library.Device).GetMnemonicRoutine()
-    Set tNull = ##class(%Library.Device).GetNullDevice()
-    Set tHeld = ##class(OcuPilot.Kernel.Utils).DeviceIsOpen(tNull)
-    Set (tOpened, tSwitched) = 0
-    Set tRedirected = ##class(%Library.Device).ReDirectIO(0)
     Set tLevel = $TLevel
     Try {
-        If $Piece(tDevice, ":", 1) '= tNull {
-            If 'tHeld {
-                Open tNull::1
-                If '$Test {
-                    Set tSC = $$$ERROR($$$GeneralError, "the null device could not be opened")
-                    Quit
-                }
-                Set tOpened = 1
-            }
-            Use tNull
-            Set tSwitched = 1
-        }
         Set $NAMESPACE = pNamespace
         Set tStatement = ##class(%SQL.Statement).%New()
         Set tPrepared = tStatement.%PrepareClassQuery(..#STATSCLASS, pQuery)
         If $$$ISERR(tPrepared) {
-            Set pCode = $System.Status.StatusToSQLCODE(tPrepared, .pMessage)
+            Set tCode = $System.Status.StatusToSQLCODE(tPrepared, .tMessage)
         } Else {
             Set tResult = $Select(pIds = "": tStatement.%Execute(pText), 1: tStatement.%Execute(pText, pIds))
-            Set pCode = tResult.%SQLCODE
-            While (pCode >= 0) && tResult.%Next() {
+            Set tCode = tResult.%SQLCODE
+            While (tCode >= 0) && tResult.%Next() {
                 Set tRow = []
                 For tI = 1:1:tResult.%ResultColumnCount Do tRow.%Push(tResult.%GetData(tI), "string")
-                Do pRows.%Push(tRow)
+                Do tRows.%Push(tRow)
             }
-            If pCode >= 0 Set pCode = $Select(tResult.%SQLCODE < 0: tResult.%SQLCODE, 1: 0)
-            If pCode < 0 Set pMessage = tResult.%Message
+            If tCode >= 0 Set tCode = $Select(tResult.%SQLCODE < 0: tResult.%SQLCODE, 1: 0)
+            If tCode < 0 Set tMessage = tResult.%Message
             Set tResult = ""
         }
         Set tStatement = ""
     } Catch ex {
-        Set pRows = []
-        Set pCode = 0
-        Set pMessage = ""
-        Set tSC = $$$ERROR($$$GeneralError, "the possible plans read raised " _ ex.Name)
+        Set tRaised = ex
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
     Kill %AltPlan
     While $TLevel > tLevel {
         TRollback 1
     }
-    If tSwitched {
-        If tMnemonic '= "" {
-            Use tDevice::("^" _ tMnemonic)
-        } Else {
-            Use tDevice
-        }
-    }
-    If tOpened Close tNull
-    Do ##class(%Library.Device).ReDirectIO(tRedirected)
-    Quit tSC
+    If $IsObject(tRaised) Throw tRaised
+    Set tAnswer = {}
+    Do tAnswer.%Set("rows", tRows)
+    Do tAnswer.%Set("code", tCode, "number")
+    Do tAnswer.%Set("message", tMessage, "string")
+    Quit tAnswer
 }
 
 /// <p>The 403 of a read the instance refused the caller for want of the SQL EXECUTE privilege on the procedure <var>pProcedure</var>:

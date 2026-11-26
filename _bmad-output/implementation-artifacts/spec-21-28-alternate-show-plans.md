@@ -2,10 +2,10 @@
 title: 'Story 21.28: Alternate show plans'
 type: 'feature'
 created: '2026-11-25'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '59243ea80bcfd513b4bf83fbbddfd080b8e09c41'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-21-26-runtime-statistics.md'
@@ -113,6 +113,11 @@ Record each measurement as a short Verification line.
 - `EXPERIENCE.md`: ONE add-only Fixed strings row for 21.28 listing exactly these strings and the 21.28 refusals' reasons are server-side and need no row beyond what the siblings' rows do; then `cd ui && npm run test:tools`. Then regenerate the mirror and `Titles.cls` only if the generator reads the new strings (`node tools/screen-mirror.mjs`).
 - The page reads the compare-note from one place (the store or the strings) and the page spec asserts it beside every compared result and beside no other (mutation: the store drops the note).
 - New `ui/browser/system-explorer-sql-alternate-plans.browser-spec.mjs` (refuses the live container, waits on each answered signal as the sibling spec `system-explorer-sql-runtime-stats.browser-spec.mjs` does, probe from `SqlTuningProbe.MakeAlternates`/`RemoveAlternates` through whatever route the sibling uses to make its probe): Alternate plans lists the probe's plans; Show plan shows one; Compare plans with two checked rows shows two compared rows and the note. Its `after` hook removes the probe and everything the run recorded (statistics rows, statement-index rows, cached queries) and the test reads each back absent.
+- **REVIEW PATCHES (Handoff 4, the only work left; Batches 1 and 2 are committed; server and tests only, no `ui/` edit):**
+  - P1: `SqlPort.PlansVendor` hand-rolls what `Kernel/Utils.CallWithNullDevice` does. Route it through that helper (Rule 2/31): the vendor call becomes its own class method answering `{rows, code, message}` as a `%DynamicObject`, the helper wraps it in the null device and the namespace, and the `TRollback` to the starting `$TLevel` and the `Kill %AltPlan` stay on every path. Add a test in `SqlAlternatePlansRead` that calls it through the fixture for a success and for an SQLCODE error and asserts `$IO` with its mnemonic space, `$NAMESPACE`, `$TLevel`, `DeviceIsOpen` of the null device and `%AltPlan` as before the call.
+  - P2: `AlternateState`'s cached-query and statement-index pieces are never asserted above 0 after a compare, so the `0|0|0|0` read-back cannot fail for them. Assert pieces 2 and 4 are above 0 after a compare in `SqlAlternatePlansRead`, `SqlAlternatePlansRoutes` and the browser spec's compare test (measure first; if a piece reads 0 after a real compare, fix the count's key, not the assertion).
+  - P3: the compared row's `Cost` and `StartingMap` come from the list and the tests compare them with the list. Replace those two assertions with one that reads the vendor's own statistics row for each compared id through the fixture (the compare's own text, the same call `Compared` makes) and asserts its cost (numeric equality) and starting map equal the list's for that id.
+  - P4: record observed `mutation:` lines under Verification (revert each by Edit, confirm the tree byte-identical, reload): AC1, `Alternates` drops `MapType` from a plan row; AC2, `Explained` drops the `alt`/`ids` qualifiers (the shown plan holds more than one plan); AC4, `RemoveAlternates` skips the cached-query purge (the `0|0|0|0` read goes red); P3, `Compared` runs the id plus one (the cost assertion goes red).
 - Verify in the order of the spec's `(loop)` lines: `npm run build`, `npm run test:components`, `docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, then the two browser specs together forward, one file per call, and in reverse order, with `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`. Grep `ui/browser`, `ui/tools`, `ui/src` and `src/OcuPilot/Test` for every key or code you change in place and run each consumer found. Write the AC4 and AC2-client `mutation:` lines (the page drops Compare plans' post; the store drops the note), applying each after a rebuild and redeploy.
 
 **Execution:** Task 0 first, then two batches, each committed on its own. A handoff builds one batch. Build after Story 21.27 is on the branch. Strings are only the ruled set (Design Notes, "Strings, escalated"). Any other sentence a person reads is `## Clarification Needed`.
@@ -239,6 +244,26 @@ Record each measurement as a short Verification line.
   - List, show and the scanner land as measured (4 tables, 4 conditions; list worst 27.6 s, show 14.7 s).
 
 ## Review Triage Log
+
+### 2026-11-26 — Review pass
+
+- verdicts: 15 findings — high 0, medium 2, low 5, false 8, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `PlansVendor` copies `Kernel/Utils.CallWithNullDevice` and its device, namespace, transaction and `%AltPlan` restore is asserted nowhere — now routed through the helper (`PlansCall`), with a test for `$IO`, namespace, `$TLevel`, the null device and `%AltPlan`.
+  - `[medium]` `[patch]` `AlternateState`'s cached-query and statement-index pieces are never asserted above 0 after a compare, so the `0|0|0|0` read-back cannot fail for them — pieces 2 to 4 are asserted above 0 after a compare in both test classes and the browser spec.
+  - `[low]` `[patch]` Compared-row `Cost` and `StartingMap` tests compare a value with its own source — replaced by the vendor's own statistics row for the id, cost by numeric equality.
+  - `[low]` `[patch]` Mutation lines missing for AC1 columns, AC2 text-alone and AC4 clean-up — recorded under Verification; the cached-query purge is not load-bearing (`DROP TABLE` removes the table's cached queries) and the statement-index clean-up is.
+  - `[low]` `[reject]` Cross-product guard is a count, not a join test — the round-2 ruling states the rule as the count and tests it at the boundary; a filter-only multi-table statement passes (residual risk under Auto Run Result).
+  - `[false]` `[reject]` Spec text (AC2, Code Map, Auto Run Result) is inconsistent with the rulings — the fix edits the spec, which the rulings govern; the Auto Run Result is rewritten at finalize.
+  - `[low]` `[reject]` Browser spec test titles say AC4 for the compare test — cosmetic; the sibling spec labels its tests the same way.
+  - `[false]` `[reject]` Compare runs a rewritten statement, not the whole text — ruled (2026-11-26 rulings 3 and runner decision 2): the statement's own parameterized text, so a listed id names the plan it ran.
+  - `[false]` `[reject]` Compare calls the statistics query once per id, never a comma-joined list — ruled (runner decision 3); the port still builds the id text.
+  - `[false]` `[reject]` The gate adds the classic page's custom resource — ruled (plan-gate ruling 3, veto U-166).
+  - `[false]` `[reject]` The bound check reads view text from the dictionary before refusing — it runs after the checked prepare, as the console's order requires, and before anything reaches the plan queries.
+  - `[false]` `[reject]` The bound, the cross-product refusal and the EXECUTE refusal go beyond the intent — each is a ruled addition (2026-11-26 rulings 1, 2 and the round-2 ruling).
+  - `[low]` `[reject]` The new test classes call themselves "Live-safe" and are not armed — the same pattern as `SqlRuntimeStatsRead`; they remove every row they cause, and no stage runs them off the throwaway.
+  - `[false]` `[reject]` A compare answers `stopped` only after the fact — ruled (round-2 compare ruling).
+  - `[false]` `[reject]` No explicit sanitizer call is visible — the agent read inherits `ExplorerSqlRead`, and every tool result passes AD-60's sanitizer.
 
 ## Design Notes
 
@@ -449,15 +474,41 @@ Measured on `ocupilot-ci`, `USER`, by scratch classes that are deleted. The stat
 - **Loop.** `npm run build` clean (initial 2.33 MB). `test:components` 349 files, 4092 tests. `test:tools` 2421/2421. `check-objectscript` 0 problems, `lint-docs` clean. Browser after rebuild and redeploy: `system-explorer-sql-alternate-plans` 3/3 then `system-explorer-sql-runtime-stats` 4/4, and in reverse, each green; `system-explorer-sql-query` 3/3, `system-explorer-sql-index-analysis` 6/6 and `agent-sql` 2/2. The new spec's `after` read `AlternateState` back `0|0|0|0`.
 - `mutation: the page drops Compare plans' post (onCompare without comparePlans) -> after rebuild and redeploy the browser spec's AC4 red (the compared-row wait timed out); the store drops the note (comparedAnswer answers false) -> sql-query.page.spec.ts "shows the ruled note beside every compared result and beside no other result" red, and after rebuild and redeploy the browser spec's AC4 red on the compare-note wait; MAX_COMPARED_PLANS 6 -> self-protection.test.mjs Story 21.28 test red (each reverted by Edit, rebuilt and redeployed, green).`
 
+### Handoff 4 (review patches P1 to P4), measured on `ocupilot-ci`
+
+- **Built.** P1: `PlansVendor` runs `PlansCall` (new, answers `{rows, code, message}`) through `CallWithNullDevice` with namespace `""`, and `PlansCall` switches to the caller's namespace itself, because `OcuPilot.Port.SqlPort` is not visible in every namespace the helper would switch to; it restores the namespace, kills `%AltPlan` and rolls back to its starting `$TLevel` on every path. Fixture gains `VendorRead` (a public pass-through, since `PlansVendor` is private). P2: `AlternateState` pieces 2, 3 and 4 are asserted above 0 after a compare in `SqlAlternatePlansRead`, `SqlAlternatePlansRoutes` and the browser spec's AC4 (all read above 0 on first measure; no key changed). P3: the cost and starting map are asserted against the vendor's own statistics row for the id each compare call named. New test `TestThePlansReadLeavesTheProcessAsItFoundIt` (success and SQLCODE -400 legs).
+- **Run.** `SqlAlternatePlansRead` 11/11, `SqlAlternatePlansRoutes` 6/6, `SqlAlternateScan` 7/7, `SqlPortLive` 16/16, `SqlRuntimeStatsRead` 10/10, `SqlConsoleRoutes` 8/8, `SqlSelectPrivilege` 5/5, browser spec 3/3 after rebuild and redeploy, `check-objectscript` 0 problems.
+- `mutation: Alternates drops MapType -> TestTheListAnswers... red (four columns, map type); Explained drops alt/ids -> TestShowPlanAnswersOnePlansText... red ("not the plan the statement would run"; the one-plan-text assertion stayed green because the chosen plan is also one plan); Compared runs id + 1 -> TestACompareRunsEach... red (the vendor-row cost and starting map, the call-id and the numbers legs) and the cap test's vendor-strings leg red; PlansCall without Kill %AltPlan -> TestThePlansReadLeaves... red on its error leg only (the success leg's query leaves none); RemoveAlternates without its two PurgeQueries -> the 0|0|0|0 read stayed GREEN (DROP TABLE removes the table's cached queries), and without Statement.Clean -> every test red on the 0|0|0|0 read (the statement-index piece), so the purge is not load-bearing and the Clean is (each reverted by Edit, files compared equal to the saved copies, reloaded, green).`
+
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap. Task 0 (j): a compare's single-id `possiblePlansStats` run is not bounded by `$System.Alarm`. An alarm that fires in the instance's first execution of the statement is swallowed and the second execution runs to the end, so a run longer than `BoundSeconds` takes the bound plus its own time and the port cannot answer `stopped` before the 60 s gateway limit (Verification, "Task 0 (j)"). The same holds for `Explain` with `alt`, `ids` and `stats`. No product code was written; the earlier Task 0 and its addendum stand.
+Status: done
+Blocking condition: none
 
-Options for the ruling, none decided here:
+**Summary.** SQL query gains Alternate plans. The list, Show plan and Compare plans (one to five listed ids, one `possiblePlansStats` run per id) go through `SqlPort.Plan` and the plan route. `explorer.sqlalternateplans.read` lists and shows plans and runs nothing, and `slowquery` names it. A statement over four tables or four conditions is refused before anything reaches the vendor, a compare also refuses a statement whose counted conditions are fewer than its tables minus one, and a compare answers `stopped` only after the fact. Committed in two batches (server `a2fa037b7`, client `b270555be`) and the review patches in the finalize commit.
 
-1. A compare answers `stopped` after the fact: it measures its own elapsed time, discards rows when it has reached `BoundSeconds`, and the gateway's 504 is the only limit on a longer run (the 21.27 Gather precedent: the server finishes, a second Compare refuses while one holds the lock). This drops "under the console's time limit" for Compare only.
-2. A compare refuses a plan whose listed cost is above a measured constant before running it (the probe's cost 6.6e7 ran 26 s per execution; the cost-to-time relation is an inference from one statement).
-3. Compare is dropped from this story, and Alternate plans lists and shows plans only.
+**Files.**
 
-The bound's scanner, listing and showing are unaffected and can land first if the ruling keeps them in Batch 1.
+- Server: `Port/SqlAlternateScan.cls` (new, the counts and the token-aware `%NOPARALLEL`), `Port/SqlPort.cls`, `Api/AtelierError.cls`, `Area/Explorer/SqlConsole.cls`, `Screen/Tool/ExplorerSqlAlternatePlansRead.cls` (new), `Kernel/Agent/Workflow.cls`.
+- Client: `sql-query.store.ts`, `sql-query.page.ts`, `core/sql-answer.ts`, `core/strings.ts`, EXPERIENCE.md, `_components.scss` (the form's controls wrap), `self-protection.test.mjs`, and the new `system-explorer-sql-alternate-plans.browser-spec.mjs`.
+- Tests: `SqlAlternateScan`, `SqlAlternatePlansRead`, `SqlAlternatePlansRoutes` (new, with `SqlAlternateFixture` and `SqlAlternateTool`), `SqlTuningProbe`, `SqlSelectPrivilege`, and the rosters `ReadTool`, `DeveloperFloor`, `ExplorerDescriptor`, `PortGate`, `ToolEmit`, `ToolRoundTrip`, `WorkflowCatalog`, `SqlConsoleRoutes`, `ClassicPageGate`.
+
+**Decided in-stage** (small, inside the rulings):
+
+- The compare note's ending, from Verification (k): "Comparing can take longer than the page waits; what each run recorded stays on Runtime statistics." The answer is lost with the connection, but the run's statistics rows stay readable.
+- The agent read's description: "List the plans the optimizer considered for one SQL query, with their cost, map type and starting map, or show one of them by its plan number. This lists and shows plans and runs nothing."
+- The compare's elapsed seconds count from its first statistics run, after the list. The note shows on `compared` results only.
+- `PlansCall` switches to the caller's namespace itself, because the switched region may call vendor classes only.
+
+**Review.** 15 findings: 2 medium and 2 low patched (the null-device copy routed through the helper, the read-back made able to fail, the compare's own statistics row checked, the mutation lines recorded), 11 rejected with their reasons in the Review Triage Log. Nothing deferred.
+
+**Verification.** Every class and spec the batches touched is green on `ocupilot-ci`, one per call: `SqlAlternateScan` 7, `SqlAlternatePlansRead` 11, `SqlAlternatePlansRoutes` 6, `SqlPortLive` 16, `SqlConsoleRoutes` 8, `SqlRuntimeStatsRead` 10, `SqlSelectPrivilege` 5, `SqlAdviceRead` 11, `SqlAgentRead` 7 and the roster classes. `npm run test:components` 4092, `npm run test:tools` 2421, `npm run build` clean (2.33 MB initial), `check-objectscript` and `lint-docs` clean, and the alternate-plans and runtime-statistics browser specs pass forward and in reverse. The full ObjectScript sweep and the full browser suite are the runner's and CI's.
+
+**Residual risks.**
+
+- The cross-product refusal counts conditions, so a filter-only multi-table statement such as `FROM a, b WHERE a.x = 1` passes it and its compare can run long (an unjoined three-way join passed 100 s). The page's wait is the only limit, and the rows are kept on Runtime statistics.
+- The worker-control measurement in Handoff 1 was inconclusive on its own probe; the Task 0 addendum's 16 busy workers without `%NOPARALLEL` and 0 with it stand.
+- `SqlAlternatePlansRoutes`, `SqlAlternateTool` and the new browser spec are not in `ui/tools/ci-timings.json`; the merge-time refresh adds them. `ReadTool`, `ToolRoundTrip`, `DeveloperFloor`, `ExplorerDescriptor`, `strings.ts` and EXPERIENCE.md carry count literals and rows Epic 24 also changes, so they need a union at the merge.
+- The cached-query purge in `RemoveAlternates` is redundant after the table drop; the statement-index clean-up is what the read-back needs.
+
+**Follow-up review recommended: true.** Two medium findings were patched on this first pass. The unverified risk is `PlansCall`'s restore of the device, namespace, transaction and `%AltPlan` on a raise, which the new test covers only for a success and an SQLCODE error.

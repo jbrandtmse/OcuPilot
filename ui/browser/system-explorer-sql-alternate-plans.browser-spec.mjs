@@ -144,5 +144,6 @@ test('AC4: Compare plans with two checked plans shows two compared rows and the 
   } finally {
     await context.close();
   }
-  assert.notEqual(probeState().split('|')[2], '0', 'the compare\'s runs recorded their statistics, which the after hook removes');
+  const state = probeState().split('|');
+  assert.ok(Number(state[1]) > 0 && Number(state[2]) > 0 && Number(state[3]) > 0, `the compare's runs recorded a cached query, statistics rows and a statement-index row, which the after hook removes: ${state.join('|')}`);
 });

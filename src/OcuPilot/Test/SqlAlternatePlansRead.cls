@@ -84,6 +84,20 @@ ClassMethod ScalarIn(pText As %String) As %String
     Quit tValue
 }
 
+/// <p>The instance's own statistics row for plan <var>pId</var> of the compare text <var>pText</var>, read through the fixture with the call a compare
+/// makes: <code>[plan, cost, starting map, ...]</code>, or <code>""</code> when the instance answers none.</p>
+ClassMethod StatisticsRow(pText As %String, pId As %String) As %DynamicArray
+{
+    Set tFound = ""
+    Set tSC = $ClassMethod(..#FIXTURE, "VendorRead", ..#NAMESPACE, $Parameter(..#PORT, "ALTSTATSQUERY"), pText, pId, .tRows, .tCode, .tMessage)
+    If $$$ISERR(tSC) || (tCode < 0) Quit tFound
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tRow) {
+        If (tFound = "") && (+tRow.%Get(0) = pId) Set tFound = tRow
+    }
+    Quit tFound
+}
+
 /// <p>A statement of <var>pTables</var> aliases of the probe table joined by <code>B</code> on <var>pConditions</var> - 1 conditions or fewer.</p>
 ClassMethod Aliases(pTables As %Integer, pJoined As %Boolean = 1) As %String
 {
@@ -187,8 +201,6 @@ Method TestACompareRunsEachListedPlanAndAnswersItsNumbers()
     Do $$$AssertEquals(tRow.Plan _ "|" _ tAnswer.plans.%Get(1).Plan, "2|1", "in the order the plans were chosen")
     For tI = 0, 1 {
         Set tCompared = tAnswer.plans.%Get(tI)
-        Set tListed = tList.plans.%Get(tCompared.Plan - 1)
-        Do $$$AssertEquals(tCompared.Cost _ "|" _ tCompared.StartingMap, tListed.Cost _ "|" _ tListed.StartingMap, "plan " _ tCompared.Plan _ ": the list's cost and starting map")
         Do $$$AssertTrue($Match(tCompared.GlobalReferences, "^[0-9,]+$") && $Match(tCompared.Commands, "^[0-9,]+$") && $Match(tCompared.TotalTime, "^[0-9.]+$") && $Match(tCompared.Rows, "^[0-9,]+$"), "plan " _ tCompared.Plan _ ": its numbers: " _ tCompared.%ToJSON())
     }
     Do $$$AssertEquals($ClassMethod(tFixture, "Lists") _ "|" _ $ClassMethod(tFixture, "Stats"), "1|2", "one list, then the statistics query once for each plan")
@@ -198,8 +210,20 @@ Method TestACompareRunsEachListedPlanAndAnswersItsNumbers()
     Set tText = $Piece(tFirst, "|", 3, *)
     Do $$$AssertTrue((tText [ "FROM %NOPARALLEL") && (tText '[ "c5") && (tText [ "B = ?"), "the text is the statement's own with ? for the literals and no parallel workers: " _ tText)
     Do $$$AssertEquals(tText, $Piece(tSecond, "|", 3, *), "both runs ran the same text")
-    Do $$$AssertTrue($Piece($ClassMethod(..#PROBE, "AlternateState", ..#NAMESPACE), "|", 3) > 0, "the runs recorded statistics rows")
+    Set tState = $ClassMethod(..#PROBE, "AlternateState", ..#NAMESPACE)
+    Do $$$AssertTrue(($Piece(tState, "|", 2) > 0) && ($Piece(tState, "|", 3) > 0) && ($Piece(tState, "|", 4) > 0), "the runs recorded a cached query, statistics rows and a statement index row: " _ tState)
     Do $$$AssertEquals(..ScalarIn("SELECT COUNT(*) FROM " _ ..Table()), 3000, "and the table still holds its rows")
+    For tI = 0, 1 {
+        Set tCompared = tAnswer.plans.%Get(tI)
+        Set tListed = tList.plans.%Get(tCompared.Plan - 1)
+        Set tRan = $ClassMethod(tFixture, "Call", tI + 2)
+        Set tOwn = ..StatisticsRow($Piece(tRan, "|", 3, *), $Piece(tRan, "|", 2))
+        Do $$$AssertTrue($IsObject(tOwn), "plan " _ tCompared.Plan _ ": the instance's own statistics row for the plan the run named, " _ $Piece(tRan, "|", 2) _ ", is read")
+        If $IsObject(tOwn) {
+            Do $$$AssertTrue(+tOwn.%Get(1) = +tListed.Cost, "plan " _ tCompared.Plan _ ": the cost the instance's own row holds, " _ tOwn.%Get(1) _ ", is the list's, " _ tListed.Cost)
+            Do $$$AssertEquals($ZStrip(tOwn.%Get(2), "<>W"), $ZStrip(tListed.StartingMap, "<>W"), "plan " _ tCompared.Plan _ ": and so is its starting map")
+        }
+    }
 }
 
 /// <p>Every refusal of a compare answers before the statistics query is called: a statement that is not a query (422 <code>EXPLORER.SQL.ALTCOMPARE</code>),
@@ -330,6 +354,44 @@ Method TestARefusedProcedureIsTheExecuteRefusalAndAnyOtherCodeTheErrorOutcome()
     Set tSC = ..Plan(tFixture, "SELECT FROM WHERE", "", "", .tAnswer, .tHttp, .tFault)
     Do $$$AssertEquals($Select($$$ISOK(tSC): tAnswer.outcome _ "|" _ (tAnswer.sqlcode < 0), 1: ..Refused(tSC, tHttp, tFault)), "error|1", "a statement the instance does not prepare is the error outcome")
     Do $$$AssertEquals($ClassMethod(tFixture, "Calls"), 0, "before any call")
+}
+
+/// <p>The process as <code>PlansVendor</code> must leave it: the current device with its mnemonic space, the namespace, the transaction level, whether
+/// the null device is open.</p>
+ClassMethod ProcessState() As %String
+{
+    Set tNull = ##class(%Library.Device).GetNullDevice()
+    Quit $IO _ "|" _ ##class(%Library.Device).GetMnemonicRoutine() _ "|" _ $NAMESPACE _ "|" _ $TLevel _ "|" _ ##class(OcuPilot.Kernel.Utils).DeviceIsOpen(tNull)
+}
+
+/// <p>The vendor read leaves the process as it found it, for a read that succeeds and for one the instance answers an SQLCODE below 0: the current
+/// device and its mnemonic space, the namespace, the transaction level (a transaction the caller holds stays open) and the null device's open state; and
+/// a <code>%AltPlan</code> the process holds is killed.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.PlansCall</code> does not kill <code>%AltPlan</code> -> the <code>%AltPlan</code> assertion of the
+/// error leg goes red.</p>
+Method TestThePlansReadLeavesTheProcessAsItFoundIt()
+{
+    Set tFixture = ..#FIXTURE
+    Set tQuery = $Parameter(..#PORT, "ALTLISTQUERY")
+    For tCase = "success", "error" {
+        Set tIds = $Select(tCase = "success": "", 1: "1")
+        TStart
+        Set tBefore = ..ProcessState()
+        Set %AltPlan = "left behind"
+        Set tSC = $ClassMethod(tFixture, "VendorRead", ..#NAMESPACE, tQuery, ..Query(), tIds, .tRows, .tCode, .tMessage)
+        Set tAfter = ..ProcessState()
+        Set tAltPlan = $Data(%AltPlan)
+        Kill %AltPlan
+        TRollback
+        Do $$$AssertStatusOK(tSC, tCase _ ": the read answers")
+        Do $$$AssertEquals(tAfter, tBefore, tCase _ ": device, mnemonic space, namespace, transaction level and null device are as before")
+        Do $$$AssertEquals(tAltPlan, 0, tCase _ ": a %AltPlan the process holds is killed")
+        If tCase = "success" {
+            Do $$$AssertTrue((tCode = 0) && (tRows.%Size() >= 2), "the read answers its rows with SQLCODE 0: " _ tRows.%Size())
+        } Else {
+            Do $$$AssertTrue(tCode < 0, "the SQLCODE is below 0: " _ tCode)
+        }
+    }
 }
 
 /// <p>The console's own check refuses a statement over OcuPilot's own tables with <code>PROHIBITED.OCUPILOTSQL</code>, so the caller never reaches the

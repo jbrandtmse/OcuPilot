@@ -244,7 +244,8 @@ Method TestTheRouteComparesTwoListedPlans()
         Do $$$AssertEquals(tRow.Cost _ "|" _ tRow.StartingMap, tListed.Cost _ "|" _ tListed.StartingMap, "plan " _ tRow.Plan _ ": the list's cost and starting map")
         Do $$$AssertTrue($Match(tRow.GlobalReferences, "^[0-9,]+$") && $Match(tRow.Commands, "^[0-9,]+$") && $Match(tRow.TotalTime, "^[0-9.]+$") && $Match(tRow.Rows, "^[0-9,]+$"), "plan " _ tRow.Plan _ ": its numbers: " _ tRow.%ToJSON())
     }
-    Do $$$AssertTrue($Piece($ClassMethod(..#PROBE, "AlternateState", ..#NAMESPACE), "|", 3) > 0, "the runs recorded statistics rows")
+    Set tState = $ClassMethod(..#PROBE, "AlternateState", ..#NAMESPACE)
+    Do $$$AssertTrue(($Piece(tState, "|", 2) > 0) && ($Piece(tState, "|", 3) > 0) && ($Piece(tState, "|", 4) > 0), "the runs recorded a cached query, statistics rows and a statement index row: " _ tState)
     Do ..Post({"statement": (..Query()), "alternates": true}, .tStatus, .tAgain)
     Do $$$AssertEquals($Select($IsObject(tAgain): tAgain.plans.%ToJSON(), 1: ""), tList.plans.%ToJSON(), "the same plans are listed after")
 }
