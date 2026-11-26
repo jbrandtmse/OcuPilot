@@ -739,6 +739,9 @@ services:
       # classes: PageResourceFixture, PageResourceRead, PageResourceWrite
       # SourceControlFollowUp signs one account in to prove the answer's WRITE gate, and removes it (Story 21.38).
       # classes: SourceControlFollowUp
+      # SqlSelectPrivilege signs in as an account without the SQL SELECT privilege on the tables the SQL tuning reads name, grants it and revokes it, and
+      # creates and drops one probe table (Story 21.27).
+      # classes: SqlSelectPrivilege
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -1037,7 +1040,8 @@ services:
       # TaskMailPasswordWrite sets and clears the Task Manager's mail password on both callers with a generated probe and restores the stored value, never printing either (Story 21.36).
       # SqlTuningWrite purges the cached queries of a whole namespace and cleans its statement index on both callers, asserting on its own probe objects alone (Story 21.6).
       # SqlRuntimeStatsWrite sets the instance-wide runtime statistics collection and purges a whole namespace's runtime statistics on both callers, restoring the flag it read first (Story 21.26).
-      # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask, LocaleWrite, LocaleEditWrite, LocaleTransferWrite, SystemSecuritySettingWrite, PhoneProviderWrite, AuditExportWrite, TaskMailSettingWrite, ResourceTransferWrite, TaskMailPasswordWrite, SqlTuningWrite, SqlRuntimeStatsWrite
+      # SqlIndexAnalysisWrite gathers the statements of two namespaces again and purges their index analysis on both callers, clearing both when each test ends (Story 21.27).
+      # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask, LocaleWrite, LocaleEditWrite, LocaleTransferWrite, SystemSecuritySettingWrite, PhoneProviderWrite, AuditExportWrite, TaskMailSettingWrite, ResourceTransferWrite, TaskMailPasswordWrite, SqlTuningWrite, SqlRuntimeStatsWrite, SqlIndexAnalysisWrite
       OCUPILOT_ALLOW_CONFIG_SETTINGS: "1"
       # Sets the instance's system state to Alert and resets its system alerts, through the shipped screen-action and confirm paths, and
       # reads alerts.log to show that no line is lost (Story 21.20). The reset is not undoable; the throwaway's own monitor raises the state again.

@@ -12,7 +12,17 @@ import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { ResultGrid } from '../../shell/result-grid';
 import { WarningDialog } from '../../shell/warning-dialog';
 import { fillPlaceholders } from './code-list.store';
-import { SqlQueryState, backgroundStatusLineFor, consequenceFor, statusLineFor, type SqlQueryDeps, type SqlRows } from './sql-query.store';
+import type { SqlAdvice, SqlAdviceFinding } from '../../core/sql-answer';
+import {
+  SqlQueryState,
+  adviceConfidenceLabel,
+  adviceKindLabel,
+  backgroundStatusLineFor,
+  consequenceFor,
+  statusLineFor,
+  type SqlQueryDeps,
+  type SqlRows,
+} from './sql-query.store';
 
 /** When a background run's next poll is sent: `schedulePoll` everywhere but a spec, which drives the poll by hand. */
 export const SQL_BACKGROUND_SCHEDULE = new InjectionToken<(run: () => void, delayMs: number) => void>('SQL_BACKGROUND_SCHEDULE', {
@@ -54,6 +64,9 @@ interface ValueField {
  * run section follows it -- its own status line, Cancel while it runs, a failed run's refusal as an
  * alert, and its rows through the same `ResultGrid` as Run's. Run and Explain plan stay usable while
  * it runs. Polling stops when the page goes and resumes when it returns to a run still running.
+ *
+ * **Advise** (Story 21.27) posts the statement with `advise: true` to the plan route and shows the plan with the findings the instance read from it, one
+ * row each; every sentence in a row is the instance's own, and the page adds only the finding and confidence names, the note and the empty states.
  *
  * **Everything shown is text** (AD-11): a cell, an error and a plan are interpolated, never markup.
  * The answer lives in `SqlQueryState`, never in the screen's store, so it never reaches screen context
@@ -121,6 +134,9 @@ interface ValueField {
         <button type="button" class="ocu-button-text" data-ocu-sql="explain-stats" [attr.aria-disabled]="blocked" (click)="onPlanWithStatistics()">
           {{ STRINGS.explorerSqlPlanWithStatistics }}
         </button>
+        <button type="button" class="ocu-button-text" data-ocu-sql="advise" [attr.aria-disabled]="blocked" (click)="onAdvise()">
+          {{ STRINGS.sqlAdviceAction }}
+        </button>
         <button type="button" class="ocu-button-text" data-ocu-sql="background" [attr.aria-disabled]="backgroundBlocked" (click)="onBackground()">
           {{ STRINGS.explorerSqlRunInBackground }}
         </button>
@@ -137,6 +153,42 @@ interface ValueField {
     @if (hasPlan) {
       <h2 class="ocu-details-heading">{{ STRINGS.explorerSqlPlanHeading }}</h2>
       <pre class="ocu-source-text ocu-sql-query-plan" tabindex="0" data-ocu-sql="plan" [attr.aria-label]="STRINGS.explorerSqlPlanHeading">{{ plan }}</pre>
+    }
+    @if (hasAdvice) {
+      <div data-ocu-sql="advice" role="region" [attr.aria-label]="STRINGS.sqlAdviceAction">
+        <p class="ocu-explorer-status" data-ocu-sql="advice-note">{{ STRINGS.sqlAdviceNote }}</p>
+        @if (adviceTruncated) {
+          <p class="ocu-explorer-status" data-ocu-sql="advice-truncated">{{ STRINGS.sqlAdviceTruncated }}</p>
+        }
+        @if (hasFindings) {
+          <table class="ocu-details-volumes-table" data-ocu-sql="findings">
+            <thead>
+              <tr>
+                <th scope="col">{{ STRINGS.sqlAdviceColumnFinding }}</th>
+                <th scope="col">{{ STRINGS.sqlAdviceColumnConfidence }}</th>
+                <th scope="col">{{ STRINGS.explorerSqlColumnTable }}</th>
+                <th scope="col">{{ STRINGS.securityAdvisorColumnRecommendation }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (finding of findings; track $index) {
+                <tr data-ocu-sql="finding" [attr.data-ocu-kind]="finding.kind">
+                  <td>
+                    <strong>{{ finding.label }}</strong>
+                    <br />
+                    {{ finding.detail }}
+                  </td>
+                  <td>{{ finding.confidence }}</td>
+                  <td>{{ finding.table }}</td>
+                  <td>{{ finding.recommendation }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        } @else {
+          <p class="ocu-explorer-status" data-ocu-sql="advice-status">{{ adviceStatus }}</p>
+        }
+      </div>
     }
     @if (result; as shown) {
       <app-result-grid [answer]="shown" [label]="STRINGS.explorerSqlQueryLabel" />
@@ -333,6 +385,40 @@ export class SqlQueryPage {
     return this.plan !== '';
   }
 
+  /** The advice the plan on screen carries, or `null`: only an Advise answer has any. */
+  private get advice(): SqlAdvice | null {
+    this.generation();
+    const answer = this.state.answer();
+    return !this.state.running() && answer !== null && answer.outcome === 'plan' && answer.advice !== undefined ? answer.advice : null;
+  }
+
+  protected get hasAdvice(): boolean {
+    return this.advice !== null;
+  }
+
+  /** Whether the instance cut the findings or the tables at the advice's caps. */
+  protected get adviceTruncated(): boolean {
+    return this.advice?.truncated === true;
+  }
+
+  /** The findings, each with its kind and confidence named; the sentences are the instance's own. */
+  protected get findings(): readonly (SqlAdviceFinding & { readonly label: string })[] {
+    return (this.advice?.findings ?? []).map((finding) => ({
+      ...finding,
+      label: adviceKindLabel(finding.kind),
+      confidence: adviceConfidenceLabel(finding.confidence),
+    }));
+  }
+
+  protected get hasFindings(): boolean {
+    return this.findings.length > 0;
+  }
+
+  /** What stands where the findings would: the plan was not recognized, or it holds nothing to advise on. */
+  protected get adviceStatus(): string {
+    return this.advice?.recognized === true ? STRINGS.sqlAdviceEmpty : STRINGS.sqlAdviceUnrecognized;
+  }
+
   /** Every Plan with statistics result carries the note that the statement ran without its values. */
   protected get hasStatisticsNote(): boolean {
     this.generation();
@@ -383,6 +469,11 @@ export class SqlQueryPage {
   protected onPlanWithStatistics(): void {
     if (this.blocked) return;
     void this.state.planWithStatistics(this.deps);
+  }
+
+  protected onAdvise(): void {
+    if (this.blocked) return;
+    void this.state.advise(this.deps);
   }
 
   protected onBackground(): void {

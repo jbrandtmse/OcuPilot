@@ -631,6 +631,7 @@ export const UNSTYLED_CLASS_HOOKS = [
       'ocu-broadcast-send',
       'ocu-command-bar-backup-freeze',
       'ocu-command-bar-backup-thaw',
+      'ocu-command-bar-index-analysis-run',
       'ocu-command-bar-journal-switch-directory',
       'ocu-command-bar-journal-switch-file',
       'ocu-command-bar-permission-check',

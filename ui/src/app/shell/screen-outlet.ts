@@ -170,6 +170,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 21.26: SQL runtime statistics with its Purge statistics, and Runtime statistics collection on the settings page.
   'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStats': () => import('../areas/system-explorer/sql-runtime-stats.page').then((m) => m.SqlRuntimeStatsPage),
   'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStatsSettings': CONFIG_SETTINGS_PAGE,
+  // Story 21.27: SQL index analyzer with its Gather statements, Run report and Purge analysis.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlIndexAnalysis': () => import('../areas/system-explorer/sql-index-analysis.page').then((m) => m.SqlIndexAnalysisPage),
   // Story 21.25: a table's Table info tab with its three page actions, and a schema's Tables tab with Tune all tables.
   'OcuPilot.Screen.Descriptor.ExplorerSqlTable': () => import('../areas/system-explorer/sql-table.page').then((m) => m.SqlTablePage),
   'OcuPilot.Screen.Descriptor.ExplorerSqlSchema': () => import('../areas/system-explorer/sql-schema.page').then((m) => m.SqlSchemaPage),

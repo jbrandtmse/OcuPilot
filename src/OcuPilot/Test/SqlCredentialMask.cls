@@ -154,8 +154,9 @@ Method TestAPlantedStatementIsMaskedInTheCatalogTabs()
     If '..Plant() Quit
     ; Story 21.6: the namespace's statement index answers a statement's text masked, and names no table to resolve first.
     ; Story 21.26: the namespace's runtime statistics answer a statement's text masked, and name no table to resolve first.
-    For tEndpoint = "Catalog.TableStatements", "Catalog.CachedQueries", "Catalog.Statements", "Catalog.RuntimeStats" {
-        Set tNoTable = (tEndpoint = "Catalog.Statements") || (tEndpoint = "Catalog.RuntimeStats")
+    ; Story 21.27: the index analysis rows answer a statement's text masked, and name no table to resolve first.
+    For tEndpoint = "Catalog.TableStatements", "Catalog.CachedQueries", "Catalog.Statements", "Catalog.RuntimeStats", "Catalog.IndexAnalysis" {
+        Set tNoTable = (tEndpoint = "Catalog.Statements") || (tEndpoint = "Catalog.RuntimeStats") || (tEndpoint = "Catalog.IndexAnalysis")
         Do ##class(OcuPilot.Test.AtelierPortFixture).Clear()
         Do ##class(OcuPilot.Test.AtelierPortCatalog).ArmCatalog()
         If 'tNoTable Do ##class(OcuPilot.Test.AtelierPortFixture).Queue("Query", "200 OK", ##class(OcuPilot.Test.AtelierPortCatalog).Envelope(##class(OcuPilot.Test.AtelierPortCatalogTabs).ResolvedRow("table", "OcuProbe", "Thing")))

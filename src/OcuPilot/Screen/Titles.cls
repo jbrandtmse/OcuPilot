@@ -108,6 +108,7 @@ XData Titles
 "explorerSqlTabConstraints": "Constraints",
 "explorerSqlTabFieldStatistics": "Field statistics",
 "explorerSqlTabFields": "Fields",
+"explorerSqlTabIndexAnalysis": "SQL index analyzer",
 "explorerSqlTabIndices": "Maps/Indices",
 "explorerSqlTabPartitionMappings": "Partition mappings",
 "explorerSqlTabPartitions": "Partitions",

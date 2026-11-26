@@ -5,7 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } fr
 import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { PERMISSION_CHECK_ACTION_ID, ScreenActions, TASK_IMPORT_ACTION_ID, TASK_MANAGER_SUSPEND_ACTION_ID } from '../core/screen-actions';
-import { BACKUP_FREEZE_ACTION_ID, JOURNAL_SWITCH_DIRECTORY_ACTION_ID, JOURNAL_SWITCH_FILE_ACTION_ID } from '../core/screen-actions';
+import {
+  BACKUP_FREEZE_ACTION_ID,
+  JOURNAL_SWITCH_DIRECTORY_ACTION_ID,
+  JOURNAL_SWITCH_FILE_ACTION_ID,
+  SQL_INDEX_ANALYSIS_RUN_ACTION_ID,
+} from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
@@ -897,6 +902,24 @@ describe('the command box', () => {
     chord();
     const option = (): HTMLElement | null => fixture.nativeElement.querySelector(`#ocu-command-box-action-${BACKUP_FREEZE_ACTION_ID}`);
     expect(option()?.querySelector('.ocu-command-box-option-label')?.textContent?.trim()).toBe(STRINGS.backupFreezeAction);
+    expect(option()?.getAttribute('aria-disabled')).toBeNull();
+    option()?.click();
+    fixture.detectChanges();
+    expect(ran).toBe(1);
+  });
+
+  it('Story 21.27: SQL index analyzer\u2019s Run report is listed at screen level and runs on a click', () => {
+    // Mutation (Rule 19): drop the index analysis line from `actionCandidates` -> the option is not listed.
+    const analyzer = screen('system-explorer/sql-index-analysis', 'explorerSqlTabIndexAnalysis', 'system-explorer', {
+      descriptor: 'OcuPilot.Screen.Descriptor.ExplorerSqlIndexAnalysis',
+      rowActions: [{ id: 'run', selfProtection: '' }],
+    });
+    navigation.current = analyzer;
+    let ran = 0;
+    actions.register(analyzer.descriptor, SQL_INDEX_ANALYSIS_RUN_ACTION_ID, () => ran++);
+    chord();
+    const option = (): HTMLElement | null => fixture.nativeElement.querySelector(`#ocu-command-box-action-${SQL_INDEX_ANALYSIS_RUN_ACTION_ID}`);
+    expect(option()?.querySelector('.ocu-command-box-option-label')?.textContent?.trim()).toBe(STRINGS.sqlIndexAnalysisRunAction);
     expect(option()?.getAttribute('aria-disabled')).toBeNull();
     option()?.click();
     fixture.detectChanges();

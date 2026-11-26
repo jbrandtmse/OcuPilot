@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:681 */
+  /** EXPERIENCE.md:683 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5554,6 +5554,67 @@ export const STRINGS = {
   explorerSqlRuntimeStatsPrompt3: 'Are runtime statistics being collected?',
   runtimeStatsSettingsPrompt1: 'Is runtime statistics collection on, and when does it stop?',
   configRefusalSqlStatsNoStop: 'Collection must be on before its stop can be set.',
+  // Story 21.27: the SQL index analyzer list, its columns, empty state, note and prompts. Report, Schema, Table, Index, Module, Match, Extent size and
+  // Statement reuse the published columns.
+  explorerSqlTabIndexAnalysis: 'SQL index analyzer',
+  indexAnalysisColumnUsageCount: 'Usage count',
+  indexAnalysisColumnStatementType: 'Statement type',
+  indexAnalysisColumnClassOrRoutine: 'Class or routine',
+  indexAnalysisColumnMapType: 'Map type',
+  indexAnalysisColumnIndexFields: 'Index fields',
+  indexAnalysisColumnDataFields: 'Data fields',
+  indexAnalysisColumnIndexNeeded: 'Index needed',
+  indexAnalysisColumnOutlierField: 'Outlier field',
+  indexAnalysisColumnBlockCount: 'Block count',
+  explorerSqlIndexAnalysisEmpty: 'No index analysis is recorded in this namespace.',
+  explorerSqlIndexAnalysisEmptyAgent: 'gather SQL statements for analysis',
+  explorerSqlIndexAnalysisNote: 'Reports read the statements last gathered in this namespace. Gather them again after the code changes.',
+  explorerSqlIndexAnalysisPrompt1: 'Which indices are never used?',
+  explorerSqlIndexAnalysisPrompt2: 'Which queries scan a whole table?',
+  explorerSqlIndexAnalysisPrompt3: 'Which queries need an index for a join?',
+  // Story 21.27: the analyzer's three page actions, the dialog fields, the five report names, the consequences and refusals the actions state, and Advise on
+  // SQL query with its findings. Each consequence and refusal is the sentence the server sends. The High and Low confidence names are taskPriorityHigh and
+  // taskPriorityLow, and the Recommendation header is securityAdvisorColumnRecommendation.
+  sqlIndexAnalysisGatherAction: 'Gather statements',
+  sqlIndexAnalysisRunAction: 'Run report',
+  sqlIndexAnalysisPurgeAction: 'Purge analysis',
+  sqlIndexAnalysisSkipSystemLabel: 'Skip system classes and routines',
+  sqlIndexAnalysisSkipInsertsLabel: 'Skip INSERT statements',
+  sqlIndexAnalysisSkipIdKeysLabel: 'Skip IDKEY indices (Index usage only)',
+  sqlIndexAnalysisReportIU: 'Index usage',
+  sqlIndexAnalysisReportTS: 'Table scan',
+  sqlIndexAnalysisReportTI: 'Temporary index',
+  sqlIndexAnalysisReportJI: 'Missing join index',
+  sqlIndexAnalysisReportOI: 'Outlier index',
+  sqlIndexAnalysisGatherConsequence:
+    'A new gathering of this namespace\'s cached queries, class methods, class queries and routines replaces its gathered statements and every report\'s results, and rebuilds its class dependency data.',
+  sqlIndexAnalysisGatherSystemConsequence:
+    'A new gathering of this namespace\'s cached queries, class methods, class queries and routines replaces its gathered statements and every report\'s results, and rebuilds its class dependency data. Gathering system classes and routines can take longer than the page waits; the list shows the result when it finishes.',
+  sqlIndexAnalysisRunConsequence: 'This report\'s earlier results in this namespace are replaced.',
+  sqlIndexAnalysisPurgeConsequence:
+    'This namespace\'s gathered statements and every report\'s results are removed. Gather statements again before running a report.',
+  sqlIndexAnalysisRefusalNoRows: 'This namespace holds no index analysis.',
+  sqlIndexAnalysisRefusalNoStatements: 'Gather this namespace\'s statements before running this report.',
+  sqlIndexAnalysisRefusalReport: 'Choose Index usage, Table scan, Temporary index, Missing join index or Outlier index.',
+  sqlIndexAnalysisRefusalBusy: 'An index analysis is already running in this namespace.',
+  sqlIndexAnalysisRefusalVendor: 'The instance did not complete this index analysis.',
+  sqlAdviceAction: 'Advise',
+  sqlAdviceRefusal: 'Advice reads a query\'s plan, so it takes a query only.',
+  sqlAdviceKindFullScan: 'Full table scan',
+  sqlAdviceKindMissingIndex: 'Missing index',
+  sqlAdviceKindNotTuned: 'Table not tuned',
+  sqlAdviceKindTempFile: 'Temporary file',
+  sqlAdviceKindUnusedIndex: 'Unused index',
+  sqlAdviceConfidenceMedium: 'Medium',
+  sqlAdviceColumnFinding: 'Finding',
+  sqlAdviceColumnConfidence: 'Confidence',
+  sqlAdviceNote: 'Advice is read from this one plan and its tables\' indices. Check it against the real workload.',
+  sqlAdviceEmpty: 'OcuPilot found nothing to advise for this plan.',
+  sqlAdviceUnrecognized: 'OcuPilot did not recognize this plan\'s format, so it offers no advice.',
+  // The numbers are OcuPilot.Port.SqlAdvice's MAXFINDINGS and MAXTABLES; self-protection.test.mjs holds them equal.
+  sqlAdviceTruncated: 'Only the first 200 findings, from at most 20 tables, are shown.',
+  // OcuPilot.Api.AtelierError's REASONSQLSELECTPRIVILEGE, with %1 the table or tables the refused read names; the server fills it in.
+  sqlSelectPrivilegeRefusal: 'Reading this needs the SQL SELECT privilege on %1.',
   sqlRuntimeStatsPurgeAction: 'Purge statistics',
   explorerSqlPlanWithStatistics: 'Plan with statistics',
   sqlRuntimeStatsPurgeConsequence: 'This namespace\'s runtime statistics are removed. New statistics are recorded only while collection is on.',
@@ -9978,46 +10039,46 @@ export const STRINGS = {
   /** EXPERIENCE.md:638 */
   interopWorkflowMembersPrompt2: 'Add a member to this role.',
   // Story 24.17 Batch 4: the workflow tasks and worklist screens, the Assign task dialog, the three consequences, the five refusals, the empty states and the prompts.
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowTasksLabel: 'Workflow tasks',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowWorklistLabel: 'Workflow worklist',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowTaskAssignTitle: 'Assign task',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowWorklistColumnAge: 'Age',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowTaskAssignConsequence: 'Assigning this task takes it off every other user\'s worklist.',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowTaskUnassignConsequence: 'Unassigning this task sends it to every active member of its workflow role.',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowTaskCancelConsequence:
     'Canceling this task takes it off every worklist and returns it, canceled, to the business process that sent it. It cannot be undone.',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowTaskRefusalComplete: 'This task is already complete.',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowTaskRefusalUser: 'Assign the task to an active workflow user of this namespace, or to Unassigned.',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowTaskRefusalPriority: 'Priority is a whole number from 1 to 5.',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowTaskRefusalUnchanged: 'Nothing would change. Choose another user or priority.',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowTaskRefusalSender: 'This task cannot be canceled, because the business process that sent it is not waiting for it in the running production.',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowTasksEmpty: 'This namespace has no workflow tasks.',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowTasksEmptyAgent: 'assign or cancel a workflow task',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowWorklistEmpty: 'No workflow user in this namespace has a worklist item.',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowTasksPrompt1: 'Which workflow tasks are unassigned?',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowTasksPrompt2: 'Which workflow tasks have been open the longest?',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowTasksPrompt3: 'Assign the oldest unassigned task to an active member of its role.',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowWorklistPrompt1: 'Which workflow users have the most items on their worklist?',
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:641 */
   interopWorkflowWorklistPrompt2: 'Which worklist items are more than a day old?',
 } as const;
 
