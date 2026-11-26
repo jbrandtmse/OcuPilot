@@ -930,3 +930,4 @@
 2026-11-26T13:45:04Z	Story 24.17	ruling	question=batch5_veto_set choice=keep_all(V1_label_System_monitor;V2_stricter;V3_PurgeFrame_containment;V4_story_end) category=veto policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
 2026-11-26T13:45:04Z	Story 24.17	spec_validated	scope=batch5 ledger_inbox=empty mutates_shared_runtime=false
 2026-11-26T13:45:04Z	Story 24.17	stage_spawned	stage=implement spawn_at=2026-11-26T13:45:04Z model=sonnet agent_name=24-17-implement-batch5 cycle_iteration=6 story_base=86d110bb7 scope=batch5
+2026-11-26T13:54:57Z	Story 24.17	dev_clarification_requested	scope=batch5 halt=Task0(a)_GetEnsMetrics_journals_^SYS.EnsMetrics(IRISSYS_idle;namespace_DB_when_production_running) frame=clean timing=0.015s meters=25 running_leg=needs_HTTP(cspLink_%request) asked=orchestrator(AD-9)

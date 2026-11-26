@@ -2,8 +2,8 @@
 title: 'Story 24.17: Managed alerts, logs, the system monitor and workflow (Batch 5: the Interoperability System Monitor and the README)'
 type: 'feature'
 created: '2026-11-26'
-status: 'ready-for-dev'
-baseline_revision: 'bf1dcdf71d98dbb7f097f3456eda2411430d7810'
+status: 'blocked'
+baseline_revision: 'aeb9826d5a0c0dac22d426e6f7a44aef73093272'
 review_loop_iteration: 0
 followup_review_recommended: false
 owned_ledger: ''
@@ -163,7 +163,9 @@ No new dependency; no destructive act; no governance key; nothing is written int
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: Task 0 (a) HALT, `## Clarification Needed`: `%SYS.Ensemble.GetEnsMetrics` journals records. No product code was written.
+
+**Task 0 (implement stage, `ocupilot-b-ci`, auditing on, scratch class `Scratch2417.Probe` since deleted, principals `OcuP2417m*` since deleted, probe production stopped, USER holds none).** (a) The frame as the plan shapes it (`New $ROLES`, switch to `%SYS`, call, restore): `$ROLES`, `$USERNAME` and `$NAMESPACE` equal before and after for `irisowner` (`%All,OcuPilotAdmin`) and for a principal holding `%Ens_Portal:U,%Ens_Dashboard:U,%DB_IRISSYS:R,%DB_HSCUSTOM:R` (role `OcuP2417mFullRole` only), idle; no process started (process list before and after equal); `^IRIS.Temp.SysMetrics*` and `^IRIS.Temp.Ens*` unchanged by the call (node counts and a checksum). **Journal: the call journals records.** Idle, the third of three calls from one process wrote 3 SETs of `^SYS.EnsMetrics`, `^SYS.EnsMetrics("BusyProcesses")` and `^SYS.EnsMetrics("BusyProcesses",<pid>)` into the IRISSYS database (`/durable/iris/mgr/`), the first of one call wrote none; with the probe production running, each call wrote 28 to 34 SETs of `^SYS.EnsMetrics(...)` (`Productions`, `Queues`, `JobCount`, `Count`, `Errors`, `Alerts`, `Previous`, `BusyProcesses`) into the USER database (`/durable/iris/mgr/user/`), for `irisowner` and for the principal alike. A control run with the same scratch code and no call journaled none. The call wrote no audit row (journal of `^IRIS.AuditD` by the process: none for `irisowner`; the principal's rows are its own login, the positive control). (b) Without `%DB_IRISSYS:R`: `<PROTECT>` at the switch to `%SYS`; without `%Ens_Dashboard:U`: `#940` from the vendor's own check; without `%Ens_Portal:U` (holding `%Ens_Dashboard:U,%DB_IRISSYS:R`): the vendor answers. The classic page over HTTP was not tried. (c) With no production running the call answers all of the 25 meters; the three tables read `EnsBusyProcesses` `;[System];1879;712`, `EnsBusyQueues` empty, `UpcomingTasks` `<task>;<time>;<status>^...`; `status` holds `LastBackup` and `Transactions`, `msg` six names. With the probe production running the call raised `<UNDEFINED>cspLink+9^%SYS.cspServer *%request` from a process with no web context (and the same for `%response`, `%session` once each was defined), after `EnsProductionsRunning` read 1, so the running leg's meters were not read here. (d) 0.013 to 0.016 s per call, cold and warm, idle and running. The run stopped at the journal finding.
 
 **Plan.** Batch 5: System monitor and its three drill-downs through `InteropPort`, one instance-wide `GetEnsMetrics` call each in `%SYS` inside `PurgeFrame`, and the README's Interoperability clauses for the five batches. Veto items 1 to 4; decided-in-stage list under Design Notes. Read-only check on `ocupilot-b-ci` (52777, 2026.2 build 221U); nothing was written to the instance.
