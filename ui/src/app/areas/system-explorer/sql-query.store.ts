@@ -11,6 +11,9 @@
  * confirmation drawn, and Proceed sends the screen action `run` (AD-53), which classifies the
  * statement again on the instance. Explain plan posts to the plan route and executes nothing.
  *
+ * **Alternate plans** (Story 21.28) list the plans the optimizer considered and keep that list on screen while one plan's text or a comparison of
+ * checked plans is shown; Compare plans posts the plan numbers alone, never the statement's values.
+ *
  * **The answer is screen-only** (AD-39's sixth exception): rows, an SQL error and a plan live in this
  * state and are rendered as text; none of it enters the screen's store, so none of it reaches screen
  * context.
@@ -53,6 +56,12 @@ export const MAX_ROWS_VALUE = 'maxRows';
 export const STATS_VALUE = 'stats';
 /** The plan route's flag that asks for Advise: the plan's findings (Story 21.27). */
 export const ADVISE_VALUE = 'advise';
+/** The plan route's flag that asks for Alternate plans, and the two keys that narrow it to one plan or a comparison (Story 21.28). */
+export const ALTERNATES_VALUE = 'alternates';
+export const ALTERNATE_PLAN_VALUE = 'plan';
+export const ALTERNATE_COMPARE_VALUE = 'compare';
+/** The most plans one comparison takes: OcuPilot.Port.SqlPort's ALTMAXCOMPARE, which self-protection.test.mjs holds equal. */
+export const MAX_COMPARED_PLANS = 5;
 
 /** Max rows before the person changes it. */
 export const DEFAULT_MAX_ROWS = '1000';
@@ -178,6 +187,15 @@ export class SqlQueryState {
   /** The answer the last Plan with statistics adopted, so the page can tell it from any other answer. */
   private statisticsAnswerValue: SqlAnswer | null = null;
 
+  /** The possible plans on screen (Story 21.28): kept while one of them is shown or compared, and gone with the statement or any other answer. */
+  private alternatesValue: Extract<SqlAnswer, { readonly outcome: 'plans' }> | null = null;
+
+  /** The plan numbers checked for a comparison, in the order checked. */
+  private checkedValue: readonly number[] = [];
+
+  /** The answer the last Compare plans adopted, so the page can tell it from any other answer. */
+  private comparedAnswerValue: SqlAnswer | null = null;
+
   private confirmValue: SqlConfirm | null = null;
 
   private refusalValue = '';
@@ -226,6 +244,21 @@ export class SqlQueryState {
     return this.answerValue !== null && this.answerValue === this.statisticsAnswerValue;
   }
 
+  /** The possible plans on screen, or `null`. */
+  alternates(): Extract<SqlAnswer, { readonly outcome: 'plans' }> | null {
+    return this.alternatesValue;
+  }
+
+  /** The plan numbers checked for a comparison. */
+  checked(): readonly number[] {
+    return this.checkedValue;
+  }
+
+  /** Whether the answer on screen is a Compare plans result, whose runs left out the statement's values. */
+  comparedAnswer(): boolean {
+    return this.answerValue !== null && this.answerValue.outcome === 'compared' && this.answerValue === this.comparedAnswerValue;
+  }
+
   /** The statement a confirmation waits on, or `null`. */
   confirm(): SqlConfirm | null {
     return this.confirmValue;
@@ -263,7 +296,18 @@ export class SqlQueryState {
     this.textValue = value;
     this.valuesValue = [];
     this.answerValue = null;
+    this.alternatesValue = null;
+    this.checkedValue = [];
     this.refusalValue = '';
+    this.notify();
+  }
+
+  /** Check or uncheck plan `id` for a comparison; a sixth check is not taken. */
+  toggleChecked(id: number): void {
+    if (this.alternatesValue === null || !this.alternatesValue.plans.some((plan) => plan.id === id)) return;
+    if (this.checkedValue.includes(id)) this.checkedValue = this.checkedValue.filter((entry) => entry !== id);
+    else if (this.checkedValue.length < MAX_COMPARED_PLANS) this.checkedValue = [...this.checkedValue, id];
+    else return;
     this.notify();
   }
 
@@ -307,7 +351,7 @@ export class SqlQueryState {
    * The route runs a query only and refuses any other statement before anything runs; no values are sent, and every answer carries the page's note about that.
    */
   async planWithStatistics(deps: SqlQueryDeps): Promise<void> {
-    const result = await this.post(deps, SQL_PLAN_PATH, false, true);
+    const result = await this.post(deps, SQL_PLAN_PATH, false, { [STATS_VALUE]: true });
     if (result === null) return;
     const answer = answerOf(result);
     this.statisticsAnswerValue = answer;
@@ -319,9 +363,48 @@ export class SqlQueryState {
    * The route reads a query's plan only and refuses any other statement before its plan is read; nothing runs.
    */
   async advise(deps: SqlQueryDeps): Promise<void> {
-    const result = await this.post(deps, SQL_PLAN_PATH, false, false, true);
+    const result = await this.post(deps, SQL_PLAN_PATH, false, { [ADVISE_VALUE]: true });
     if (result === null) return;
     this.adopt(answerOf(result));
+  }
+
+  /**
+   * Alternate plans (Story 21.28): post the statement and `alternates: true` to the plan route and show the plans the optimizer considered, one row each.
+   * Nothing runs; any statement the console can plan is listed, and a statement over the instance's table or condition bound is refused with its sentence.
+   */
+  async alternatePlans(deps: SqlQueryDeps): Promise<void> {
+    const result = await this.post(deps, SQL_PLAN_PATH, false, { [ALTERNATES_VALUE]: true });
+    if (result === null) return;
+    const answer = answerOf(result);
+    this.adopt(answer);
+    if (answer !== null && answer.outcome === 'plans' && answer.plans.length > 0) {
+      this.alternatesValue = answer;
+      this.checkedValue = [];
+      this.notify();
+    }
+  }
+
+  /** Show plan: post the statement with `alternates: true` and plan `id`, and show that plan's text; the possible plans stay on screen. */
+  async showAlternatePlan(deps: SqlQueryDeps, id: number): Promise<void> {
+    if (this.alternatesValue === null || !this.alternatesValue.plans.some((plan) => plan.id === id)) return;
+    const result = await this.post(deps, SQL_PLAN_PATH, false, { [ALTERNATES_VALUE]: true, [ALTERNATE_PLAN_VALUE]: id });
+    if (result === null) return;
+    this.adopt(answerOf(result), true);
+  }
+
+  /**
+   * Compare plans: post the statement with `alternates: true` and the checked plan numbers, one to `MAX_COMPARED_PLANS`, and show what each plan's run
+   * recorded under the page's note. The statement runs once for each plan without its values; the possible plans stay on screen. A request the
+   * instance would refuse by count is never sent.
+   */
+  async comparePlans(deps: SqlQueryDeps): Promise<void> {
+    if (this.alternatesValue === null || this.checkedValue.length < 1 || this.checkedValue.length > MAX_COMPARED_PLANS) return;
+    const ids = [...this.checkedValue].sort((left, right) => left - right);
+    const result = await this.post(deps, SQL_PLAN_PATH, false, { [ALTERNATES_VALUE]: true, [ALTERNATE_COMPARE_VALUE]: ids });
+    if (result === null) return;
+    const answer = answerOf(result);
+    this.comparedAnswerValue = answer;
+    this.adopt(answer, true);
   }
 
   /** Proceed: send the confirmed run as the screen action, and show what the instance answered. */
@@ -351,6 +434,8 @@ export class SqlQueryState {
       return false;
     }
     this.answerValue = answerOf(deps.sender.lastOutput());
+    this.alternatesValue = null;
+    this.checkedValue = [];
     this.notify();
     return true;
   }
@@ -401,10 +486,9 @@ export class SqlQueryState {
     this.notify();
   }
 
-  /** The request a Run or Explain plan posts: the statement, its values and, for a run, Max rows. */
-  private body(withMaxRows: boolean, stats = false, advise = false): string {
-    if (stats) return JSON.stringify({ [STATEMENT_VALUE]: this.textValue, [STATS_VALUE]: true });
-    if (advise) return JSON.stringify({ [STATEMENT_VALUE]: this.textValue, [ADVISE_VALUE]: true });
+  /** The request a Run or Explain plan posts: the statement, its values and, for a run, Max rows. A request with `flags` sends the statement and the flags alone. */
+  private body(withMaxRows: boolean, flags: Readonly<Record<string, unknown>> | null = null): string {
+    if (flags !== null) return JSON.stringify({ [STATEMENT_VALUE]: this.textValue, ...flags });
     const maxRows = this.maxRowsValue.trim();
     const body: Record<string, unknown> = { [STATEMENT_VALUE]: this.textValue, [PARAMETERS_VALUE]: this.valuesValue };
     if (withMaxRows) body[MAX_ROWS_VALUE] = /^[0-9]+$/.test(maxRows) ? Number(maxRows) : maxRows;
@@ -412,7 +496,7 @@ export class SqlQueryState {
   }
 
   /** Post to `path`; the answer's body, or `null` after a refusal or an older request's answer. */
-  private async post(deps: SqlQueryDeps, path: string, withMaxRows: boolean, stats = false, advise = false): Promise<unknown> {
+  private async post(deps: SqlQueryDeps, path: string, withMaxRows: boolean, flags: Readonly<Record<string, unknown>> | null = null): Promise<unknown> {
     if (this.runningValue) return null;
     const generation = ++this.generation;
     this.runningValue = true;
@@ -422,7 +506,7 @@ export class SqlQueryState {
     const result: JsonResult<unknown> = await deps.api.requestJson<unknown>(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: this.body(withMaxRows, stats, advise),
+      body: this.body(withMaxRows, flags),
       scope: deps.scope(),
     });
     if (generation !== this.generation) return null;
@@ -436,9 +520,13 @@ export class SqlQueryState {
     return result.body;
   }
 
-  /** Show `answer`; a `parameters` answer also draws that many empty value fields. */
-  private adopt(answer: SqlAnswer | null): void {
+  /** Show `answer`; a `parameters` answer also draws that many empty value fields. Any answer but one of the possible plans' own drops them, unless `keepAlternates`. */
+  private adopt(answer: SqlAnswer | null, keepAlternates = false): void {
     this.answerValue = answer;
+    if (!keepAlternates) {
+      this.alternatesValue = null;
+      this.checkedValue = [];
+    }
     if (answer !== null && answer.outcome === 'parameters') {
       this.valuesValue = Array.from({ length: answer.count }, (_, at) => this.valuesValue[at] ?? '');
     }

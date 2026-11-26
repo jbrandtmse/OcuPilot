@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:682 */
+  /** EXPERIENCE.md:683 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5623,6 +5623,18 @@ export const STRINGS = {
   sqlRuntimeStatsRefusalVendor: 'The instance did not purge this namespace\'s runtime statistics.',
   sqlPlanStatisticsRefusal: 'Plan with statistics runs the statement, so it takes a query only.',
   sqlPlanStatisticsNote: 'Plan with statistics runs the statement without its values, so a filtered query can show zero rows.',
+  // Story 21.28: SQL query's Alternate plans. Map type reuses indexAnalysisColumnMapType, the refusals are the instance's own sentences, and the 100 is OcuPilot.Port.SqlPort's ALTMAXPLANS; self-protection.test.mjs holds it equal.
+  sqlAlternatePlansAction: 'Alternate plans',
+  sqlAlternatePlansHeading: 'Possible plans',
+  sqlAlternateComparedHeading: 'Compared plans',
+  sqlAlternateColumnCost: 'Cost',
+  sqlAlternateColumnStartingMap: 'Starting map',
+  sqlAlternateShowPlan: 'Show plan',
+  sqlAlternateComparePlans: 'Compare plans',
+  sqlAlternateHint: 'Check up to five plans to compare.',
+  sqlAlternateCompareNote:
+    'Compare plans runs the statement once for each plan, without its values, so a filtered query can show zero rows. Comparing can take longer than the page waits; what each run recorded stays on Runtime statistics.',
+  sqlAlternatePlansTruncated: 'Only the first 100 possible plans are listed.',
   // Story 21.6: the statement and cached-query actions, the sentences their dialogs and cards state, and the refusals the instance answers.
   // Purge on one query reuses auditDatabasePurgeConfirm.
   sqlStatementFreezeAction: 'Freeze plan',

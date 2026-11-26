@@ -12,8 +12,9 @@ import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { ResultGrid } from '../../shell/result-grid';
 import { WarningDialog } from '../../shell/warning-dialog';
 import { fillPlaceholders } from './code-list.store';
-import type { SqlAdvice, SqlAdviceFinding } from '../../core/sql-answer';
+import type { SqlAdvice, SqlAdviceFinding, SqlAlternatePlan, SqlComparedPlan } from '../../core/sql-answer';
 import {
+  MAX_COMPARED_PLANS,
   SqlQueryState,
   adviceConfidenceLabel,
   adviceKindLabel,
@@ -67,6 +68,10 @@ interface ValueField {
  *
  * **Advise** (Story 21.27) posts the statement with `advise: true` to the plan route and shows the plan with the findings the instance read from it, one
  * row each; every sentence in a row is the instance's own, and the page adds only the finding and confidence names, the note and the empty states.
+ *
+ * **Alternate plans** (Story 21.28) posts the statement with `alternates: true` and lists the plans the optimizer considered; Show plan puts one plan's text
+ * in the plan pane, and Compare plans posts the checked plan numbers (one to five, no values) and shows each run's statistics under the ruled note.
+ * The list stays drawn while either answers.
  *
  * **Everything shown is text** (AD-11): a cell, an error and a plan are interpolated, never markup.
  * The answer lives in `SqlQueryState`, never in the screen's store, so it never reaches screen context
@@ -137,6 +142,9 @@ interface ValueField {
         <button type="button" class="ocu-button-text" data-ocu-sql="advise" [attr.aria-disabled]="blocked" (click)="onAdvise()">
           {{ STRINGS.sqlAdviceAction }}
         </button>
+        <button type="button" class="ocu-button-text" data-ocu-sql="alternate-plans" [attr.aria-disabled]="blocked" (click)="onAlternatePlans()">
+          {{ STRINGS.sqlAlternatePlansAction }}
+        </button>
         <button type="button" class="ocu-button-text" data-ocu-sql="background" [attr.aria-disabled]="backgroundBlocked" (click)="onBackground()">
           {{ STRINGS.explorerSqlRunInBackground }}
         </button>
@@ -150,9 +158,92 @@ interface ValueField {
     @if (hasStatisticsNote) {
       <p class="ocu-explorer-status" data-ocu-sql="stats-note">{{ STRINGS.sqlPlanStatisticsNote }}</p>
     }
+    @if (hasAlternates) {
+      <div data-ocu-sql="alternates" role="region" [attr.aria-label]="STRINGS.sqlAlternatePlansHeading">
+        <h2 class="ocu-details-heading">{{ STRINGS.sqlAlternatePlansHeading }}</h2>
+        <p class="ocu-explorer-status" data-ocu-sql="alternates-hint">{{ STRINGS.sqlAlternateHint }}</p>
+        @if (alternatesTruncated) {
+          <p class="ocu-explorer-status" data-ocu-sql="alternates-truncated">{{ STRINGS.sqlAlternatePlansTruncated }}</p>
+        }
+        <table class="ocu-details-volumes-table" data-ocu-sql="alternates-table">
+          <thead>
+            <tr>
+              <th scope="col"><span class="ocu-visually-hidden">{{ STRINGS.sqlAlternateComparePlans }}</span></th>
+              <th scope="col">{{ STRINGS.explorerSqlPlanHeading }}</th>
+              <th scope="col">{{ STRINGS.sqlAlternateColumnCost }}</th>
+              <th scope="col">{{ STRINGS.indexAnalysisColumnMapType }}</th>
+              <th scope="col">{{ STRINGS.sqlAlternateColumnStartingMap }}</th>
+              <th scope="col"><span class="ocu-visually-hidden">{{ STRINGS.sqlAlternateShowPlan }}</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of alternateRows; track row.plan.id) {
+              <tr data-ocu-sql="alternate" [attr.data-ocu-plan]="row.plan.id">
+                <td>
+                  <input
+                    type="checkbox"
+                    data-ocu-sql="alternate-check"
+                    [checked]="row.checked"
+                    [disabled]="row.locked"
+                    [attr.aria-labelledby]="row.labelId"
+                    (change)="onCheck(row.plan.id)"
+                  />
+                </td>
+                <td [id]="row.labelId">{{ row.plan.id }}</td>
+                <td>{{ row.plan.cost }}</td>
+                <td>{{ row.plan.mapType }}</td>
+                <td>{{ row.plan.startingMap }}</td>
+                <td>
+                  <button type="button" class="ocu-button-text" data-ocu-sql="show-plan" [attr.aria-disabled]="running" (click)="onShowPlan(row.plan.id)">
+                    {{ STRINGS.sqlAlternateShowPlan }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <button type="button" class="ocu-button-text" data-ocu-sql="compare" [attr.aria-disabled]="compareBlocked" (click)="onCompare()">
+          {{ STRINGS.sqlAlternateComparePlans }}
+        </button>
+      </div>
+    }
     @if (hasPlan) {
       <h2 class="ocu-details-heading">{{ STRINGS.explorerSqlPlanHeading }}</h2>
       <pre class="ocu-source-text ocu-sql-query-plan" tabindex="0" data-ocu-sql="plan" [attr.aria-label]="STRINGS.explorerSqlPlanHeading">{{ plan }}</pre>
+    }
+    @if (hasCompared) {
+      <div data-ocu-sql="compared" role="region" [attr.aria-label]="STRINGS.sqlAlternateComparedHeading">
+        <h2 class="ocu-details-heading">{{ STRINGS.sqlAlternateComparedHeading }}</h2>
+        @if (hasCompareNote) {
+          <p class="ocu-explorer-status" data-ocu-sql="compare-note">{{ STRINGS.sqlAlternateCompareNote }}</p>
+        }
+        <table class="ocu-details-volumes-table" data-ocu-sql="compared-table">
+          <thead>
+            <tr>
+              <th scope="col">{{ STRINGS.explorerSqlPlanHeading }}</th>
+              <th scope="col">{{ STRINGS.sqlAlternateColumnCost }}</th>
+              <th scope="col">{{ STRINGS.sqlAlternateColumnStartingMap }}</th>
+              <th scope="col">{{ STRINGS.processDetailsGlobalReferences }}</th>
+              <th scope="col">{{ STRINGS.processColumnCommands }}</th>
+              <th scope="col">{{ STRINGS.explorerSqlColumnTotalTime }}</th>
+              <th scope="col">{{ STRINGS.explorerSqlColumnRows }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of comparedRows; track row.id) {
+              <tr data-ocu-sql="compared-row" [attr.data-ocu-plan]="row.id">
+                <td>{{ row.id }}</td>
+                <td>{{ row.cost }}</td>
+                <td>{{ row.startingMap }}</td>
+                <td>{{ row.globalReferences }}</td>
+                <td>{{ row.commands }}</td>
+                <td>{{ row.totalTime }}</td>
+                <td>{{ row.rows }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
     }
     @if (hasAdvice) {
       <div data-ocu-sql="advice" role="region" [attr.aria-label]="STRINGS.sqlAdviceAction">
@@ -425,6 +516,57 @@ export class SqlQueryPage {
     return !this.state.running() && this.state.statisticsAnswer();
   }
 
+  /** Whether the possible plans are drawn: Alternate plans answered some and no other answer has replaced them. */
+  protected get hasAlternates(): boolean {
+    this.generation();
+    return this.state.alternates() !== null;
+  }
+
+  /** Whether the instance cut the possible plans at its cap. */
+  protected get alternatesTruncated(): boolean {
+    this.generation();
+    return this.state.alternates()?.truncated === true;
+  }
+
+  /** The possible plans, each with whether it is checked and whether a sixth check would be refused. */
+  protected get alternateRows(): readonly { readonly plan: SqlAlternatePlan; readonly checked: boolean; readonly locked: boolean; readonly labelId: string }[] {
+    this.generation();
+    const checked = this.state.checked();
+    return (this.state.alternates()?.plans ?? []).map((plan) => ({
+      plan,
+      checked: checked.includes(plan.id),
+      locked: !checked.includes(plan.id) && checked.length >= MAX_COMPARED_PLANS,
+      labelId: `ocu-sql-alternate-${plan.id}`,
+    }));
+  }
+
+  /** Compare plans stays drawn and answers nothing while a request runs or unless one to five plans are checked. */
+  protected get compareBlocked(): boolean {
+    this.generation();
+    const count = this.state.checked().length;
+    return this.state.running() || count < 1 || count > MAX_COMPARED_PLANS;
+  }
+
+  private get comparedPlans(): readonly SqlComparedPlan[] | null {
+    this.generation();
+    const answer = this.state.answer();
+    return !this.state.running() && answer !== null && answer.outcome === 'compared' ? answer.plans : null;
+  }
+
+  protected get hasCompared(): boolean {
+    return this.comparedPlans !== null;
+  }
+
+  protected get comparedRows(): readonly SqlComparedPlan[] {
+    return this.comparedPlans ?? [];
+  }
+
+  /** Every Compare plans result carries the note that each plan's run left out the statement's values. */
+  protected get hasCompareNote(): boolean {
+    this.generation();
+    return !this.state.running() && this.state.comparedAnswer();
+  }
+
   protected get result(): SqlRows | null {
     this.generation();
     const answer = this.state.answer();
@@ -474,6 +616,25 @@ export class SqlQueryPage {
   protected onAdvise(): void {
     if (this.blocked) return;
     void this.state.advise(this.deps);
+  }
+
+  protected onAlternatePlans(): void {
+    if (this.blocked) return;
+    void this.state.alternatePlans(this.deps);
+  }
+
+  protected onCheck(id: number): void {
+    this.state.toggleChecked(id);
+  }
+
+  protected onShowPlan(id: number): void {
+    if (this.running) return;
+    void this.state.showAlternatePlan(this.deps, id);
+  }
+
+  protected onCompare(): void {
+    if (this.compareBlocked) return;
+    void this.state.comparePlans(this.deps);
   }
 
   protected onBackground(): void {
