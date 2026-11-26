@@ -115,6 +115,13 @@ Each is the lead's to take to the veto gate; the recommended option is first.
 
 No new dependency; no destructive act; no governance key; nothing is written into another namespace by OcuPilot.
 
+**Lead rulings at the spec gate (2026-11-26; filed as an INBOX veto item, binding unless the orchestrator reverses them).** Every veto item is kept as recommended:
+
+- **V1:** kept, the label "System monitor", the meters, groups, empty states, prompts, the README paragraph and the EXPERIENCE.md change as quoted. If Task 0 (c) finds a meter a proposed string names absent, HALT; never reword in-stage.
+- **V2:** kept, the stricter posture: `%Ens_Portal:USE`, `%Ens_Dashboard:USE` and `%DB_IRISSYS:READ`. Task 0 (b) records whether a holder of `%EnsRole_Monitor` alone, admitted by the classic page, is refused here; that is the stricter posture the ruling accepts, not a HALT.
+- **V3:** kept. The vendor's `%All` is contained in `PurgeFrame` exactly as the purges' (the orchestrator accepted the `PurgeFrame` extension for Batch 2 on the same method and allowlist); any frame leak in Task 0 (a) is a HALT.
+- **V4:** kept for story end; the lead writes the lines and reports them to the orchestrator.
+
 ## Design Notes
 
 **Decided in-stage (plan).**

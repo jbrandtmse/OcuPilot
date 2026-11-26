@@ -926,3 +926,7 @@
 2026-11-26T13:27:47Z	Story 24.17	fresh_check_passed	scope=batch4 basis=review_rebuild_13:01Z feature=bd8e47e8a_ancestor
 2026-11-26T13:28:25Z	Story 24.17	code_head_pushed	scope=batch4 sha=acd2560ee runs=45829387620 ci=pending
 2026-11-26T13:28:25Z	Story 24.17	stage_spawned	stage=plan spawn_at=2026-11-26T13:28:25Z model=opus agent_name=24-17-plan-batch5 cycle_iteration=6 scope=batch5_system_monitor_readme
+2026-11-26T13:45:04Z	Story 24.17	story_created	scope=batch5_system_monitor_readme path=..-6.md commit=86d110bb7 build_status=ready-for-dev
+2026-11-26T13:45:04Z	Story 24.17	ruling	question=batch5_veto_set choice=keep_all(V1_label_System_monitor;V2_stricter;V3_PurgeFrame_containment;V4_story_end) category=veto policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-26T13:45:04Z	Story 24.17	spec_validated	scope=batch5 ledger_inbox=empty mutates_shared_runtime=false
+2026-11-26T13:45:04Z	Story 24.17	stage_spawned	stage=implement spawn_at=2026-11-26T13:45:04Z model=sonnet agent_name=24-17-implement-batch5 cycle_iteration=6 story_base=86d110bb7 scope=batch5
