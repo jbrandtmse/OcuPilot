@@ -2,7 +2,8 @@
 title: 'Story 21.28: Alternate show plans'
 type: 'feature'
 created: '2026-11-25'
-status: 'ready-for-dev'
+status: 'blocked'
+baseline_revision: '59243ea80bcfd513b4bf83fbbddfd080b8e09c41'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -304,7 +305,50 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
 - AC3: `slowquery` loses the step -> `WorkflowCatalog` red.
 - AC4: the page drops Compare plans' post -> after rebuild and redeploy, the browser spec red.
 
+### Task 0 measurements
+
+Measured 2026-11-26 on `ocupilot-ci` (IRIS 2026.2 build 221U), `USER` (the throwaway's `HSCUSTOM` holds no probe), by scratch classes that are deleted. Every line is observed unless marked (inference). Read back absent afterwards: the probe tables and schema, their cached queries and statement-index rows (`$SYSTEM.SQL.Statement.Clean()`), 250 runtime-statistics rows (by routine), the principal, its role, its grants and the custom resource, and each custom page resource set for DW-2874.
+
+- **Probe.** `OcuProbe228.T` (A, B, C, D; indexes on B and C; 3,000 rows; tuned) answers 5 plans for `B = 5 AND C = 'c5'`: ids 1-2 `Multi Index` (cost 1303.2, 2123.8; starting map `OcuProbe228.T`), ids 3-5 `master map ` (starting map `OcuProbe228.T.IDKEY`). The list's `Cost` prints one decimal (`20200.0`); the plan text prints `Cost: 20200`.
+- **(a) Privilege.** Principal `%Development:USE`, `%DB_USER`, `%DB_ENSLIB` and `%DB_IRISLIB` READ, no WRITE pair, no `%DB_IRISSYS`.
+  - Without SELECT, `%Prepare(text, 1)` answers SQLCODE -99 before any vendor call.
+  - **`%SQL.Statement.%PrepareClassQuery` is refused -99 for this principal even with SELECT**, until SQL EXECUTE is granted on `%SYS_PTools.PT_possiblePlans` and `PT_possiblePlansStats`. Granted, list (5) and compare (2) answer. The classic page's form, `%ResultSet.%New("%SYS.PTools.StatsSQL:possiblePlans")` then `Execute`, needs no EXECUTE grant.
+  - With SELECT and the `%ResultSet` form the principal lists (5), shows (`Explain` with `alt` and `ids`, 452 characters) and compares (ids 1 and 2: 15 rows each, statistics present). Compare recorded 5 runtime-statistics rows for it with no WRITE pair, and no `<PROTECT>` occurred. No pair beyond `%Development:USE` and the namespace's READ pairs is needed.
+  - Without SELECT the `%ResultSet` class queries do not refuse: the list answers its 5 plans, and the compare answers rows with blank statistics. They check no table privilege, so the checked prepare must stay first.
+- **(b) Durations and the bound.**
+  - List, five tables (200 rows each, two indexes each), predicates in the order the probe added them: 4 predicates 2.0 s (56 plans); 5 predicates 12.4 s (302); 6 predicates 16.3-16.8 s (326); 7 predicates 17.1 s (233); 8 predicates 51.6 s (393); 9 and 10 predicates (all pairs) still running at 100 s and killed. Four tables, all six pairs: 34.8 s (397 plans). A plain `Explain` or prepare of the 10-predicate statement: 0.1 s.
+  - Show one plan (`Explain` with `ids`), 6-predicate join: 8.7 s, because every plan is still generated.
+  - Compare of five plans, five-table join: ids 1-5 23.9 s, ids 52-56 20.2 s (each run 1.5-3.1 s); the probe table 0.1 s.
+  - **`$System.Alarm` does not stop plan generation:** alarms of 1, 4 and 8 s on the 326-plan list returned at 16.4, 17.1 and 16.9 s with 325 plans (one fewer), no `<ALARM>` reached the caller; a 5 s alarm on the 10-predicate list did not stop it by 100 s.
+  - **It does not stop a compare:** a 5 s alarm on the five-plan compare returned at 20.3 s (24 s without): the vendor trapped it, ended only the plan run in progress and ran the other four. A parallel-capable statement (a three-way self-join of the probe, 3 s alarm) returned at 20.1 and 23.2 s and left 14-16 `startWork^%SYS.WorkQueueMgr` worker jobs at about 100% CPU after the request; I killed them. The same statement with no alarm ran past 100 s.
+  - **A stopped compare answers** SQLCODE 0 and no error status, with every row present and the aborted plan's `GlobalRef`, `Commands`, `TotalTime` and `RowsReturned` blank (the fetch's undefined locals read as `""`, never `<UNDEFINED>`). The statistics are the vendor's strings: `commands` `1,368`, `rows` `400,000`, `time` `0.000049`.
+  - Listing's worst case times 1.5 reaches the 60 s limit (8 predicates, 51.6 s x 1.5 = 77 s) and the alarm does not stop it: **the rule in (b) applies and the stage stops (record 1).**
+- **(c) One plan's text.**
+  - `"ids": $ListBuild(id)` is refused: SQLCODE -481a, "does not support the following SQL statement type: SELECT". `"ids": "2"` (plain text, a whole number) answers that plan only (692 characters, `Cost: 2123.8`), and `"1,3"` answers two. An id that is not listed, `0` and `1;DROP` answer the same -481a. The deprecated `ShowPlanAlt(.sql, 1, 0, "", "", 1, id, 1)` also takes the plain id and leaves `%AltPlan`. Form used: `Explain` with the plain id text.
+  - The list and `Explain` both literal-replace the statement (the plan's SQL line shows `?`). `possiblePlansStats` does not (preparse 0), so for a statement with a literal the ids can name different plans. On the probe, and for every `?` statement tried, id, cost and starting map agree. With `X = 'common'` on a skewed column the list's id 1 is cost 23213.6 `Multi Index` and the compare's id 1 is cost 26600.0 `master map` on `IDKEY`; with `X = 'rare40'` the compare answers 4 plans with costs 2365.7, 3175.0, 26600.0, 27409.0 against the list's six, ids 3 and 4 blank.
+- **(d) The probe.** Plan 1 equals the `Explain` plan from the `Cost:` line on (the `/*#OPTIONS*/` comment on the SQL line is the only difference) for seven statements: two indexed conditions, one, `COUNT(*)`, `ORDER BY`, an `UPDATE`, a `DELETE` and a three-table join.
+- **(e) Values.** With preparse 0 a literal runs as written: `B = 5 AND C = 'c5'` compare rows 15 (a direct `COUNT` reads 15). An unbound `?` runs as nothing: rows 0, global references 0-1. A statement holding a literal therefore does not show zero rows.
+- **(f) Side effects.**
+  - Listing and showing change no runtime-statistics row, statement-index row or cached query (78, 655 and 288 before and after), no global name, and leave `$TLevel` 0.
+  - Comparing three plans of a new statement text adds 8 runtime-statistics rows, 1 statement-index row and 1 cached query; nothing else (no other global name; `$TLevel` 0).
+  - `%AltPlan` is cleared when the result set closes. While a list's result set is open, the next `possiblePlansStats` still sees its entries: ids `1,2` answered 5 rows. The port closes each result set and kills `%AltPlan` before the next call.
+- **(g) Device output.** For a statement with an SQL error both class queries write about 4.5 KB of HTML (4,531 and 4,488 bytes) to the current device and answer SQLCODE 0 with 0 rows; for a good statement 0 bytes. The null device swallowed it (nothing reached the terminal). `Explain` with `silent` writes 0 bytes in every case.
+- **(h) DML.** Listing an `UPDATE` (4 plans), a `DELETE` (6), an `INSERT ... VALUES` (1) and an `INSERT ... SELECT` (5) changed no row (3,000 before and after, no `D = 'zz'` row) and no statistics, statement-index or cached-query row.
+- **(i) Unknown ids.** `possiblePlansStats` answers no row and no error for an id it does not list (`9` gives 0 rows, `1,9` gives 1, `1,1` gives 1, a leading comma is accepted). An empty `ids` runs every plan (5 rows). The port's pre-check and its refusal of an empty list are required.
+- **Empty list.** Eleven preparable statements of kind query or DML (including `SELECT 1` and `WHERE 1=0`) each answered at least one plan. A `CALL` and a `SET OPTION` answered none. String 6 is reachable only if those kinds reach the list.
+- **Caller locals.** The vendor routines clobber an unprotected caller's local variables when called from a terminal session (a `For` loop stopped after one pass); every probe call ran inside a class method.
+- **DW-2874: the classic pages' custom resource on 21.26's and 21.27's console actions.** A custom resource was assigned to `RuntimeStats`, `RuntimeStatsSettings`, `IndexAnalyzer` and `ShowPlanAlt`; a principal with `%Development:USE` that did not hold it was refused 403 on `GET /screens/explorer.sqlruntimestats/read` and `explorer.sqlindexanalysis/read` (failed pair `OcuP228Custom:USE`), and the purge, gather, run, purge-analysis and settings tools' `PrivilegePairs` gained that pair. `POST /explorer/sql/plan` with `stats: true` still answered 200 and with `advise: true` passed the gate (it then answered the SELECT refusal on `%Dictionary.CompiledClass`); `ExplorerSqlAdviceRead` and `ExplorerSqlRead` listed `%Development:USE` alone. Plan with statistics and Advise therefore do not honour their classic pages' resource; the lists and the writes do. No change to either story.
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap. Task 0 (b) stop rule: listing's worst case (five-table join, 8 predicates, 51.6 s, x1.5 = 77 s) reaches the 60 s limit and `$System.Alarm` does not stop plan generation or a compare, so "under the console's time limit" cannot be met (record 1). No product code was written; Task 0 is recorded under Verification.
+
+Also contradicting the spec, each needing a ruling:
+
+1. `%SQL.Statement.%PrepareClassQuery` is refused -99 for the screen's audience (needs SQL EXECUTE on `%SYS_PTools.PT_possiblePlans` and `PT_possiblePlansStats`); the classic page's `%ResultSet` form needs none but checks no table privilege, so the checked prepare must stay first. Recommend `%ResultSet`.
+2. "Ids checked against a fresh list" does not hold for a statement with a literal: the list literal-replaces the statement, `possiblePlansStats` does not, so an id can name a different plan (cost 23213.6 vs 26600.0 on a skewed column). Recommend a compare takes a statement whose literals are parameterised, or the note names it.
+3. Task 0 (c) form `"ids": $ListBuild(id)` is refused (-481a); the plain id text works. A side effect missing from record 1: a compare adds runtime-statistics rows, one statement-index row and one cached query.
+4. Strings: 7 becomes "Compare plans runs the statement once for each plan, without the values for its ? placeholders." (a literal runs as written); 11 follows it; 6 is needed only if CALL or SET OPTION reach the list.
+
+Recommended amendment for the gap: refuse a listing past a measured table or predicate bound before anything reaches the vendor (a named constant), or rule that the gateway's own 504 is the limit and drop "under the console's time limit" for alternates. Resume at Batch 1 after the ruling.
