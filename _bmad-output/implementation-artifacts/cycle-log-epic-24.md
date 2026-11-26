@@ -924,3 +924,5 @@
 2026-11-26T12:32:12Z	Story 24.17	stage_spawned	stage=qa+code-review spawn_at=2026-11-26T12:32:12Z model=opus agent_name=24-17-review-batch4 cycle_iteration=5 diff=d9bf70d2f..0cfdf4dc0 head=18b92246e rebuild_once_permitted=yes
 2026-11-26T13:27:47Z	Story 24.17	cr_complete	scope=batch4 spawn_at=12:33Z model=opus commit=acd2560ee rebuild=13:01Z high=1(patched:cancel_typed_confirm_missing) med=8(patched) low=6(DW-2894..2898+occurrences) unresolved_high_med=0 classes=all_green browser=tasks2/2,roles2/2,a11y13/13 smoke=49/49 npm_test=green README=105 closing_sections_present=true
 2026-11-26T13:27:47Z	Story 24.17	fresh_check_passed	scope=batch4 basis=review_rebuild_13:01Z feature=bd8e47e8a_ancestor
+2026-11-26T13:28:25Z	Story 24.17	code_head_pushed	scope=batch4 sha=acd2560ee runs=45829387620 ci=pending
+2026-11-26T13:28:25Z	Story 24.17	stage_spawned	stage=plan spawn_at=2026-11-26T13:28:25Z model=opus agent_name=24-17-plan-batch5 cycle_iteration=6 scope=batch5_system_monitor_readme
