@@ -1029,12 +1029,13 @@ ClassMethod CheckedRows(pNamespace As %String, pText As %String, pValues As %Dyn
         } Else {
             Set tResult = $Case(pValues.%Size(), 1: tStatement.%Execute(pValues.%Get(0)), 2: tStatement.%Execute(pValues.%Get(0), pValues.%Get(1)), : tStatement.%Execute())
             Set tCode = tResult.%SQLCODE
-            Set tRefused = (tCode = ..#PRIVILEGESQLCODE)
             While (tCode >= 0) && (pRows.%Size() < pMax) && tResult.%Next() {
                 Set tRow = []
                 For tI = 1:1:tResult.%ResultColumnCount Do tRow.%Push(tResult.%GetData(tI), "string")
                 Do pRows.%Push(tRow)
             }
+            If tCode >= 0 Set tCode = tResult.%SQLCODE
+            Set tRefused = (tCode = ..#PRIVILEGESQLCODE)
         }
         Set (tResult, tStatement) = ""
         Set $NAMESPACE = tOrigNS
@@ -1387,11 +1388,12 @@ ClassMethod CheckedRow(pNamespace As %String, pText As %String, pBindNamespace A
                 Set tResult = tStatement.%Execute()
             }
             Set tCode = tResult.%SQLCODE
-            Set tRefused = (tCode = ..#PRIVILEGESQLCODE)
             If (tCode >= 0) && tResult.%Next() {
                 Set tColumns = tResult.%ResultColumnCount
                 For tI = 1:1:tColumns Set pRow = pRow _ $ListBuild(tResult.%GetData(tI))
             }
+            If tCode >= 0 Set tCode = tResult.%SQLCODE
+            Set tRefused = (tCode = ..#PRIVILEGESQLCODE)
         }
         Set (tResult, tStatement) = ""
         Set $NAMESPACE = tOrigNS

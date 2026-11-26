@@ -204,13 +204,14 @@ Method TestThePortNamesNoSourceCodeApiClass()
     Set tOn = 0
     For tI = 1:1:$Length(tText, $Char(10)) {
         Set tLine = $Translate($Piece(tText, $Char(10), tI), $Char(13))
-        If tLine '[ "%Prepare(" Continue
-        If $Match(tLine, ".*%Prepare\(.*,\s*0\s*\).*") Set tOff = tOff + 1
+        If (tLine '[ "%Prepare") || ($Extract($ZStrip(tLine, "<W"), 1, 3) = "///") Continue
+        If $Match(tLine, ".*%Prepare(ClassQuery)?\(.*,\s*(0|\$\$\$NO|'1)\s*[,)].*") Set tOff = tOff + 1
         If $Match(tLine, ".*%Prepare\(.*,\s*1\s*\).*") Set tOn = tOn + 1
     }
-    Do $$$AssertEquals(tOff, 0, "no prepare of any variable passes a literal 0 for its privilege flag")
-    Do $$$AssertTrue(tOn > 0, "and the scan sees the prepares that pass 1, so a zero count is not a missed scan")
+    Do $$$AssertEquals(tOff, 0, "no prepare or class-query prepare passes 0 for its privilege flag, in any argument position")
+    Do $$$AssertTrue(tOn > 0, "and the scan sees code lines that pass 1, so a zero count is not a missed scan")
     Do $$$AssertTrue(tText '[ ("%ExecDirectNo" _ "Priv"), "it never executes without the privilege check")
+    Do $$$AssertTrue(tText '[ ("&s" _ "ql("), "it runs no embedded SQL, which checks no privileges")
     Do $$$AssertTrue(tText [ "AtelierPort).Pairs()", "it reuses the source code port's pair set")
 }
 

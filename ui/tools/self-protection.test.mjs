@@ -795,6 +795,7 @@ const ATELIER_REFUSALS = [
   ['REASONINDEXANALYSISGATHERSYSTEM', 'sqlIndexAnalysisGatherSystemConsequence'],
   ['REASONINDEXANALYSISRUN', 'sqlIndexAnalysisRunConsequence'],
   ['REASONINDEXANALYSISPURGE', 'sqlIndexAnalysisPurgeConsequence'],
+  ['REASONSQLSELECTPRIVILEGE', 'sqlSelectPrivilegeRefusal'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {

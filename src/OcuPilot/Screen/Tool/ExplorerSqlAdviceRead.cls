@@ -66,7 +66,7 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
 /// <p>Read the plan and the advice for the statement <var>pArgs</var> carries and answer <method>ResultSchema</method>'s object. <var>pContextCap</var>
 /// is not read here.</p>
 /// <p>Every refusal is an error status with <var>pHttpStatus</var> and <var>pFault</var>: 400 <code>TOOL.ARGUMENTS</code> or
-/// <code>EXPLORER.SQL.INPUT</code>, 403 for a missing pair or the self-protection set, 422 <code>EXPLORER.SQL.ADVICE</code> for a statement that is
+/// <code>EXPLORER.SQL.INPUT</code>, 403 for a missing pair, the self-protection set or <code>SQL.SELECT.PRIVILEGE</code> for a dictionary table, 422 <code>EXPLORER.SQL.ADVICE</code> for a statement that is
 /// not a query, and the port's own faults. A statement the instance did not prepare, or would not explain, is an <code>error</code> outcome with its SQLCODE.</p>
 /// <p>Caller contract: not called from an escalated frame (AD-9); the prepare records the statement in the namespace's statement index (AD-7's fifth
 /// shape).</p>

@@ -56,10 +56,14 @@ Method OnBeforeAllTests() As %Status
     Quit tSC
 }
 
-/// <p>Remove the principal, its role, its grants and the probe table; a failing status when any survives.</p>
+/// <p>Remove the principal, its role, its grants and the probe table; a failing status when any survives, each grant read back before the principal goes.</p>
 Method OnAfterAllTests() As %Status
 {
     Set tSC = ..Revoke()
+    For tI = 1:1:$Length(..#READTABLES, ",") {
+        Set tTable = $Piece(..#READTABLES, ",", tI)
+        If $SYSTEM.SQL.Security.CheckPrivilege(..#USER, 1, tTable, "s", ..#NAMESPACE) = 1 Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "OcuPilot.Test.SqlSelectPrivilege left " _ ..#USER _ " holding SELECT on " _ tTable))
+    }
     Set tSC = $$$ADDSC(tSC, $ClassMethod(..#PROBE, "RemoveAdvice", ..#NAMESPACE))
     Set tOrigNS = $NAMESPACE
     Try {
@@ -278,7 +282,7 @@ Method TestTheIndexReadIsRefusedNamingTheIndexTable()
 /// analysis count, is 403 with the sentence naming that read's two tables, so the person sees what to ask for.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.SqlPort.SelectRefusal</method> composes the refusal with the generic internal fault -> both legs go red
 /// answering 500.</p>
-Method TestTheScreenShowsTheSentence()
+Method TestTheRoutesAnswerTheSentence()
 {
     Set tStatus = ..Call("POST", "/explorer/sql/plan", {"statement": (..#ADVISE), "advise": true}.%ToJSON(), .tBody)
     Do $$$AssertEquals(tStatus _ "|" _ tBody.%Get("code") _ "|" _ tBody.%Get("reason"), "403|" _ ##class(OcuPilot.Api.AtelierError).#SQLSELECTPRIVILEGE _ "|" _ ..Sentence("%Dictionary.CompiledClass"), "the plan route's envelope carries the sentence: " _ tBody.%ToJSON())

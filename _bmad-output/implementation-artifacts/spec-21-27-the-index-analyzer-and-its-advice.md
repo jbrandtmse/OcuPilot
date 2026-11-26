@@ -264,6 +264,24 @@ Rejected:
 - spec-bound: the screen's findings show no per-finding excerpt (Batch 3 names the columns; the full plan is shown above them); AC3's "before anything is prepared" wording (the fix edits the spec; Review pass 1 recorded the residual).
 - low: findings for tables past `MAXTABLES` still name them; the copy-out script takes no lock; no 403 leg for Advise (the gate is `ExplorerSqlRead`'s, pinned there); `Indexed` gates per table; the browser spec's `fresh()` asserts the store it just purged; no test reads AD-60's sanitizer output for advice (shared mechanism); no Advise side-effect test (measured instead, above); the browser Gather test's empty-list check; extra mutation lines for non-AC legs.
 
+Code review 2026-11-26 (rework 1 re-review, diff `4d260ca24..HEAD`, four layers, full-opus). No HIGH. Patches are uncommitted in the worktree.
+
+- [x] [Review][Patch] A checked read that failed at fetch answered 200 with no rows (measured: `%Next` answers 0 with SQLCODE -400 for a division by zero); both helpers now read `%SQLCODE` again after the fetch, so a fetch-time -99 is the refusal and any other is the internal fault [src/OcuPilot/Port/SqlPort.cls CheckedRows, CheckedRow]
+- [x] [Review][Patch] The execute-time -99 and any other execute- or fetch-time SQLCODE were unpinned: the fixture's procedure `OcuProbe2127Code` answers a given SQLCODE at execute; `TestAnExecuteTimeRefusalIsTheSelectRefusal`, and execute and fetch legs in `TestAnotherNegativeSqlcodeStaysTheInternalFault` [Test/SqlTuningPortFixture.cls, Test/SqlIndexAnalysisRead.cls]
+- [x] [Review][Patch] `SqlSelectPrivilege` never read its grants back: `OnAfterAllTests` reads each table's SELECT back with `$SYSTEM.SQL.Security.CheckPrivilege` before the principal is deleted [Test/SqlSelectPrivilege.cls]
+- [x] [Review][Patch] The source scan let other no-privilege forms through: it also refuses `%PrepareClassQuery`, a `0`, `$$$NO` or `'1` flag in any argument position, and embedded SQL; doc-comment lines no longer satisfy the not-vacuous guard [Test/SqlPort.cls]
+- [x] [Review][Patch] `test:tools` did not pin the sentence pair: `ATELIER_REFUSALS` row [ui/tools/self-protection.test.mjs]
+- [x] [Review][Patch] Two caller-contract comments named too few codes [Api/AtelierError.cls SqlReasonFor, Screen/Tool/ExplorerSqlAdviceRead.cls]
+- [x] [Review][Patch] A test name claimed a screen it does not drive: `TestTheRoutesAnswerTheSentence` [Test/SqlSelectPrivilege.cls]
+- [x] [Review][Defer] The analyzer and runtime statistics lists read the same `%SYS_PTools` tables through the catalog route's unchecked prepare, so a principal without SELECT sees rows that the action's 403 says need it [Port/AtelierPort.cls catalog route] — deferred: outside the ruling's `SqlPort` scope; occurrence on DW-1963 (`decision-pending`)
+- [x] [Review][Defer] The spine does not record that AD-51's fresh reads now check SQL privileges and refuse 403 [ARCHITECTURE-SPINE.md AD-51] — deferred: DW-2893 `escalated` (lead, Rule 20)
+
+Rejected:
+
+- low, the fix edits the spec: the Security note's index-read row ("no leg reaches it alone") predates `TestTheIndexReadIsRefusedNamingTheIndexTable`; the note does not list purge statistics, gather and purge analysis, whose fresh reads take the same refusal through the same `CheckedRow` (pinned by the report run); "Rework 1 results" keeps the 500 and HALT lines that the continued results supersede.
+- low, by brief: the agent step's published reason for `SQL.SELECT.PRIVILEGE` is the generic tool sentence, as for every `EXPLORER.SQL.*` code; `Api/Error.cls` stays untouched and the model's content carries the sentence.
+- low: `detail.tables` is the joined text, not an array (the spec states `{tables, reason}`; the model reads the sentence); a computed flag other than `$$$NO` still passes the source scan (the port has none); the `FROM` scan would miss a `JOIN` (no fixed read joins); a probe child that outlives the 180 s wait is not stopped (no timeout observed); `ADVISE` names the probe table literally (a rename fails red, not green).
+
 ## Spec Change Log
 
 - 2026-11-25, orchestrator rulings at the plan gate (veto U-165 for items 1, 2, 5, 6 and 7), authoritative over the Design Notes records:
@@ -616,6 +634,16 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
 - **Review patches (this pass).** `SqlSelectPrivilege.TestTheIndexReadIsRefusedNamingTheIndexTable` (4/4 with the class): a principal granted SELECT on `%Dictionary.CompiledClass` only is refused the advice's second read naming `%Dictionary.CompiledIndex`, through the port and the agent's read. The sentence is published as `sqlSelectPrivilegeRefusal` (`strings.ts`) and in the 21.27 Fixed strings row (`EXPERIENCE.md`). Green after the patches: `SqlSelectPrivilege` 4, `test:tools` 2420/2420, `test:components` 349 files and 4084 tests, `check-objectscript` 0 problems.
 - mutation: `SqlPort.Indexed` passes `ADVICECLASSTABLES` to its index read -> `SqlSelectPrivilege.TestTheIndexReadIsRefusedNamingTheIndexTable` red alone (run 997). Reverted (`SqlPort.cls` identical to the copy taken before), reloaded, 4/4 green (run 998).
 - mutation: `READTABLES` drops `%Dictionary.CompiledIndex` -> `SqlSelectPrivilege.TestTheSameReadsAnswerOnceTheSelectPrivilegeIsGranted` red alone (run 999). Reverted (identical), reloaded, 4/4 green (run 1000).
+
+### Rework 1 re-review patches (2026-11-26, `ocupilot-ci`; observed)
+
+- **Green after the patches**, `LOADERRORS=0`, one class per call: `SqlPort` 11, `SqlIndexAnalysisRead` 10, `SqlSelectPrivilege` 4 (armed), `SqlPortLive` 16, `SqlRuntimeStatsRead` 10, `SqlRuntimeStatsWrite` 8, `SqlIndexAnalysisWrite` 11, `SqlAdviceRead` 11, `SqlStatementRead` 5, `SqlConsoleRoutes` 8, `PortGate` 4, `ClassicPageGate` 9 (runs 1001-1012); `test:tools` 2420/2420; `check-objectscript` 0 problems.
+- mutation: `CheckedRows` and `CheckedRow` drop the post-fetch `If tCode >= 0 Set tCode = tResult.%SQLCODE` -> `SqlIndexAnalysisRead.TestAnotherNegativeSqlcodeStaysTheInternalFault` red on its four fetch legs alone (run 1014).
+- mutation: `CheckedRow` prepares with `%Prepare(pText, 0, 1)` -> `SqlPort.TestThePortNamesNoSourceCodeApiClass` red on the flag count (run 1013).
+- mutation: `CheckedRows` and `CheckedRow` drop `Set tRefused = (tCode = ..#PRIVILEGESQLCODE)` after the execute -> `SqlIndexAnalysisRead.TestAnExecuteTimeRefusalIsTheSelectRefusal` red alone, both legs (run 1015).
+- mutation: `OnAfterAllTests` grants the five tables instead of revoking them -> `SqlSelectPrivilege` red at class level naming each table (run 1016); reverted, 4/4 green with the grants read back absent (run 1017).
+- mutation: one word of `REASONSQLSELECTPRIVILEGE` changed -> `self-protection.test.mjs` "Story 19.2: each of System Explorer's write refusals" red naming the pair.
+- Each mutation reverted with the file byte-identical to a copy taken before (`cmp`), and the final tree reloaded: `SqlIndexAnalysisRead` 10 and `SqlPort` 11 green (runs 1018, 1019).
 
 ## Auto Run Result
 

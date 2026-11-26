@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '11-26-2026 08:51'
+last_updated: '11-26-2026 09:12'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -411,7 +411,7 @@ development_status:
   21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit: done
   21-25-index-rebuild-and-tune-table: done
   21-26-runtime-statistics: done
-  21-27-the-index-analyzer-and-its-advice: review
+  21-27-the-index-analyzer-and-its-advice: done
   21-28-alternate-show-plans: ready-for-dev
   21-29-troubleshooting-reports: ready-for-dev
   21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a: done

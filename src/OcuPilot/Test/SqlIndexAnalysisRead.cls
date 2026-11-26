@@ -5,7 +5,7 @@
 /// shape of a checked read's refusal for want of the SQL SELECT privilege and of any other refusal (the refusal against a real principal is
 /// <class>OcuPilot.Test.SqlSelectPrivilege</class>'s).</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, the calling account holding <code>%Development:USE</code> and READ and WRITE on
-/// <code>USER</code>'s code databases, and a <code>USER</code> namespace. Live-safe: it changes no store, gathers nothing and runs no report; the rows it
+/// <code>USER</code>'s code databases, a <code>USER</code> namespace, and the fixture's procedure compiled in the namespace it runs in. Live-safe: it changes no store, gathers nothing and runs no report; the rows it
 /// maps are canned through <class>OcuPilot.Test.AtelierPortFixture</class>.</p>
 Class OcuPilot.Test.SqlIndexAnalysisRead Extends %UnitTest.TestCase
 {
@@ -361,20 +361,41 @@ Method TestARefusedReadNamesItsOwnTablesInTheRuledSentence()
     Do $$$AssertEquals(tFault.%Get("reason"), "Reading this needs the SQL SELECT privilege on %SYS_PTools.StatsSQL.", "one table is named alone")
 }
 
-/// <p>A checked read the instance refuses with any other negative SQLCODE is the internal fault as before: 500 with the generic code and reason, no
-/// <code>detail</code>, and nothing of the statement or the instance's message in the answer.</p>
+/// <p>A checked read the instance refuses with any other negative SQLCODE, at prepare (an unknown table, -30), at execute (-400 from the fixture's
+/// procedure, in the namespace it is compiled in) or at fetch (a division by zero, -400), is the internal fault as before: 500 with the generic code
+/// and reason, no <code>detail</code>, and nothing of the statement or the instance's message in the answer.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.SqlPort.CheckedRows</method> and <method>CheckedRow</method> treat every negative SQLCODE as a privilege
-/// refusal -> both legs go red answering 403.</p>
+/// refusal -> every leg goes red answering 403; they leave the fetch's SQLCODE unread -> the fetch legs go red answering 200.</p>
 Method TestAnotherNegativeSqlcodeStaysTheInternalFault()
 {
-    Set tText = "SELECT A FROM OcuProbe2127Missing.Nothing"
+    For tCase = $ListBuild("prepare", ..#NAMESPACE, "SELECT A FROM OcuProbe2127Missing.Nothing"), $ListBuild("execute", $NAMESPACE, "CALL OcuPilot_Test.OcuProbe2127Code(-400)"), $ListBuild("fetch", ..#NAMESPACE, "SELECT TOP 3 1/(ID-ID) FROM %Dictionary.CompiledClass") {
+        For tMethod = "RowsOf", "RowOf" {
+            Kill tFault
+            Set tLeg = tMethod _ " at " _ $List(tCase, 1)
+            Set tSC = $ClassMethod(..#FIXTURE, tMethod, $List(tCase, 2), $List(tCase, 3), "%SYS_PTools.StatsSQL", .tHttp, .tFault)
+            Do $$$AssertStatusNotOK(tSC, tLeg _ ": a refused read is an error status")
+            Do $$$AssertEquals($Get(tHttp) _ "|" _ $Select($IsObject($Get(tFault)): tFault.%Get("code") _ "|" _ tFault.%Get("reason"), 1: ""), "500|" _ ##class(OcuPilot.Api.Error).#INTERNAL _ "|" _ ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, tLeg _ ": the internal fault")
+            Continue:'$IsObject($Get(tFault))
+            Do $$$AssertEquals(tFault.%GetTypeOf("detail"), "unassigned", tLeg _ ": with no detail")
+            Do $$$AssertTrue((tFault.%ToJSON() '[ "Nothing") && (tFault.%ToJSON() '[ "OcuProbe2127Code") && (tFault.%ToJSON() '[ "DIVIDE"), tLeg _ ": and nothing of the statement or the instance's message")
+        }
+    }
+}
+
+/// <p>A checked read whose prepare succeeds and whose execute the instance answers SQLCODE -99 is the same 403 <code>SQL.SELECT.PRIVILEGE</code> as a
+/// refused prepare, naming the tables the caller passed and nothing of the statement, through both helpers.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.SqlPort.CheckedRows</method> and <method>CheckedRow</method> take the refusal from the prepare alone -> both
+/// legs go red answering 500.</p>
+Method TestAnExecuteTimeRefusalIsTheSelectRefusal()
+{
+    Set tReason = "Reading this needs the SQL SELECT privilege on %SYS_PTools.StatsSQL."
     For tMethod = "RowsOf", "RowOf" {
         Kill tFault
-        Set tSC = $ClassMethod(..#FIXTURE, tMethod, ..#NAMESPACE, tText, "%SYS_PTools.StatsSQL", .tHttp, .tFault)
+        Set tSC = $ClassMethod(..#FIXTURE, tMethod, $NAMESPACE, "CALL OcuPilot_Test.OcuProbe2127Code(-99)", "%SYS_PTools.StatsSQL", .tHttp, .tFault)
         Do $$$AssertStatusNotOK(tSC, tMethod _ ": a refused read is an error status")
-        Do $$$AssertEquals(tHttp _ "|" _ tFault.%Get("code") _ "|" _ tFault.%Get("reason"), "500|" _ ##class(OcuPilot.Api.Error).#INTERNAL _ "|" _ ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, tMethod _ ": an unknown table is the internal fault")
-        Do $$$AssertEquals(tFault.%GetTypeOf("detail"), "unassigned", tMethod _ ": with no detail")
-        Do $$$AssertTrue(tFault.%ToJSON() '[ "Nothing", tMethod _ ": and nothing of the statement")
+        Do $$$AssertEquals($Get(tHttp) _ "|" _ $Select($IsObject($Get(tFault)): tFault.%Get("code") _ "|" _ tFault.%Get("reason"), 1: ""), "403|SQL.SELECT.PRIVILEGE|" _ tReason, tMethod _ ": an execute-time -99 is the privilege refusal")
+        Continue:'$IsObject($Get(tFault))
+        Do $$$AssertTrue(tFault.%ToJSON() '[ "OcuProbe2127Code", tMethod _ ": and nothing of the statement")
     }
 }
 

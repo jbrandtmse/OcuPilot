@@ -560,8 +560,8 @@ Parameter REASONTABLEMAPSIZE = "Enter a whole number, 1 or more.";
 /// <p>The reason of a <code>SQL.TABLE.VENDOR</code> refusal of a setter after the table's collected statistics were saved as its fixed statistics.</p>
 Parameter REASONTABLESETUNAPPLIED = "The table's collected statistics were saved as its fixed statistics, but the new value was not set.";
 
-/// <p>The sentence <var>pCode</var>, one of the <code>SQL.STATEMENT.*</code>, <code>SQL.CACHEDQUERY.*</code> and <code>SQL.TABLE.*</code> codes above,
-/// carries, or <code>""</code> for any other code (Stories 21.6, 21.25 and 21.31).</p>
+/// <p>The sentence <var>pCode</var>, one of the <code>SQL.*</code> codes above, carries, or <code>""</code> for any other code;
+/// <code>SQL.SELECT.PRIVILEGE</code>'s still holds its <code>%1</code>.</p>
 ClassMethod SqlReasonFor(pCode As %String) As %String
 {
     If (pCode = ..#TABLESETEXTENTSIZE) || (pCode = ..#TABLESETSELECTIVITY) || (pCode = ..#TABLESETMAPSIZE) Quit ..#REASONTABLESET

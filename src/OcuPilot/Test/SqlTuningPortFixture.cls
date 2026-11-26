@@ -79,6 +79,14 @@ ClassMethod RefusalOf(pTables As %String, Output pHttpStatus As %Integer, Output
     Quit ..SelectRefusal(pTables, .pHttpStatus, .pFault)
 }
 
+/// <p>A procedure whose call answers the SQLCODE <var>pCode</var> at execute, after a prepare that succeeds:
+/// <code>CALL OcuPilot_Test.OcuProbe2127Code(-99)</code>.</p>
+ClassMethod AnswerCode(pCode As %Integer) [ SqlName = OcuProbe2127Code, SqlProc ]
+{
+    Set %sqlcontext.%SQLCODE = pCode
+    Set %sqlcontext.%Message = "probe " _ pCode
+}
+
 /// <p>The field's read, which raises while a table call runs where <method>OcuPilot.Test.SqlTuningGateSeam.Throw</method> armed it: the one read a
 /// selectivity's setter makes inside its guarded block, after the collected statistics were saved.</p>
 ClassMethod FieldRead(pSchema As %String, pTable As %String, pField As %String, Output pRow As %DynamicObject) As %Status [ Private ]
