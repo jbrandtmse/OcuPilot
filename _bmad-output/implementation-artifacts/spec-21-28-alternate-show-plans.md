@@ -2,7 +2,7 @@
 title: 'Story 21.28: Alternate show plans'
 type: 'feature'
 created: '2026-11-25'
-status: 'blocked'
+status: 'in-progress'
 baseline_revision: '59243ea80bcfd513b4bf83fbbddfd080b8e09c41'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -184,6 +184,15 @@ deferred: []
   3. **Gate** (veto U-166): the actions and the agent read also honour any custom resource an operator puts on `%CSP.UI.Portal.SQL.QButtons.ShowPlanAlt`. 21.26's and 21.27's console actions stay as they are; the question whether they should is a LOW ledger entry owned by burn-down, with this story's measurement as evidence.
   4. **Compare limit:** decided, five, a named constant with boundary tests at 5 and 6.
   5. **Strings** (veto U-166): accepted with these changes. The agent read's description says it lists and shows plans and runs nothing (no compare note). The `slowquery` step reads: "Read the alternate plans for the slowest query and, when another plan costs less than the one the optimizer chose, suggest the person compare the two from SQL query; a comparison runs the query once for each plan without its values." "Only the first 100 possible plans are listed." uses a named constant with an AD-36 boundary test. The empty-state sentence and the compare note ship as measured, otherwise the fallback.
+
+- 2026-11-26, orchestrator rulings on the Task 0 intent gap (veto U-178, U-166 addendum), authoritative over the plan-gate rulings where they differ:
+  1. **Bound.** Before anything reaches the vendor, listing, showing and comparing refuse a statement over a measured bound, tables and conditions as named constants, derived from Task 0 with the 1.5x rule (worst case x1.5 under 60 s for list and show, and for a five-plan compare), tested at the boundary. Refusal: "Alternate plans take a statement with at most %1 tables and %2 conditions." **Parallel:** every compare run uses the vendor's no-parallel form (`%NOPARALLEL` in the FROM clause or the documented equivalent, read from `irislib/` or the docs); measured on `ocupilot-ci` that a parallel-capable statement then starts no workers (job count before, during, after). If no such form holds, HALT and report (compare would refuse statements whose listed plan is parallel, with one more string, ruled first).
+  2. **Privilege.** The checked form (U-174): a -99 on the `%SYS_PTools` procedures answers 403 "Reading this needs the SQL EXECUTE privilege on %1." (`%1` = the procedure, from the port's own fixed call). Measured -99 and success after the grant go in the security note; the armed class `SqlSelectPrivilege` covers it if cheap. `%ResultSet` unchecked is rejected.
+  3. **Ids.** Compare runs the listing's own parameterized text (literals replaced by `?`) without values, so a listed id always names the plan it ran; measured on the skewed-column case that ids and costs match between list and compare. The compare note stays "Compare plans runs the statement once for each plan, without its values, so a filtered query can show zero rows."; string 11 follows it.
+  4. Plain id text (not `$ListBuild`) for showing one plan: decided.
+  5. Side effects: a compare adds runtime-statistics rows, one statement-index row and one cached query (measured); the AD-7 21.28 line names all three.
+  6. The empty-state sentence ships only if a test shows CALL or SET OPTION can reach the list; otherwise it is omitted.
+  7. DW-2874: evidence recorded; no change here.
 
 ## Review Triage Log
 
