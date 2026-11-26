@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus, type ChangeEvent } from '../../core/change-bus';
 import { OverlayStack } from '../../core/overlay-stack';
-import { ScreenActions } from '../../core/screen-actions';
+import { SQL_INDEX_ANALYSIS_RUN_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
@@ -14,7 +14,6 @@ import {
   EXPLORER_SQL_INDEX_ANALYSIS,
   SQL_INDEX_ANALYSIS_GATHER,
   SQL_INDEX_ANALYSIS_PURGE,
-  SQL_INDEX_ANALYSIS_RUN,
   SQL_TUNING_ALL_TARGET,
   ScreenActionHandler,
 } from '../../shell/screen-action-handler';
@@ -119,8 +118,19 @@ describe('the SQL index analyzer page', () => {
   it('registers Gather statements, Run report and Purge analysis after the handler', () => {
     const { actions } = mount([]);
     expect(actions.has(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_GATHER)).toBe(true);
-    expect(actions.has(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_RUN)).toBe(true);
+    expect(actions.has(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_RUN_ACTION_ID)).toBe(true);
     expect(actions.has(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_PURGE)).toBe(true);
+  });
+
+  // Mutation (Rule 19): declare no primary action on the descriptor, or register Run report under the declared `run` -> the first assertion, or the
+  // second and third, go red, and a list holding no row offers neither Gather statements nor Run report.
+  it('offers Gather statements as the primary action and Run report at screen level, so neither needs a selected row', () => {
+    const { actions } = mount([]);
+    expect(LIST.primaryAction.id).toBe(SQL_INDEX_ANALYSIS_GATHER);
+    expect(actions.has(EXPLORER_SQL_INDEX_ANALYSIS, LIST.primaryAction.id)).toBe(true);
+    expect(SQL_INDEX_ANALYSIS_RUN_ACTION_ID).not.toBe('run');
+    expect(LIST.rowActions.map((action) => action.id)).not.toContain(SQL_INDEX_ANALYSIS_RUN_ACTION_ID);
+    expect(actions.has(EXPLORER_SQL_INDEX_ANALYSIS, 'run')).toBe(false);
   });
 
   // Mutation (Rule 19): send the gathering on any target but `SQL_TUNING_ALL_TARGET`, or drop a skip choice from its values -> the request goes red.
@@ -169,7 +179,7 @@ describe('the SQL index analyzer page', () => {
   // Mutation (Rule 19): send the first report whatever is chosen, or drop the IDKEY choice -> the request goes red.
   it('a report run asks for the report and the three choices, and sends them', async () => {
     const { fixture, host, actions, calls } = mount([applied(SQL_TUNING_ALL_TARGET)]);
-    actions.run(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_RUN);
+    actions.run(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_RUN_ACTION_ID);
     await settle(fixture);
     expect(host.ownerDocument.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.sqlIndexAnalysisRunAction);
     expect(slot(host, 'consequence')?.textContent?.trim()).toBe(STRINGS.sqlIndexAnalysisRunConsequence);
@@ -209,7 +219,7 @@ describe('the SQL index analyzer page', () => {
       refused('SQL.INDEXANALYSIS.NOSTATEMENTS', STRINGS.sqlIndexAnalysisRefusalNoStatements),
       applied(SQL_TUNING_ALL_TARGET),
     ]);
-    actions.run(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_RUN);
+    actions.run(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_RUN_ACTION_ID);
     await settle(fixture);
     (slot(host, 'proceed') as HTMLButtonElement).click();
     await settle(fixture);
@@ -226,7 +236,7 @@ describe('the SQL index analyzer page', () => {
     const { fixture, host, actions, calls } = mount([]);
     actions.run(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_GATHER);
     await settle(fixture);
-    actions.run(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_RUN);
+    actions.run(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_RUN_ACTION_ID);
     await settle(fixture);
     expect(host.ownerDocument.querySelectorAll('.ocu-dialog')).toHaveLength(1);
     expect(host.ownerDocument.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.sqlIndexAnalysisGatherAction);

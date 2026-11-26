@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 
-import { ScreenActions } from '../../core/screen-actions';
+import { SQL_INDEX_ANALYSIS_RUN_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { ListPage } from '../../shell/list-page';
@@ -8,7 +8,6 @@ import {
   EXPLORER_SQL_INDEX_ANALYSIS,
   SQL_INDEX_ANALYSIS_GATHER,
   SQL_INDEX_ANALYSIS_PURGE,
-  SQL_INDEX_ANALYSIS_RUN,
   SQL_TUNING_ALL_TARGET,
   ScreenActionHandler,
   type ActionValues,
@@ -25,7 +24,8 @@ function flag(value: boolean): string {
  * dialog of the one being asked while one is open.
  *
  * **The three actions are this page's own.** Each names the namespace's whole analysis, not a row, so the shell's handler leaves them undrawn and this
- * page registers them after injecting that handler. Purge analysis starts the handler's own warning on the one target the tools read,
+ * page registers them after injecting that handler. Gather statements is the descriptor's primary action and Run report the screen-level
+ * `SQL_INDEX_ANALYSIS_RUN_ACTION_ID` (the dialog still sends the declared `run`), so neither waits for a selected row. Purge analysis starts the handler's own warning on the one target the tools read,
  * `SQL_TUNING_ALL_TARGET`, reporting to the list's store. Gather statements and Run report open this page's dialog, which asks for the choices the action
  * declares and sends them through the handler's `sendFor` on the same target: a refusal stays in the dialog, each the instance's own sentence, and an
  * applied send closes it, the handler's change event re-reading the list (AD-14).
@@ -70,7 +70,7 @@ export class SqlIndexAnalysisPage {
     this.store = screen === null ? null : this.stores.for(screen.descriptor, screen.refreshRates);
     const stops = [
       this.actions.register(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_GATHER, () => this.onOpen('gather')),
-      this.actions.register(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_RUN, () => this.onOpen('run')),
+      this.actions.register(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_RUN_ACTION_ID, () => this.onOpen('run')),
       this.actions.register(EXPLORER_SQL_INDEX_ANALYSIS, SQL_INDEX_ANALYSIS_PURGE, () => this.onPurge()),
     ];
     inject(DestroyRef).onDestroy(() => {

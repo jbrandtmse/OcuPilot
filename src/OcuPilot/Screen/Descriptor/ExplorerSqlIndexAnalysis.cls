@@ -7,7 +7,8 @@
 /// <p><b>Its id is the report and the row's number</b>, kept exactly (AD-13). Its scope is <code>namespace</code>.</p>
 /// <p><b>Its page actions</b> are <code>gather</code>, <code>run</code> and <code>purge</code>, the page's own actions on the target <code>*</code>, which
 /// <class>OcuPilot.Screen.Tool.ExplorerSqlIndexAnalysisGather</class>, <class>OcuPilot.Screen.Tool.ExplorerSqlIndexAnalysisRun</class> and
-/// <class>OcuPilot.Screen.Tool.ExplorerSqlIndexAnalysisPurge</class> carry out for both callers (AD-53).</p>
+/// <class>OcuPilot.Screen.Tool.ExplorerSqlIndexAnalysisPurge</class> carry out for both callers (AD-53). <code>gather</code> is the primary action, so it
+/// needs no selected row; the page offers <code>run</code> at screen level under its own id, so the list need hold no row for a report to be run.</p>
 /// <p><b>Its privilege set</b> is <parameter>OcuPilot.Port.AtelierPort.PAIRS</parameter>, beside READ on the namespace's code databases (AD-29). It
 /// replaces <code>%CSP.UI.Portal.SQL.QButtons.IndexAnalyzer</code>, whose custom resource also gates it (AD-44). It does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.ExplorerSqlIndexAnalysis Extends OcuPilot.Screen.Descriptor.Base
@@ -30,7 +31,7 @@ XData Declaration
   "scope": "namespace",
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["Report", "Counter"]},
-  "primaryAction": {"id": "", "selfProtection": ""},
+  "primaryAction": {"id": "gather", "selfProtection": ""},
   "rowActions": [{"id": "gather", "selfProtection": ""}, {"id": "run", "selfProtection": ""}, {"id": "purge", "selfProtection": ""}],
   "context": {"fields": ["Report", "Counter", "Schema", "Table", "Index", "UsageCount", "ClassOrRoutine", "Statement"], "secretFields": []},
   "emptyStateKey": "explorerSqlIndexAnalysisEmpty",

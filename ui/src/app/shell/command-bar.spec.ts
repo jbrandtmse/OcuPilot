@@ -19,6 +19,7 @@ import {
   JOURNAL_SWITCH_DIRECTORY_ACTION_ID,
   BACKUP_FREEZE_ACTION_ID,
   BACKUP_THAW_ACTION_ID,
+  SQL_INDEX_ANALYSIS_RUN_ACTION_ID,
 } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
@@ -1503,6 +1504,41 @@ describe('the command bar', () => {
     freeze()?.click();
     thaw()?.click();
     expect(ran).toEqual(['freeze', 'thaw']);
+  });
+
+  it('Story 21.27: with nothing selected the bar offers Gather statements as the primary and draws Run report at screen level, neither held back', () => {
+    // Mutation (Rule 19): drop `hasIndexAnalysisRunAction` from the template -> the drawn assertions go red.
+    const declared = screenDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.ExplorerSqlIndexAnalysis',
+      primaryAction: { id: 'gather', selfProtection: '' },
+      rowActions: [
+        { id: 'gather', selfProtection: '' },
+        { id: 'run', selfProtection: '' },
+        { id: 'purge', selfProtection: '' },
+      ],
+    });
+    build(declared);
+    const run = (): HTMLElement | null => fixture.nativeElement.querySelector('.ocu-command-bar-index-analysis-run');
+    const primary = (): HTMLElement | null => fixture.nativeElement.querySelector('.ocu-command-bar-primary');
+    fixture.detectChanges();
+    expect(run()).toBeNull();
+    expect(primary()).toBeNull();
+    const ran: string[] = [];
+    actions.register(declared.descriptor, 'gather', () => ran.push('gather'));
+    actions.register(declared.descriptor, SQL_INDEX_ANALYSIS_RUN_ACTION_ID, () => ran.push('run'));
+    actions.register(declared.descriptor, 'purge', () => ran.push('purge'));
+    fixture.detectChanges();
+    expect(primary()?.textContent?.trim()).toBe(STRINGS.sqlIndexAnalysisGatherAction);
+    expect(primary()?.getAttribute('aria-disabled')).toBeNull();
+    expect(run()?.textContent?.trim()).toBe(STRINGS.sqlIndexAnalysisRunAction);
+    expect(run()?.getAttribute('aria-disabled')).toBeNull();
+    const rowButtons = Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-bar-action') as NodeListOf<HTMLElement>);
+    const purge = rowButtons.find((button) => button.textContent?.trim() === STRINGS.sqlIndexAnalysisPurgeAction);
+    expect(purge?.getAttribute('aria-disabled')).toBe('true');
+    expect(rowButtons.filter((button) => button.textContent?.trim() === STRINGS.sqlIndexAnalysisGatherAction)).toHaveLength(0);
+    primary()?.click();
+    run()?.click();
+    expect(ran).toEqual(['gather', 'run']);
   });
 
   // --- Story 16.23: Download CSV --------------------------------------------------------------

@@ -2,9 +2,10 @@
  * Story 21.27 in a real browser, against the throwaway: System Explorer's SQL index analyzer list and its Run report, Gather statements and Purge
  * analysis, and SQL query's Advise (AD-5, AD-29, AD-7, AD-51, AD-53).
  *
- * What it pins: the list shows the probe table's Index usage rows; Run report asks, confirms and lists the probe's Table scan row; Gather statements
- * asks, confirms and replaces the statements and every report's results; Advise on SQL query shows Missing index for the probe's condition; Purge
- * analysis asks, confirms and empties the list.
+ * What it pins: on a namespace with no analysis, the screen offers Gather statements and Run report with no row selected; Gather statements asks, confirms
+ * and gathers the statements; Run report asks, confirms and lists the probe's Index usage and Table scan rows; a second Gather statements replaces the
+ * statements and every report's results; Advise on SQL query shows Missing index for the probe's condition; Purge analysis asks, confirms and empties the
+ * list.
  *
  * **It gathers, runs and purges the namespace's index analysis** through the shipped screens, so it runs on a throwaway only. The probe is a table and a
  * class whose method holds the scanning statement, so the vendor's gathering finds it. Its `after` hook purges the analysis and removes the probe, and
@@ -55,7 +56,7 @@ function count(code) {
   return probe(`A${code}`, `##class(${PROBE}).AnalysisCounts("${NS}").%Get("${code}")`).value;
 }
 
-/** Gather the namespace's statements and run Index usage over them, as the vendor does, so the list has rows to open on. */
+/** Gather the namespace's statements and run Index usage over them, as the vendor does, so the list has rows for Purge analysis to select. */
 function seed() {
   const seeded = probe('ASEED', `$System.Status.IsOK(##class(${PROBE}).SeedAnalysis("${NS}"))`);
   assert.equal(seeded.value, '1', `the probe's analysis is seeded: ${seeded.output}`);
@@ -69,7 +70,9 @@ before(async () => {
   touched = true; // from here on, `after` removes what MakeAnalysis created, even when it fails part-way
   const made = probe('AMADE', `$System.Status.IsOK(##class(${PROBE}).MakeAnalysis("${NS}"))`);
   assert.equal(made.value, '1', `the probe objects are created: ${made.output}`);
-  seed();
+  for (const code of ['Statements', 'IU', 'TS', 'TI', 'JI', 'OI']) {
+    assert.equal(count(code), '0', `the namespace starts with no ${code} analysis, as MakeAnalysis leaves it`);
+  }
   browser = await puppeteer.launch(launchOptions(config));
 });
 
@@ -91,6 +94,13 @@ after(async () => {
 async function answered(page) {
   await waitForMapAnswered(page, config.navigationTimeoutMs);
   await waitForRows(page, config.navigationTimeoutMs);
+}
+
+/** The shell has answered the navigation map and the list has answered with no row: it says the namespace holds no analysis. */
+async function answeredEmpty(page) {
+  await waitForMapAnswered(page, config.navigationTimeoutMs);
+  await page.waitForFunction((text) => document.body.textContent.includes(text), { timeout: config.navigationTimeoutMs }, STRINGS.explorerSqlIndexAnalysisEmpty);
+  assert.equal((await rows(page)).length, 0, 'the list draws no row');
 }
 
 /**
@@ -153,11 +163,6 @@ async function bar(page, label) {
   await page.evaluate((wanted) => [...document.querySelectorAll('.ocu-command-bar button')].find((button) => button.textContent.trim() === wanted).click(), label);
 }
 
-/** The command-bar buttons' labels. */
-function barLabels(page) {
-  return page.$$eval('.ocu-command-bar button', (buttons) => buttons.map((button) => button.textContent.trim()));
-}
-
 /** The dialog the action opened: its title and its consequence sentence. */
 async function openedDialog(page, title) {
   await page.waitForSelector('[data-slot="consequence"]', { visible: true, timeout: config.navigationTimeoutMs });
@@ -179,46 +184,71 @@ async function confirmWarning(page, consequence) {
   await page.waitForFunction(() => document.querySelector('.ocu-warning-consequence') === null, { timeout: SEND_MS });
 }
 
-test('AC1: the list shows the probe table\'s Index usage rows and offers the three actions', async () => {
+test('AC1: on a namespace with no analysis the screen offers Gather statements and Run report with no row selected', async () => {
   const { context, page } = await signedInAt(browser, config, LIST_ROUTE, VIEWPORTS.wide);
   try {
-    await answered(page);
-    await filterToProbe(page);
-    await waitForProbeReport(page, STRINGS.sqlIndexAnalysisReportIU);
-    const shown = await probeRows(page);
-    assert.ok(shown.length > 0, `the probe table's rows are listed: ${JSON.stringify(await rows(page))}`);
-    assert.ok(shown.every((cells) => cells[COLUMN.report] === STRINGS.sqlIndexAnalysisReportIU), `each reads Index usage: ${JSON.stringify(shown)}`);
-    assert.ok(shown.every((cells) => (cells[COLUMN.table] ?? '').toUpperCase() === 'T'), `each names the probe table: ${JSON.stringify(shown)}`);
-    const labels = await barLabels(page);
-    for (const label of [STRINGS.sqlIndexAnalysisGatherAction, STRINGS.sqlIndexAnalysisRunAction, STRINGS.sqlIndexAnalysisPurgeAction]) {
-      assert.ok(labels.includes(label), `the command bar offers ${label}: ${JSON.stringify(labels)}`);
-    }
+    await answeredEmpty(page);
+    // The two buttons are drawn and not held back: a row action with nothing selected is `aria-disabled`.
+    const held = await page.$$eval('.ocu-command-bar button', (buttons) =>
+      Object.fromEntries(buttons.map((button) => [button.textContent.trim(), button.getAttribute('aria-disabled') === 'true']))
+    );
+    // Mutation (Rule 19): the descriptor declares no primary action -> Gather statements is a row action held back, and this assertion goes red.
+    assert.equal(held[STRINGS.sqlIndexAnalysisGatherAction], false, `Gather statements is offered and not held back: ${JSON.stringify(held)}`);
+    // Mutation (Rule 19): `SqlIndexAnalysisPage` drops its `actions.register` of Run report -> the command bar never draws it and this assertion goes red.
+    assert.equal(held[STRINGS.sqlIndexAnalysisRunAction], false, `Run report is offered and not held back: ${JSON.stringify(held)}`);
+    assert.equal(held[STRINGS.sqlIndexAnalysisPurgeAction], true, `Purge analysis waits for a row: ${JSON.stringify(held)}`);
+    assert.equal(Object.keys(held).filter((label) => label === STRINGS.sqlIndexAnalysisGatherAction).length, 1, 'Gather statements is drawn once');
   } finally {
     await context.close();
   }
 });
 
-test('AC2: Run report asks for the report, confirms and lists the probe\'s Table scan row', async () => {
+test('AC2: Gather statements, with no row selected, asks, confirms and gathers the namespace\'s statements', async () => {
   const { context, page } = await signedInAt(browser, config, LIST_ROUTE, VIEWPORTS.wide);
   try {
-    await answered(page);
-    await filterToProbe(page);
-    await selectFirstRow(page);
-    // Mutation (Rule 19): `SqlIndexAnalysisPage` drops its `actions.register` of Run report -> the command bar never draws it and this wait times out.
-    await bar(page, STRINGS.sqlIndexAnalysisRunAction);
-    const consequence = await openedDialog(page, STRINGS.sqlIndexAnalysisRunAction);
-    assert.equal(consequence, STRINGS.sqlIndexAnalysisRunConsequence, 'the dialog states what the run does');
-    assert.deepEqual(
-      await page.$$eval('[data-slot="report"] option', (nodes) => nodes.map((node) => node.textContent.trim())),
-      [STRINGS.sqlIndexAnalysisReportIU, STRINGS.sqlIndexAnalysisReportTS, STRINGS.sqlIndexAnalysisReportTI, STRINGS.sqlIndexAnalysisReportJI, STRINGS.sqlIndexAnalysisReportOI],
-      'the dialog offers the five reports'
-    );
-    await page.select('[data-slot="report"] select', 'TS');
+    await answeredEmpty(page);
+    assert.equal(count('Statements'), '0', 'the instance holds no gathered statement to begin with');
+    await bar(page, STRINGS.sqlIndexAnalysisGatherAction);
+    const consequence = await openedDialog(page, STRINGS.sqlIndexAnalysisGatherAction);
+    assert.equal(consequence, STRINGS.sqlIndexAnalysisGatherConsequence, 'the dialog states what the gathering does, with system classes and routines skipped');
     await proceed(page);
-    assert.notEqual(count('TS'), '0', 'the instance holds the probe table\'s Table scan row');
-    await waitForProbeReport(page, STRINGS.sqlIndexAnalysisReportTS).catch(async (error) => {
-      throw new Error(`${error.message}; the list shows ${JSON.stringify(await rows(page))}`);
-    });
+    assert.notEqual(count('Statements'), '0', 'the instance holds the namespace\'s gathered statements');
+    for (const code of ['IU', 'TS', 'TI', 'JI', 'OI']) assert.equal(count(code), '0', `a gathering records no ${code} row`);
+    assert.ok((await page.evaluate(() => document.body.textContent)).includes(STRINGS.explorerSqlIndexAnalysisEmpty), 'the list still says the namespace holds no analysis');
+  } finally {
+    await context.close();
+  }
+});
+
+/** Ask for `code`'s report through the command bar's Run report, with no row selected, and wait for the probe table's rows under `name`. */
+async function runReport(page, code, name) {
+  await bar(page, STRINGS.sqlIndexAnalysisRunAction);
+  const consequence = await openedDialog(page, STRINGS.sqlIndexAnalysisRunAction);
+  assert.equal(consequence, STRINGS.sqlIndexAnalysisRunConsequence, 'the dialog states what the run does');
+  assert.deepEqual(
+    await page.$$eval('[data-slot="report"] option', (nodes) => nodes.map((node) => node.textContent.trim())),
+    [STRINGS.sqlIndexAnalysisReportIU, STRINGS.sqlIndexAnalysisReportTS, STRINGS.sqlIndexAnalysisReportTI, STRINGS.sqlIndexAnalysisReportJI, STRINGS.sqlIndexAnalysisReportOI],
+    'the dialog offers the five reports'
+  );
+  await page.select('[data-slot="report"] select', code);
+  await proceed(page);
+  assert.notEqual(count(code), '0', `the instance holds the probe table's ${name} row`);
+  if ((await page.$eval(FILTER_SELECTOR, (input) => input.value)) === '') await filterToProbe(page);
+  await waitForProbeReport(page, name).catch(async (error) => {
+    throw new Error(`${error.message}; the list shows ${JSON.stringify(await rows(page))}`);
+  });
+}
+
+test('AC2: Run report, with no row selected, asks for the report, confirms and lists the probe\'s Index usage and Table scan rows', async () => {
+  const { context, page } = await signedInAt(browser, config, LIST_ROUTE, VIEWPORTS.wide);
+  try {
+    await answeredEmpty(page);
+    assert.notEqual(count('Statements'), '0', 'the statements the earlier test gathered are still there, which a report is run over');
+    await runReport(page, 'IU', STRINGS.sqlIndexAnalysisReportIU);
+    const shown = await probeRows(page);
+    assert.ok(shown.every((cells) => cells[COLUMN.report] === STRINGS.sqlIndexAnalysisReportIU), `each reads Index usage: ${JSON.stringify(shown)}`);
+    assert.ok(shown.every((cells) => (cells[COLUMN.table] ?? '').toUpperCase() === 'T'), `each names the probe table: ${JSON.stringify(shown)}`);
+    await runReport(page, 'TS', STRINGS.sqlIndexAnalysisReportTS);
     assert.notEqual(count('IU'), '0', 'the Index usage rows are still there');
   } finally {
     await context.close();
@@ -252,11 +282,11 @@ test('AC3: Advise on SQL query shows Missing index for the probe\'s condition, a
   }
 });
 
-test('AC2: Gather statements asks, confirms and replaces the statements and every report\'s results', async () => {
+test('AC2: a second Gather statements replaces the statements and every report\'s results', async () => {
   const { context, page } = await signedInAt(browser, config, LIST_ROUTE, VIEWPORTS.wide);
   try {
     await answered(page);
-    await selectFirstRow(page);
+    assert.notEqual(count('IU'), '0', 'the reports the earlier test ran are still there to be replaced');
     await bar(page, STRINGS.sqlIndexAnalysisGatherAction);
     const consequence = await openedDialog(page, STRINGS.sqlIndexAnalysisGatherAction);
     assert.equal(consequence, STRINGS.sqlIndexAnalysisGatherConsequence, 'the dialog states what the gathering does, with system classes and routines skipped');

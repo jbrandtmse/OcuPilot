@@ -74,6 +74,12 @@ export const BACKUP_FREEZE_ACTION_ID = 'backup-freeze';
 export const BACKUP_THAW_ACTION_ID = 'thaw';
 
 /**
+ * Run report on SQL index analyzer (Story 21.27): screen-level like Freeze writes. A report is run over the namespace's gathered statements, not a
+ * row, so it is not held back for want of a selection. It is the page's own id, since the declared `run` would be drawn as a row action.
+ */
+export const SQL_INDEX_ANALYSIS_RUN_ACTION_ID = 'index-analysis-run';
+
+/**
  * The declared actions `screen`'s banner cases offer (Story 16.11, AD-5), in case order. Each is
  * screen-level: it names no row, so the command bar draws none of them as a row action -- the strip
  * does -- and the command box lists them beside the screen's other screen-level actions.
@@ -126,6 +132,7 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   [JOURNAL_SWITCH_DIRECTORY_ACTION_ID]: STRINGS.journalSwitchDirectoryAction,
   [BACKUP_FREEZE_ACTION_ID]: STRINGS.backupFreezeAction,
   [BACKUP_THAW_ACTION_ID]: STRINGS.backupThawAction,
+  [SQL_INDEX_ANALYSIS_RUN_ACTION_ID]: STRINGS.sqlIndexAnalysisRunAction,
   create: STRINGS.actionCreate,
   enable: STRINGS.agentDefinitionEnable,
   disable: STRINGS.agentDefinitionDisable,

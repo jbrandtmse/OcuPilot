@@ -26,6 +26,7 @@ import {
   JOURNAL_SWITCH_DIRECTORY_ACTION_ID,
   BACKUP_FREEZE_ACTION_ID,
   BACKUP_THAW_ACTION_ID,
+  SQL_INDEX_ANALYSIS_RUN_ACTION_ID,
   actionLabel,
   bannerActionIds,
 } from '../core/screen-actions';
@@ -388,6 +389,11 @@ interface SortOption {
     @if (hasBackupThawAction) {
       <button type="button" class="ocu-button-text ocu-command-bar-action ocu-command-bar-backup-thaw" (click)="onBackupAction(backupThawId)">
         {{ backupThawLabel }}
+      </button>
+    }
+    @if (hasIndexAnalysisRunAction) {
+      <button type="button" class="ocu-button-text ocu-command-bar-action ocu-command-bar-index-analysis-run" (click)="onIndexAnalysisRun()">
+        {{ indexAnalysisRunLabel }}
       </button>
     }
     @if (hasDownloadAction) {
@@ -927,6 +933,25 @@ export class CommandBar {
     const screen = this.screen();
     if (screen === null) return;
     this.actions.run(screen.descriptor, actionId);
+  }
+
+  /**
+   * Run report on SQL index analyzer (Story 21.27), drawn after the backup actions on exactly the screen that registered it. Screen-level: it runs a
+   * report over the namespace's gathered statements, not a row, so it is never `aria-disabled` for want of a selection.
+   */
+  protected get hasIndexAnalysisRunAction(): boolean {
+    this.generation();
+    const screen = this.screen();
+    if (screen === null) return false;
+    return this.actions.has(screen.descriptor, SQL_INDEX_ANALYSIS_RUN_ACTION_ID);
+  }
+
+  protected readonly indexAnalysisRunLabel = actionLabel('', SQL_INDEX_ANALYSIS_RUN_ACTION_ID);
+
+  protected onIndexAnalysisRun(): void {
+    const screen = this.screen();
+    if (screen === null) return;
+    this.actions.run(screen.descriptor, SQL_INDEX_ANALYSIS_RUN_ACTION_ID);
   }
 
   /**
