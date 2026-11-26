@@ -2,7 +2,7 @@
 title: 'Story 21.27: The index analyzer and its advice'
 type: 'feature'
 created: '2026-11-25'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '23762d9606527ff542274e0d939ba0e17b3b0c6e'
 baseline_commit: '23762d9606527ff542274e0d939ba0e17b3b0c6e'
 review_loop_iteration: 0
@@ -216,6 +216,12 @@ deferred:
 - P5. `sql-index-analysis.page.spec.ts` refused-send leg: stub a reason that differs from the client constant and assert the dialog shows the stub.
 - P6. `Test/SqlIndexAnalysisWrite.cls` header: remove the claim no assertion makes.
 
+**Rework 1** (gate red; orchestrator ruling 2026-11-26, veto U-174; DW-2892):
+
+- [ ] [Gate] `SqlPort.TestThePortNamesNoSourceCodeApiClass` red (sweep shard 19, run 903): `UncheckedRow`/`UncheckedRows` prepare with `%Prepare(pText, 0)`. Every `SqlPort` catalog read prepares with privilege checks ON (`%Prepare(text, 1)`), Story 21.26's `StatsCount` included (it has `%Prepare(tText, 0)`). Never turn checks off.
+- [ ] [Gate] Measure on `ocupilot-ci` with the least-privileged principal the gate admits (`%Development:USE` + `AtelierPort.WritePairs(ns)`; 21.26's settings gate where it applies) that each checked read still answers; record the principal and the result per read under Verification. If a checked prepare refuses that principal, HALT `blocked` (intent gap) for that part with options (for example a gate that also requires SELECT on the `%SYS_PTools` views, or a narrower read); the rest of the rework may still land.
+- [ ] [Gate] Strengthen `SqlPort.TestThePortNamesNoSourceCodeApiClass` to refuse any `%Prepare(<expr>, 0)`, `%ExecDirectNoPriv` or similar no-privilege form anywhere in `SqlPort`, whatever the variable's name; `mutation:` reintroduce `StatsCount`'s old `%Prepare(tText, 0)` -> the test red.
+
 **Acceptance Criteria:**
 
 - AC1. Given the probe's gathered statements and a report run on the throwaway, when the person opens SQL index analyzer and the agent calls `explorer.sqlindexanalysis.read`, then both answer the same rows with the matrix's columns.
@@ -262,6 +268,8 @@ Rejected:
   6. **In-stage decisions** (veto U-165): one Purge analysis removes both statements and results, and its consequence says so; no suggested DDL (no AC of this story or its epics.md block requires DDL or CREATE INDEX text, checked 2026-11-25); Advise on SQL query, query-only on both callers.
   7. **Strings** (veto U-165): accepted. The match values, the report-staleness note, the run consequence (fallback as written) and "Gather this namespace's statements before running this report." ship only as measured, otherwise reworded to what was measured; "An index analysis is already running in this namespace." ships only if Task 0 (f) shows concurrent runs collide. In the advice sentences `%1`-style values are filled only with names read from the plan or the dictionary, never with model text.
   8. **Null-device helper:** hoisted from `AdvisorPort.SetFlag` into `Kernel/Utils` as a behavior-keeping refactor, add-only (new helper, call site switched); `AdvisorPort`'s own tests rerun green before the push, in the same code head.
+
+- 2026-11-26, rework 1 opened by the runner on the gate's red (orchestrator ruling, veto U-174): SQL privilege checks on for every `SqlPort` catalog read, measured with the least-privileged principal; the test strengthened; DW-2892.
 
 ## Review Triage Log
 

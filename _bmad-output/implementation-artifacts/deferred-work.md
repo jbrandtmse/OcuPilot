@@ -14595,6 +14595,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 21.31 gate2 sweep (runner) | severity: low | fix-risk: low | footprint: cross-story
 - evidence: Sweep on 79ad64ee2 shard 8/20 (run 371): TestTheStatementAndPurgeReadsAnswerTheirShapes failed '%sqlcq.USER.cls90: the cached queries it holds'; green alone right after (ci-runner, same throwaway); 21.31 touches no statement or purge path; gate1's sweep was green
 - 2026-11-23T22:19:17Z status=routed owner=burndown by=runner note=order-dependent (inference): a class earlier in the shard leaves or shares a cached-query class; measure beside DW-2843
+- 2026-11-26T07:51:10Z status=routed owner=burndown by=runner note=occurrence: 21.27 gate sweep on 041605b60 shard 3/20 (run 172 on ocupilot-ci), TestTheStatementAndPurgeReadsAnswerTheirShapes; green alone right after
 
 ### DW-2859: CI's gates 'client suite' step bound (timeout-minutes 12) is below 1.5x its duration on a slow runner as the component suite grows, so a slower node-22 runner times the step out mid-suite though nothing hangs
 - source: ci run 45197647823 (24.16 Batch 3 code head 92f0235be) | severity: medium | fix-risk: low | footprint: cross-story
@@ -14736,3 +14737,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-27-the-index-analyzer-and-its-advice.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: SqlPort.AnalysisLocked takes only the SQLAnlsys lock; a gathering holds none of it (Task 0 (f)), so OcuPilot's own writes are serialized but a classic-page gathering is not seen (inference)
 - 2026-11-26T04:30:10Z status=wontfix-accepted owner=21-27-the-index-analyzer-and-its-advice by=cr note=reopen_if=a report run in OcuPilot while the classic page gathers the same namespace answers 200 with no rows
+
+### DW-2892: 21.26's SqlPort.StatsCount prepares with privilege checks off, against 19.6's console invariant; the test grepped the literal pText
+- source: spec-21-26-runtime-statistics.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: 21.27 gate sweep shard 19/20 (run 903 on ocupilot-ci, head 041605b60): SqlPort.TestThePortNamesNoSourceCodeApiClass red on 21.27's UncheckedRow/UncheckedRows %Prepare(pText, 0); 21.26's StatsCount %Prepare(tText, 0) on feature evaded the literal check
+- 2026-11-26T07:50:20Z status=open owner=21-27-the-index-analyzer-and-its-advice by=runner note=orchestrator ruling 2026-11-26: rework 1 of 21.27 prepares every SqlPort catalog read with checks on and strengthens the test; veto U-174

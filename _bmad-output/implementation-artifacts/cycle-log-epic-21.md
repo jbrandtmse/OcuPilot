@@ -1179,3 +1179,6 @@
 2026-11-26T04:39:01Z	Story 21.27	ledger_adjudicated	owned=2 resolved=2(DW-2882,DW-2883) reowned=0 terminal=0
 2026-11-26T04:39:01Z	Epic 21	spine_updated	ad=AD-7 reason=cr_measurement(DW-2883;in-place_correction_of_21.27_line) by=runner story=21-27-the-index-analyzer-and-its-advice lint=preexisting_low_placeholder_only inbox=U-171
 2026-11-26T04:41:14Z	Story 21.27	gate_step	step=fresh_check+full_sweep+smoke head=041605b60 started=2026-11-26T04:41:14Z dir=e21-kit/21-27/gate1 classes=47 specs=sql-index-analysis,sql-runtime-stats,sql-statements
+2026-11-26T04:58:05Z	Story 21.27	fresh_check	env=recipe(ci-throwaway_rebuild) tests=47_classes+3_specs result=pass order=forward,reverse head=041605b60
+2026-11-26T07:51:10Z	Story 21.27	gate_step	step=full_sweep+smoke head=041605b60 sweep=18/20(shard3_DW-2862_flake_green_alone;shard19_SqlPort.TestThePortNamesNoSourceCodeApiClass_RED) smoke=50/50 result=fail
+2026-11-26T07:51:11Z	Story 21.27	rework_opened	cycle_iteration=3 iteration=1 trigger=smoke(gate_sweep_red) items=SqlPort_privilege_checks_on(UncheckedRow,UncheckedRows,StatsCount),least-priv_measure,test_strengthen,DW-2892 scope_baseline=4406a7852 ruling=U-174
