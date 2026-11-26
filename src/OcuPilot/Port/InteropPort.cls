@@ -125,7 +125,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules,PurgeSettings,Purge,SuspendedMessages,ArchiveSettings,Archive,ArchiveErrors,ManagedAlerts,ManagedAlertActions,RuleLog,ProcessLog,WorkflowUsers";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules,PurgeSettings,Purge,SuspendedMessages,ArchiveSettings,Archive,ArchiveErrors,ManagedAlerts,ManagedAlertActions,RuleLog,ProcessLog,WorkflowUsers,WorkflowRoles,WorkflowMembers";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -1222,7 +1222,7 @@ ClassMethod IsStartupWrite(pType As %String) As %Boolean
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
 ClassMethod IsAnyWrite(pType As %String) As %Boolean
 {
-    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsPurgeWrite(pType) || ..IsArchiveWrite(pType) || (pType = ..#TYPEARCHIVESETTINGSET) || ..IsSuspendedWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType) || ..IsAlertWrite(pType) || ..IsLogPurgeWrite(pType) || ..IsWorkflowWrite(pType)
+    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsPurgeWrite(pType) || ..IsArchiveWrite(pType) || (pType = ..#TYPEARCHIVESETTINGSET) || ..IsSuspendedWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType) || ..IsAlertWrite(pType) || ..IsLogPurgeWrite(pType) || ..IsWorkflowWrite(pType) || ..IsWorkflowRoleWrite(pType) || ..IsWorkflowMemberWrite(pType)
 }
 
 /// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads, Story 20.30's session trace and Story 24.4's three session reads. Each serves
@@ -1272,7 +1272,7 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
         Set tSpec = ..#ARCHIVEPAIRS
     } ElseIf (pEndpoint = ..#ENDPOINTMANAGEDALERTS) || (pEndpoint = ..#ENDPOINTMANAGEDALERTACTIONS) {
         Set tSpec = ..#ALERTPAIRS
-    } ElseIf pEndpoint = ..#ENDPOINTWORKFLOWUSERS {
+    } ElseIf (pEndpoint = ..#ENDPOINTWORKFLOWUSERS) || (pEndpoint = ..#ENDPOINTWORKFLOWROLES) || (pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS) {
         Set tSpec = ..#WORKFLOWPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTRULELOG {
         Set tSpec = ..#RULELOGPAIRS
@@ -1321,6 +1321,7 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     If ((pEndpoint = ..#ENDPOINTARCHIVESETTINGS) && (pType = ..#TYPEARCHIVESETTINGSET)) || ((pEndpoint = ..#ENDPOINTARCHIVE) && ..IsArchiveWrite(pType)) Set tSpec = tSpec _ "," _ ..#ARCHIVEWRITEPAIR
     If (pEndpoint = ..#ENDPOINTMANAGEDALERTS) && (..IsAlertWrite(pType) || (pType = ..#TYPEALERTOWNERS)) Set tSpec = tSpec _ "," _ ..#ALERTWRITEPAIR
     If (pEndpoint = ..#ENDPOINTWORKFLOWUSERS) && (..IsWorkflowWrite(pType) || (pType = ..#TYPEWORKFLOWUSERCHOICES)) Set tSpec = tSpec _ "," _ ..#WORKFLOWWRITEPAIR
+    If ((pEndpoint = ..#ENDPOINTWORKFLOWROLES) && ..IsWorkflowRoleWrite(pType)) || ((pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS) && ..IsWorkflowMemberWrite(pType)) Set tSpec = tSpec _ "," _ ..#WORKFLOWWRITEPAIR
     If ((pEndpoint = ..#ENDPOINTRULELOG) || (pEndpoint = ..#ENDPOINTPROCESSLOG)) && ..IsLogPurgeWrite(pType) Set tSpec = tSpec _ "," _ ..#LOGPURGEPAIR
     If pType = ..#TYPEAUTOSTART Set tSpec = tSpec _ "," _ ..#AUTOSTARTPAIR
     If pType = ..#TYPESHUTDOWNGROUP Set tSpec = tSpec _ "," _ ..#GROUPPAIR
@@ -1368,6 +1369,8 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTMANAGEDALERTS Quit (pType = ..#TYPEALERT) || (pType = ..#TYPEALERTOWNERS) || (pType = ..#TYPEUPDATEALERT)
     If pEndpoint = ..#ENDPOINTMANAGEDALERTACTIONS Quit 0
     If pEndpoint = ..#ENDPOINTWORKFLOWUSERS Quit (pType = ..#TYPEWORKFLOWUSER) || (pType = ..#TYPEWORKFLOWUSERCHOICES) || ..IsWorkflowWrite(pType)
+    If pEndpoint = ..#ENDPOINTWORKFLOWROLES Quit (pType = ..#TYPEWORKFLOWROLE) || ..IsWorkflowRoleWrite(pType)
+    If pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS Quit (pType = ..#TYPEWORKFLOWMEMBER) || ..IsWorkflowMemberWrite(pType)
     If pEndpoint = ..#ENDPOINTRULELOG Quit (pType = ..#TYPERULELOGSTATE) || (pType = ..#TYPEPURGERULELOG)
     If pEndpoint = ..#ENDPOINTPROCESSLOG Quit (pType = ..#TYPEPROCESSLOGSTATE) || (pType = ..#TYPEPURGEPROCESSLOG)
     If pEndpoint = ..#ENDPOINTITEMTEST Quit (pType = ..#TYPETESTTARGET) || (pType = ..#TYPESENDTEST)
@@ -1560,6 +1563,14 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If pEndpoint = ..#ENDPOINTWORKFLOWUSERS {
             Set tSC = ..InvokeWorkflowUser(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTWORKFLOWROLES {
+            Set tSC = ..InvokeWorkflowRole(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS {
+            Set tSC = ..InvokeWorkflowMember(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         If (pEndpoint = ..#ENDPOINTRULELOG) || (pEndpoint = ..#ENDPOINTPROCESSLOG) {
@@ -7027,6 +7038,8 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTCREDENTIALS) && ..IsCredentialWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTSCHEDULES) && ..IsScheduleWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTWORKFLOWUSERS) && ..IsWorkflowWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTWORKFLOWROLES) && ..IsWorkflowRoleWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS) && ..IsWorkflowMemberWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTPURGESETTINGS) && (pType = ..#TYPEPURGESETTINGSET) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTPURGE) && (pType = ..#TYPEPURGE) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTARCHIVESETTINGS) && (pType = ..#TYPEARCHIVESETTINGSET) Quit "objectscript"
@@ -7097,6 +7110,14 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tText = tText _ ..ScheduleSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf pEndpoint = ..#ENDPOINTWORKFLOWUSERS {
         Set tPart = ..WorkflowSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTWORKFLOWROLES {
+        Set tPart = ..WorkflowRoleSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS {
+        Set tPart = ..WorkflowMemberSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
         If tPart = "" Quit []
         Set tText = tText _ tPart
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
@@ -10593,6 +10614,845 @@ ClassMethod WorkflowSnippet(pType As %String, pName As %String, pBody As %Dynami
     If $IsObject(pBody) && (pBody.%GetTypeOf("FullName") = "string") Set tText = tText _ tNL _ " If tGo Set tUser.FullName = " _ ..Literal(pBody.%Get("FullName"))
     If $IsObject(pBody) && (pBody.%GetTypeOf("IsActive") = "boolean") Set tText = tText _ tNL _ " If tGo Set tUser.IsActive = " _ (''pBody.%Get("IsActive"))
     Quit tText _ tNL _ " If tGo Set tSC = tUser.%Save()" _ tNL _ " Set tUser = """""
+}
+
+/// <p>The Workflow roles endpoint (Story 24.17 Batch 3b): <code>LIST</code> (the namespace's <code>EnsLib.Workflow.RoleDefinition</code> rows by name), <code>WORKFLOWROLE</code> (one role, fresh)
+/// and the writes <code>ADDWORKFLOWROLE</code>, <code>SETWORKFLOWROLE</code> and <code>REMOVEWORKFLOWROLE</code>, each the vendor's own <code>%Save</code> or <code>%DeleteId</code> as the classic
+/// Workflow Roles page performs them.</p>
+Parameter ENDPOINTWORKFLOWROLES = "WorkflowRoles";
+
+/// <p>The Workflow role members endpoint (Story 24.17 Batch 3b): <code>LIST</code> (the <code>EnsLib.Workflow.RoleMembership</code> rows of one role or of one user, by the one criterion
+/// <parameter>WORKFLOWROLECRITERION</parameter> or <parameter>WORKFLOWUSERCRITERION</parameter>), <code>WORKFLOWMEMBER</code> (one membership, fresh, by the composite id <code>[Role, User]</code>)
+/// and the writes <code>ADDWORKFLOWMEMBER</code> and <code>REMOVEWORKFLOWMEMBER</code>, the vendor's own <code>AddUserToRole</code> and <code>RemoveUserFromRole</code> as the classic
+/// dialogs call them.</p>
+Parameter ENDPOINTWORKFLOWMEMBERS = "WorkflowMembers";
+
+Parameter TYPEWORKFLOWROLE = "WORKFLOWROLE";
+
+Parameter TYPEADDWORKFLOWROLE = "ADDWORKFLOWROLE";
+
+Parameter TYPESETWORKFLOWROLE = "SETWORKFLOWROLE";
+
+Parameter TYPEREMOVEWORKFLOWROLE = "REMOVEWORKFLOWROLE";
+
+Parameter TYPEWORKFLOWMEMBER = "WORKFLOWMEMBER";
+
+Parameter TYPEADDWORKFLOWMEMBER = "ADDWORKFLOWMEMBER";
+
+Parameter TYPEREMOVEWORKFLOWMEMBER = "REMOVEWORKFLOWMEMBER";
+
+/// <p>The most workflow roles a list answers, and the most members of one role or roles of one user, to a call that names no cap of its own: 10,000, the classic table's own row limit. The
+/// roles list ended in 0.04 seconds and the members list in 0.04 seconds at 10,000 (measured). A call that names a cap gets that many, so the one row it asks for beyond what it shows reports its
+/// truncation (AD-36).</p>
+Parameter WORKFLOWROLESMAX As INTEGER = 10000;
+
+Parameter WORKFLOWMEMBERSMAX As INTEGER = 10000;
+
+/// <p>The most characters the vendor stores for a role's description, and the whole numbers a role's capacity (1 to <parameter>WORKFLOWCAPACITYMAX</parameter>) and a member's rank (1 to
+/// <parameter>WORKFLOWRANKMAX</parameter>) may take, as the classic page and its dialog offer them.</p>
+Parameter WORKFLOWDESCRIPTIONMAX As INTEGER = 2000;
+
+Parameter WORKFLOWCAPACITYMAX As INTEGER = 100;
+
+Parameter WORKFLOWRANKMAX As INTEGER = 5;
+
+/// <p>The two criteria of the members list, exactly one of which a call names.</p>
+Parameter WORKFLOWROLECRITERION = "role";
+
+Parameter WORKFLOWUSERCRITERION = "user";
+
+/// <p>The entity types the audit rows of a workflow role write and a member write name.</p>
+Parameter ENTITYWORKFLOWROLE = "interop-workflow-role";
+
+Parameter ENTITYWORKFLOWMEMBER = "interop-workflow-member";
+
+/// <p>The statement the workflow role list reads, as the classic table's own query: name, description, capacity and the count of the role's memberships, in name order.</p>
+Parameter WORKFLOWROLESQL = "SELECT TOP ? R.Name, R.Description, R.Capacity, (SELECT COUNT(*) FROM EnsLib_Workflow.RoleMembership WHERE RoleName = R.Name) FROM EnsLib_Workflow.RoleDefinition R ORDER BY R.Name";
+
+/// <p>The columns and join the member statements read: role, user, the user's full name, rank, title and the user's active state. A membership whose user the namespace no longer holds is still read.</p>
+Parameter WORKFLOWMEMBERCOLUMNS = "M.RoleName, M.UserName, U.FullName, M.Ranking, M.Title, U.IsActive FROM EnsLib_Workflow.RoleMembership M LEFT JOIN EnsLib_Workflow.UserDefinition U ON U.Name = M.UserName";
+
+/// <p>Whether <var>pType</var> is one of the workflow role writes this port carries (Story 24.17 Batch 3b).</p>
+ClassMethod IsWorkflowRoleWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADDWORKFLOWROLE) || (pType = ..#TYPESETWORKFLOWROLE) || (pType = ..#TYPEREMOVEWORKFLOWROLE)
+}
+
+/// <p>Whether <var>pType</var> is one of the workflow member writes this port carries (Story 24.17 Batch 3b).</p>
+ClassMethod IsWorkflowMemberWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADDWORKFLOWMEMBER) || (pType = ..#TYPEREMOVEWORKFLOWMEMBER)
+}
+
+/// <p>Whether <var>pText</var> is a description this port writes: at most <parameter>WORKFLOWDESCRIPTIONMAX</parameter> characters; the empty one clears it. Pure.</p>
+ClassMethod WorkflowDescriptionOK(pText As %String) As %Boolean
+{
+    Quit $Length(pText) <= ..#WORKFLOWDESCRIPTIONMAX
+}
+
+/// <p>Whether <var>pValue</var> is a capacity this port writes: a whole number from 1 to <parameter>WORKFLOWCAPACITYMAX</parameter>. Pure.</p>
+ClassMethod WorkflowCapacityOK(pValue As %String) As %Boolean
+{
+    Quit $IsValidNum(pValue) && (pValue = (pValue \ 1)) && (pValue '< 1) && (pValue '> ..#WORKFLOWCAPACITYMAX)
+}
+
+/// <p>Whether <var>pValue</var> is a rank this port writes: a whole number from 1 to <parameter>WORKFLOWRANKMAX</parameter>. Pure.</p>
+ClassMethod WorkflowRankOK(pValue As %String) As %Boolean
+{
+    Quit $IsValidNum(pValue) && (pValue = (pValue \ 1)) && (pValue '< 1) && (pValue '> ..#WORKFLOWRANKMAX)
+}
+
+/// <p>The workflow role as the four values a row carries, in order: name, description, capacity, the member count. Pure.</p>
+ClassMethod WorkflowRoleLine(pName As %String, pDescription As %String, pCapacity As %String, pMembers As %Integer) As %List [ Private ]
+{
+    If pDescription = $Char(0) Set pDescription = ""
+    Quit $ListBuild(pName, pDescription, +pCapacity, +pMembers)
+}
+
+/// <p>The row a workflow role list and read answer, from the four values <var>pLine</var> (<method>WorkflowRoleLine</method>): <code>{Name, Description, Capacity, Members, Namespace}</code>.</p>
+ClassMethod WorkflowRoleRow(pLine As %List, pNamespace As %String) As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("Name", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("Description", $List(pLine, 2) _ "", "string")
+    Do tRow.%Set("Capacity", +$List(pLine, 3), "number")
+    Do tRow.%Set("Members", +$List(pLine, 4), "number")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The member as the six values a row carries, in order: role, user, the user's full name, rank, title and 1 or 0 for the user's active state. Pure.</p>
+ClassMethod WorkflowMemberLine(pRole As %String, pUser As %String, pFullName As %String, pRank As %String, pTitle As %String, pActive As %Boolean) As %List [ Private ]
+{
+    If pFullName = $Char(0) Set pFullName = ""
+    If pTitle = $Char(0) Set pTitle = ""
+    Quit $ListBuild(pRole, pUser, pFullName, +pRank, pTitle, ''pActive)
+}
+
+/// <p>The row a members list and read answer, from the six values <var>pLine</var> (<method>WorkflowMemberLine</method>): <code>{Role, User, FullName, Ranking, Title, IsActive, Namespace}</code>.</p>
+ClassMethod WorkflowMemberRow(pLine As %List, pNamespace As %String) As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("Role", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("User", $List(pLine, 2) _ "", "string")
+    Do tRow.%Set("FullName", $List(pLine, 3) _ "", "string")
+    Do tRow.%Set("Ranking", +$List(pLine, 4), "number")
+    Do tRow.%Set("Title", $List(pLine, 5) _ "", "string")
+    Do tRow.%Set("IsActive", ''$List(pLine, 6), "boolean")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The vendor's write of the workflow role write <var>pType</var> in the current namespace, which the caller has already switched: <code>%Save</code> of <var>pObject</var>, an add's new
+/// role or an edit's opened one, or <code>%DeleteId</code> of <var>pName</var>. Overridable so a fixture can answer a status or a fault; production never overrides it.</p>
+ClassMethod WorkflowRoleVendor(pType As %String, pObject As %RegisteredObject, pName As %String) As %Status
+{
+    If pType = ..#TYPEREMOVEWORKFLOWROLE Quit ##class(EnsLib.Workflow.RoleDefinition).%DeleteId(pName)
+    Quit pObject.%Save()
+}
+
+/// <p>The vendor's write of the member write <var>pType</var> in the current namespace, which the caller has already switched: <code>AddUserToRole</code> of <var>pUser</var> to <var>pRole</var>
+/// with <var>pRank</var> (<code>""</code> leaves the vendor's own, 3) and <var>pTitle</var>, or <code>RemoveUserFromRole</code>. Overridable so a fixture can answer a status or a fault;
+/// production never overrides it.</p>
+ClassMethod WorkflowMemberVendor(pType As %String, pRole As %String, pUser As %String, pRank As %String, pTitle As %String) As %Status
+{
+    If pType = ..#TYPEREMOVEWORKFLOWMEMBER Quit ##class(EnsLib.Workflow.RoleDefinition).RemoveUserFromRole(pRole, pUser)
+    If pRank = "" Quit ##class(EnsLib.Workflow.RoleDefinition).AddUserToRole(pRole, pUser, , pTitle)
+    Quit ##class(EnsLib.Workflow.RoleDefinition).AddUserToRole(pRole, pUser, pRank, pTitle)
+}
+
+/// <p>Take the memberships the vendor's delete of the role <var>pRole</var> left behind in the current namespace, which the caller has already switched. The vendor's <code>%DeleteId</code> of a
+/// role takes its memberships through a foreign key only where the namespace's own database holds the registry a compile of <code>EnsLib.Workflow.RoleMembership</code> writes; elsewhere they stay
+/// behind. Each is taken with the vendor's own <code>RoleMembership.IDDelete</code>, which has the effect the cascade has (a task sent through the role and its worklist items are left as they were), and
+/// read again. It names no other OcuPilot class.</p>
+ClassMethod WorkflowMembersGone(pRole As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tUsers = ""
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(, "SELECT UserName FROM EnsLib_Workflow.RoleMembership WHERE %EXACT(RoleName) = ?", pRole)
+    If '$IsObject(tResult) Quit $$$ERROR($$$GeneralError, "the statement answered no result")
+    If tResult.%SQLCODE < 0 Quit $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
+    While tResult.%Next() {
+        Set tUsers = tUsers _ $ListBuild(tResult.%GetData(1))
+    }
+    Set tResult = ""
+    For tI = 1:1:$ListLength(tUsers) {
+        Set tUser = $List(tUsers, tI)
+        Set tSC = ##class(EnsLib.Workflow.RoleMembership).IDDelete(pRole, tUser)
+        If $$$ISERR(tSC) Quit
+        If ##class(EnsLib.Workflow.RoleMembership).IDExists(pRole, tUser) {
+            Set tSC = $$$ERROR($$$GeneralError, "a workflow role membership was not removed")
+            Quit
+        }
+    }
+    Quit tSC
+}
+
+/// <p>The facts about the workflow role <var>pName</var>, read in the current namespace, which the caller has already switched, and kept in <var>pFacts</var>: <code>exists</code> (held under
+/// exactly that name), <code>folded</code> (how many roles hold that name in any letter case) and, when it exists, <code>line</code> (<method>WorkflowRoleLine</method>). A name this port does not
+/// read is not held. Nothing is written.</p>
+ClassMethod WorkflowRoleFactsHere(pName As %String, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("exists") = 0
+    Set pFacts("folded") = 0
+    Set pFacts("line") = ""
+    If '..WorkflowNameOK(pName) Quit
+    Set pFacts("folded") = ..WorkflowCount("SELECT COUNT(*) FROM EnsLib_Workflow.RoleDefinition WHERE LOWER(Name) = ?", $ZConvert(pName, "L"))
+    ; Concurrency 0 reads the row without a lock, so a role another process holds locked is still read; the edit's own open at concurrency 4 is what meets the lock.
+    Set tObject = ##class(EnsLib.Workflow.RoleDefinition).%OpenId(pName, 0)
+    If $IsObject(tObject) && ..WorkflowSame(tObject.Name, pName) {
+        Set pFacts("exists") = 1
+        Set pFacts("line") = ..WorkflowRoleLine(pName, tObject.Description, tObject.Capacity, ..WorkflowCount("SELECT COUNT(*) FROM EnsLib_Workflow.RoleMembership WHERE %EXACT(RoleName) = ?", pName))
+    }
+    Set tObject = ""
+}
+
+/// <p>The first row the statement <var>pSql</var> answers for the values <var>pArgs</var> in the current namespace, as the <class>%List</class> <var>pLine</var> of its columns, read with
+/// <code>%ExecDirectNoPriv</code> after the gate; answers whether there was one. A fault is raised.</p>
+ClassMethod WorkflowRowHere(pSql As %String, Output pLine As %List, pArgs...) As %Boolean [ Private ]
+{
+    Set pLine = ""
+    Set tStatement = ##class(%SQL.Statement).%New()
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, pSql, pArgs...)
+    If '$IsObject(tResult) Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "the statement answered no result"))
+    If tResult.%SQLCODE < 0 Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message))
+    Set tFound = tResult.%Next()
+    If tFound {
+        For tC = 1:1:tResult.%ResultColumnCount {
+            Set pLine = pLine _ $ListBuild(tResult.%GetData(tC))
+        }
+    }
+    Set tResult = ""
+    Quit tFound
+}
+
+/// <p>The facts about the membership of <var>pUser</var> in <var>pRole</var>, read in the current namespace, which the caller has already switched, and kept in <var>pFacts</var>:
+/// <code>roleExists</code> and <code>userExists</code> (the role and the workflow user held under exactly that name), <code>member</code> (the membership held) and, when it is,
+/// <code>line</code> (<method>WorkflowMemberLine</method>). A name this port does not read is not held. Nothing is written.</p>
+ClassMethod WorkflowMemberFactsHere(pRole As %String, pUser As %String, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("roleExists") = 0
+    Set pFacts("userExists") = 0
+    Set pFacts("member") = 0
+    Set pFacts("line") = ""
+    If ..WorkflowNameOK(pRole) {
+        Set tRole = ##class(EnsLib.Workflow.RoleDefinition).%OpenId(pRole, 0)
+        If $IsObject(tRole) && ..WorkflowSame(tRole.Name, pRole) Set pFacts("roleExists") = 1
+        Set tRole = ""
+    }
+    If ..WorkflowNameOK(pUser) {
+        Set tUser = ##class(EnsLib.Workflow.UserDefinition).%OpenId(pUser, 0)
+        If $IsObject(tUser) && ..WorkflowSame(tUser.Name, pUser) Set pFacts("userExists") = 1
+        Set tUser = ""
+    }
+    If pFacts("roleExists") && ..WorkflowNameOK(pUser) {
+        If ..WorkflowRowHere("SELECT " _ ..#WORKFLOWMEMBERCOLUMNS _ " WHERE %EXACT(M.RoleName) = ? AND %EXACT(M.UserName) = ?", .tLine, pRole, pUser) {
+            Set pFacts("member") = 1
+            Set pFacts("line") = ..WorkflowMemberLine($List(tLine, 1), $List(tLine, 2), $List(tLine, 3), $List(tLine, 4), $List(tLine, 5), $List(tLine, 6))
+        }
+    }
+}
+
+/// <p>The facts of <var>pKind</var> (<code>role</code> or <code>member</code>) about <var>pFirst</var> (and <var>pSecond</var>, the member's user), read in <var>pNamespace</var> into
+/// <var>pFacts</var>; a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod WorkflowFactsOf(pNamespace As %String, pKind As %String, pFirst As %String, pSecond As %String, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..WorkflowHere()
+        If pKind = "role" {
+            Do ..WorkflowRoleFactsHere(pFirst, .pFacts)
+        } Else {
+            Do ..WorkflowMemberFactsHere(pFirst, pSecond, .pFacts)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The violations of a workflow role's name and fields, as a <class>%List</class> of <code>$ListBuild(field, token)</code> where the token is <code>ROLENAME</code>,
+/// <code>DESCRIPTION</code>, <code>CAPACITY</code> or <code>SHAPE</code>, and <code>""</code> for none: a name <method>WorkflowNameOK</method> refuses is <code>ROLENAME</code> (judged only
+/// when <var>pJudgeName</var>, which an add passes); a description over <parameter>WORKFLOWDESCRIPTIONMAX</parameter> characters is <code>DESCRIPTION</code>; a capacity that is not a whole number
+/// from 1 to <parameter>WORKFLOWCAPACITYMAX</parameter> is <code>CAPACITY</code>; a field of the wrong type is <code>SHAPE</code>. It names no other class, so it is safe inside a block that has
+/// switched the namespace. Pure.</p>
+ClassMethod WorkflowRoleBad(pName As %String, pFields As %DynamicObject, pJudgeName As %Boolean = 1) As %List
+{
+    Set tBad = ""
+    If pJudgeName && '..WorkflowNameOK(pName) Set tBad = tBad _ $ListBuild($ListBuild("Name", "ROLENAME"))
+    If '$IsObject(pFields) || 'pFields.%IsA("%Library.DynamicObject") Set pFields = {}
+    Set tType = pFields.%GetTypeOf("Description")
+    If tType = "string" {
+        If '..WorkflowDescriptionOK(pFields.%Get("Description")) Set tBad = tBad _ $ListBuild($ListBuild("Description", "DESCRIPTION"))
+    } ElseIf tType '= "unassigned" {
+        Set tBad = tBad _ $ListBuild($ListBuild("Description", "SHAPE"))
+    }
+    Set tType = pFields.%GetTypeOf("Capacity")
+    If tType = "number" {
+        If '..WorkflowCapacityOK(pFields.%Get("Capacity")) Set tBad = tBad _ $ListBuild($ListBuild("Capacity", "CAPACITY"))
+    } ElseIf tType '= "unassigned" {
+        Set tBad = tBad _ $ListBuild($ListBuild("Capacity", "SHAPE"))
+    }
+    Quit tBad
+}
+
+/// <p>The 422 violations of a workflow role's name and fields, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field, code)</code> with the count in
+/// <code>pViolations</code>, from <method>WorkflowRoleBad</method>. It reads no vendor class.</p>
+ClassMethod WorkflowRoleViolations(pName As %String, pFields As %DynamicObject, Output pViolations, pJudgeName As %Boolean = 1) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tBad = ..WorkflowRoleBad(pName, pFields, pJudgeName)
+    For tI = 1:1:$ListLength(tBad) {
+        Set tEntry = $List(tBad, tI)
+        Set tCode = $Case($List(tEntry, 2), "ROLENAME": ##class(OcuPilot.Api.InteropError).#WORKFLOWROLENAME, "DESCRIPTION": ##class(OcuPilot.Api.InteropError).#WORKFLOWROLEDESCRIPTION, "CAPACITY": ##class(OcuPilot.Api.InteropError).#WORKFLOWROLECAPACITY, : ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        Set pViolations($Increment(pViolations)) = $ListBuild($List(tEntry, 1), tCode)
+    }
+    Quit $$$OK
+}
+
+/// <p>The violations of a membership's names and fields, as a <class>%List</class> of <code>$ListBuild(field, token)</code> where the token is <code>ROLENAME</code>,
+/// <code>MEMBERUSER</code>, <code>RANK</code>, <code>TITLE</code> or <code>SHAPE</code>, and <code>""</code> for none: a role name or a user name <method>WorkflowNameOK</method> refuses (judged only
+/// when <var>pJudgeNames</var>, which an add passes); a rank that is not a whole number from 1 to <parameter>WORKFLOWRANKMAX</parameter>, whatever its type, is <code>RANK</code>; a title over 128
+/// characters or holding a control character is <code>TITLE</code>; a title of the wrong type is <code>SHAPE</code>. It names no other class. Pure.</p>
+ClassMethod WorkflowMemberBad(pRole As %String, pUser As %String, pFields As %DynamicObject, pJudgeNames As %Boolean = 1) As %List
+{
+    Set tBad = ""
+    If pJudgeNames && '..WorkflowNameOK(pRole) Set tBad = tBad _ $ListBuild($ListBuild("Role", "ROLENAME"))
+    If pJudgeNames && '..WorkflowNameOK(pUser) Set tBad = tBad _ $ListBuild($ListBuild("User", "MEMBERUSER"))
+    If '$IsObject(pFields) || 'pFields.%IsA("%Library.DynamicObject") Set pFields = {}
+    Set tType = pFields.%GetTypeOf("Ranking")
+    If tType '= "unassigned" {
+        If (tType '= "number") || '..WorkflowRankOK(pFields.%Get("Ranking")) Set tBad = tBad _ $ListBuild($ListBuild("Ranking", "RANK"))
+    }
+    Set tType = pFields.%GetTypeOf("Title")
+    If tType = "string" {
+        If '..WorkflowFullNameOK(pFields.%Get("Title")) Set tBad = tBad _ $ListBuild($ListBuild("Title", "TITLE"))
+    } ElseIf tType '= "unassigned" {
+        Set tBad = tBad _ $ListBuild($ListBuild("Title", "SHAPE"))
+    }
+    Quit tBad
+}
+
+/// <p>The 422 violations of a membership's names and fields, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field, code)</code> with the count in
+/// <code>pViolations</code>, from <method>WorkflowMemberBad</method>. It reads no vendor class.</p>
+ClassMethod WorkflowMemberViolations(pRole As %String, pUser As %String, pFields As %DynamicObject, Output pViolations, pJudgeNames As %Boolean = 1) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tBad = ..WorkflowMemberBad(pRole, pUser, pFields, pJudgeNames)
+    For tI = 1:1:$ListLength(tBad) {
+        Set tEntry = $List(tBad, tI)
+        Set tCode = $Case($List(tEntry, 2), "ROLENAME": ##class(OcuPilot.Api.InteropError).#WORKFLOWROLENAME, "MEMBERUSER": ##class(OcuPilot.Api.InteropError).#WORKFLOWMEMBERUSER, "RANK": ##class(OcuPilot.Api.InteropError).#WORKFLOWMEMBERRANK, "TITLE": ##class(OcuPilot.Api.InteropError).#WORKFLOWMEMBERTITLE, : ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        Set pViolations($Increment(pViolations)) = $ListBuild($List(tEntry, 1), tCode)
+    }
+    Quit $$$OK
+}
+
+/// <p>The decision a workflow role write <var>pType</var> is refused with, as a token, else <code>""</code>: an add of a name the namespace holds in any letter case is <code>TAKEN</code> (the
+/// vendor keys the name exactly, and two roles of one spelling in another case would read as one); any other write of a name it does not hold exactly is <code>ABSENT</code>.
+/// <var>pExists</var> is whether the role is held under exactly that name and <var>pFolded</var> how many hold it in any letter case. Pure.</p>
+ClassMethod WorkflowRoleWriteToken(pType As %String, pExists As %Boolean, pFolded As %Integer) As %String
+{
+    If pType = ..#TYPEADDWORKFLOWROLE Quit $Select(pExists || (pFolded > 0): "TAKEN", 1: "")
+    Quit $Select(pExists: "", 1: "ABSENT")
+}
+
+/// <p>The decision a member write <var>pType</var> is refused with, as a token, else <code>""</code>: an add to a role not held exactly is <code>ABSENT</code>, of a user who is not a workflow user of
+/// the namespace, held exactly, <code>MEMBERUSER</code>, and of a user already a member <code>TAKEN</code>; a remove of a user who is not a member is <code>ABSENT</code>. Pure.</p>
+ClassMethod WorkflowMemberWriteToken(pType As %String, pRoleExists As %Boolean, pUserExists As %Boolean, pMember As %Boolean) As %String
+{
+    If pType = ..#TYPEADDWORKFLOWMEMBER {
+        If 'pRoleExists Quit "ABSENT"
+        If 'pUserExists Quit "MEMBERUSER"
+        Quit $Select(pMember: "TAKEN", 1: "")
+    }
+    Quit $Select(pMember: "", 1: "ABSENT")
+}
+
+/// <p>422 <code>INTEROP.WORKFLOW.ROLENAME</code>: the name is not one a workflow role takes.</p>
+ClassMethod WorkflowRoleNameRefusal(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tViolations = 1
+    Set tViolations(1) = $ListBuild("Name", ##class(OcuPilot.Api.InteropError).#WORKFLOWROLENAME)
+    Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+}
+
+/// <p>422 <code>INTEROP.WORKFLOW.MEMBERUSER</code>: the user is not a workflow user of the namespace.</p>
+ClassMethod WorkflowMemberUserRefusal(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tViolations = 1
+    Set tViolations(1) = $ListBuild("User", ##class(OcuPilot.Api.InteropError).#WORKFLOWMEMBERUSER)
+    Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+}
+
+/// <p>The workflow roles of <var>pNamespace</var> by name, at most <var>pMax</var> (<parameter>WORKFLOWROLESMAX</parameter> when that is not above zero): <code>{Name, Description, Capacity,
+/// Members, Namespace}</code>. Read with <code>%ExecDirectNoPriv</code> after the gate (<method>SqlRows</method>); nothing is written. A longer list than the cap is the caller's truncation, which it
+/// reads from the one row it asked for beyond its own cap.</p>
+ClassMethod ListWorkflowRoles(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..SqlRows(pNamespace, ..#WORKFLOWROLESQL, .tFound, .tCaught, ..WorkflowCap(pMax, ..#WORKFLOWROLESMAX))
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow role list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tLine = tFound(tI)
+        Do pRows.%Push(..WorkflowRoleRow(..WorkflowRoleLine($List(tLine, 1), $List(tLine, 2), $List(tLine, 3), $List(tLine, 4)), pNamespace))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The memberships of one role or of one user in <var>pNamespace</var>, at most <var>pMax</var> (<parameter>WORKFLOWMEMBERSMAX</parameter> when that is not above zero): <code>{Role, User,
+/// FullName, Ranking, Title, IsActive, Namespace}</code>, by user name for a role and by role name for a user. The call names exactly one of <parameter>WORKFLOWROLECRITERION</parameter> and
+/// <parameter>WORKFLOWUSERCRITERION</parameter>, a name this port reads; any other is 400 <code>PORT.VALIDATION</code>. Nothing is written.</p>
+ClassMethod ListWorkflowMembers(pNamespace As %String, ByRef pQuery, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tRole = $Get(pQuery(..#WORKFLOWROLECRITERION))
+    Set tUser = $Get(pQuery(..#WORKFLOWUSERCRITERION))
+    If (tRole = "") = (tUser = "") Quit ..RefuseCriterion(..#WORKFLOWROLECRITERION, .pHttpStatus, .pFault)
+    If (tRole '= "") && '..WorkflowNameOK(tRole) Quit ..RefuseCriterion(..#WORKFLOWROLECRITERION, .pHttpStatus, .pFault)
+    If (tUser '= "") && '..WorkflowNameOK(tUser) Quit ..RefuseCriterion(..#WORKFLOWUSERCRITERION, .pHttpStatus, .pFault)
+    If tRole '= "" {
+        Set tSC = ..SqlRows(pNamespace, "SELECT TOP ? " _ ..#WORKFLOWMEMBERCOLUMNS _ " WHERE %EXACT(M.RoleName) = ? ORDER BY M.UserName", .tFound, .tCaught, ..WorkflowCap(pMax, ..#WORKFLOWMEMBERSMAX), tRole)
+    } Else {
+        Set tSC = ..SqlRows(pNamespace, "SELECT TOP ? " _ ..#WORKFLOWMEMBERCOLUMNS _ " WHERE %EXACT(M.UserName) = ? ORDER BY M.RoleName", .tFound, .tCaught, ..WorkflowCap(pMax, ..#WORKFLOWMEMBERSMAX), tUser)
+    }
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow members list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tLine = tFound(tI)
+        Do pRows.%Push(..WorkflowMemberRow(..WorkflowMemberLine($List(tLine, 1), $List(tLine, 2), $List(tLine, 3), $List(tLine, 4), $List(tLine, 5), $List(tLine, 6)), pNamespace))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One workflow role, fresh (Story 24.17 Batch 3b): <method>WorkflowRoleRow</method>'s fields. A role not held under exactly that name, or a name this port does not read, is 404
+/// <code>PORT.NOTFOUND</code>, unlogged. With <var>pAction</var> it refuses what that write would be refused (<method>WorkflowWriteRefusal</method>); an add (AD-54, which inverts the read) is then
+/// refused <code>ROLETAKEN</code> when the name is held in any letter case, and otherwise the 404 a create expects.</p>
+ClassMethod ReadWorkflowRole(pNamespace As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If '..WorkflowNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+    If pAction '= "" {
+        Set tSC = ..WorkflowWriteRefusal(pNamespace, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Do ..WorkflowFactsOf(pNamespace, "role", pName, "", .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow role read failed", .pHttpStatus, .pFault)
+    If pAction = ..#TYPEADDWORKFLOWROLE {
+        If ..WorkflowRoleWriteToken(pAction, tFacts("exists"), tFacts("folded")) = "TAKEN" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#WORKFLOWROLETAKEN, .pHttpStatus, .pFault)
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    Set pRow = ..WorkflowRoleRow(tFacts("line"), pNamespace)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One membership, fresh (Story 24.17 Batch 3b): <method>WorkflowMemberRow</method>'s fields, named by <var>pRole</var> and <var>pUser</var>. A membership not held under exactly those names is 404
+/// <code>PORT.NOTFOUND</code>, unlogged. With <var>pAction</var> it refuses what that write would be refused (<method>WorkflowWriteRefusal</method>); an add (AD-54, which inverts the read) is then
+/// refused <code>MEMBERUSER</code> for a user who is not a workflow user of the namespace, <code>MEMBERTAKEN</code> when the membership is held, and otherwise the 404 a create expects.</p>
+ClassMethod ReadWorkflowMember(pNamespace As %String, pRole As %String, pUser As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If '..WorkflowNameOK(pRole) || '..WorkflowNameOK(pUser) Quit ..Absent(.pHttpStatus, .pFault)
+    If pAction '= "" {
+        Set tSC = ..WorkflowWriteRefusal(pNamespace, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Do ..WorkflowFactsOf(pNamespace, "member", pRole, pUser, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow member read failed", .pHttpStatus, .pFault)
+    If pAction = ..#TYPEADDWORKFLOWMEMBER {
+        Set tToken = ..WorkflowMemberWriteToken(pAction, tFacts("roleExists"), tFacts("userExists"), tFacts("member"))
+        If tToken = "MEMBERUSER" Quit ..WorkflowMemberUserRefusal(.pHttpStatus, .pFault)
+        If tToken = "TAKEN" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#WORKFLOWMEMBERTAKEN, .pHttpStatus, .pFault)
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    If 'tFacts("member") Quit ..Absent(.pHttpStatus, .pFault)
+    Set pRow = ..WorkflowMemberRow(tFacts("line"), pNamespace)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the WorkflowRoles endpoint's <code>LIST</code> and typed types after <method>Invoke</method>'s gate (Story 24.17 Batch 3b): the <code>WORKFLOWROLE</code> read and the three writes, the
+/// role named under <parameter>IDKEY</parameter> by its name, kept exactly (AD-13). An <parameter>ACTIONKEY</parameter> names the write the read is composed for.</p>
+ClassMethod InvokeWorkflowRole(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListWorkflowRoles(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tName = $Get(pQuery(..#IDKEY))
+        If tName = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsWorkflowRoleWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsWorkflowRoleWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsWorkflowRoleWrite(pType) {
+            Set tSC = ..PerformWorkflowRole(pNamespace, pType, tName, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadWorkflowRole(pNamespace, tName, tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the workflow role call failed inside the port", ..VendorCodesStatus(ex.AsStatus(), "the workflow role call"), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Serve the WorkflowMembers endpoint's <code>LIST</code> and typed types after <method>Invoke</method>'s gate (Story 24.17 Batch 3b): the <code>WORKFLOWMEMBER</code> read and the two
+/// writes, the membership named under <parameter>IDKEY</parameter> by the composite id <code>[Role, User]</code>, each part kept exactly (AD-13). An <parameter>ACTIONKEY</parameter> names the
+/// write the read is composed for.</p>
+ClassMethod InvokeWorkflowMember(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListWorkflowMembers(pNamespace, .pQuery, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite($Get(pQuery(..#IDKEY)))
+        If ($ListLength(tParts) '= 2) || ($List(tParts, 1) = "") || ($List(tParts, 2) = "") {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsWorkflowMemberWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsWorkflowMemberWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsWorkflowMemberWrite(pType) {
+            Set tSC = ..PerformWorkflowMember(pNamespace, pType, $List(tParts, 1), $List(tParts, 2), pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadWorkflowMember(pNamespace, $List(tParts, 1), $List(tParts, 2), tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the workflow member call failed inside the port", ..VendorCodesStatus(ex.AsStatus(), "the workflow member call"), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Run workflow role write <var>pType</var> on the role <var>pName</var> in <var>pNamespace</var> and answer what it leaves (Story 24.17 Batch 3b), as the classic page's <code>SaveItem</code> and
+/// <code>DeleteID</code> perform it. The sequence:</p>
+/// <ol>
+/// <li>A namespace under source control refuses every write (<method>WorkflowWriteRefusal</method>), before anything is read.</li>
+/// <li>In the namespace the role is read again and judged by <method>WorkflowRoleWriteToken</method>, so a state that moved since the review is refused by its own code with no vendor call:
+/// <code>TAKEN</code> or a 404; then the fields are judged (<method>WorkflowRoleViolations</method>, 422).</li>
+/// <li>The vendor's <code>%Save</code> of a new role (an absent capacity is the vendor's 100), <code>%Save</code> of the opened role (concurrency 4, the reference dropped right after) with each field
+/// that differs, or <code>%DeleteId</code> (<method>WorkflowRoleVendor</method>), a remove then taking the memberships the vendor's delete leaves (<method>WorkflowMembersGone</method>). An edit that
+/// moves no field calls nothing. A role another process holds locked is 503.</li>
+/// <li>The namespace is restored, then OcuPilot's own audit row is recorded (<method>AuditRuntime</method>) whatever the vendor answered, because the vendor records none: the namespace, the names of
+/// the fields written (a remove: how many members the role held) and whether it completed, never a description.</li>
+/// </ol>
+/// <p>A vendor error status or a fault is 500 <code>INTERNAL</code>, never 200. A vendor refusal reaches the log as its error codes alone. The answer is the role's row read again
+/// (<method>ReadWorkflowRole</method>); after a remove <code>{Name, Namespace}</code>.</p>
+ClassMethod PerformWorkflowRole(pNamespace As %String, pType As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..WorkflowWriteRefusal(pNamespace, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tAdd = (pType = ..#TYPEADDWORKFLOWROLE)
+    If '..WorkflowNameOK(pName) Quit $Select(tAdd: ..WorkflowRoleNameRefusal(.pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tBusy = 0
+    Set tAttempted = 0
+    Set tChanged = ""
+    Set tBad = ""
+    Set tMembers = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..WorkflowHere()
+        Do ..WorkflowRoleFactsHere(pName, .tFacts)
+        Set tToken = ..WorkflowRoleWriteToken(pType, tFacts("exists"), tFacts("folded"))
+        If tToken = "" Set tBad = ..WorkflowRoleBad(pName, pBody, 0)
+        If (tToken = "") && (tBad = "") {
+            If tAdd {
+                Set tObject = ##class(EnsLib.Workflow.RoleDefinition).%New()
+                Set tObject.Name = pName
+                If pBody.%GetTypeOf("Description") = "string" Set tObject.Description = pBody.%Get("Description")
+                If pBody.%GetTypeOf("Capacity") = "number" Set tObject.Capacity = pBody.%Get("Capacity")
+                Set tAttempted = 1
+                Set tVendorSC = ..WorkflowRoleVendor(pType, tObject, pName)
+            } ElseIf pType = ..#TYPEREMOVEWORKFLOWROLE {
+                Set tMembers = $List(tFacts("line"), 4)
+                Set tAttempted = 1
+                Set tVendorSC = ..WorkflowRoleVendor(pType, "", pName)
+                If $$$ISOK(tVendorSC) Set tVendorSC = ..WorkflowMembersGone(pName)
+            } Else {
+                Set tObject = ##class(EnsLib.Workflow.RoleDefinition).%OpenId(pName, 4)
+                If '$IsObject(tObject) {
+                    Set tBusy = 1
+                } Else {
+                    Set tHeld = ..WorkflowRoleLine(pName, tObject.Description, tObject.Capacity, 0)
+                    If (pBody.%GetTypeOf("Description") = "string") && '..WorkflowSame(pBody.%Get("Description"), $List(tHeld, 2)) {
+                        Set tObject.Description = pBody.%Get("Description")
+                        Set tChanged = tChanged _ $ListBuild("Description")
+                    }
+                    If (pBody.%GetTypeOf("Capacity") = "number") && (+pBody.%Get("Capacity") '= $List(tHeld, 3)) {
+                        Set tObject.Capacity = pBody.%Get("Capacity")
+                        Set tChanged = tChanged _ $ListBuild("Capacity")
+                    }
+                    If tChanged '= "" {
+                        Set tAttempted = 1
+                        Set tVendorSC = ..WorkflowRoleVendor(pType, tObject, pName)
+                    }
+                }
+            }
+        }
+        ; The role's lock is released in the namespace it was taken in.
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Try {
+            Set $NAMESPACE = pNamespace
+        } Catch {
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If tAttempted {
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        If tAdd {
+            Set tChanged = ""
+            If (pBody.%GetTypeOf("Description") = "string") && (pBody.%Get("Description") '= "") Set tChanged = tChanged _ $ListBuild("Description")
+            If pBody.%GetTypeOf("Capacity") = "number" Set tChanged = tChanged _ $ListBuild("Capacity")
+        }
+        If pType '= ..#TYPEREMOVEWORKFLOWROLE Do tEffects.%Set("fields", $ListToString(tChanged, ","), "string")
+        If pType = ..#TYPEREMOVEWORKFLOWROLE Do tEffects.%Set("members", +tMembers, "number")
+        Do tEffects.%Set("completed", ($$$ISOK(tVendorSC) && '$IsObject(tCaught)), "boolean")
+        Do ..AuditRuntime($Case(pType, ..#TYPEADDWORKFLOWROLE: ..#VERBADD, ..#TYPEREMOVEWORKFLOWROLE: ..#VERBREMOVE, : ..#VERBSET), ..#ENTITYWORKFLOWROLE, pName, tEffects)
+    }
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow role write failed", .pHttpStatus, .pFault)
+    If tBusy Quit ..Unavailable(.pHttpStatus, .pFault)
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken = "TAKEN" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#WORKFLOWROLETAKEN, .pHttpStatus, .pFault)
+    If tBad '= "" {
+        Set tSC = ..WorkflowRoleViolations(pName, pBody, .tViolations, 0)
+        Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the workflow role write"), "the workflow role write failed", .pHttpStatus, .pFault)
+    If pType = ..#TYPEREMOVEWORKFLOWROLE {
+        Set pResult = {}
+        Do pResult.%Set("Name", pName, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tReadSC = ..ReadWorkflowRole(pNamespace, pName, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Name", pName, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>Run member write <var>pType</var> on the membership of <var>pUser</var> in <var>pRole</var> in <var>pNamespace</var> and answer what it leaves (Story 24.17 Batch 3b), as the classic Add User
+/// To This Role and Remove User From This Role dialogs perform it. The sequence:</p>
+/// <ol>
+/// <li>A namespace under source control refuses every write (<method>WorkflowWriteRefusal</method>), before anything is read.</li>
+/// <li>In the namespace the role, the workflow user and the membership are read again and judged by <method>WorkflowMemberWriteToken</method>, so a state that moved since the review is refused by its
+/// own code with no vendor call: a 404, <code>MEMBERUSER</code> or <code>TAKEN</code>; then the rank and the title are judged (<method>WorkflowMemberViolations</method>, 422).</li>
+/// <li>The vendor's <code>AddUserToRole</code> (an absent rank is the vendor's 3) or <code>RemoveUserFromRole</code> (<method>WorkflowMemberVendor</method>), which answers the engine's status and drops
+/// the delete's: a remove therefore reads the membership again and answers an error status when it is still held. The vendor's own engine sends an active member the role's unassigned tasks and
+/// deletes a removed member's worklist for the role, leaving the tasks they held through it unassigned.</li>
+/// <li>The namespace is restored, then OcuPilot's own audit row is recorded (<method>AuditRuntime</method>) whatever the vendor answered, because the vendor records none: the namespace, the names of the
+/// fields written and whether it completed, never a title.</li>
+/// </ol>
+/// <p>A vendor error status or a fault is 500 <code>INTERNAL</code>, never 200, even after the membership was saved. The answer is the membership read again (<method>ReadWorkflowMember</method>);
+/// after a remove <code>{Role, User, Namespace}</code>.</p>
+ClassMethod PerformWorkflowMember(pNamespace As %String, pType As %String, pRole As %String, pUser As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..WorkflowWriteRefusal(pNamespace, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tAdd = (pType = ..#TYPEADDWORKFLOWMEMBER)
+    If '..WorkflowNameOK(pRole) Quit ..Absent(.pHttpStatus, .pFault)
+    If '..WorkflowNameOK(pUser) Quit $Select(tAdd: ..WorkflowMemberUserRefusal(.pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tAttempted = 0
+    Set tBad = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..WorkflowHere()
+        Do ..WorkflowMemberFactsHere(pRole, pUser, .tFacts)
+        Set tToken = ..WorkflowMemberWriteToken(pType, tFacts("roleExists"), tFacts("userExists"), tFacts("member"))
+        If tToken = "" Set tBad = ..WorkflowMemberBad(pRole, pUser, pBody, 0)
+        If (tToken = "") && (tBad = "") {
+            Set tAttempted = 1
+            If tAdd {
+                Set tRank = $Select(pBody.%GetTypeOf("Ranking") = "number": pBody.%Get("Ranking"), 1: "")
+                Set tTitle = $Select(pBody.%GetTypeOf("Title") = "string": pBody.%Get("Title"), 1: "")
+                Set tVendorSC = ..WorkflowMemberVendor(pType, pRole, pUser, tRank, tTitle)
+            } Else {
+                Set tVendorSC = ..WorkflowMemberVendor(pType, pRole, pUser, "", "")
+                ; RemoveUserFromRole answers the engine's status, not the delete's, so the membership is read again.
+                If $$$ISOK(tVendorSC) && ##class(EnsLib.Workflow.RoleMembership).IDExists(pRole, pUser) Set tVendorSC = $$$ERROR($$$GeneralError, "a workflow role membership was not removed")
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If tAttempted {
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        Do tEffects.%Set("role", pRole, "string")
+        Do tEffects.%Set("user", pUser, "string")
+        Set tChanged = ""
+        If tAdd {
+            If pBody.%GetTypeOf("Ranking") = "number" Set tChanged = tChanged _ $ListBuild("Ranking")
+            If (pBody.%GetTypeOf("Title") = "string") && (pBody.%Get("Title") '= "") Set tChanged = tChanged _ $ListBuild("Title")
+        }
+        Do tEffects.%Set("fields", $ListToString(tChanged, ","), "string")
+        Do tEffects.%Set("completed", ($$$ISOK(tVendorSC) && '$IsObject(tCaught)), "boolean")
+        Do ..AuditRuntime($Select(tAdd: ..#VERBADD, 1: ..#VERBREMOVE), ..#ENTITYWORKFLOWMEMBER, ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(pRole, pUser)), tEffects)
+    }
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow member write failed", .pHttpStatus, .pFault)
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken = "MEMBERUSER" Quit ..WorkflowMemberUserRefusal(.pHttpStatus, .pFault)
+    If tToken = "TAKEN" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#WORKFLOWMEMBERTAKEN, .pHttpStatus, .pFault)
+    If tBad '= "" {
+        Set tSC = ..WorkflowMemberViolations(pRole, pUser, pBody, .tViolations, 0)
+        Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the workflow member write"), "the workflow member write failed", .pHttpStatus, .pFault)
+    If 'tAdd {
+        Set pResult = {}
+        Do pResult.%Set("Role", pRole, "string")
+        Do pResult.%Set("User", pUser, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tReadSC = ..ReadWorkflowMember(pNamespace, pRole, pUser, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Role", pRole, "string")
+        Do tRow.%Set("User", pUser, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the workflow role write <var>pType</var> of the role named <var>pName</var> (Story 24.17 Batch 3b): the source control guard, each refusal as one
+/// guard that stops the write (an add's name the namespace holds in any letter case; an edit's and a remove's role held), and the vendor's <code>%Save</code> of a new role, <code>%Save</code> of the
+/// role opened at concurrency 4 with the fields <var>pBody</var> carries, or <code>%DeleteId</code> and then <code>RoleMembership.IDDelete</code> for each membership the namespace still records for the
+/// role (<method>WorkflowMembersGone</method>). Names and values are string literals, so nothing the query carries runs as code. <code>""</code> for a name or a value the port would refuse by shape,
+/// which renders no draft. Nothing here runs; a person runs it.</p>
+ClassMethod WorkflowRoleSnippet(pType As %String, pName As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    If '..WorkflowNameOK(pName) Quit ""
+    Set tAdd = (pType = ..#TYPEADDWORKFLOWROLE)
+    If pType '= ..#TYPEREMOVEWORKFLOWROLE {
+        Set tSC = ..WorkflowRoleViolations(pName, pBody, .tViolations, tAdd)
+        If tViolations Quit ""
+    }
+    Set tNL = $Char(10)
+    Set tName = ..Literal(pName)
+    Set tError = "$System.Status.Error(5001, "
+    Set tText = tNL _ " Set tGo = '##class(%CSP.Portal.SourceControl.Util).IsEnabled($Namespace), tSC = $System.Status.OK()"
+    Set tText = tText _ tNL _ " If 'tGo Set tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWSOURCECONTROL) _ ")"
+    If tAdd {
+        Set tCount = ..Literal("SELECT COUNT(*) FROM EnsLib_Workflow.RoleDefinition WHERE LOWER(Name) = ?")
+        Set tText = tText _ tNL _ " If tGo Set tRS = ##class(%SQL.Statement).%ExecDirect(, " _ tCount _ ", $ZConvert(" _ tName _ ", ""L"")), tHeld = $Select(tRS.%Next(): ''tRS.%GetData(1), 1: 1), tRS = """""
+        Set tText = tText _ tNL _ " If tGo, tHeld Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWROLETAKEN) _ ")"
+        Set tText = tText _ tNL _ " If tGo Set tRole = ##class(EnsLib.Workflow.RoleDefinition).%New(), tRole.Name = " _ tName
+    } Else {
+        Set tText = tText _ tNL _ " If tGo, '##class(EnsLib.Workflow.RoleDefinition).%ExistsId(" _ tName _ ") Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.Error).#PORTNOTFOUND) _ ")"
+        If pType = ..#TYPEREMOVEWORKFLOWROLE {
+            Set tText = tText _ tNL _ " If tGo Set tSC = ##class(EnsLib.Workflow.RoleDefinition).%DeleteId(" _ tName _ ")"
+            Set tMembers = ..Literal("SELECT UserName FROM EnsLib_Workflow.RoleMembership WHERE %EXACT(RoleName) = ?")
+            Quit tText _ tNL _ " If tGo, $System.Status.IsOK(tSC) { Set tUsers = """", tRS = ##class(%SQL.Statement).%ExecDirect(, " _ tMembers _ ", " _ tName _ ") While tRS.%Next() { Set tUsers = tUsers _ $ListBuild(tRS.%GetData(1)) } Set tRS = """" For tI = 1:1:$ListLength(tUsers) { If $System.Status.IsOK(tSC) Set tSC = ##class(EnsLib.Workflow.RoleMembership).IDDelete(" _ tName _ ", $List(tUsers, tI)) } }"
+        }
+        Set tText = tText _ tNL _ " If tGo Set tRole = ##class(EnsLib.Workflow.RoleDefinition).%OpenId(" _ tName _ ", 4)"
+    }
+    If $IsObject(pBody) && (pBody.%GetTypeOf("Description") = "string") Set tText = tText _ tNL _ " If tGo Set tRole.Description = " _ ..Literal(pBody.%Get("Description"))
+    If $IsObject(pBody) && (pBody.%GetTypeOf("Capacity") = "number") Set tText = tText _ tNL _ " If tGo Set tRole.Capacity = " _ +pBody.%Get("Capacity")
+    Quit tText _ tNL _ " If tGo Set tSC = tRole.%Save()" _ tNL _ " Set tRole = """""
+}
+
+/// <p>The lines <method>Snippet</method> adds for the member write <var>pType</var> of the membership named by the composite id <var>pId</var> (<code>[Role, User]</code>, Story 24.17 Batch 3b): the
+/// source control guard, each refusal as one guard that stops the write (an add's role held, user a workflow user and not yet a member; a remove's membership held), and the vendor's
+/// <code>AddUserToRole</code> with the rank and title <var>pBody</var> carries (an absent rank is the vendor's 3) or <code>RemoveUserFromRole</code>, whose answer drops the delete's status, so the
+/// membership is read again. Names and values are literals, so nothing the query carries runs as code. <code>""</code> for a name or a value the port would refuse by shape, which renders no draft.
+/// Nothing here runs; a person runs it.</p>
+ClassMethod WorkflowMemberSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
+    If $ListLength(tParts) '= 2 Quit ""
+    Set tRoleName = $List(tParts, 1)
+    Set tUserName = $List(tParts, 2)
+    If '..WorkflowNameOK(tRoleName) || '..WorkflowNameOK(tUserName) Quit ""
+    Set tAdd = (pType = ..#TYPEADDWORKFLOWMEMBER)
+    If tAdd {
+        Set tSC = ..WorkflowMemberViolations(tRoleName, tUserName, pBody, .tViolations, 1)
+        If tViolations Quit ""
+    }
+    Set tNL = $Char(10)
+    Set tRole = ..Literal(tRoleName)
+    Set tUser = ..Literal(tUserName)
+    Set tError = "$System.Status.Error(5001, "
+    Set tNotFound = tError _ ..Literal(##class(OcuPilot.Api.Error).#PORTNOTFOUND) _ ")"
+    Set tText = tNL _ " Set tGo = '##class(%CSP.Portal.SourceControl.Util).IsEnabled($Namespace), tSC = $System.Status.OK()"
+    Set tText = tText _ tNL _ " If 'tGo Set tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWSOURCECONTROL) _ ")"
+    If tAdd {
+        Set tText = tText _ tNL _ " If tGo, '##class(EnsLib.Workflow.RoleDefinition).%ExistsId(" _ tRole _ ") Set tGo = 0, tSC = " _ tNotFound
+        Set tText = tText _ tNL _ " If tGo, '##class(EnsLib.Workflow.UserDefinition).%ExistsId(" _ tUser _ ") Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWMEMBERUSER) _ ")"
+        Set tText = tText _ tNL _ " If tGo, ##class(EnsLib.Workflow.RoleMembership).IDExists(" _ tRole _ ", " _ tUser _ ") Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWMEMBERTAKEN) _ ")"
+        Set tRank = $Select($IsObject(pBody) && (pBody.%GetTypeOf("Ranking") = "number"): +pBody.%Get("Ranking"), 1: "")
+        Set tTitle = $Select($IsObject(pBody) && (pBody.%GetTypeOf("Title") = "string"): ..Literal(pBody.%Get("Title")), 1: """""")
+        Quit tText _ tNL _ " If tGo Set tSC = ##class(EnsLib.Workflow.RoleDefinition).AddUserToRole(" _ tRole _ ", " _ tUser _ ", " _ tRank _ ", " _ tTitle _ ")"
+    }
+    Set tText = tText _ tNL _ " If tGo, '##class(EnsLib.Workflow.RoleMembership).IDExists(" _ tRole _ ", " _ tUser _ ") Set tGo = 0, tSC = " _ tNotFound
+    Set tText = tText _ tNL _ " If tGo Set tSC = ##class(EnsLib.Workflow.RoleDefinition).RemoveUserFromRole(" _ tRole _ ", " _ tUser _ ")"
+    ; RemoveUserFromRole answers the engine's status, not the delete's, so the membership is read again.
+    Quit tText _ tNL _ " If tGo, $System.Status.IsOK(tSC), ##class(EnsLib.Workflow.RoleMembership).IDExists(" _ tRole _ ", " _ tUser _ ") Set tSC = " _ tError _ """a workflow role membership was not removed"")"
 }
 
 /// <p>The Purge data settings endpoint (Story 24.16): <code>LIST</code>, one setting (<code>SETTING</code>) and the write <code>SETTINGSET</code>, over

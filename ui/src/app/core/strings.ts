@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:679 */
+  /** EXPERIENCE.md:680 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -9919,6 +9919,64 @@ export const STRINGS = {
   interopWorkflowUsersPrompt2: 'Which workflow users belong to no workflow role?',
   /** EXPERIENCE.md:637 */
   interopWorkflowUsersPrompt3: 'Add a workflow user for a user of this instance.',
+  // Story 24.17 Batch 3b: the workflow roles and role members screens, their dialogs' help lines, the three consequences, the eight refusals, the empty states and the prompts.
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRolesLabel: 'Workflow roles',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMembersLabel: 'Role members',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRoleAddAction: 'New workflow role',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberAddAction: 'Add member',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberColumnRank: 'Rank',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRoleHelp:
+    'A workflow role is a group of workflow users who are sent the same tasks. Capacity, from 1 to 100, is used to report the role\'s active tasks as a percentage.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberHelp: 'Rank 1 is the highest. The rank and the title can decide which member a task is sent to.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRoleRemoveConsequence:
+    'Removing this workflow role also removes each of its members from it. Tasks already sent through it are left as they are. It cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberAddConsequence: 'An active member is sent each unassigned task of this role.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberRemoveConsequence:
+    'Removing this member deletes their worklist for this role and leaves each task they hold through it unassigned.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRoleRefusalName: 'A workflow role name is 1 to 128 characters and holds no control characters.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRoleRefusalTaken: 'This namespace already has a workflow role with that name, in some letter case.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRoleRefusalDescription: 'A description is at most 2,000 characters.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRoleRefusalCapacity: 'Capacity is a whole number from 1 to 100.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberRefusalUser: 'This namespace has no workflow user with that name.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberRefusalTaken: 'This workflow user is already a member of this role.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberRefusalRank: 'Rank is a whole number from 1 to 5.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberRefusalTitle: 'A title is at most 128 characters and holds no control characters.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRolesEmpty: 'This namespace has no workflow roles.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRolesEmptyAgent: 'add a workflow role',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMembersEmpty: 'This workflow role has no members.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMembersEmptyAgent: 'add a member to this workflow role',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRolesPrompt1: 'Which workflow roles have no members?',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRolesPrompt2: 'Which workflow role has the most members?',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRolesPrompt3: 'Add a workflow role for order approvals.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMembersPrompt1: 'Which members of this role are inactive?',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMembersPrompt2: 'Add a member to this role.',
 } as const;
 
 /**

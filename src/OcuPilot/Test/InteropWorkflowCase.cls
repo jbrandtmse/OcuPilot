@@ -31,6 +31,12 @@ Parameter TOOLPREFIX = "OcuPilot.Screen.Tool.InteropWorkflowUser";
 
 Parameter MODE = "^IRIS.Temp.OcuProbe2417wMode";
 
+/// <p>The entity type the audit rows a test reads name, and the port type of the one-object read: a subclass for the workflow roles or their members overrides them with
+/// <code>SCREEN</code>, <code>SAVE</code>, <code>ENDPOINT</code> and <code>TOOLPREFIX</code> (Story 24.17 Batch 3b).</p>
+Parameter ENTITY = "interop-workflow-user";
+
+Parameter READTYPE = "WORKFLOWUSER";
+
 /// <p>The seconds an exact-count read of the audit rows waits for the count to stop moving.</p>
 Parameter SETTLE = 1.5;
 
@@ -112,7 +118,7 @@ ClassMethod Save(pBody As %DynamicObject, Output pAnswer, pNamespace As %String 
 /// <p>The agent's mint of the tool <var>pTool</var> (<code>Add</code>, <code>Update</code> or <code>Remove</code>) for the user <var>pName</var> with the other arguments <var>pArgs</var>, scoped to
 /// <var>pNamespace</var>: the code of its refusal, <code>minted</code> when it was not refused; the sentence in <var>pReason</var>; the proposal in <var>pProposal</var> and its turn in
 /// <var>pTurn</var>.</p>
-ClassMethod Mint(pTool As %String, pName As %String, pArgs As %DynamicObject, Output pReason As %String, Output pProposal, Output pTurn, pNamespace As %String = {..#SOURCE}) As %String
+ClassMethod Mint(pTool As %String, pName As %String, pArgs As %DynamicObject, Output pReason As %String, Output pProposal, Output pTurn, pNamespace As %String = {..#SOURCE}, pPrefix As %String = {..#TOOLPREFIX}) As %String
 {
     Set pReason = ""
     Set pProposal = ""
@@ -120,7 +126,7 @@ ClassMethod Mint(pTool As %String, pName As %String, pArgs As %DynamicObject, Ou
     Do ##class(OcuPilot.Kernel.Scope).Set(pNamespace)
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(tUser, "completed", .pTurn)
     If $$$ISERR(tSC) Quit "refused"
-    Set tTool = ..#TOOLPREFIX _ pTool
+    Set tTool = pPrefix _ pTool
     Set tArgs = ##class(%DynamicAbstractObject).%FromJSON(pArgs.%ToJSON())
     Set tIdArgument = $ClassMethod(tTool, "IdArgument")
     Do tArgs.%Set(tIdArgument, pName, "string")
@@ -146,10 +152,10 @@ ClassMethod Confirm(pProposalId As %String, Output pStatus As %Integer, Output p
 
 /// <p>The port class <var>pClass</var>'s call of <var>pType</var> in <var>pNamespace</var> with the query keys <var>pQuery</var> and the body <var>pBody</var> as <code>status code</code>, the rows
 /// or the row in <var>pResult</var> and the envelope in <var>pFault</var>.</p>
-ClassMethod Verdict(pType As %String, Output pResult, Output pFault, ByRef pQuery, pBody As %DynamicObject = "", pNamespace As %String = {..#SOURCE}, pClass As %String = {..#PORT}) As %String
+ClassMethod Verdict(pType As %String, Output pResult, Output pFault, ByRef pQuery, pBody As %DynamicObject = "", pNamespace As %String = {..#SOURCE}, pClass As %String = {..#PORT}, pEndpoint As %String = {..#ENDPOINT}) As %String
 {
     Set pQuery("namespace") = pNamespace
-    Set tSC = $ClassMethod(pClass, "Invoke", ..#ENDPOINT, pType, .pQuery, pBody, .pResult, .tHttp, .pFault)
+    Set tSC = $ClassMethod(pClass, "Invoke", pEndpoint, pType, .pQuery, pBody, .pResult, .tHttp, .pFault)
     Quit +$Get(tHttp) _ " " _ $Select($IsObject($Get(pFault)): pFault.%Get("code"), 1: "")
 }
 
@@ -167,22 +173,55 @@ ClassMethod Read(pName As %String, pAction As %String = "", Output pResult, Outp
     Kill tQuery
     Set tQuery("id") = pName
     If pAction '= "" Set tQuery("action") = pAction
-    Quit ..Verdict("WORKFLOWUSER", .pResult, .pFault, .tQuery, "", pNamespace, pClass)
+    Quit ..Verdict(..#READTYPE, .pResult, .pFault, .tQuery, "", pNamespace, pClass)
+}
+
+/// <p>The port's member write <var>pType</var> of <var>pUser</var> in <var>pRole</var> with the body <var>pBody</var> in <var>pNamespace</var>, as <code>status code</code> (Story 24.17 Batch 3b).</p>
+ClassMethod PutMember(pType As %String, pRole As %String, pUser As %String, pBody As %DynamicObject, Output pResult, Output pFault, pNamespace As %String = {..#SOURCE}, pClass As %String = {..#PORT}) As %String
+{
+    Kill tQuery
+    Set tQuery("id") = ..MemberId(pRole, pUser)
+    Quit ..Verdict(pType, .pResult, .pFault, .tQuery, pBody, pNamespace, pClass, "WorkflowMembers")
+}
+
+/// <p>The port's one-membership read of <var>pUser</var> in <var>pRole</var> in <var>pNamespace</var>, composed for the write <var>pAction</var> when it is not empty, as <code>status code</code>.</p>
+ClassMethod ReadMember(pRole As %String, pUser As %String, pAction As %String = "", Output pResult, Output pFault, pNamespace As %String = {..#SOURCE}, pClass As %String = {..#PORT}) As %String
+{
+    Kill tQuery
+    Set tQuery("id") = ..MemberId(pRole, pUser)
+    If pAction '= "" Set tQuery("action") = pAction
+    Quit ..Verdict("WORKFLOWMEMBER", .pResult, .pFault, .tQuery, "", pNamespace, pClass, "WorkflowMembers")
+}
+
+/// <p>The composite id of the membership of <var>pUser</var> in <var>pRole</var>, as the members list's rows carry it (Story 24.17 Batch 3b).</p>
+ClassMethod MemberId(pRole As %String, pUser As %String) As %String
+{
+    Quit ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(pRole, pUser))
+}
+
+/// <p>The agent's mint of the member tool <var>pTool</var> (<code>Add</code> or <code>Remove</code>) for <var>pUser</var> in <var>pRole</var> with the other arguments <var>pArgs</var>, as
+/// <method>Mint</method> answers it (Story 24.17 Batch 3b).</p>
+ClassMethod MintMember(pTool As %String, pRole As %String, pUser As %String, pArgs As %DynamicObject, Output pReason As %String, Output pProposal, Output pTurn, pNamespace As %String = {..#SOURCE}) As %String
+{
+    Set tArgs = ##class(%DynamicAbstractObject).%FromJSON(pArgs.%ToJSON())
+    Do tArgs.%Set("Role", pRole, "string")
+    Quit ..Mint(pTool, pUser, tArgs, .pReason, .pProposal, .pTurn, pNamespace, "OcuPilot.Screen.Tool.InteropWorkflowMember")
 }
 
 /// <p>The names of the rows <var>pRows</var> carries, comma-separated in the order they come.</p>
-ClassMethod Names(pRows) As %String
+ClassMethod Names(pRows, pField As %String = "Name") As %String
 {
-    Quit $ClassMethod(..#FIXTURE, "Names", pRows)
+    Quit $ClassMethod(..#FIXTURE, "Names", pRows, pField)
 }
 
 /// <p>The rows of OcuPilot's own <code>ConfigChange</code> since <var>pSince</var> that name the workflow user <var>pName</var>, with the last row's data in <var>pData</var>. The audit database
 /// shows a row a moment after it is written, so the read is made again, for up to five seconds, until it finds <var>pExpect</var> rows. With <var>pSettle</var> the answer is an exact count: after
 /// <var>pExpect</var> rows are seen the read goes on until the count has not moved for <parameter>SETTLE</parameter> seconds, so a row that lands later is counted and an absence is not read once.</p>
-ClassMethod OwnRows(pSince As %String, pName As %String, Output pData As %String, pExpect As %Integer = 1, pSettle As %Boolean = 0) As %Integer
+ClassMethod OwnRows(pSince As %String, pName As %String, Output pData As %String, pExpect As %Integer = 1, pSettle As %Boolean = 0, pNeedle As %String = "") As %Integer
 {
+    If pNeedle = "" Set pNeedle = """" _ pName _ """"
     For tTry = 1:1:20 {
-        Set tRows = ##class(OcuPilot.Test.AuditEvent).RowsCarrying(pSince, "ConfigChange", "interop-workflow-user", .pData, """" _ pName _ """")
+        Set tRows = ##class(OcuPilot.Test.AuditEvent).RowsCarrying(pSince, "ConfigChange", ..#ENTITY, .pData, pNeedle)
         If tRows '< pExpect Quit
         Hang 0.25
     }
@@ -190,7 +229,7 @@ ClassMethod OwnRows(pSince As %String, pName As %String, Output pData As %String
     Set tStable = $ZHorolog
     While ($ZHorolog - tStable) < ..#SETTLE {
         Hang 0.25
-        Set tNow = ##class(OcuPilot.Test.AuditEvent).RowsCarrying(pSince, "ConfigChange", "interop-workflow-user", .pData, """" _ pName _ """")
+        Set tNow = ##class(OcuPilot.Test.AuditEvent).RowsCarrying(pSince, "ConfigChange", ..#ENTITY, .pData, pNeedle)
         If tNow '= tRows {
             Set tRows = tNow
             Set tStable = $ZHorolog

@@ -154,6 +154,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropScheduleList',
   // Story 24.17 Batch 3a: Workflow users, whose Remove types the workflow user's name and whose New workflow user and Edit its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropWorkflowUserList',
+  // Story 24.17 Batch 3b: Workflow roles, whose Remove types the workflow role's name and whose New workflow role and Edit its own page's dialog sends, and Role members, whose Remove warns first and whose Add member its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList',
+  'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList',
   // Story 24.16: Purge management data, whose Purge its own page's dialog sends, and Purge data settings, whose Set value the settings page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropPurgeList',
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList',
@@ -736,6 +739,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropScheduleList': ['edit'],
   // Workflow users' page registers Edit itself, whose dialog sends the full name and the flag (Story 24.17 Batch 3a).
   'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': ['edit'],
+  // Workflow roles' page registers Edit itself, whose dialog sends the description and the capacity (Story 24.17 Batch 3b).
+  'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList': ['edit'],
   // Purge management data's page registers Purge itself, whose dialog takes the days, and Purge data settings' page registers Set value itself (Story 24.16).
   'OcuPilot.Screen.Descriptor.InteropPurgeList': ['purge'],
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': ['set'],
@@ -957,6 +962,10 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.InteropScheduleList': { remove: STRINGS.interopScheduleRemoveConsequence },
   // Story 24.17 Batch 3a: a workflow user's Remove takes them out of every workflow role, deletes their worklist and leaves their tasks unassigned.
   'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': { remove: STRINGS.interopWorkflowUserRemoveConsequence },
+  // Story 24.17 Batch 3b: a workflow role's Remove removes each of its members from it and leaves the tasks sent through it as they are. A member's Remove
+  // opens the warning dialog instead (`WARNING_CONSEQUENCES`); this entry is what registers it, since a destructive verb with no published sentence is not drawn.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList': { remove: STRINGS.interopWorkflowRoleRemoveConsequence },
+  'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList': { remove: STRINGS.interopWorkflowMemberRemoveConsequence },
   // Story 20.23: an abort never delivers the messages it takes: all of a queue's, one waiting message, or the message a job keeps retrying.
   [INTEROP_QUEUE_LIST]: { abort: STRINGS.interopQueueAbortConsequence },
   [INTEROP_QUEUE_MESSAGE_LIST]: { abort: STRINGS.interopMessageAbortConsequence },
@@ -1087,6 +1096,8 @@ const TYPED_NAME_ROWS: Readonly<
   'OcuPilot.Screen.Descriptor.InteropScheduleList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 24.17 Batch 3a: a workflow user is keyed by its name, which its Remove types.
   'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.17 Batch 3b: a workflow role is keyed by its name, which its Remove types. A member's Remove types none.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 20.23: an abort types the queue's name, the message's id or the job's process id, which each list's name column shows.
   [INTEROP_QUEUE_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   [INTEROP_QUEUE_MESSAGE_LIST]: { name: 'MessageId', field: '', equals: '', advisory: '' },
@@ -1180,6 +1191,8 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   },
   // Story 21.26: a purge removes the namespace's collected statistics, so it warns first.
   [EXPLORER_SQL_RUNTIME_STATS]: { [SQL_RUNTIME_STATS_PURGE]: STRINGS.sqlRuntimeStatsPurgeConsequence },
+  // Story 24.17 Batch 3b: a member's Remove deletes their worklist for the role and leaves each task they hold through it unassigned, and adding them again restores the membership, so it warns first.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList': { remove: STRINGS.interopWorkflowMemberRemoveConsequence },
   // Story 21.25: a rebuild locks the table against changes while it runs, so each rebuild warns.
   [EXPLORER_SQL_TABLE]: {
     [SQL_TABLE_REBUILD_INDICES]: STRINGS.sqlTableRebuildAllConsequence,

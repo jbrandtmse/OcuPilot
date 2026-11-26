@@ -367,6 +367,16 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     edit: STRINGS.agentPanelSecretWarningEdit,
     remove: STRINGS.actionRemove,
   },
+  // Story 24.17 Batch 3b: Workflow roles' New workflow role opens the dialog that adds one, its Edit the dialog that changes one and its Remove deletes one; Role members' Add member opens the dialog that adds one and its Remove takes one out.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList': {
+    add: STRINGS.interopWorkflowRoleAddAction,
+    edit: STRINGS.agentPanelSecretWarningEdit,
+    remove: STRINGS.actionRemove,
+  },
+  'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList': {
+    add: STRINGS.interopWorkflowMemberAddAction,
+    remove: STRINGS.actionRemove,
+  },
   // Story 24.16: Purge management data's Purge, which opens the dialog that takes the days, and Purge data settings' Set value.
   'OcuPilot.Screen.Descriptor.InteropPurgeList': { purge: STRINGS.auditDatabasePurgeConfirm },
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': { set: STRINGS.interopItemSettingSetAction },

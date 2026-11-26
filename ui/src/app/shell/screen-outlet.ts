@@ -295,6 +295,11 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 24.17 Batch 3a: Workflow users, the list with its New workflow user and Edit dialog.
   'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': () =>
     import('../areas/interoperability/interop-workflow-user-list.page').then((m) => m.InteropWorkflowUserListPage),
+  // Story 24.17 Batch 3b: Workflow roles, the list with its New workflow role and Edit dialog, and Role members, the list with its Add member dialog.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList': () =>
+    import('../areas/interoperability/interop-workflow-role-list.page').then((m) => m.InteropWorkflowRoleListPage),
+  'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList': () =>
+    import('../areas/interoperability/interop-workflow-member-list.page').then((m) => m.InteropWorkflowMemberListPage),
   // Story 24.16: Purge management data, the list with its Purge dialog, and Purge data settings, on the settings page that adds Set value over the shared list.
   'OcuPilot.Screen.Descriptor.InteropPurgeList': () => import('../areas/interoperability/interop-purge-list.page').then((m) => m.InteropPurgeListPage),
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': CONFIG_SETTINGS_PAGE,

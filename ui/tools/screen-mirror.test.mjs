@@ -1656,6 +1656,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
       // Story 24.17 Batch 2: Business rule log's errors criterion.
       'OcuPilot.Screen.Descriptor.InteropRuleLogList',
+      // Story 24.17 Batch 3b: Role members' one criterion is the workflow role the route id names.
+      'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList',
       'OcuPilot.Screen.Descriptor.JournalFileDatabaseList',
       'OcuPilot.Screen.Descriptor.JournalFileDetails',
       'OcuPilot.Screen.Descriptor.JournalRecordList',
@@ -2888,6 +2890,9 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.InteropSuspendedMessageList',
       'OcuPilot.Screen.Descriptor.InteropTransformEditor',
       'OcuPilot.Screen.Descriptor.InteropTransformList',
+      // Story 24.17 Batch 3b: Role members and Workflow roles own %Ens_WorkflowConfig:READ.
+      'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList',
+      'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList',
       // Story 24.17 Batch 3a: Workflow users own %Ens_WorkflowConfig:READ.
       'OcuPilot.Screen.Descriptor.InteropWorkflowUserList',
       'OcuPilot.Screen.Descriptor.JournalSettings',

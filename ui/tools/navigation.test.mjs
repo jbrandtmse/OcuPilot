@@ -471,6 +471,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'interoperability/queues/messages',
       'interoperability/rules/document',
       'interoperability/transforms/document',
+      // Story 24.17 Batch 3b: Role members, unlisted, reached from a Workflow roles row, after the editors by class name.
+      'interoperability/workflow-roles/members',
       // Story 20.2: Interoperability's four lists, in the classic List menu's order.
       'interoperability/productions',
       'interoperability/processes',
@@ -510,6 +512,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'interoperability/process-log',
       // Story 24.17 Batch 3a: Workflow users, listed after them.
       'interoperability/workflow-users',
+      // Story 24.17 Batch 3b: Workflow roles, listed after Workflow users.
+      'interoperability/workflow-roles',
       // Story 20.11: Analytics' four unlisted screens (a cube's three tabs and a term list's entries), then Cubes, Term lists and Folder items.
       'analytics/cubes/dimensions',
       'analytics/cubes/document',
@@ -1161,10 +1165,10 @@ test('Story 20.8: the Productions name cell still opens Production items, the di
   assert.equal(screenForUrl(`/${viewer.route}?ns=USER`)?.route, viewer.route);
   assert.equal(screenForUrl(`/${viewer.route}/x?ns=USER`), null, 'a route id after it names no screen');
   const listed = listedScreensForArea('interoperability').map((screen) => screen.route);
-  assert.equal(listed.at(-16), viewer.route, 'listed before Messages (Story 20.9), the two default settings screens, Credentials and Schedule specs (Story 24.15), the two purge screens, Suspended messages and the three archive screens (Story 24.16), Managed alerts, Business rule log, Business process log and Workflow users (Story 24.17), which close the area\'s side bar');
-  assert.equal(listed.at(-15), 'interoperability/messages', 'Messages follows it');
+  assert.equal(listed.at(-17), viewer.route, 'listed before Messages (Story 20.9), the two default settings screens, Credentials and Schedule specs (Story 24.15), the two purge screens, Suspended messages and the three archive screens (Story 24.16), Managed alerts, Business rule log, Business process log, Workflow users and Workflow roles (Story 24.17), which close the area\'s side bar');
+  assert.equal(listed.at(-16), 'interoperability/messages', 'Messages follows it');
   assert.deepEqual(
-    listed.slice(-14),
+    listed.slice(-15),
     [
       'interoperability/default-settings',
       'interoperability/default-settings-diff',
@@ -1180,8 +1184,9 @@ test('Story 20.8: the Productions name cell still opens Production items, the di
       'interoperability/rule-log',
       'interoperability/process-log',
       'interoperability/workflow-users',
+      'interoperability/workflow-roles',
     ],
-    'and System default settings, Compare default settings, Credentials, Schedule specs, Purge management data, Purge data settings, Suspended messages, Archive manager, Archive settings, Archive errors, Managed alerts, Business rule log, Business process log and Workflow users close the side bar'
+    'and System default settings, Compare default settings, Credentials, Schedule specs, Purge management data, Purge data settings, Suspended messages, Archive manager, Archive settings, Archive errors, Managed alerts, Business rule log, Business process log, Workflow users and Workflow roles close the side bar'
   );
 });
 
@@ -2258,4 +2263,36 @@ test("Story 21.37: a page-resource change event of either verb re-reads the map,
   bus.publish({ kind: 'changed', type: 'page-resource', scope: 'instance', id: '%CSP.UI.Portal.Resources', action: 'deleted' });
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(api.calls.length, 3, 'and so does a clear');
+});
+
+// Story 24.17 Batch 3b: a workflow role's name opens its members, whose route id is the role, and a member's change opens the role's members.
+//
+// Mutation (Rule 19): drop `parentScope` from the Role members descriptor -> the pairing leg goes red; make `routeIdFor` keep the whole id ->
+// the change leg reads the composite [role, user] as the route id and goes red.
+test("Story 24.17 Batch 3b: Workflow roles opens Role members on the role, and a member change opens that role's members", () => {
+  const roles = screenForRoute('interoperability/workflow-roles');
+  const members = screenForRoute('interoperability/workflow-roles/members');
+  assert.ok(roles && members, 'both screens are declared');
+  assert.equal(childListFor(roles)?.route, members.route, 'the role name cell opens the members');
+  assert.equal(parentListFor(members)?.route, roles.route, 'and the members pair back to the roles');
+  assert.equal(members.sideBarPosition, 0, 'Role members is listed by no side bar');
+  assert.deepEqual(members.read.criteria.fields.map((field) => field.param), ['role'], 'its one criterion is the role');
+  const role = 'OcuP2417r A/B';
+  assert.deepEqual(
+    parentCriteria(members, `/${members.route}/${encodeEntityId(role)}`),
+    { role },
+    'the route id is read into the role criterion'
+  );
+  assert.deepEqual(parentCriteria(members, `/${members.route}`), {}, 'and a route with no id reads for none');
+  const sep = '\u0001';
+  assert.equal(
+    screenForChange({ type: 'interop-workflow-member', id: `${role}${sep}OcuP2417w`, tool: 'interop.workflowmembers.add' })?.route,
+    `${members.route}/${encodeEntityId(role)}`,
+    'a member change opens its role'
+  );
+  assert.equal(
+    screenForChange({ type: 'interop-workflow-role', id: role, tool: 'interop.workflowroles.add' })?.route,
+    `${roles.route}/${encodeEntityId(role)}`,
+    'a role change opens the roles list on that role'
+  );
 });
