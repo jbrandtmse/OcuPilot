@@ -89,8 +89,8 @@ deferred: []
   Each tool is classified in `ConfirmNamespaceRoster` and `DraftRegistry`. Each script form shape-checks every value and renders no draft when one fails; otherwise it renders the switch, each refusal as a one-line guard, and the vendor call, and runs none of them. A screen action mints nothing and is not gated by read-only or the kill switch.
 - **Namespace at confirm (AD-52).** Every stored proposal carries `Namespace`. Every confirm-time judgment runs there, whichever namespace the confirm is sent from: the fresh read, the source-control test, the taken test, the base, the standard mark, the file's digest and the vendor call.
 - **Audit (AD-15).** The agent's write carries the agent's marker.
-  - **Add and delete** keep the vendor's own `%Ensemble/%Schema/Modify` row (registered and enabled on `ocupilot-b-ci`, read at plan).
-  - **Import and export**, which the vendor does not audit, record OcuPilot's own `ConfigChange` through `AuditRuntime` from either caller, after the restore. The row names the namespace, the schema, the destination or source kind and `completed`, and never the file's text or a description.
+  - **Add, delete and import** keep the vendor's own `%Ensemble/%Schema/Modify` row (registered and enabled on `ocupilot-b-ci`, read at plan); an export has none.
+  - **Import and export** record OcuPilot's own `ConfigChange` through `AuditRuntime` from either caller, after the restore. The row names the namespace, the schema, the destination or source kind and `completed`, and never the file's text or a description.
   - Task 0 (a) confirms each.
 - **Bounds.** `HL7SCHEMASMAX` (provisional 1,000; Task 0 (e) sets it) is boundary-tested at the cap and one over through a seam. `LOCKSECONDS` is 3, the classic page's lock wait.
 - **README.** Two `false` keys raise the switched-off count from one hundred and six to one hundred and eight. The off list gains this batch's clause (veto item 1) in the same commit, held by `interop.test.mjs`.
@@ -293,6 +293,36 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-24` (HEAD `7da116ff
   - `[low]` `[reject]` the intent text says the vendor does not audit an import, which Task 0 measured wrong — recorded under Measured; the intent block is read-only and the AD-15 amendment line is the lead's.
   - `[low]` `[reject]` `Hl7Facts` fault after a successful add answers 200 with a logged line — the write already happened and the answer's re-read is best effort; recorded under Decided in-stage.
 
+### 2026-11-26 — Code review pass (Opus, four layers)
+
+- verdicts: 25 entries — high 1, medium 5, low 19 (about 45 layer rows); 10 patched, 4 deferred, 11 rejected
+- findings:
+  - `[high]` `[patch]` an import file holding a second `Category` behind an XML namespace prefix passed `ImportShape`'s one-schema count (qualified name) while the vendor's loader (local name) wrote it: measured on `ocupilot-b-ci`, a probe marked standard had its base and description replaced through `IMPORTHL7SCHEMA`, every refusal bypassed — the count matches the local name; a Refusals leg pins it.
+  - `[medium]` `[patch]` Rule 2: the HL7 export, load, line split and transfer script copied the lookup family's — `DocumentExport`, `DocumentLoad`, `ExportLines` and `TransferSnippet` (by argument) serve both.
+  - `[medium]` `[patch]` the import's script had no guard for a file that is not one schema or marks one standard, or for `CASE`, and drew a draft for a bad file name — guards and a shape test added, asserted in Control and run by hand on the throwaway.
+  - `[medium]` `[patch]` the `HL7IMPORT` consequence (removal of what the file does not define) was pinned by no test — `TestAnImportReplacesTheHeldSchemaWhole`.
+  - `[medium]` `[patch]` assertions that could not fail: the add refusals' "nothing stored" ran after `DropSchemas`, audit content was read from the last row only, two "no file" checks named unwritten paths — moved before the drop, counted by needle, directory listed.
+  - `[medium]` `[patch]` the eleven refusal sentences had no `strings.ts` copy, EXPERIENCE.md quote or `interop.test.mjs` pin, unlike every sibling family — row 643, keys and pins added.
+  - `[low]` `[patch]` the add's sets ran outside a transaction — one transaction, rolled back on a fault, the audit after the commit.
+  - `[low]` `[patch]` `DropSchemas` skipped a probe a failed guard marked standard; `SchemasLeft` added to -1 — fixed.
+  - `[low]` `[patch]` stale Gate header and dead variable, `InteropFloor` and `ClassicPageGate` comments; the confirm-under-source-control leg asserted only non-200 — fixed; the Gate mutation run and recorded.
+  - `[low]` `[patch]` an audit window counted a sibling test's rows from the same second — the bound waits into the next second; the replace test has its own probe.
+  - `[low]` `[defer]` two concurrent adds of names differing only in case each lock their own node and both pass `TAKEN` (inference).
+  - `[low]` `[defer]` the whole-second audit bound leaves other exact row counts order-dependent.
+  - `[low]` `[defer]` `Hl7BaseHeld`, `Hl7Installed` and `ImportShape`'s listing block carry no `Hl7Here` hook.
+  - `[low]` `[defer]` (implement pass) no principal runs a real import write.
+  - `[low]` `[reject]` the server-file script names the relative path with the directory in a comment — the lookup family's form, now one method.
+  - `[low]` `[reject]` an agent `Name` of `import` reads as the import id — the lookup contract; the card names the file's schema.
+  - `[low]` `[reject]` refusal order (`TOOLARGE` before `IMPORTSHAPE`; the Save's violations before source control) — the lookup and workflow families' order.
+  - `[low]` `[reject]` card rows labeled by field name — every sibling card is.
+  - `[low]` `[reject]` "None" reuses `sslVerifyPeerNone` — the reuse Story 14.2 published.
+  - `[low]` `[reject]` the README's Interoperability paragraph — Never list: the story's last batch.
+  - `[low]` `[reject]` the export takes no lock (inference) — the lookup export takes none.
+  - `[low]` `[reject]` `Hl7PreconditionCodes` unused — mirrors `WorkflowPreconditionCodes`.
+  - `[low]` `[reject]` no `SaveHoldCoverage` held leg — the derived route check covers a one-field id.
+  - `[low]` `[reject]` the list sorts by name, not as read — the standard names are numeric and sort first; Standard is sortable.
+  - `[low]` `[reject]` the add and delete scripts judge before taking the lock and release it unconditionally — a draft a person runs once; the port judges under the lock.
+
 ## Veto items
 
 Each is the lead's to take to the veto gate; the recommended option is first.
@@ -348,7 +378,7 @@ Each is the lead's to take to the veto gate; the recommended option is first.
 6. **AD amendments.** These are written at story end by the lead, add-only, as `[AMENDED <date>, Story 24.18, Rule 20]`.
    - AD-62, the next item: "**HL7 schemas** (Story 24.18). `InteropPort` gains `Hl7Schemas` over the namespace's HL7 schemas (`EnsLib.HL7.Schema:TypeCategories`), behind `%Ens_Portal:USE` and `%Ens_EDISchema:READ`, the classic page's `RESOURCE`, and four writes behind `%Ens_EDISchema:WRITE` and WRITE on the namespace's globals database. A create sets the vendor's schema globals as the classic New dialog does (a named limit: no vendor method creates an empty schema). A delete calls `EnsLib.HL7.SchemaDocument.Delete`. An import and an export move one `.HL7` document through `$System.OBJ`, as the lookup tables' do (item 10). A standard schema is never deleted or replaced, a name held in any letter case is refused, and a namespace under source control refuses every write."
    - AD-22: "**Story 24.18's Batch 1 keys:** `interop.hl7schemas.import` and `interop.hl7schemas.delete` ship `false`; `interop.hl7schemas.add` and `interop.hl7schemas.export` ship `true`."
-   - AD-15, named case: "**An HL7 schema import or export** (Story 24.18), which the vendor does not audit, records OcuPilot's own `ConfigChange` from either caller, never the file's text; a create and a delete keep the vendor's own `%Ensemble/%Schema/Modify` row."
+   - AD-15, named case: "**An HL7 schema import or export** (Story 24.18) records OcuPilot's own `ConfigChange` from either caller, never the file's text; a create, a delete and an import keep the vendor's own `%Ensemble/%Schema/Modify` row, and an export has no vendor row."
    - AD-21, sixth case: "**Story 24.18's consumers of the sixth case:** the HL7 schema export is an overwriting `file` consumer whose overwrite is a constant, and its import a `source`; a local file's text is a screen action value."
 
 There is no new dependency, no privilege, role or access grant, and nothing is written into another namespace.
@@ -414,7 +444,7 @@ There is no new dependency, no privilege, role or access grant, and nothing is w
   - a delete kills `^EnsHL7.Schema(<name>)` and `^EnsHL7.Description(<name>)` and writes one audit row;
   - an import writes the same three nodes inside `BeginTrans`/`CommitTrans`, and one audit row;
   - an export, to a stream or a file, and the list read write nothing.
-  - The vendor's `%Ensemble/%Schema/Modify` row "HL7 <name>" is written for the add (the positive control), the delete and the import ("Schema saved"); an export writes none. **The plan's "the vendor does not audit an import" is wrong: it audits one**, so an import leaves the vendor's row and OcuPilot's own.
+  - The vendor's `%Ensemble/%Schema/Modify` row "HL7 <name>" is written for the add (the positive control), the delete and the import ("Schema saved"); an export writes none. An import leaves the vendor's row and OcuPilot's own.
   - `$ROLES`, `$USERNAME` and `$NAMESPACE` read the same before and after, for `_SYSTEM` (`%All,OcuPilotAdmin`) and for a principal without `%All`, across all four writes and both exports.
 - **(b) Privileges.** A principal holding `%Ens_Portal:U`, `%Ens_EDISchema:R` and `%DB_USER:R` reads the list and one schema and exports to a stream and a file; each write answers `<PROTECT>` on `^EnsHL7.Schema(...)`. With `%Ens_EDISchema:W` and `%DB_USER:RW` each write succeeds, the audit call included. No other pair is asked (no `%Development:USE`; a server file's pairs are PathPort's). A principal without `%Ens_EDISchema` but with `%DB_USER:R` reads and exports too, so the port's gate is the whole gate and its database WRITE pair is load-bearing.
 - **(c) Classic sets.** A schema made with a base and one with none are both listed by `TypeCategories` with base and description, and `ExportToStream("<name>.HL7")` exports each; a bare one exports `<Category name="...">` alone.
@@ -439,6 +469,14 @@ There is no new dependency, no privilege, role or access grant, and nothing is w
 9. The seam extends the workflow seam and the fixture the workflow fixture, so the mode global, the log and the child-process principals are shared; the nothing-logged test gained a leg that logs nothing on success, since a log line after the fault hook was otherwise undetected.
 10. The client page and the lookup page share one transfer flow class (`interop-transfer.flow.ts`) instead of a second copy; the dialog has its own small store.
 11. An add or an import whose vendor write succeeded answers 200 when only the answer's re-read faults; the fault is logged once, after the restore.
+
+**Decided in-stage (review).**
+
+1. The stage's rebuild instruction is followed over the slot boilerplate's "do not run `up` or `down`"; the rebuild ran once, on the patched tree this commit holds.
+2. OcuPilot's own import `ConfigChange` stays: AC3 requires it, though AD-15's rule alone would not, since the vendor audits an import.
+3. The import script judges the file as the port does (`%XML.TextReader`, the `Category` count by local name and its `std` mark); the add's sets run in one transaction, which the classic dialog has not.
+4. A name outside the add's rule answering 404, and 200 when only the re-read faults, are the workflow family's contract (`ReadWorkflowRole`, `PerformWorkflowRole`).
+5. `LogHubErrors` was green on the fresh throwaway: the implement stage's red was the long-lived instance's, closed.
 
 **Governing ADs (Rule 6).** AD-3, AD-6, AD-7, AD-8, AD-10, AD-11, AD-13, AD-14, AD-15, AD-16, AD-21, AD-22, AD-29, AD-34, AD-36, AD-44, AD-51, AD-52, AD-53, AD-54, AD-55, AD-56, AD-58, AD-59, AD-60, AD-62, AD-63.
 
@@ -511,19 +549,22 @@ Run on `ocupilot-b-ci` (each reverted `cmp`-identical to a copy taken before, th
 - mutation: AC5 both `Hl7Unlock` calls removed from `PerformHl7Schema` -> `InteropHl7SchemaRefusals` `TestALockASourceControlledSeamAndAVendorErrorNeverAnswer200` red on its lock-count leg.
 - mutation: AC6 the export's vendor-status test removed -> the same test red on its export legs.
 - mutation: AC3 the export's `AuditRuntime` call skipped for a server file -> `InteropHl7SchemaTransfer` `TestTheServerFileRoundTripThroughTheAgentRestoresTheSchema` red on its export-row legs.
+- mutation: AC5 `ImportShape` counts by `tReader.Name` -> `InteropHl7SchemaRefusals` `TestAnImportFileOfAnotherShapeSizeOrAgeIsRefusedBeforeAnyLoad` red on the prefixed leg, the vendor writing the second schema (review pass, run 1081).
+- mutation: AC6 the export's `completed` ignores the vendor status -> `TestALockASourceControlledSeamAndAVendorErrorNeverAnswer200` red on its eight-row leg (run 1081).
+- mutation: AC3 `Hl7VendorLoad` selects a document the file does not hold -> `InteropHl7SchemaTransfer` `TestAnImportReplacesTheHeldSchemaWhole` and both round trips red (run 1082).
+- mutation: AC8 the file guard dropped from `Hl7TransferSnippet` -> `InteropHl7SchemaControl` `TestTheScriptFormsRenderTheGuardsAndNoDraftForABadValue` red (run 1083).
+- mutation: AC5 `HL7WRITEPAIR` dropped from `Pairs` -> both `InteropHl7SchemaGate` tests red (run 1084).
 
 ## Auto Run Result
 
 Status: in-review
 Blocking condition: none
 
-**Implement pass (Batch 1).** HL7 schemas: `InteropPort` `Hl7Schemas` (list, one-schema read, import read, add, import, export, delete), the Save route, four tools, the descriptor, the client page and dialog, 12 codes, 4 governance keys (add and export `true`; import and delete `false`, README count one hundred and eight), the `Prohibited` terms, and the rosters. The lookup transfer primitives are extended by argument. Verified on `ocupilot-b-ci`:
+**Code review pass (Batch 1).** One high closed: `ImportShape` counts an element by its local name, so a second `Category` behind an XML namespace prefix is refused before the vendor's load (measured writing a standard-marked probe before the fix). The lookup and HL7 families now share the export, load, line split and transfer script; the import script carries the port's file guards and a file-name shape test; the add's sets run in a transaction; the refusal sentences are published and pinned; five weak assertions were made able to fail (Review Triage Log). The intent's and V6's AD-15 lines now say the vendor audits an import. Verified on `ocupilot-b-ci`, rebuilt once at 2026-11-27 03:21:59Z on this tree:
 
-- New classes `InteropHl7SchemaList`, `Control`, `Transfer`, `Refusals`, `Gate`, `Elsewhere` green (the review pass added two tests and more assertions to `Control`, `Refusals` and `Transfer`). Every AC has a `mutation:` line above.
-- Full sweep, 17 shards, 934 classes, 6,969 tests: shards 1 to 4, 6, 8 to 14, 16 and 17 green. Shard 7's `InteropHl7SchemaGate` held a stale `CLASSICPAGES` expectation for the add and shard 15's `ToolDispatch` lacked the two new baseline-off keys; both fixed and re-run green on their own (2 of 2, 19 of 19).
-- **Red, not touched by this batch:** shard 5's `LogHubErrors.TestASeededErrorReadsInTheHubsForm` (455 tests, 1 failed), and red again on one diagnostic re-run and one diagnostic copy that printed `size=1 trunc=0` for the cap-of-one read, at 00:17Z to 00:23Z. Neither it nor `LogSourcePort` is in the diff. (inference) The accumulated error log of this long-lived throwaway, or the UTC midnight rollover, is the cause; a fresh CI leg has neither.
-- Client: `npm run test:tools` 2,428 of 2,428, `npm run test:components` 4,135 of 4,135, `node --test tools/ci.test.mjs` 109 of 109, `npm run build` green. Browser on a rebuilt, redeployed bundle: `interop-hl7-schemas` 2 of 2, `interop-lookup-transfer` and `interop-lookup-tables` 5 of 5. Smoke `executed=49 passed=49 failed=0`. `check-objectscript.py` 0 problems, `lint-docs.sh` 0 issues.
-- Review pass: 11 findings, 5 patched, 1 deferred, 5 rejected (Review Triage Log). Task 0 found the vendor audits an import (the intent's AD-15 line says it does not); both rows are written.
+- `InteropHl7SchemaList`, `Control`, `Transfer`, `Refusals`, `Gate`, `Elsewhere` green forward and reversed (runs 1 to 12); `InteropLookupTransfer`, `InteropLookupRefusals`, `InteropLookupEdges` green; the 23 rosters the prompt names green (runs 16 to 38); `LogHubErrors` green (run 39). Five `mutation:` lines added above.
+- Client: `npm test` (tools 2,428 of 2,428, components 4,135 of 4,135), `node --test tools/ci.test.mjs` 109 of 109, `npm run build` green. Browser on the rebuilt, redeployed bundle: `interop-hl7-schemas` 2 of 2, `interop-lookup-transfer` 2 of 2, `interop-lookup-tables` 3 of 3, `a11y-structural-invariants` 13 of 13 (the screen is on no skip list). Smoke `executed=49 passed=49 failed=0`; no production in USER. `check-objectscript.py` 0 problems, `lint-docs.sh` 0 issues.
+- Implement pass: closed at `c613abc33`.
 
 **Plan.** This is Batch 1 of five: HL7 schemas, a list with add, import, export and delete through `InteropPort`, each reached by the screen and the agent. The proposal keeps its namespace, and every judgment at confirm runs there. Veto items 1 to 6, the batch split and the decided-in-stage list are under Design Notes. Read-only checks ran on `ocupilot-b-ci` (52777, image `irishealth-community:2026.2`):
 

@@ -93,7 +93,8 @@ Parameter CUBEBUILDKEY = "analytics.cubemanager.build";
 /// <p>Story 21.2's backup run, which declares the classic page that starts a backup and which the baseline disables. Story 21.3's three setting sets and Story 21.4's four declare their classic pages too and ship enabled.</p>
 Parameter BACKUPRUNKEY = "osmgmt.backuptasks.run";
 
-/// <p>Story 20.5's lookup table import, which declares the classic Import dialog and which the baseline disables.</p>
+/// <p>Story 20.5's lookup table import, which declares the classic Import dialog, and Story 24.18's HL7 schema import and delete, which declare the classic HL7 Schema Structures page;
+/// the baseline disables each.</p>
 Parameter LOOKUPKEYS = "interop.lookuptables.import,interop.hl7schemas.import,interop.hl7schemas.delete";
 
 /// <p>Story 20.31's message resend and edit and resend, which declare the classic Resend pages and which the baseline disables; Story 24.16's suspended message resubmit, edit and

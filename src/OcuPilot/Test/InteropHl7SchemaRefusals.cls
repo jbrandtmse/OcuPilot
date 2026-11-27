@@ -111,16 +111,18 @@ Method TestAddValuesTheNamespaceCannotTakeAreRefusedByName()
     Do ..Save({"Name": (..#NAMEB), "Description": (tBig)}, .tAnswer)
     Do $$$AssertEquals(..CodeOf(tAnswer), tDescription, "a description of 2,001 characters: the Save is refused")
     Do $$$AssertEquals(..Put("ADDHL7SCHEMA", ..#NAMEB, {"Description": (tBig)}, .tResult, .tFault, ..#SOURCE, tSeam), "422 " _ tDescription, "and the port")
+    Do $$$AssertEquals($ClassMethod(tFx, "Held", ..#NAMEB) _ "|" _ $ClassMethod(tFx, "Held", $ZConvert(..#NAMEA, "U")) _ "|" _ $ClassMethod(tFx, "Held", $ZConvert(..#NAMEA, "L")) _ "|" _ $ClassMethod(tFx, "Text", ..#NAMEA) _ "|" _ $ClassMethod(tFx, "Foreign", ..#SOURCE), "0|0|0|2.5|held|0|0", "no refused add stored a schema, under any name, and the held probe is unchanged")
     Do $$$AssertEquals(..Put("ADDHL7SCHEMA", ..#NAMEB, {"Description": ($Extract(tBig, 1, 2000))}, .tOk, .tFault, ..#SOURCE, tSeam), "200 ", "a description of 2,000 is taken")
     Do $ClassMethod(tFx, "DropSchemas")
     Do $$$AssertEquals($ClassMethod(tFx, "SchemasLeft") _ "|" _ $ClassMethod(tSeam, "Logged") _ "|" _ ..OwnRows(tSince, "OcuProbe2418", .tData, 1, 1, "OcuProbe2418"), "0|0|0", "nothing was stored, logged or audited by a refusal")
 }
 
 /// <p>AC5: an import file that is not exactly one HL7 schema is refused <code>IMPORTSHAPE</code> before any load (a class beside the schema, two schemas, the legacy form with no document, text that is
-/// no export, a schema other than the one named), a file over 3,000,000 characters <code>TOOLARGE</code>, a file whose name is held in another letter case <code>CASE</code>, and a reviewed digest, presence or
+/// no export, a second schema behind an XML namespace prefix, a schema other than the one named), a file over 3,000,000 characters <code>TOOLARGE</code>, a file whose name is held in another letter case <code>CASE</code>, and a reviewed digest, presence or
 /// time that moved <code>IMPORTCHANGED</code>; the screen's action, the agent's mint and the port each refuse, and nothing is written.</p>
 /// <p>Mutation (Rule 19): accept the first document the listing names in <method>OcuPilot.Port.InteropPort.ImportShape</method>, without requiring that it is the only one -- the two-schema leg goes
-/// red; drop the digest comparison from <method>OcuPilot.Port.InteropPort.PerformHl7Import</method> -- the first changed leg goes red.</p>
+/// red; drop the digest comparison from <method>OcuPilot.Port.InteropPort.PerformHl7Import</method> -- the first changed leg goes red; count elements by their qualified name in
+/// <method>OcuPilot.Port.InteropPort.ImportShape</method> -- the prefixed leg goes red and the vendor writes the second schema.</p>
 Method TestAnImportFileOfAnotherShapeSizeOrAgeIsRefusedBeforeAnyLoad()
 {
     Set tFx = ..#FIXTURE
@@ -133,9 +135,10 @@ Method TestAnImportFileOfAnotherShapeSizeOrAgeIsRefusedBeforeAnyLoad()
     Set tTwo = tHead _ "<Document name=""" _ ..#NAMEA _ ".HL7"">" _ tNL _ "<Category name=""" _ ..#NAMEA _ """ base=""2.5"">" _ tNL _ "</Category>" _ tNL _ "</Document>" _ tNL _ "<Document name=""" _ ..#NAMEB _ ".HL7"">" _ tNL _ "<Category name=""" _ ..#NAMEB _ """ base=""2.5"">" _ tNL _ "</Category>" _ tNL _ "</Document></Export>"
     Set tClass = tHead _ "<Class name=""OcuProbe2418.Zzz""><Super>%RegisteredObject</Super></Class>" _ tNL _ "<Document name=""" _ ..#NAMEA _ ".HL7"">" _ tNL _ "<Category name=""" _ ..#NAMEA _ """ base=""2.5"">" _ tNL _ "</Category>" _ tNL _ "</Document></Export>"
     Set tRaw = "<?xml version=""1.0"" encoding=""UTF-8""?>" _ tNL _ "<Category name=""" _ ..#NAMEA _ """ base=""2.5"">" _ tNL _ "</Category>" _ tNL
+    Set tHidden = tHead _ "<Document name=""" _ ..#NAMEA _ ".HL7"">" _ tNL _ "<w:Wrap xmlns:w=""urn:ocuprobe""><w:Category name=""" _ ..#NAMEA _ """ base=""2.5""></w:Category><Category name=""" _ ..#NAMEB _ """ base=""2.5"" description=""hidden""></Category></w:Wrap>" _ tNL _ "</Document></Export>"
     Set tBefore = $ClassMethod(tFx, "Text", ..#NAMEA) _ "|" _ $ClassMethod(tFx, "Text", ..#NAMEB)
     Set tShape = "409 INTEROP.HL7.IMPORTSHAPE"
-    For tCase = $ListBuild("a class beside the schema", tClass), $ListBuild("two schemas", tTwo), $ListBuild("the raw Category form", tRaw), $ListBuild("text that is no export", "not xml at all") {
+    For tCase = $ListBuild("a class beside the schema", tClass), $ListBuild("two schemas", tTwo), $ListBuild("the raw Category form", tRaw), $ListBuild("text that is no export", "not xml at all"), $ListBuild("a second schema in one document behind an XML namespace prefix", tHidden) {
         Do $$$AssertEquals(..Act("import-local", "import", {"fileName": "c.xml", "content": ($List(tCase, 2))}, .tAnswer), tShape, $List(tCase, 1) _ " is refused for its shape by the screen")
         Do $$$AssertEquals(..ImportWrite($List(tCase, 2), "import", tSeam), tShape, $List(tCase, 1) _ " is refused by the port")
     }
@@ -183,7 +186,7 @@ Method TestAnExportOfAMissingSchemaAnOversizeOneOrAMissingDirectoryIsRefused()
     Set tFiles = {"root": ($ClassMethod(..#PROBE, "Root")), "path": "nodir/x.xml"}
     Do $$$AssertEquals(..Act("export", ..#NAMEA, tFiles, .tAnswer), "409 EXPLORER.EXPORT.DIRECTORY", "an export to a directory that does not exist is refused")
     Do $$$AssertEquals(..MintCode("Export", ..#NAMEA, {"Name": (..#NAMEA), "root": (tFiles.root), "path": (tFiles.path)}, .tReason), "EXPLORER.EXPORT.DIRECTORY", "and so is the agent's, at the mint")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "FileExists", "x.xml"), 0, "and no file was written")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "FileExists", "nodir/x.xml") _ "|" _ ..FilesIn($ClassMethod(..#PROBE, "Directory")), "0|0", "and no file or directory was written")
     Set tOrigNS = $NAMESPACE
     Set $NAMESPACE = ..#SOURCE
     Set ^EnsHL7.Description(..#NAMEA) = $Translate($Justify("", 3000001), " ", "d")
@@ -217,7 +220,7 @@ Method TestEveryShippedWritePathIsRefusedUnderSourceControl()
     }
     If $IsObject($Get(tDelete)) {
         Do ..Confirm(tDelete.proposalId, .tHttp, .tRaw, .tConfirmed)
-        Do $$$AssertTrue(tHttp '= 200, "the delete minted before is refused at the confirm: " _ $Extract($Get(tRaw), 1, 300))
+        Do $$$AssertTrue((tHttp '= 200) && ($Get(tRaw) [ tRefusal), "the delete minted before is refused at the confirm, by name: " _ $Extract($Get(tRaw), 1, 300))
     }
     Do $$$AssertEquals(..Act("export-browser", ..#NAMEA, "", .tAnswer), "200 ", "an export still answers under source control")
     Do $$$AssertStatusOK($ClassMethod(..#SC, "Disable", ..#SOURCE), "the probe's source control is taken out of " _ ..#SOURCE)
@@ -241,6 +244,8 @@ Method TestALockASourceControlledSeamAndAVendorErrorNeverAnswer200()
     Set ^IRIS.Temp.OcuProbe2417wMode = "lock"
     Do $$$AssertEquals(..Put("ADDHL7SCHEMA", ..#NAMEB, {}, .tResult, .tFault, ..#SOURCE, tSeam) _ "|" _ ..Put("DELETEHL7SCHEMA", ..#NAMEA, "", .tResult, .tFault, ..#SOURCE, tSeam) _ "|" _ ..ImportWrite(tText, "import", tSeam), "409 INTEROP.HL7.LOCKED|409 INTEROP.HL7.LOCKED|409 INTEROP.HL7.LOCKED", "a held lock refuses each write by name")
     Do $$$AssertEquals($Get(^IRIS.Temp.OcuProbe2417wMode("ran"), 0) _ "|" _ $ClassMethod(tFx, "Held", ..#NAMEB) _ "|" _ $ClassMethod(tFx, "Text", ..#NAMEA), "0|0|2.5|" _ tSecret _ "|0", "no vendor call ran and nothing was written")
+    ; The audit list's bound is a whole second: wait into the next one so no earlier test's row falls inside it.
+    Hang 1.1
     Set tSince = ..AuditNow()
     For tMode = "status", "fault" {
         Set ^IRIS.Temp.OcuProbe2417wMode = tMode
@@ -262,6 +267,8 @@ Method TestALockASourceControlledSeamAndAVendorErrorNeverAnswer200()
     Set tDeleteRows = ..OwnRows(tSince, ..#NAMEA, .tDeleteData, 4, 1)
     Do $$$AssertEquals(tDeleteRows, 4, "and the failed deletes and exports four naming the held one: " _ tDeleteRows _ " " _ $Extract(tDeleteData, 1, 300))
     Do $$$AssertTrue(tDeleteData [ """completed"":false", "reading not completed too")
+    Do $$$AssertEquals(..OwnRows(tSince, "", .tFalseData, 8, 1, """completed"":false"), 8, "every one of the eight rows reads not completed")
+    Do $$$AssertEquals(..OwnRows(tSince, "", .tSecretData, 0, 1, tSecret), 0, "and none carries the description: " _ $Extract(tSecretData, 1, 300))
     Do $$$AssertEquals($Get(^IRIS.Temp.OcuProbe2417wMode("locked"), 0) _ "|" _ $Get(^IRIS.Temp.OcuProbe2417wMode("unlocked"), 0), "6|6", "every vendor lock a failed write took was released, on the status path and on the fault path")
 }
 

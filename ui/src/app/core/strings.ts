@@ -10171,6 +10171,29 @@ export const STRINGS = {
   interopHl7SchemasPrompt2: 'Which custom HL7 schema changed most recently?',
   /** EXPERIENCE.md:643 */
   interopHl7SchemasPrompt3: 'Create a custom HL7 schema based on 2.5.1.',
+  // Story 24.18 Batch 1: the HL7 schemas' refusals, which the server answers; "A description is at most 2,000 characters." reuses `interopWorkflowRoleRefusalDescription`.
+  /** EXPERIENCE.md:643 */
+  interopHl7RefusalSourceControl: 'This namespace uses source control, so change HL7 schemas in the classic HL7 Schema Structures page.',
+  /** EXPERIENCE.md:643 */
+  interopHl7RefusalName: 'An HL7 schema name is 1 to 64 letters, digits, periods, underscores and hyphens, and begins with a letter or digit.',
+  /** EXPERIENCE.md:643 */
+  interopHl7RefusalTaken: 'This namespace already has an HL7 schema with that name, in some letter case.',
+  /** EXPERIENCE.md:643 */
+  interopHl7RefusalBase: 'Choose a base schema this namespace holds, or none.',
+  /** EXPERIENCE.md:643 */
+  interopHl7RefusalStandard: 'This is a standard HL7 schema, which the instance provides, so it cannot be changed or deleted.',
+  /** EXPERIENCE.md:643 */
+  interopHl7RefusalImportShape: 'An import file must hold exactly one HL7 schema and nothing else, in the form the Export action writes.',
+  /** EXPERIENCE.md:643 */
+  interopHl7RefusalImportStandard: 'This file holds a standard HL7 schema, which the instance provides, so it is not imported.',
+  /** EXPERIENCE.md:643 */
+  interopHl7RefusalImportChanged: 'The file or the schema changed after the import was reviewed, so nothing was imported. Review the import again.',
+  /** EXPERIENCE.md:643 */
+  interopHl7RefusalCase: 'An HL7 schema whose name differs from this one only in letter case already exists. Use its spelling, or choose another name.',
+  /** EXPERIENCE.md:643 */
+  interopHl7RefusalTooLarge: 'An HL7 schema file holds at most 3,000,000 characters, and this one holds more.',
+  /** EXPERIENCE.md:643 */
+  interopHl7RefusalLocked: 'Someone else is changing this HL7 schema right now, so nothing was written. Try again in a moment.',
 } as const;
 
 /**

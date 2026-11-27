@@ -137,7 +137,7 @@ ClassMethod Standards(pNamespace As %String = {..#SOURCE}) As %Integer
     Quit tCount
 }
 
-/// <p>Remove every probe schema of both namespaces by the marker, in any letter case. A schema of a standard mark is never removed.</p>
+/// <p>Remove every probe schema of both namespaces by the marker, in any letter case, a probe a failed guard marked standard included: no schema the instance provides carries the marker.</p>
 ClassMethod DropSchemas()
 {
     Set tOrigNS = $NAMESPACE
@@ -148,7 +148,7 @@ ClassMethod DropSchemas()
             For {
                 Set tKey = $Order(^EnsHL7.Schema(tKey))
                 If tKey = "" Quit
-                If ($Extract($ZConvert(tKey, "U"), 1, $Length(..#MARKERUPPER)) = ..#MARKERUPPER) && '+$Get(^EnsHL7.Description(tKey, "std")) {
+                If $Extract($ZConvert(tKey, "U"), 1, $Length(..#MARKERUPPER)) = ..#MARKERUPPER {
                     Kill ^EnsHL7.Schema(tKey), ^EnsHL7.Description(tKey)
                 }
             }
@@ -178,6 +178,7 @@ ClassMethod SchemasLeft() As %Integer
             Set $NAMESPACE = tOrigNS
             Set tLeft = -1
         }
+        If tLeft < 0 Quit
     }
     Quit tLeft
 }

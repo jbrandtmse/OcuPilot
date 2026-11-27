@@ -1,7 +1,7 @@
 /// <p>Pins Story 24.18 Batch 1's gate as real principals in a child process (AD-8, AD-29, AD-39, AD-62): every read and write of the HL7 schemas is refused before any vendor call and before any value is
 /// judged, naming the pair that fails: the portal's, the classic page's own resource, the write resource an add, an import and a delete add, and WRITE on the namespace's database. A write an admitted
 /// principal makes leaves its roles, user and namespace as they were; a refused one changes nothing. The port's pair sets are the classic page's, PathPort's pairs are asked of a server file alone, and the
-/// five tools declare the write pair and the database's WRITE.</p>
+/// add, delete and import tools declare the write pair and the database's WRITE, the export the page's READ.</p>
 /// <p><b>What it needs from the environment:</b> what <class>OcuPilot.Test.InteropHl7Case</class> needs; it creates and removes five principals.</p>
 Class OcuPilot.Test.InteropHl7SchemaGate Extends OcuPilot.Test.InteropHl7Case
 {
@@ -70,7 +70,7 @@ ClassMethod Arrange() As %Status
 }
 
 /// <p>AC5: the gate, as real principals in a child process, refuses before any vendor call and before any value is judged, naming the pair, and writes nothing when it refuses. A principal holding every pair
-/// reads and writes, and an import it has not reviewed is refused as changed, after the gate; one whose classic page resource is READ alone reads and is refused each write naming
+/// reads and writes, and an import of a file that is no export is refused for its shape, after the gate; one whose classic page resource is READ alone reads and is refused each write naming
 /// <code>%Ens_EDISchema:WRITE</code>; one without it is refused every leg naming its READ; one without the portal's pair every leg naming it; one who can only read <code>USER</code>'s database reads and
 /// is refused each write naming <code>%DB_USER:WRITE</code>.</p>
 /// <p>Mutation (Rule 19): drop <parameter>OcuPilot.Port.InteropPort.HL7WRITEPAIR</parameter> from the endpoint's write pairs in <method>OcuPilot.Port.InteropPort.Pairs</method> -- the <code>NoWrite</code> legs go red;
@@ -81,7 +81,6 @@ Method TestTheGateRefusesEachPrincipalBeforeAnyVendorCall()
     Do $$$AssertStatusOK(tSC, "the principals are created")
     If $$$ISERR(tSC) Quit
     Set tOk = ..Expect()
-    Set tImport = "409|INTEROP.HL7.IMPORTCHANGED|"
     Set tWrite = ..Expect("%Ens_EDISchema:WRITE")
     Set tRead = ..Expect("%Ens_EDISchema:READ")
     Set tPortal = ..Expect("%Ens_Portal:USE")

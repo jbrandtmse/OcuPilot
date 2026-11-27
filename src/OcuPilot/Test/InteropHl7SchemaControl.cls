@@ -114,10 +114,11 @@ Method TestADeleteMintedBeforeTheSchemaChangedIsClosedAsMoved()
 }
 
 /// <p>AC8: each write's script form renders the switch to the namespace, each refusal as one guard and the vendor call, with the schema's name and values as string literals, and renders no draft for a name
-/// or a value the port would refuse by shape. Run line by line, an add's script stores a free name and only sets the refusal for a name held in another letter case, and a delete's script removes a held
+/// or a value or a file name the port would refuse by shape. Run line by line, an add's script stores a free name and only sets the refusal for a name held in another letter case, and a delete's script removes a held
 /// probe and refuses a standard schema and one that is not held.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.Hl7SchemaSnippet</method> drop the held-name guard from an add -- the held-in-another-case run goes red. The delete script's standard guard is
-/// pinned by its rendered text only, since the vendor's own delete refuses a standard schema in the run.</p>
+/// pinned by its rendered text only, since the vendor's own delete refuses a standard schema in the run. Drop the file guard from <method>OcuPilot.Port.InteropPort.Hl7TransferSnippet</method> -- the
+/// import's guard leg goes red; drop its file-name shape test -- the bad-file legs go red.</p>
 Method TestTheScriptFormsRenderTheGuardsAndNoDraftForABadValue()
 {
     Set tFx = ..#FIXTURE
@@ -135,6 +136,7 @@ Method TestTheScriptFormsRenderTheGuardsAndNoDraftForABadValue()
         If tType = "ADDHL7SCHEMA" Do $$$AssertTrue((tText [ "Script schema") && (tText [ "$ZConvert(") && (tText [ "AuditModifySchema"), "the add carries the values, guards a name held in any letter case and records the vendor's audit")
         If tType = "DELETEHL7SCHEMA" Do $$$AssertTrue((tText [ "SchemaDocument).Delete(") && (tText [ """std"""), "the delete guards a standard schema and calls the vendor's delete")
         If tType = "IMPORTHL7SCHEMA" Do $$$AssertTrue((tText [ "$System.OBJ.Load(") && (tText [ "/probe/dir/"), "the import loads the one document by name")
+        If tType = "IMPORTHL7SCHEMA" Do $$$AssertTrue((tText [ "LocalName = ""Category""") && (tText [ ##class(OcuPilot.Api.InteropError).#REASONHL7IMPORTSHAPE) && ($Length(tText, ##class(OcuPilot.Api.InteropError).#REASONHL7IMPORTSTANDARD) = 3) && (tText [ ##class(OcuPilot.Api.InteropError).#REASONHL7CASE), "and guards a file that is not one schema or marks one standard, a standard schema and one held in another letter case: " _ tText)
         If tType = "EXPORTHL7SCHEMA" Do $$$AssertTrue(tText [ "$System.OBJ.Export(", "the export calls the vendor's export")
     }
     Set tLong = $Translate($Justify("", 65), " ", "x")
@@ -145,6 +147,15 @@ Method TestTheScriptFormsRenderTheGuardsAndNoDraftForABadValue()
         Set tQuery("id") = $List(tBad, 2)
         Set tSteps = $ClassMethod(..#PORT, "Snippet", ..#ENDPOINT, $List(tBad, 1), .tQuery, ##class(%DynamicAbstractObject).%FromJSON($List(tBad, 3)))
         Do $$$AssertEquals(tSteps.%Size(), 0, $List(tBad, 1) _ " of '" _ $Extract($List(tBad, 2), 1, 12) _ "' with " _ $Extract($List(tBad, 3), 1, 24) _ " renders no draft")
+    }
+    For tBad = $ListBuild("IMPORTHL7SCHEMA", "../a.xml"), $ListBuild("IMPORTHL7SCHEMA", "a" _ $Char(10) _ ".xml"), $ListBuild("EXPORTHL7SCHEMA", "x/../../a.xml"), $ListBuild("EXPORTHL7SCHEMA", $Translate($Justify("", 256), " ", "f")) {
+        Kill tQuery
+        Set tQuery("namespace") = ..#SOURCE
+        Set tQuery("id") = ..#NAMEA
+        Set tQuery("root") = "/probe/dir/"
+        Set tQuery("path") = $List(tBad, 2)
+        Set tSteps = $ClassMethod(..#PORT, "Snippet", ..#ENDPOINT, $List(tBad, 1), .tQuery, "")
+        Do $$$AssertEquals(tSteps.%Size(), 0, $List(tBad, 1) _ " of the file '" _ $Extract($Translate($List(tBad, 2), $Char(10), " "), 1, 16) _ "' renders no draft")
     }
     Do $$$AssertEquals($ClassMethod(tFx, "Foreign", ..#SOURCE) _ "|" _ $ClassMethod(tFx, "SchemasLeft"), "0|0", "rendering ran nothing and stored nothing")
     Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeSchema", $ZConvert(..#NAMEB, "L")), "a schema is held under the lower-case spelling of a second name")

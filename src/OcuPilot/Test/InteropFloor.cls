@@ -90,8 +90,9 @@ Parameter ADMINISTRATORSCREENS = "InteropArchiveErrorList,InteropArchiveList,Int
 Parameter ADMINISTRATORTOOLS = "interop.archive.read,interop.archiveerrors.read,interop.archivesettings.read,interop.hl7schemas.read,interop.itemclasses.read,interop.itemtest.read,interop.message.body,interop.message.detail,interop.messagecontents.read,interop.processes.read,interop.purge.read,interop.purgesettings.read,interop.rules.read,interop.transforms.read";
 
 /// <p>The write tools whose declared pairs the Administrator principal holds in full, each one parity with a classic page that opens for that role:
-/// exactly <code>interop.messages.export</code>, whose classic Export dialog checks <code>%Ens_MessageExport:USE</code> beside the Message Viewer's
-/// <code>%Ens_MessageHeader:USE</code>, both of which the role holds, and which declares READ alone on the globals database. Any other write tool
+/// <code>interop.messages.export</code>, whose classic Export dialog checks <code>%Ens_MessageExport:USE</code> beside the Message Viewer's
+/// <code>%Ens_MessageHeader:USE</code>, both of which the role holds, and which declares READ alone on the globals database; and <code>interop.hl7schemas.export</code>
+/// (Story 24.18), whose classic page checks <code>%Ens_EDISchema:READ</code> alone, which the role holds, and which also declares READ alone. Any other write tool
 /// whose pairs this principal holds turns <method>TestTheToolsEachPrincipalHoldsAreItsRoster</method> red.</p>
 Parameter ADMINISTRATORWRITES = "interop.hl7schemas.export,interop.messages.export";
 

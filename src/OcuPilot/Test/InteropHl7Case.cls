@@ -114,6 +114,23 @@ ClassMethod VendorRows(pSince As %String, pName As %String, pExpect As %Integer 
     Quit tCount
 }
 
+/// <p>How many files and directories the directory <var>pDirectory</var> holds; -1 when it cannot be listed.</p>
+ClassMethod FilesIn(pDirectory As %String) As %Integer
+{
+    Set tCount = -1
+    Try {
+        Set tSet = ##class(%ResultSet).%New("%File:FileSet")
+        If $$$ISERR(tSet.Execute(pDirectory, "*", "", 1)) Quit
+        Set tCount = 0
+        While tSet.Next() {
+            Set tCount = tCount + 1
+        }
+    } Catch {
+        Set tCount = -1
+    }
+    Quit tCount
+}
+
 /// <p>The UTC time now as the audit lists take it.</p>
 ClassMethod AuditNow() As %String
 {

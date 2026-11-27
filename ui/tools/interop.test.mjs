@@ -246,7 +246,19 @@ const SENTENCES = [
   ['REASONSTARTUPREADONLY', 'interopStartupRefusalReadOnly'],
   ['REASONAUTOSTART', 'interopAutoStartConsequence'],
   ['REASONSHUTDOWNGROUP', 'interopShutdownGroupConsequence'],
-  // Story 24.18 Batch 1: the HL7 schemas' two consequences. The refusals are served by the server and carry no client copy.
+  // Story 24.18 Batch 1: the HL7 schemas' refusals and two consequences.
+  ['REASONHL7SOURCECONTROL', 'interopHl7RefusalSourceControl'],
+  ['REASONHL7NAME', 'interopHl7RefusalName'],
+  ['REASONHL7TAKEN', 'interopHl7RefusalTaken'],
+  ['REASONHL7BASE', 'interopHl7RefusalBase'],
+  ['REASONHL7DESCRIPTION', 'interopWorkflowRoleRefusalDescription'],
+  ['REASONHL7STANDARD', 'interopHl7RefusalStandard'],
+  ['REASONHL7IMPORTSHAPE', 'interopHl7RefusalImportShape'],
+  ['REASONHL7IMPORTSTANDARD', 'interopHl7RefusalImportStandard'],
+  ['REASONHL7IMPORTCHANGED', 'interopHl7RefusalImportChanged'],
+  ['REASONHL7CASE', 'interopHl7RefusalCase'],
+  ['REASONHL7TOOLARGE', 'interopHl7RefusalTooLarge'],
+  ['REASONHL7LOCKED', 'interopHl7RefusalLocked'],
   ['REASONHL7DELETE', 'interopHl7DeleteConsequence'],
   ['REASONHL7IMPORT', 'interopHl7ImportConsequence'],
 ];

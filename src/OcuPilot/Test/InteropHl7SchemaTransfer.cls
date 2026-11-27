@@ -1,7 +1,7 @@
 /// <p>Pins Story 24.18 Batch 1's export and import end to end against probe HL7 schemas in <code>USER</code> (AD-6, AD-10, AD-15, AD-21, AD-22, AD-39, AD-53, AD-62): a schema exported to this browser, deleted
 /// and imported back from a local file, and exported to a server file, deleted and imported back from it by the agent, each reads back identical to the vendor's own export of the first; each import
 /// and export leaves one <code>ConfigChange</code> of OcuPilot's own that holds no text; the agent's export and import go through mint and confirm, the import behind its key and a destructive card;
-/// and a standard schema exports and is never imported back.</p>
+/// an import over a held schema replaces it whole; and a standard schema exports and is never imported back.</p>
 /// <p><b>What it needs from the environment:</b> what <class>OcuPilot.Test.InteropHl7Case</class> needs, and the manager directory as an allowed root. It writes and removes the files
 /// <class>OcuPilot.Test.ExplorerTransferProbe</class> names.</p>
 Class OcuPilot.Test.InteropHl7SchemaTransfer Extends OcuPilot.Test.InteropHl7Case
@@ -10,6 +10,9 @@ Class OcuPilot.Test.InteropHl7SchemaTransfer Extends OcuPilot.Test.InteropHl7Cas
 Parameter PROBE = "OcuPilot.Test.ExplorerTransferProbe";
 
 Parameter IMPORTKEY = "interop.hl7schemas.import";
+
+/// <p>The probe the replace-whole test imports over, a name no other test's audit rows carry.</p>
+Parameter REPLACED = "OcuProbe2418r";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -44,7 +47,7 @@ Method TestTheBrowserRoundTripReadsBackIdentical()
     If '$IsObject($Get(tAnswer)) || '$IsObject(tAnswer.output) Quit
     Set tText = ..JoinLines(tAnswer.output.lines)
     Do $$$AssertTrue((tText [ "<Document name=""" _ ..#NAMEA _ ".HL7"">") && (tText [ "description=""Round trip""") && (tAnswer.output.%GetTypeOf("root") = "unassigned"), "its output is the vendor's export lines and names no file")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "FileExists", "a.xml"), 0, "and writes no file")
+    Do $$$AssertEquals(..FilesIn($ClassMethod(..#PROBE, "Directory")), 0, "and writes no file")
     Do $$$AssertEquals(..Act("delete", ..#NAMEA, "", .tDeleted), "200 ", "the probe is deleted")
     Do $$$AssertEquals($ClassMethod(tFx, "Held", ..#NAMEA), 0, "and gone")
     Do $$$AssertEquals(..Act("import-local", "import", {"fileName": "a.xml", "content": (tText)}, .tImported), "200 ", "the local file imports: " _ $Extract($Select($IsObject(tImported): tImported.%ToJSON(), 1: ""), 1, 300))
@@ -54,6 +57,23 @@ Method TestTheBrowserRoundTripReadsBackIdentical()
     Do $$$AssertEquals($Select($IsObject($Get(tAgain)) && $IsObject(tAgain.output): $ZStrip($Piece(..JoinLines(tAgain.output.lines), "<Document", 2, *), "<>", $Char(10, 13)), 1: ""), $ZStrip(tBefore, "<>", $Char(10, 13)), "and equals the first, but for the line end the lines drop")
     Do $$$AssertEquals(..OwnRows(tSince, ..#NAMEA, .tData, 3, 1), 3, "two exports and one import leave three ConfigChange rows of OcuPilot's own")
     Do $$$AssertTrue((tData [ ..#NAMEA) && (tData [ "USER") && (tData '[ "Round trip") && (tData '[ "<Category"), "naming the schema and the namespace and carrying no text: " _ tData)
+    Do $$$AssertEquals(..OwnRows(tSince, "", .tText1, 0, 1, "Round trip") + ..OwnRows(tSince, "", .tText2, 0, 1, "<Category"), 0, "and no row of the three, the import's included, carries the description or the file's text")
+}
+
+/// <p>AC3, the import's consequence: a file imported over a schema the namespace holds replaces it whole, so a base the file names replaces the held one and a description and a message type the
+/// file does not define are removed.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.Hl7VendorLoad</method> select a document the file does not hold -- the import answers <code>IMPORTSHAPE</code> and this goes red.</p>
+Method TestAnImportReplacesTheHeldSchemaWhole()
+{
+    Set tFx = ..#FIXTURE
+    Set tName = ..#REPLACED
+    Do $$$AssertStatusOK($ClassMethod(tFx, "ProbeSchema", tName, ..#SOURCE, "2.5", "Held before"), "a probe is stored")
+    Set ^|"USER"|EnsHL7.Schema(tName, "MT", "ZZZ_Z01") = "base:ADT_A01"
+    Do $$$AssertEquals($ClassMethod(tFx, "Text", tName) _ "|" _ $Data(^|"USER"|EnsHL7.Schema(tName, "MT", "ZZZ_Z01")), "2.5|Held before|0|1", "it holds a base, a description and a message type")
+    Set tNL = $Char(10)
+    Set tFile = "<?xml version=""1.0"" encoding=""UTF-8""?>" _ tNL _ "<Export generator=""IRIS"" version=""26"">" _ tNL _ "<Document name=""" _ tName _ ".HL7"">" _ tNL _ "<Category name=""" _ tName _ """ base=""2.5.1"">" _ tNL _ "</Category>" _ tNL _ "</Document></Export>"
+    Do $$$AssertEquals(..Act("import-local", "import", {"fileName": "r.xml", "content": (tFile)}, .tImported), "200 ", "the file imports over it: " _ $Extract($Select($IsObject(tImported): tImported.%ToJSON(), 1: ""), 1, 300))
+    Do $$$AssertEquals($ClassMethod(tFx, "Text", tName) _ "|" _ $Data(^|"USER"|EnsHL7.Schema(tName, "MT", "ZZZ_Z01")), "2.5.1||0|0", "the schema is the file's: its base, and no description or message type the file does not define")
 }
 
 /// <p>AC3: a probe exported to a server file through a person's action and again through the agent's confirmed export, deleted, imports back through the agent's confirmed import, which is refused while

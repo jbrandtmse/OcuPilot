@@ -7920,7 +7920,7 @@ ClassMethod ImportText(ByRef pQuery, Output pText As %String, Output pLabel As %
 /// them (<code>$System.OBJ.LoadStream</code> with list-only), so a file that also holds a class or a routine, one that holds two tables,
 /// and the legacy form that holds no document (which the lister rejects) are each no table. A fault is <var>pCaught</var>, with
 /// the namespace restored. <var>pSuffix</var> (default <parameter>LUTEXTENSION</parameter>) is the document's extension and <var>pElement</var> (default <code>entry</code>)
-/// the element counted into <var>pFileEntries</var>; when <var>pFlagAttribute</var> names an attribute, <var>pFlagged</var> is 1 when a counted element carries it with a value the
+/// the element counted into <var>pFileEntries</var>, matched by its local name in any XML namespace as the vendor's loader matches it; when <var>pFlagAttribute</var> names an attribute, <var>pFlagged</var> is 1 when a counted element carries it with a value the
 /// vendor reads as true (not empty, <code>0</code> or <code>false</code>).</p>
 ClassMethod ImportShape(pNamespace As %String, pText As %String, Output pTable As %String, Output pFileEntries As %Integer, Output pDigest As %String, Output pCaught, pSuffix As %String = "", pElement As %String = "entry", pFlagAttribute As %String = "", Output pFlagged As %Boolean) As %Status [ Private ]
 {
@@ -7959,7 +7959,7 @@ ClassMethod ImportShape(pNamespace As %String, pText As %String, Output pTable A
         Set tSC = ##class(%XML.TextReader).ParseStream(tBytes, .tReader)
         If $$$ISERR(tSC) Quit
         While tReader.Read() {
-            If (tReader.NodeType = "element") && (tReader.Name = pElement) {
+            If (tReader.NodeType = "element") && (tReader.LocalName = pElement) {
                 Set tCount = tCount + 1
                 If (pFlagAttribute '= "") && tReader.MoveToAttributeName(pFlagAttribute) {
                     If $Case($ZConvert(tReader.Value, "L"), "": 0, "0": 0, "false": 0, : 1) Set pFlagged = 1
@@ -8073,9 +8073,7 @@ ClassMethod PerformImport(pNamespace As %String, pId As %String, ByRef pQuery, O
             } ElseIf (tNow("stamp") '= tPre("stamp")) || (tNow("entries") '= tPre("entries")) {
                 Set tToken = "IMPORTCHANGED"
             } Else {
-                Kill tLoaded, tSelected
-                Set tSelected(tTable _ ..#LUTEXTENSION) = ""
-                Set tVendorSC = $System.OBJ.LoadStream(tStream, "-d", .tErrorLog, .tLoaded, 0, .tSelected)
+                Set tVendorSC = ..DocumentLoad(tStream, tTable _ ..#LUTEXTENSION, .tLoaded)
                 If $$$ISOK(tVendorSC) && '$Data(tLoaded(tTable _ ..#LUTEXTENSION)) Set tToken = "IMPORTSHAPE"
                 Do ..LookupFactsHere(tTable, "", 1, .tAfter)
                 Set tAfterEntries = tAfter("entries")
@@ -8177,8 +8175,6 @@ ClassMethod ExportTable(pNamespace As %String, pTable As %String, ByRef pQuery, 
         Set tSC = ..ExportFile(tRoot, tPath, .tResolved, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit tSC
     }
-    Kill tItems
-    Set tItems(pTable _ ..#LUTEXTENSION) = ""
     Set tCaught = ""
     Set tVendorSC = $$$OK
     Set tText = ""
@@ -8187,20 +8183,7 @@ ClassMethod ExportTable(pNamespace As %String, pTable As %String, ByRef pQuery, 
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
-        If tToFile {
-            Set tVendorSC = $System.OBJ.Export(.tItems, tResolved, "-d")
-        } Else {
-            Set tStream = ##class(%Stream.GlobalCharacter).%New()
-            Set tVendorSC = $System.OBJ.ExportToStream(.tItems, .tStream, "-d")
-            If $$$ISOK(tVendorSC) {
-                If tStream.Size > tMax {
-                    Set tTooLarge = 1
-                } Else {
-                    Do tStream.Rewind()
-                    Set tText = tStream.Read(tMax)
-                }
-            }
-        }
+        Set tVendorSC = ..DocumentExport(pTable _ ..#LUTEXTENSION, tToFile, tResolved, tMax, .tText, .tTooLarge)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -8222,31 +8205,72 @@ ClassMethod ExportTable(pNamespace As %String, pTable As %String, ByRef pQuery, 
         Do pResult.%Set(..#ROOTKEY, tRoot, "string")
         Do pResult.%Set(..#PATHKEY, tPath, "string")
     } Else {
-        Set tLines = []
-        Set tLength = $Length(tText, $Char(10))
-        For tI = 1:1:tLength {
-            Set tLine = $Piece(tText, $Char(10), tI)
-            If (tI = tLength) && (tLine = "") Quit
-            Do tLines.%Push(tLine, "string")
-        }
-        Do pResult.%Set("lines", tLines)
+        Do pResult.%Set("lines", ..ExportLines(tText))
     }
     Set pHttpStatus = 200
     Quit $$$OK
 }
 
+/// <p>The vendor's export of the one document <var>pItem</var> in the current namespace, which the caller has already switched (Stories 20.5 and 24.18): to the server file
+/// <var>pFile</var> when <var>pToFile</var> (<code>$System.OBJ.Export</code>), else to <var>pText</var> (<code>$System.OBJ.ExportToStream</code>), which is left empty with
+/// <var>pTooLarge</var> 1 when the text is longer than <var>pMax</var> characters. The document is passed in the array form, so a comma in its name is not a separator.</p>
+ClassMethod DocumentExport(pItem As %String, pToFile As %Boolean, pFile As %String, pMax As %Integer, Output pText As %String, Output pTooLarge As %Boolean) As %Status
+{
+    Set pText = ""
+    Set pTooLarge = 0
+    Kill tItems
+    Set tItems(pItem) = ""
+    If pToFile Quit $System.OBJ.Export(.tItems, pFile, "-d")
+    Set tStream = ##class(%Stream.GlobalCharacter).%New()
+    Set tSC = $System.OBJ.ExportToStream(.tItems, .tStream, "-d")
+    If $$$ISOK(tSC) {
+        If tStream.Size > pMax {
+            Set pTooLarge = 1
+        } Else {
+            Do tStream.Rewind()
+            Set pText = tStream.Read(pMax)
+        }
+    }
+    Quit tSC
+}
+
+/// <p>The vendor's load of the one document <var>pItem</var> of <var>pStream</var> in the current namespace, which the caller has already switched (Stories 20.5 and 24.18):
+/// <code>$System.OBJ.LoadStream</code> with that document alone selected, answering the documents it loaded in <var>pLoaded</var>.</p>
+ClassMethod DocumentLoad(pStream As %Stream.Object, pItem As %String, Output pLoaded) As %Status
+{
+    Kill pLoaded, tSelected
+    Set tSelected(pItem) = ""
+    Quit $System.OBJ.LoadStream(pStream, "-d", .tErrorLog, .pLoaded, 0, .tSelected)
+}
+
+/// <p>An export's text <var>pText</var> as the lines the browser saves, split at line feeds, with no trailing empty line. Pure.</p>
+ClassMethod ExportLines(pText As %String) As %DynamicArray
+{
+    Set tLines = []
+    Set tLength = $Length(pText, $Char(10))
+    For tI = 1:1:tLength {
+        Set tLine = $Piece(pText, $Char(10), tI)
+        If (tI = tLength) && (tLine = "") Quit
+        Do tLines.%Push(tLine, "string")
+    }
+    Quit tLines
+}
+
 /// <p>The lines <method>Snippet</method> adds for an import or an export of the table <var>pTable</var> (Story 20.5): the vendor's own
 /// call on the table's one <code>.LUT</code> document, named in the array form the port passes, in the lock the import takes. A
 /// server file is named by its allowed directory and relative name in a comment, since the directory is resolved when the write
-/// runs; a local file's text is never in a script, so its import loads a stream the comment says it holds.</p>
-ClassMethod TransferSnippet(pType As %String, pTable As %String, ByRef pQuery) As %String [ Private ]
+/// runs; a local file's text is never in a script, so its import loads a stream the comment says it holds. The HL7 schema export and import (Story 24.18) pass their
+/// document's extension <var>pExtension</var>, their lock's global <var>pLockGlobal</var>, the guard lines <var>pGuards</var> that set <code>tGo</code> before the load, and the
+/// sentence literal <var>pLockedError</var> a lock not got sets; with guards the lock, the load and the release run only while <code>tGo</code> holds.</p>
+ClassMethod TransferSnippet(pType As %String, pTable As %String, ByRef pQuery, pExtension As %String = "", pLockGlobal As %String = "^Ens.LookupTable", pGuards As %String = "", pLockedError As %String = "") As %String [ Private ]
 {
     Set tNL = $Char(10)
-    Set tItems = tNL _ " Set tItems(" _ ..Literal(pTable _ ..#LUTEXTENSION) _ ") = """""
+    If pExtension = "" Set pExtension = ..#LUTEXTENSION
+    Set tItems = tNL _ " Set tItems(" _ ..Literal(pTable _ pExtension) _ ") = """""
     Set tPath = $Get(pQuery(..#PATHKEY))
     Set tFile = ..Literal(tPath)
     Set tSource = tNL _ " ; The server file is the allowed directory " _ $Translate($Get(pQuery(..#ROOTKEY)), $Char(10) _ $Char(13), "  ") _ " and the name " _ $Translate(tPath, $Char(10) _ $Char(13), "  ")
-    If pType = ..#TYPEEXPORT {
+    If (pType = ..#TYPEEXPORT) || (pType = ..#TYPEEXPORTHL7SCHEMA) {
         If tPath = "" Quit tItems _ tNL _ " Set tStream = ##class(%Stream.GlobalCharacter).%New()" _ tNL _ " Set tSC = $System.OBJ.ExportToStream(.tItems, .tStream, ""-d"")"
         Quit tSource _ tItems _ tNL _ " Set tSC = $System.OBJ.Export(.tItems, " _ tFile _ ", ""-d"")"
     }
@@ -8255,7 +8279,10 @@ ClassMethod TransferSnippet(pType As %String, pTable As %String, ByRef pQuery) A
         Set tSource = tNL _ " ; tStream holds the text of the file this browser sent, which no script carries"
         Set tLoad = "$System.OBJ.LoadStream(tStream, ""-d"", .tErrorLog, .tLoaded, 0, .tItems)"
     }
-    Quit tSource _ tItems _ tNL _ " Lock +^Ens.LookupTable(" _ ..Literal(pTable) _ "):" _ ..#LOCKSECONDS _ tNL _ " If $Test { Set tSC = " _ tLoad _ " } Else { Set tSC = $System.Status.Error(5001, ""the lookup table lock is held"") }" _ tNL _ " Lock -^Ens.LookupTable(" _ ..Literal(pTable) _ ")"
+    Set tGo = $Select(pGuards = "": "", 1: "If tGo ")
+    Set tLock = pLockGlobal _ "(" _ ..Literal(pTable) _ ")"
+    Set tLocked = $Select(pLockedError = "": """the lookup table lock is held""", 1: pLockedError)
+    Quit pGuards _ tSource _ tItems _ tNL _ " " _ tGo _ "Lock +" _ tLock _ ":" _ ..#LOCKSECONDS _ tNL _ " " _ $Select(pGuards = "": "If $Test", 1: "If tGo, $Test") _ " { Set tSC = " _ tLoad _ " } " _ $Select(pGuards = "": "Else", 1: "ElseIf tGo") _ " { Set tSC = $System.Status.Error(5001, " _ tLocked _ ") }" _ tNL _ " " _ tGo _ "Lock -" _ tLock
 }
 
 /// <p>The namespace's business partners, one row per partner, at most <var>pMax</var> when it is above zero (Story 20.5):
@@ -16610,49 +16637,38 @@ ClassMethod Hl7Unlock(pName As %String)
 
 /// <p>The vendor's write of the HL7 schema write <var>pType</var> (an add or a delete) on <var>pName</var> in the current namespace, which the caller has already switched. A delete is
 /// <code>EnsLib.HL7.SchemaDocument.Delete</code>, which refuses a standard schema and records the vendor's audit row. An add sets the vendor's schema globals as the classic New HL7
-/// Schema dialog sets them (<code>EnsPortal.HL7.Dialog.CustomSchema.OnWizardCompletion</code>: the base, the description and the time), then records the vendor's audit row; no vendor
-/// method creates an empty schema. Overridable so a fixture can answer a status or a fault; production never overrides it.</p>
+/// Schema dialog sets them (<code>EnsPortal.HL7.Dialog.CustomSchema.OnWizardCompletion</code>: the base, the description and the time), in one transaction that a fault rolls back,
+/// then records the vendor's audit row; no vendor method creates an empty schema. Overridable so a fixture can answer a status or a fault; production never overrides it.</p>
 ClassMethod Hl7VendorWrite(pType As %String, pName As %String, pBase As %String, pDescription As %String) As %Status
 {
     If pType = ..#TYPEDELETEHL7SCHEMA Quit ##class(EnsLib.HL7.SchemaDocument).Delete(pName _ ..#HL7EXTENSION)
-    If pBase '= "" Set ^EnsHL7.Schema(pName, "base") = pBase
-    If pDescription '= "" Set ^EnsHL7.Description(pName) = pDescription
-    Set ^EnsHL7.Schema(pName, "time") = $ZTimeStamp
+    TSTART
+    Try {
+        If pBase '= "" Set ^EnsHL7.Schema(pName, "base") = pBase
+        If pDescription '= "" Set ^EnsHL7.Description(pName) = pDescription
+        Set ^EnsHL7.Schema(pName, "time") = $ZTimeStamp
+        TCOMMIT
+    } Catch ex {
+        TROLLBACK 1
+        Throw ex
+    }
     Set tActions = "Created schema based on " _ pBase
     Set tAuditSC = ##class(Ens.Util.Auditing).AuditModifySchema("HL7 " _ pName, tActions)
     Quit $$$OK
 }
 
-/// <p>The vendor's load of the one document <var>pItem</var> of <var>pStream</var> in the current namespace, which the caller has already switched, answering the documents it loaded in
-/// <var>pLoaded</var>. The vendor replaces the schema whole inside its own transaction. Overridable so a fixture can answer a status; production never overrides it.</p>
+/// <p>The vendor's load of the one document <var>pItem</var> of <var>pStream</var> (<method>DocumentLoad</method>) in the current namespace, which the caller has already switched. The vendor
+/// replaces the schema whole inside its own transaction. Overridable so a fixture can answer a status; production never overrides it.</p>
 ClassMethod Hl7VendorLoad(pStream As %Stream.Object, pItem As %String, Output pLoaded) As %Status
 {
-    Kill pLoaded, tSelected
-    Set tSelected(pItem) = ""
-    Quit $System.OBJ.LoadStream(pStream, "-d", .tErrorLog, .pLoaded, 0, .tSelected)
+    Quit ..DocumentLoad(pStream, pItem, .pLoaded)
 }
 
-/// <p>The vendor's export of <var>pName</var>'s document in the current namespace, which the caller has already switched: to the server file <var>pFile</var> when <var>pToFile</var>, else
-/// to <var>pText</var>, which is left empty with <var>pTooLarge</var> 1 when the text is longer than <var>pMax</var> characters. Overridable so a fixture can answer a status; production
-/// never overrides it.</p>
+/// <p>The vendor's export of <var>pName</var>'s document (<method>DocumentExport</method>) in the current namespace, which the caller has already switched. Overridable so a fixture can answer
+/// a status; production never overrides it.</p>
 ClassMethod Hl7VendorExport(pName As %String, pToFile As %Boolean, pFile As %String, pMax As %Integer, Output pText As %String, Output pTooLarge As %Boolean) As %Status
 {
-    Set pText = ""
-    Set pTooLarge = 0
-    Kill tItems
-    Set tItems(pName _ ..#HL7EXTENSION) = ""
-    If pToFile Quit $System.OBJ.Export(.tItems, pFile, "-d")
-    Set tStream = ##class(%Stream.GlobalCharacter).%New()
-    Set tSC = $System.OBJ.ExportToStream(.tItems, .tStream, "-d")
-    If $$$ISOK(tSC) {
-        If tStream.Size > pMax {
-            Set pTooLarge = 1
-        } Else {
-            Do tStream.Rewind()
-            Set pText = tStream.Read(pMax)
-        }
-    }
-    Quit tSC
+    Quit ..DocumentExport(pName _ ..#HL7EXTENSION, pToFile, pFile, pMax, .pText, .pTooLarge)
 }
 
 /// <p>The facts about schema <var>pName</var> in the current namespace, which the caller has already switched, kept in <var>pFacts</var>: <code>exists</code> (held under exactly that
@@ -17092,14 +17108,7 @@ ClassMethod ExportHl7Schema(pNamespace As %String, pName As %String, ByRef pQuer
         Do pResult.%Set(..#ROOTKEY, tRoot, "string")
         Do pResult.%Set(..#PATHKEY, tPath, "string")
     } Else {
-        Set tLines = []
-        Set tLength = $Length(tText, $Char(10))
-        For tI = 1:1:tLength {
-            Set tLine = $Piece(tText, $Char(10), tI)
-            If (tI = tLength) && (tLine = "") Quit
-            Do tLines.%Push(tLine, "string")
-        }
-        Do pResult.%Set("lines", tLines)
+        Do pResult.%Set("lines", ..ExportLines(tText))
     }
     Set pHttpStatus = 200
     Quit $$$OK
@@ -17196,31 +17205,27 @@ ClassMethod Hl7SchemaSnippet(pType As %String, pName As %String, pBody As %Dynam
     Quit tText _ tNL _ " Lock -^EnsHL7.Schema(" _ tName _ ")"
 }
 
-/// <p>The lines <method>Hl7SchemaSnippet</method> adds for an import or an export of the schema <var>pName</var> (Story 24.18 Batch 1): the vendor's own call on the schema's one
-/// <code>.HL7</code> document, named in the array form the port passes, and for an import the guards and the vendor's schema lock it takes. A server file is named by its allowed directory
-/// and relative name in a comment, since the directory is resolved when the write runs; a local file's text is never in a script, so its import loads a stream the comment says it holds.</p>
+/// <p>The lines <method>Hl7SchemaSnippet</method> adds for an import or an export of the schema <var>pName</var> (Story 24.18 Batch 1): <method>TransferSnippet</method>'s, over the schema's one
+/// <code>.HL7</code> document and the vendor's schema lock, and for an import the guards the port judges before its load: source control; a file that does not hold exactly one
+/// <code>Category</code>, in any XML namespace, or marks one standard; a schema the namespace holds as standard; and one held only in another letter case. <code>""</code> for a file
+/// name the port refuses by shape (a control character, a <code>..</code> segment or a name longer than <parameter>OcuPilot.Port.AtelierPort.MAXFILENAME</parameter>), which renders no draft.</p>
 ClassMethod Hl7TransferSnippet(pType As %String, pName As %String, ByRef pQuery) As %String [ Private ]
 {
+    Set tRoot = $Get(pQuery(..#ROOTKEY))
+    Set tPath = $Get(pQuery(..#PATHKEY))
+    If ($ZStrip(tRoot, "*C") '= tRoot) || ($ZStrip(tPath, "*C") '= tPath) || ($Length(tPath) > ##class(OcuPilot.Port.AtelierPort).#MAXFILENAME) || ($Find("/" _ $Translate(tPath, "\", "/") _ "/", "/../") > 0) Quit ""
+    If pType = ..#TYPEEXPORTHL7SCHEMA Quit ..TransferSnippet(pType, pName, .pQuery, ..#HL7EXTENSION, "^EnsHL7.Schema")
     Set tNL = $Char(10)
     Set tName = ..Literal(pName)
     Set tError = "$System.Status.Error(5001, "
-    Set tItems = tNL _ " Set tItems(" _ ..Literal(pName _ ..#HL7EXTENSION) _ ") = """""
-    Set tPath = $Get(pQuery(..#PATHKEY))
-    Set tFile = ..Literal(tPath)
-    Set tSource = tNL _ " ; The server file is the allowed directory " _ $Translate($Get(pQuery(..#ROOTKEY)), $Char(10) _ $Char(13), "  ") _ " and the name " _ $Translate(tPath, $Char(10) _ $Char(13), "  ")
-    If pType = ..#TYPEEXPORTHL7SCHEMA {
-        If tPath = "" Quit tItems _ tNL _ " Set tStream = ##class(%Stream.GlobalCharacter).%New()" _ tNL _ " Set tSC = $System.OBJ.ExportToStream(.tItems, .tStream, ""-d"")"
-        Quit tSource _ tItems _ tNL _ " Set tSC = $System.OBJ.Export(.tItems, " _ tFile _ ", ""-d"")"
-    }
-    Set tLoad = "$System.OBJ.Load(" _ tFile _ ", ""-d"", .tErrorLog, .tLoaded, 0, .tItems)"
-    If tPath = "" {
-        Set tSource = tNL _ " ; tStream holds the text of the file this browser sent, which no script carries"
-        Set tLoad = "$System.OBJ.LoadStream(tStream, ""-d"", .tErrorLog, .tLoaded, 0, .tItems)"
-    }
+    Set tParse = $Select(tPath = "": "ParseStream(tStream, .tReader)", 1: "ParseFile(" _ ..Literal(tPath) _ ", .tReader)")
     Set tText = tNL _ " Set tGo = '##class(%CSP.Portal.SourceControl.Util).IsEnabled($Namespace), tSC = $System.Status.OK()"
     Set tText = tText _ tNL _ " If 'tGo Set tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7SOURCECONTROL) _ ")"
+    Set tText = tText _ tNL _ " If tGo { Set tCount = 0, tStd = 0, tRead = ##class(%XML.TextReader)." _ tParse _ " While $System.Status.IsOK(tRead) && tReader.Read() { If (tReader.NodeType = ""element"") && (tReader.LocalName = ""Category"") { Set tCount = tCount + 1 If tReader.MoveToAttributeName(""std"") && $Case($ZConvert(tReader.Value, ""L""), """": 0, ""0"": 0, ""false"": 0, : 1) { Set tStd = 1 } Do tReader.MoveToElement() } }"
+    Set tText = tText _ " If tCount '= 1 { Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7IMPORTSHAPE) _ ") } ElseIf tStd { Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7IMPORTSTANDARD) _ ") }" _ $Select(tPath = "": " Do tStream.Rewind()", 1: "") _ " }"
     Set tText = tText _ tNL _ " If tGo, +$Get(^EnsHL7.Description(" _ tName _ ", ""std"")) Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7IMPORTSTANDARD) _ ")"
-    Quit tText _ tSource _ tItems _ tNL _ " If tGo Lock +^EnsHL7.Schema(" _ tName _ "):" _ ..#LOCKSECONDS _ tNL _ " If tGo, $Test { Set tSC = " _ tLoad _ " } ElseIf tGo { Set tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7LOCKED) _ ") }" _ tNL _ " If tGo Lock -^EnsHL7.Schema(" _ tName _ ")"
+    Set tText = tText _ tNL _ " If tGo && ($Data(^EnsHL7.Schema(" _ tName _ ")) = 0) { Set tKey = """", tUpper = $ZConvert(" _ tName _ ", ""U"") For { Set tKey = $Order(^EnsHL7.Schema(tKey)) If tKey = """" { Quit } If $ZConvert(tKey, ""U"") = tUpper { Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7CASE) _ ") Quit } } }"
+    Quit ..TransferSnippet(pType, pName, .pQuery, ..#HL7EXTENSION, "^EnsHL7.Schema", tText, ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7LOCKED))
 }
 
 }
