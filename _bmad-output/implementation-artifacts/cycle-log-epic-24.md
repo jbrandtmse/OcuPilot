@@ -961,3 +961,6 @@
 2026-11-26T21:42:28Z	Story 24.18	spec_validated	scope=batch1 ledger_inbox=empty mutates_shared_runtime=false(throwaway_only)
 2026-11-26T21:45:18Z	Story 24.18	integrate_merge	scope=batch1 theirs=feature@ba0fa0702 conflicts=none ci.test=green
 2026-11-26T21:45:18Z	Story 24.18	stage_spawned	stage=implement spawn_at=2026-11-26T21:45:18Z model=sonnet agent_name=24-18-implement-batch1 cycle_iteration=1 story_base=20b07af0f
+2026-11-27T01:06:57Z	Story 24.18	feature_moved	feature=9963a03b1(21.28_alternate_show_plans) touches=EXPERIENCE.md,ReadTool,strings,screen_mirror,spine_AD-7/21/44,ci-timings readme=106 action=integrate_before_batch1_code_head(after_implement_and_review;stage_holds_tree)
+2026-11-27T02:54:23Z	Story 24.18	stage_result	stage=implement scope=batch1 commit=c613abc33 sweep=934cls/6969t red=LogHubErrors(outside_diff,throwaway_env_inference) task0=pass(vendor_audits_import:spec_correction_needed;cap=2000) browser=green smoke=49/49 tools=2428 components=4135
+2026-11-27T02:54:23Z	Story 24.18	stage_spawned	stage=review spawn_at=2026-11-27T02:54:23Z model=opus agent_name=24-18-review-batch1 cycle_iteration=1 diff=18345f0a8..c613abc33
