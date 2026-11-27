@@ -1236,3 +1236,4 @@
 2026-11-27T01:03:30Z	Story 21.29	stage_spawned	stage=implement spawn_at=2026-11-27T01:03:30Z model=sonnet agent_name=21-29-impl cycle_iteration=1 story_base=8230fddba prompt=e21-kit/21-29/impl/prompt.md
 2026-11-27T01:25:26Z	Story 21.29	dev_clarification_requested	agent=ab526a75c status=blocked condition=intent_gap(import_writes_IRISLOCALDATA_routines,crafted_%zz_into_IRISSYS->Batch4_not_built_by_ruling;save_alarm_does_not_stop_InsertQuery,error_status_leaves_row) other=Planned_from_nonempty_plan;save_side_effects;list_note_measured;case_number_vendor_looser;import_null_device+shape_check worst=save_0.2s,generate_0.04s,import_7.9s commits=none
 2026-11-27T01:25:27Z	Epic 21	integrated_forward	feature=9963a03b1(21.28_merged;timings) merge=M=73c2d7614 conflicts=0
+2026-11-27T01:25:40Z	Story 21.29	escalation_sent	to=orchestrator items=import_outside_namespace(AC5_park?),save_bound(option_b) at=2026-11-27T01:25:40Z
