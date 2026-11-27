@@ -564,7 +564,7 @@ Parameter REASONSQLREPORTTOOLONG = "This report is longer than 3,000,000 charact
 /// <parameter>OcuPilot.Api.Error.NOTFOUND</parameter> slug with 404, unlogged.</p>
 Parameter SQLREPORTNOTFOUND = "EXPLORER.SQLREPORT.NOTFOUND";
 
-Parameter REASONSQLREPORTNOTFOUND = "This namespace holds no saved query with that id that this account can see.";
+Parameter REASONSQLREPORTNOTFOUND = "No query is saved for this support case in this namespace.";
 
 /// <p>Consequence codes (Story 21.29): what a save, a delete and a generate to a server file do, stated on the proposal card and the dialog. A
 /// generate to this browser writes no file and states none.</p>

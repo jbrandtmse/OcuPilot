@@ -20,6 +20,8 @@ Parameter PORT = "OcuPilot.Port.SqlPort";
 
 Parameter FIXTURE = "OcuPilot.Test.SqlTuningPortFixture";
 
+Parameter TINY = "OcuPilot.Test.SqlTuningTinyReportFixture";
+
 Parameter SEAM = "OcuPilot.Test.SqlTuningGateSeam";
 
 Parameter AGENT = "OcuPilot.Test.LicenseProbe";
@@ -85,7 +87,7 @@ Method OnAfterOneTest() As %Status
     Do ##class(OcuPilot.Kernel.Scope).Clear()
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveReport", ..#NAMESPACE), "the probe's saved queries, cached queries and table are removed")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "ReportLeft", ..#NAMESPACE), 0, "and no saved query of the probe is left")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "ReportLeft", ..#NAMESPACE) _ "|" _ $ClassMethod(..#PROBE, "CachedQueryCount", ..#NAMESPACE, $Parameter(..#PROBE, "REPORTSCHEMA")), "0|0", "and no saved query or cached query of the probe is left")
     Do $ClassMethod(..#DIRECTORY, "RemoveDirectory")
     Do $$$AssertEquals(##class(%File).DirectoryExists($ClassMethod(..#DIRECTORY, "Directory")), 0, "the probe directory and its report files are removed")
     If '..PreparedPolicyTaken Quit $$$OK
@@ -300,8 +302,8 @@ Method TestTheScreenAndTheAgentEachDeleteOneRowAndNoOther()
 }
 
 /// <p>AC2. A saved query gone after the proposal was minted closes the confirm target-changed, and the mint called nothing.</p>
-/// <p>Mutation (Rule 19): <code>OcuPilot.Screen.Tool.ExplorerSqlReportDelete</code> drops <code>ID</code> from its fingerprint subject -> the confirm is
-/// not refused and the assertion goes red.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.ReportRow</code> answers a row that is gone with the reviewed fields instead of 404 -> the confirm is
+/// not refused target-changed and the assertion goes red.</p>
 Method TestARowGoneAfterTheMintRefusesTheConfirm()
 {
     Set tId = ..Seed()
@@ -385,6 +387,30 @@ Method TestTheGenerateRefusalsCallNothing()
     Set tOutcome = ..Agent(..#GENERATE, {"WRCNumber": "2291", "root": ($ClassMethod(..#DIRECTORY, "Root")), "path": "OcuProbe1913NoSuchDirectory/x.xml"}, , 1)
     Do $$$AssertTrue(tOutcome [ "TASK.EXPORT.DIRECTORY", "the agent's confirm refuses a missing directory before any write: " _ tOutcome)
     Do $$$AssertEquals(##class(%File).DirectoryExists($ClassMethod(..#DIRECTORY, "Directory") _ "OcuProbe1913NoSuchDirectory"), 0, "and no directory was made")
+}
+
+/// <p>AC3. A report to this browser longer than the cap is refused 422 <code>EXPLORER.SQLREPORT.TOOLONG</code> with the ruled sentence and no
+/// <code>lines</code>, and the temporary file the instance wrote is deleted.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.ReportGenerate</code> skips its cap check -> the refusal assertion goes red.</p>
+Method TestAReportLongerThanTheCapIsRefusedForTheBrowserAndNothingIsLeft()
+{
+    Do ..Seed()
+    Kill ^||OcuPilotSqlTuningStatement
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("id") = "*"
+    Set tQuery("WRCNumber") = ..#CASE
+    Set tSC = $ClassMethod(..#TINY, "Invoke", "Reports", "GENERATE", .tQuery, "", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertEquals($Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code _ "|" _ tFault.reason, 1: ""), "422 " _ $Parameter(..#ERROR, "SQLREPORTTOOLONG") _ "|" _ $Parameter(..#ERROR, "REASONSQLREPORTTOOLONG"), "a report past the cap is refused with the ruled sentence")
+    Set tHasLines = 0
+    If $IsObject($Get(tAnswer)) Set tHasLines = (tAnswer.%GetTypeOf("lines") '= "unassigned")
+    Do $$$AssertEquals(tHasLines, 0, "and the answer carries no lines")
+    Set tFile = ""
+    If $Data(^||OcuPilotSqlTuningStatement) {
+        Set tFile = ##class(%DynamicObject).%FromJSON($Piece(^||OcuPilotSqlTuningStatement(^||OcuPilotSqlTuningStatement), "|", 2, *)).File
+    }
+    Do $$$AssertTrue(tFile '= "", "the report was written to a temporary file: " _ tFile)
+    Do $$$AssertEquals(##class(%File).Exists(tFile), 0, "and that file is deleted")
 }
 
 /// <p>AC1, AC3. The instance's own refusal of a report write is 409 with the ruled sentence and the message in <code>detail</code> alone, one call made, no

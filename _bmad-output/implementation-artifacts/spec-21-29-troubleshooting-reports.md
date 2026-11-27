@@ -2,7 +2,7 @@
 title: 'Story 21.29: Troubleshooting reports'
 type: 'feature'
 created: '2026-11-25'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '9cb4fe007aa5767c1ad8de61c100a5ee06b561fa'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -15,6 +15,10 @@ deferred:
   - summary: 'SqlPort repeats ResourceTransferPort''s file-transfer shape (server-or-local text, resolve, temp file), a fifth copy beside LocalePort, InteropPort and AnalyticsPort'
     evidence: 'ResourceTransferPort.ImportText/Export are Private and bound to ResourceFileError codes; unifying them is outside this story''s footprint'
     location: 'src/OcuPilot/Port/SqlPort.cls, src/OcuPilot/Port/ResourceTransferPort.cls'
+    severity: low
+  - summary: 'The list''s Status fallback branch (a row with an empty plan shows the instance''s own status text) has no test, since Save refuses non-queries and only a row saved outside this story has an empty plan'
+    evidence: 'Atelier catalog CATALOGSQLREPORTSQUERY CASE WHEN QueryPlan IS NULL; SqlReportRead and SqlReportWrite assert only Planned. A test needs a row saved through the vendor''s InsertQuery with an INSERT (Task 0 (c): empty plan stream).'
+    location: 'src/OcuPilot/Port/AtelierPort.cls, src/OcuPilot/Test/SqlReportRead.cls'
     severity: low
 ---
 
@@ -222,6 +226,24 @@ deferred:
 
 ## Review Triage Log
 
+### 2026-11-26 — Review pass
+
+- verdicts: 13 findings — high 0, medium 3, low 10, false 0, maybe-false 0 (the last three rows are descriptive observations, not defects)
+- findings:
+  - `[medium]` `[patch]` The 3,000,000-character cap on Generate to this browser has no test — a tiny-cap fixture leg now asserts 422 TOOLONG, no lines and the temp file gone; the guard mutation reddens it.
+  - `[medium]` `[patch]` Server-file Generate's added gate pairs have no test — `SqlReportRead` now asserts the pairs with and without `root`; dropping `FilePairs` reddens it.
+  - `[medium]` `[patch]` The unruled 404 sentence for a gone saved query — replaced by the ruled "No query is saved for this support case in this namespace."; the old sentence is deleted.
+  - `[low]` `[patch]` Cached-query cleanup is not read back — both after-checks assert the probe schema's cached-query count is 0 (a guard; `DROP TABLE` already clears them, so no mutation reddens it).
+  - `[low]` `[patch]` An expected value built from the actual statement kind — the kinds are pinned literally (`dml`, `dml`, `ddl`), read from the instance.
+  - `[low]` `[patch]` Mutation lines missing for the gone-row, refused-root/name/directory and null-device legs — each mutation applied, observed red, reverted and recorded; the gone-row leg's named mutation reddened every write test, so its comment now names the one that isolates it.
+  - `[low]` `[defer]` Status fallback branch untested — only a row saved outside this story has an empty plan; frontmatter `deferred:`.
+  - `[low]` `[reject]` Save's success path answers 500 and leaves rows if another user saves under the same case between the two reads — unlikely in one request window, and a fix would delete another person's row or add a guard branch.
+  - `[low]` `[reject]` Generate's reworded consequence ("every query you can see") — it is the measured correction (Task 0 (d), (e)); recorded verbatim under Auto Run Result.
+  - `[low]` `[reject]` A failed Delete answers 500, not 409 — no ruled sentence exists for it and the vendor's `ClearRow` answers 1 or 0 for a row the caller can see; adding a sentence is an escalation, not a patch.
+  - `[low]` `[reject]` Intent audit: Save is unbounded where the matrix row says `stopped` — the 2026-11-27 ruling replaces that half; descriptive.
+  - `[low]` `[reject]` Intent audit: the `%XML.Reader` read-back is in the test class, not the product — the matrix's read-back is a test assertion; descriptive.
+  - `[low]` `[reject]` Intent audit: the list relies on the vendor's row-level security — the matrix says so; descriptive.
+
 ## Design Notes
 
 **Governing ADs (spine line ranges):**
@@ -376,8 +398,14 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
   - mutation (the 2026-11-27 ruling, save after an error status): `SqlPort.ReportWrite` skips the removal of rows the failed call left -> `SqlReportWrite.TestASaveThatEndsInAnErrorStatusLeavesNoRowAndTheErrorReachesTheCaller` red on both its legs, compile error and negative case number (run 1026); reverted, green.
 - AC2: `DELETEQUERY` calls `ClearRow` with another id -> `SqlReportWrite`'s other-rows-stay leg red.
   - mutation: `SqlPort.ReportCall` clears `pId + 1` -> `SqlReportWrite` red on the delete legs (3 tests, run 1027); reverted, green (run 1031).
+  - mutation: `SqlPort.ReportRow` answers a gone row with the reviewed fields instead of 404 -> `SqlReportWrite.TestARowGoneAfterTheMintRefusesTheConfirm` red ("500 INTERNAL" for the confirm, run 1044); reverted. Dropping `ID` from `ExplorerSqlReportDelete`'s `FINGERPRINTSUBJECT` reddens every write test, so it proves nothing about this leg and the test's doc comment names the `ReportRow` mutation instead.
 - AC3: `GENERATE` skips the no-row precondition -> the no-row leg red (the seam counts a call). The store drops the browser branch -> `sql-reports.page.spec.ts` red.
   - mutation: `SqlPort.ReportGenerate` no-row refusal replaced by `If 0` -> `SqlReportWrite.TestTheGenerateRefusalsCallNothing` red (the refusal leg and the no-call leg, run 1028); reverted, green. The store half is Batch 2's.
+  - mutation: `SqlPort.ReportGenerate` skips the directory check (`If 0`) -> `SqlReportWrite.TestTheGenerateRefusalsCallNothing` red on its missing-directory legs (run 1038); reverted.
+  - mutation: `SqlPort.ReportGenerate` ignores the `PathPort.Resolve` error status -> `SqlReportWrite.TestTheGenerateRefusalsCallNothing` red on its PATH.ROOT and PATH.NAME legs (run 1039); reverted.
+  - mutation: `SqlPort.ReportGenerate` skips the `MAXREPORTCHARACTERS` check (`If 0`) -> `SqlReportWrite.TestAReportLongerThanTheCapIsRefusedForTheBrowserAndNothingIsLeft` red on the 422 and no-lines assertions (run 1037); reverted.
+  - mutation: `OcuPilot.Screen.Tool.ExplorerSqlReportGenerate.ArgumentPairs` drops `FilePairs` -> `SqlReportRead.TestAServerFileAddsThePathPairsAndABrowserReportAddsNone` red on the server-file leg (run 1045); reverted.
+  - mutation: `OcuPilot.Kernel.Utils.CallWithNullDevice` restores the namespace only when the call answered OK -> `SqlReportWrite.TestTheDeviceAndTheNamespaceAreRestoredAfterARaisedCall` red (run 1042); reverted. Skipping the restore on every path ends the run at its first test, so it does not isolate this leg.
   - mutation (client): `SqlReportsPage.onGenerate` saves the file only `if (sent && file === '')` -> `sql-reports.page.spec.ts` "generates to this browser..." red; reverted, green (12/12).
 - AC4: the page offers a mail action -> its spec leg (asserting the absence) red.
   - mutation: the descriptor gains a `mail` row action -> `SqlReportWrite.TestThePageOffersNoMailAction` red (run 1030); reverted, green. The page spec leg is Batch 2's.
@@ -431,9 +459,27 @@ Measured 2026-11-26 on `ocupilot-ci` (IRIS 2026.2 build 221U), in `USER` and `HS
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap (Task 0 measurements contradict two rulings; no product source written, nothing committed, tree at `baseline_revision` plus this spec)
+Status: done
+Blocking condition: none
 
-- **A2, Import (Batch 4).** Every real import writes its `%sqlcq.<ns>.QButtons.WRC<case><n>` routines to IRISLOCALDATA, outside the target namespace's database, and a crafted report writes a `%` routine into IRISSYS. By the ruling's own test Batch 4 is not built. Question: does IRISLOCALDATA count as the target namespace? If yes, Import would refuse any document that is not a class, an `.ext` or a `%sqlcq.<ns>.QButtons.WRC*` routine, and `%DB_IRISLOCALDATA:WRITE` would join the gate.
-- **AD-7 Save "under the console time limit, leaves no row if stopped".** `$System.Alarm` does not stop `InsertQuery`: a 4.06 s save under a 2 s alarm finished OK with its row saved, and a vendor compile error or a negative case number answers an error status and still leaves a row. The ruled bound cannot be built as worded. Options for the ruling: Save runs in a child job killed at the limit (no row, but statistics, statement-index and cached-query leftovers), or Save runs unbounded with the port removing a row it made after an error. No measured worst case reaches 60 s (Save 0.01 to 0.20 s, Generate 0.04 s for 190 rows, Import 7.9 s for 190 rows).
-- Other measured corrections for the ruled strings (status "Planned" read from a non-empty plan; the AD-7 side-effect sentence; the list note names `%Developer` and `%All`, not `%Development:USE`; vendor accepts case numbers looser than the ruled shape) are in `### Task 0 measurements`.
+This pass built Batches 1 and 2 under the 2026-11-27 rulings. Batch 3 is empty and Batch 4 (Import, AC5) moved to Story 21.41. Commits: Batch 1 `e379a35b1`, Batch 2 `921963704`, and the review patches in the finalize commit.
+
+- **Batch 1 (server).**
+  - `Catalog.SqlReports` list in `AtelierPort`.
+  - `SqlPort` `Reports` endpoint: the `CASE` and `SAVEDQUERY` reads and the `SAVEQUERY`, `DELETEQUERY` and `GENERATE` writes.
+    - Save runs in its request with no alarm bound, query-only, and deletes any row the vendor left after an error status.
+    - Generate writes through an OcuPilot-named temp file to a `PathPort`-resolved overwriting file or answers lines for the screen.
+  - Tools `explorer.sqlreports.save`, `.delete` and `.generate` (abstract `SqlReportAction`), the descriptor `ExplorerSqlReports` at side-bar position 24, entity type `sql-saved-query`, governance keys save `true`, delete `false`, generate `true`, new codes in `AtelierError`.
+  - Test classes `SqlReportRead` (8) and `SqlReportWrite` (12), the probe fixtures, and the roster classes.
+- **Batch 2 (client).** `sql-reports.page.ts` with its save dialog and spec, the ruled strings, one EXPERIENCE.md Fixed strings row, and `system-explorer-sql-reports.browser-spec.mjs`. The page offers no mail action; the page spec and the browser spec assert the absence.
+- **Review.** 13 findings: 6 patched (3 medium, 3 low), 1 deferred, 6 rejected with reasons in `## Review Triage Log`. Follow-up review recommended: `false` (three medium patches, all test additions each shown red by a mutation).
+- **Verification.** `LOADERRORS=0`; `SqlReportRead`, `SqlReportWrite` and every roster class green on `ocupilot-ci`; `npm run test:tools` 2430, `npm run test:components` 4136; `npm run build` under the 2500 kB budget (2.36 MB initial); the new browser spec and `system-explorer-sql-runtime-stats.browser-spec.mjs` 4/4 each, in both orders; `check-objectscript.py` and `lint-docs.sh` clean. Not run here: the `(once)` full ObjectScript sweep and `smoke.sh` (runner-owned).
+
+**For the runner (strings and decisions).**
+
+- **Corrected string, verbatim.** The Generate consequence reads "The report holds every query you can see that is saved for this support case in this namespace, with its plan, the definitions of the classes it reads and its compiled code. A file already at this name is replaced." The ruled text said "every query saved"; Task 0 (d) and (e) show Generate holds only the rows the caller can see.
+- **No new sentence ships.** The 404 for a gone saved query reuses "No query is saved for this support case in this namespace."
+- **Stop sentence not shipped** (Save has no alarm bound). No Import or mail string ships.
+- **Decided in-stage.** A failed Delete answers the internal 500 (no ruled sentence exists for it). The `CASE` read with an empty case number answers `Saved` 0 so the kernel's target read does not turn every screen action into a 500; the writes still refuse an empty or malformed case number with 400. The fresh reads use checked prepares (U-174), so a principal with `%Development:USE` but no SQL SELECT on `%SQL_Manager_QButtons.Base` is refused 403 `SQL.SELECT.PRIVILEGE` on Save, Delete and Generate while the list still shows rows. Generate's agent mint does not resolve the file; a bad root, name or directory is refused at the confirm, before any vendor call.
+- **Contended files, add-only.** `Prohibited.cls`, `EntityType.cls`, `Baseline.cls`, `strings.ts`, `proposal-view.ts`, `screen-actions.ts`, `screen-action-handler.ts`, `screen-outlet.ts`, EXPERIENCE.md and `README.md` (one disabled-action count and one clause). `Test/Prohibited.cls` also changed one tripwire assertion: the last covered type is now `sql-saved-query`.
+- **Residual.** A Save in the browser spec leaves runtime-statistics and statement-index rows for the probe statement (Task 0 (c)); `RemoveReport` does not remove them. A subagent wrote one test class through a Python heredoc against Rule Zero; the result was read back and is correct.

@@ -48,7 +48,7 @@ Method OnAfterOneTest() As %Status
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Do $ClassMethod(..#SEAM, "Reset")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveReport", ..#NAMESPACE), "the probe's saved queries, cached queries and table are removed")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "ReportLeft", ..#NAMESPACE), 0, "and no saved query of the probe is left")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "ReportLeft", ..#NAMESPACE) _ "|" _ $ClassMethod(..#PROBE, "CachedQueryCount", ..#NAMESPACE, $Parameter(..#PROBE, "REPORTSCHEMA")), "0|0", "and no saved query or cached query of the probe is left")
     Quit $$$OK
 }
 
@@ -147,6 +147,20 @@ Method TestTheCaseAndTheSavedQueryReadTheInstancesRows()
     Do $$$AssertEquals(tCode _ "|" _ tAnswer.Kind _ "|" _ tAnswer.Tables.%Size() _ "|" _ tAnswer.Saved, "200 |query|1|2", "the case read of a statement answers its kind and tables beside the count: " _ tCode)
 }
 
+/// <p>AC3. The generate tool names PathPort's pairs, <code>%Admin_FileSystemAccess:USE</code> and <code>%DB_IRISSYS:READ</code>, when its arguments name a
+/// <code>root</code>, and none of them when they name none (a report to this browser).</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Screen.Tool.ExplorerSqlReportGenerate.ArgumentPairs</code> returns the inherited pairs alone -> the root leg goes
+/// red.</p>
+Method TestAServerFileAddsThePathPairsAndABrowserReportAddsNone()
+{
+    Set tSystem = $ListBuild("%Admin_FileSystemAccess", "USE")
+    Set tIrissys = $ListBuild("%DB_IRISSYS", "READ")
+    Set tPairs = $ClassMethod(..#GENERATE, "ArgumentPairs", "", {"WRCNumber": "2291", "root": "x", "path": "y"}, .tResolved)
+    Do $$$AssertTrue(tResolved && ''$ListFind(tPairs, tSystem) && ''$ListFind(tPairs, tIrissys), "a server file adds the file-system and routines-database read pairs")
+    Set tPairs = $ClassMethod(..#GENERATE, "ArgumentPairs", "", {"WRCNumber": "2291"}, .tResolved)
+    Do $$$AssertTrue(tResolved && '$ListFind(tPairs, tSystem) && '$ListFind(tPairs, tIrissys), "a report to this browser adds neither")
+}
+
 /// <p>AC1, AC3. Every value shape is refused before any call, on both callers: the port's reads and writes answer 400 with the published sentence for an
 /// empty, non-numeric, zero, signed, spaced or over-long case number and for an empty or over-long statement, and the tools' own argument checks refuse the
 /// same values with the same sentence. The seam counts no call.</p>
@@ -194,13 +208,13 @@ Method TestEveryValueShapeIsRefusedBeforeAnyCall()
 Method TestAStatementThatIsNotAQueryOrIsOcuPilotsOwnIsRefused()
 {
     Set tSentence = $Parameter(..#ERROR, "REASONSQLREPORTQUERYONLY")
-    For tText = "UPDATE " _ $Parameter(..#PROBE, "REPORTTABLE") _ " SET B = 'x'", "DELETE FROM " _ $Parameter(..#PROBE, "REPORTTABLE"), "CREATE TABLE OcuProbe229.Z (A INTEGER)" {
+    For tCase = $ListBuild("UPDATE " _ $Parameter(..#PROBE, "REPORTTABLE") _ " SET B = 'x'", "dml"), $ListBuild("DELETE FROM " _ $Parameter(..#PROBE, "REPORTTABLE"), "dml"), $ListBuild("CREATE TABLE OcuProbe229.Z (A INTEGER)", "ddl") {
+        Set tText = $List(tCase, 1)
         Kill tQuery
         Set tQuery("WRCNumber") = ..#CASE
         Set tQuery("Statement") = tText
         Set tFresh = ..Call(..#FIXTURE, "CASE", "*", .tQuery, .tAnswer, .tFault)
-        Do $$$AssertEquals(tFresh _ "|" _ tAnswer.Kind, "200 |" _ $Select($IsObject(tAnswer): tAnswer.Kind, 1: ""), "the case read types '" _ $Extract(tText, 1, 20) _ "': " _ tFresh)
-        Do $$$AssertTrue($IsObject(tAnswer) && (tAnswer.Kind '= "query"), "and it is not a query")
+        Do $$$AssertEquals(tFresh _ "|" _ $Select($IsObject(tAnswer): tAnswer.Kind, 1: ""), "200 |" _ $List(tCase, 2), "the case read types '" _ $Extract(tText, 1, 20) _ "' as " _ $List(tCase, 2) _ ": " _ tFresh)
         Set tSC = $ClassMethod(..#SAVE, "StateDiff", tAnswer, .tRows, .tProblem)
         Do $$$AssertEquals(tProblem, tSentence, "the save's own state check refuses it with the published sentence, for both callers")
         Kill tQuery
