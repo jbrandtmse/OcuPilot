@@ -26015,6 +26015,762 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropSystemMonitor",
+    "route": "interoperability/system-monitor",
+    "area": "interoperability",
+    "labelKey": "interopSystemMonitorLabel",
+    "sideBarPosition": 29,
+    "archetype": "meters",
+    "built": true,
+    "refreshes": true,
+    "refreshRates": [
+      60
+    ],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Dashboard",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_Dashboard",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "EnsNamespace",
+        "EnsProductionsRunning",
+        "EnsProductionsTroubled",
+        "EnsIncomingRequests",
+        "EnsLastIncomingRequest",
+        "EnsOutgoingRequests",
+        "EnsLastOutgoingRequest",
+        "Processes",
+        "EnsJobs",
+        "EnsVisitingJobs",
+        "UpTime",
+        "LastBackup",
+        "DatabaseSpace",
+        "DatabaseJournal",
+        "JournalSpace",
+        "JournalEntries",
+        "LockTable",
+        "WriteDaemon",
+        "EnsActiveQueues",
+        "SeriousAlerts",
+        "EnsAlerts",
+        "EnsErrors",
+        "LicenseLimit",
+        "LicenseUse",
+        "LicenseUseHigh"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopSystemMonitorEmpty",
+    "commandAliases": [
+      "system monitor",
+      "interoperability system monitor"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopSystemMonitorPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopSystemMonitorPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "interopSystemMonitorPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.EnsembleMonitor",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "set of System Monitor meters",
+      "source": {
+        "port": "interop",
+        "endpoint": "SystemMonitor",
+        "type": "LIST"
+      },
+      "fields": [
+        "EnsNamespace",
+        "EnsProductionsRunning",
+        "EnsProductionsTroubled",
+        "EnsIncomingRequests",
+        "EnsLastIncomingRequest",
+        "EnsOutgoingRequests",
+        "EnsLastOutgoingRequest",
+        "Processes",
+        "EnsJobs",
+        "EnsVisitingJobs",
+        "UpTime",
+        "LastBackup",
+        "DatabaseSpace",
+        "DatabaseJournal",
+        "JournalSpace",
+        "JournalEntries",
+        "LockTable",
+        "WriteDaemon",
+        "EnsActiveQueues",
+        "SeriousAlerts",
+        "EnsAlerts",
+        "EnsErrors",
+        "LicenseLimit",
+        "LicenseUse",
+        "LicenseUseHigh"
+      ],
+      "filter": [
+        "EnsNamespace",
+        "EnsProductionsRunning",
+        "EnsProductionsTroubled",
+        "EnsIncomingRequests",
+        "EnsLastIncomingRequest",
+        "EnsOutgoingRequests",
+        "EnsLastOutgoingRequest",
+        "Processes",
+        "EnsJobs",
+        "EnsVisitingJobs",
+        "UpTime",
+        "LastBackup",
+        "DatabaseSpace",
+        "DatabaseJournal",
+        "JournalSpace",
+        "JournalEntries",
+        "LockTable",
+        "WriteDaemon",
+        "EnsActiveQueues",
+        "SeriousAlerts",
+        "EnsAlerts",
+        "EnsErrors",
+        "LicenseLimit",
+        "LicenseUse",
+        "LicenseUseHigh"
+      ],
+      "sort": {
+        "fields": [
+          "EnsNamespace",
+          "EnsProductionsRunning",
+          "EnsProductionsTroubled",
+          "EnsIncomingRequests",
+          "EnsLastIncomingRequest",
+          "EnsOutgoingRequests",
+          "EnsLastOutgoingRequest",
+          "Processes",
+          "EnsJobs",
+          "EnsVisitingJobs",
+          "UpTime",
+          "LastBackup",
+          "DatabaseSpace",
+          "DatabaseJournal",
+          "JournalSpace",
+          "JournalEntries",
+          "LockTable",
+          "WriteDaemon",
+          "EnsActiveQueues",
+          "SeriousAlerts",
+          "EnsAlerts",
+          "EnsErrors",
+          "LicenseLimit",
+          "LicenseUse",
+          "LicenseUseHigh"
+        ],
+        "default": "UpTime",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "EnsNamespace",
+          "labelKey": "interopSystemMonitorMeterScopes",
+          "kind": "text"
+        },
+        {
+          "field": "EnsProductionsRunning",
+          "labelKey": "interopSystemMonitorMeterProductionsRunning",
+          "kind": "text"
+        },
+        {
+          "field": "EnsProductionsTroubled",
+          "labelKey": "interopSystemMonitorMeterProductionsTroubled",
+          "kind": "text"
+        },
+        {
+          "field": "EnsIncomingRequests",
+          "labelKey": "interopSystemMonitorMeterIncoming",
+          "kind": "text"
+        },
+        {
+          "field": "EnsLastIncomingRequest",
+          "labelKey": "interopSystemMonitorMeterLastIncoming",
+          "kind": "text"
+        },
+        {
+          "field": "EnsOutgoingRequests",
+          "labelKey": "interopSystemMonitorMeterOutgoing",
+          "kind": "text"
+        },
+        {
+          "field": "EnsLastOutgoingRequest",
+          "labelKey": "interopSystemMonitorMeterLastOutgoing",
+          "kind": "text"
+        },
+        {
+          "field": "Processes",
+          "labelKey": "processListLabel",
+          "kind": "text"
+        },
+        {
+          "field": "EnsJobs",
+          "labelKey": "interopSystemMonitorMeterJobs",
+          "kind": "text"
+        },
+        {
+          "field": "EnsVisitingJobs",
+          "labelKey": "interopSystemMonitorMeterVisitingJobs",
+          "kind": "text"
+        },
+        {
+          "field": "UpTime",
+          "labelKey": "systemInfoUptime",
+          "kind": "name"
+        },
+        {
+          "field": "LastBackup",
+          "labelKey": "dashboardLastBackup",
+          "kind": "text"
+        },
+        {
+          "field": "DatabaseSpace",
+          "labelKey": "systemUsageDatabaseSpace",
+          "kind": "text"
+        },
+        {
+          "field": "DatabaseJournal",
+          "labelKey": "dashboardDatabaseJournal",
+          "kind": "text"
+        },
+        {
+          "field": "JournalSpace",
+          "labelKey": "systemUsageJournalSpace",
+          "kind": "text"
+        },
+        {
+          "field": "JournalEntries",
+          "labelKey": "systemUsageJournalEntries",
+          "kind": "text"
+        },
+        {
+          "field": "LockTable",
+          "labelKey": "systemUsageLockTable",
+          "kind": "text"
+        },
+        {
+          "field": "WriteDaemon",
+          "labelKey": "systemUsageWriteDaemon",
+          "kind": "text"
+        },
+        {
+          "field": "EnsActiveQueues",
+          "labelKey": "interopSystemMonitorMeterActiveQueues",
+          "kind": "text"
+        },
+        {
+          "field": "SeriousAlerts",
+          "labelKey": "dashboardSeriousAlerts",
+          "kind": "text"
+        },
+        {
+          "field": "EnsAlerts",
+          "labelKey": "interopSystemMonitorMeterAlerts",
+          "kind": "text"
+        },
+        {
+          "field": "EnsErrors",
+          "labelKey": "interopSystemMonitorMeterErrors",
+          "kind": "text"
+        },
+        {
+          "field": "LicenseLimit",
+          "labelKey": "dashboardLicenseLimit",
+          "kind": "text"
+        },
+        {
+          "field": "LicenseUse",
+          "labelKey": "dashboardLicenseUse",
+          "kind": "text"
+        },
+        {
+          "field": "LicenseUseHigh",
+          "labelKey": "dashboardLicenseUseHigh",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "interop.systemmonitor",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropSystemMonitorProcesses",
+    "route": "interoperability/system-monitor/processes",
+    "area": "interoperability",
+    "labelKey": "activeProcessesLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Dashboard",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_Dashboard",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Namespace",
+        "Item",
+        "Pid",
+        "Commands"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "activeProcessesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "activeProcessesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "activeProcessesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "activeProcessesPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.EnsembleMonitor",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "busy production process",
+      "source": {
+        "port": "interop",
+        "endpoint": "SystemMonitorProcesses",
+        "type": "LIST"
+      },
+      "fields": [
+        "Namespace",
+        "Item",
+        "Pid",
+        "Commands"
+      ],
+      "filter": [
+        "Namespace",
+        "Item"
+      ],
+      "sort": {
+        "fields": [
+          "Namespace",
+          "Item",
+          "Pid",
+          "Commands"
+        ],
+        "default": "Commands",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Namespace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "text"
+        },
+        {
+          "field": "Item",
+          "labelKey": "interopItemSettingsCriterionItem",
+          "kind": "name"
+        },
+        {
+          "field": "Pid",
+          "labelKey": "processColumnPid",
+          "kind": "number"
+        },
+        {
+          "field": "Commands",
+          "labelKey": "processColumnCommands",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "interop.systemmonitorprocesses",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropSystemMonitorQueues",
+    "route": "interoperability/system-monitor/queues",
+    "area": "interoperability",
+    "labelKey": "interopSystemMonitorQueuesLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Dashboard",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_Dashboard",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Namespace",
+        "Queue",
+        "Messages"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopSystemMonitorQueuesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopQueuesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopSystemMonitorQueuesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "interopSystemMonitorQueuesPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.EnsembleMonitor",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "busy production queue",
+      "source": {
+        "port": "interop",
+        "endpoint": "SystemMonitorQueues",
+        "type": "LIST"
+      },
+      "fields": [
+        "Namespace",
+        "Queue",
+        "Messages"
+      ],
+      "filter": [
+        "Namespace",
+        "Queue"
+      ],
+      "sort": {
+        "fields": [
+          "Namespace",
+          "Queue",
+          "Messages"
+        ],
+        "default": "Messages",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Namespace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "text"
+        },
+        {
+          "field": "Queue",
+          "labelKey": "interopColumnQueue",
+          "kind": "name"
+        },
+        {
+          "field": "Messages",
+          "labelKey": "interopItemTabMessages",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "interop.systemmonitorqueues",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropSystemMonitorTasks",
+    "route": "interoperability/system-monitor/tasks",
+    "area": "interoperability",
+    "labelKey": "taskUpcomingLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_Dashboard",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_Dashboard",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Task",
+        "ScheduledFor",
+        "Status"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopSystemMonitorTasksEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskUpcomingListPrompt1"
+      },
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskUpcomingListPrompt2"
+      },
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskUpcomingListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.EnsembleMonitor",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "upcoming task",
+      "source": {
+        "port": "interop",
+        "endpoint": "SystemMonitorTasks",
+        "type": "LIST"
+      },
+      "fields": [
+        "Task",
+        "ScheduledFor",
+        "Status"
+      ],
+      "filter": [
+        "Task",
+        "Status"
+      ],
+      "sort": {
+        "fields": [
+          "Task",
+          "ScheduledFor",
+          "Status"
+        ],
+        "default": "ScheduledFor",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Task",
+          "labelKey": "proposalEntityTask",
+          "kind": "name"
+        },
+        {
+          "field": "ScheduledFor",
+          "labelKey": "taskUpcomingColumnAt",
+          "kind": "text"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "interop.systemmonitortasks",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.InteropTransformEditor",
     "route": "interoperability/transforms/document",
     "area": "interoperability",

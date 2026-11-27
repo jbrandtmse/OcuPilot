@@ -255,6 +255,10 @@ XData Elsewhere
 <screen name="InteropWorkflowMemberList"/>
 <screen name="InteropWorkflowTaskList"/>
 <screen name="InteropWorkflowWorklist"/>
+<screen name="InteropSystemMonitor"/>
+<screen name="InteropSystemMonitorProcesses"/>
+<screen name="InteropSystemMonitorQueues"/>
+<screen name="InteropSystemMonitorTasks"/>
 <screen name="InteropSuspendedMessageList"/>
 <screen name="InteropItemClassTab"/>
 <screen name="InteropItemJobTab"/>

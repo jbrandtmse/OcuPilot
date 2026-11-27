@@ -305,6 +305,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 24.17 Batch 4: Workflow tasks, the list with its Assign task dialog. Workflow worklist is read-only and takes the shared list page.
   'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': () =>
     import('../areas/interoperability/interop-workflow-task-list.page').then((m) => m.InteropWorkflowTaskListPage),
+  // Story 24.17 Batch 5: System monitor, the vendor's meters in groups with three tables drawn from its drill-downs' own reads. The three drill-downs are the shared list page.
+  'OcuPilot.Screen.Descriptor.InteropSystemMonitor': () =>
+    import('../areas/interoperability/interop-system-monitor.page').then((m) => m.InteropSystemMonitorPage),
   // Story 24.16: Purge management data, the list with its Purge dialog, and Purge data settings, on the settings page that adds Set value over the shared list.
   'OcuPilot.Screen.Descriptor.InteropPurgeList': () => import('../areas/interoperability/interop-purge-list.page').then((m) => m.InteropPurgeListPage),
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': CONFIG_SETTINGS_PAGE,

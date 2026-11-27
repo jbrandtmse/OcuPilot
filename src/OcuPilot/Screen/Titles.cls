@@ -166,6 +166,8 @@ XData Titles
 "interopSchedulesLabel": "Schedule specs",
 "interopSchemaViewerTitle": "Schema viewer",
 "interopSuspendedLabel": "Suspended messages",
+"interopSystemMonitorLabel": "System monitor",
+"interopSystemMonitorQueuesLabel": "Most active queues",
 "interopTransformsLabel": "Data transformations",
 "interopUsageImpactLabel": "Database impact",
 "interopUsageLabel": "Interoperability usage",

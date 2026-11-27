@@ -926,3 +926,31 @@
 2026-11-26T13:27:47Z	Story 24.17	fresh_check_passed	scope=batch4 basis=review_rebuild_13:01Z feature=bd8e47e8a_ancestor
 2026-11-26T13:28:25Z	Story 24.17	code_head_pushed	scope=batch4 sha=acd2560ee runs=45829387620 ci=pending
 2026-11-26T13:28:25Z	Story 24.17	stage_spawned	stage=plan spawn_at=2026-11-26T13:28:25Z model=opus agent_name=24-17-plan-batch5 cycle_iteration=6 scope=batch5_system_monitor_readme
+2026-11-26T13:45:04Z	Story 24.17	story_created	scope=batch5_system_monitor_readme path=..-6.md commit=86d110bb7 build_status=ready-for-dev
+2026-11-26T13:45:04Z	Story 24.17	ruling	question=batch5_veto_set choice=keep_all(V1_label_System_monitor;V2_stricter;V3_PurgeFrame_containment;V4_story_end) category=veto policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-26T13:45:04Z	Story 24.17	spec_validated	scope=batch5 ledger_inbox=empty mutates_shared_runtime=false
+2026-11-26T13:45:04Z	Story 24.17	stage_spawned	stage=implement spawn_at=2026-11-26T13:45:04Z model=sonnet agent_name=24-17-implement-batch5 cycle_iteration=6 story_base=86d110bb7 scope=batch5
+2026-11-26T13:54:57Z	Story 24.17	dev_clarification_requested	scope=batch5 halt=Task0(a)_GetEnsMetrics_journals_^SYS.EnsMetrics(IRISSYS_idle;namespace_DB_when_production_running) frame=clean timing=0.015s meters=25 running_leg=needs_HTTP(cspLink_%request) asked=orchestrator(AD-9)
+2026-11-26T13:55:34Z	Story 24.17	ruling	source=orchestrator scope=batch5 question=GetEnsMetrics_journals_^SYS.EnsMetrics choice=vendor_maintenance_records(as_U-159) conditions=AD-9_line_names_it;tests_allow_exactly_those_SETs;no_poll_faster_than_classic;measure_turn-job_path(AD-7)_with_production_running category=veto inbox=U-177 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-26T13:55:34Z	Story 24.17	stage_spawned	stage=implement spawn_at=2026-11-26T13:55:34Z model=sonnet agent_name=24-17-implement-batch5-r cycle_iteration=6 story_base=b082e6e8c taskO=partial(running_leg_and_turn-job_path_pending)
+2026-11-26T14:07:42Z	Story 24.17	note	source=orchestrator feature_moved=49090e886(21.27) integrate_before=batch5_code_head watch=README_105_both_sides(double_count->106)
+2026-11-26T14:13:40Z	Story 24.17	ci_resolved	story=24.17-batch4 sha=acd2560ee runs=45829387620 result=success failed=none resolved_at=next_plan
+2026-11-26T14:13:40Z	Story 24.17	reported_to_orchestrator	scope=batch4 code_head=acd2560ee run=45829387620 ledger=DW-2894..2898
+2026-11-26T14:19:25Z	Story 24.17	integrate_head_pushed	scope=batch4 head=0ea8ae0bf(M_over_feature_49090e886:21.27,integrate-only,temp_worktree) run=45837751422 counts=TYPES135,COVERED125(msg117),production648,OWNPAIRS201,other204,README_106(double_count_fixed) double_count=README,covered_msg,taskCreate tools=2420_green
+2026-11-26T15:10:01Z	Story 24.17	ci_resolved	story=24.17-batch4-integrate sha=0ea8ae0bf runs=45837751422 result=success failed=none resolved_at=next_plan
+2026-11-26T15:13:30Z	Story 24.17	merged_to_feature	scope=batch4 feature=89ecf3259(ff_0ea8ae0bf+record+timings_45837751422) batch5_integrates=89ecf3259
+2026-11-26T16:52:15Z	Epic 24	note	source=orchestrator merges_held=veto_open_max(48>20,U-179) instruction=keep_working,push_green_heads,fold_rulings_into_existing_batch_items feature=89ecf3259
+2026-11-26T18:00:22Z	Epic 24	owner_decision	id=U-179 via=planner_relay_through_orchestrator by=owner answer=kept_all_48_vetoes(incl_U-177) merges_released feature=cdac20fb9
+2026-11-26T19:24:45Z	Story 24.17	dev_complete	scope=batch5 build_sha=ea969a1a0 spawn_at=13:55Z model=sonnet sweep=17/17(924_classes,6907_tests) smoke=49/49 npm_test=green turn-job=minimal_request_context(test) refresh=60s_only(classic_RefreshRate_60000) locks=vendor_^SYS.EnsMetrics_released_on_exit breach=sed_-i_on_2_files+chained_ci-runner(MED_for_review) followup_review_recommended=true
+2026-11-26T19:29:33Z	Story 24.17	integrate_merge	scope=batch5 theirs=feature@cdac20fb9(21.27+B4_M) conflicts=ReadTool(count_652),strings(taskCreate_684) citations=26_System_monitor_keys(:640->:642) test:tools=2428
+2026-11-26T19:29:33Z	Story 24.17	stage_spawned	stage=qa+code-review spawn_at=2026-11-26T19:29:33Z model=opus agent_name=24-17-review-batch5 cycle_iteration=6 diff=ee5bdb591..ea969a1a0 head=b7f798063 rebuild_once_permitted=yes
+2026-11-26T20:37:55Z	Story 24.17	cr_complete	scope=batch5 spawn_at=19:31Z model=opus commit=de6eef2d0 rebuild=20:08Z high=0 med=3(2_patched:overlapping_reads_serialized,session_leg;1_escalated:AD-43_roster) low=12_patched deferred=DW-2902..2904 resolved=spec_deferred(overlapping_reads) classes=all_green browser=system-monitor2/2,drill-downs5/5,a11y13/13 smoke=49/49 npm_test=green slip=one_batched_ci-runner_message(rerun_singly) closing_sections_present=true
+2026-11-26T20:37:55Z	Story 24.17	fresh_check_passed	scope=batch5 basis=review_rebuild_20:08Z feature=cdac20fb9_ancestor
+2026-11-26T20:38:36Z	Story 24.17	code_head_pushed	scope=batch5 sha=de6eef2d0 runs=45892451647 ci=pending
+2026-11-26T20:38:36Z	Story 24.17	escalated	AD-43_amendment(system_monitor_14th_auto-refresh)_asked_orchestrator
+2026-11-26T20:38:36Z	Story 24.17	stage_spawned	stage=spine spawn_at=2026-11-26T20:38:36Z model=opus agent_name=24-17-spine cycle_iteration=7 scope=story-end_AD_lines(AD-62,7,9,15,22;AD-43_pending)
+2026-11-26T20:48:04Z	Story 24.17	spine_updated	ad=AD-62(items23-28),AD-7,AD-9,AD-15,AD-22 reason=story_end_owner_kept_vetoes(U-179) commit=4d53ca0f0 lint=ok_except_preexisting_{id}
+2026-11-26T20:48:04Z	Story 24.17	spine_updated	ad=AD-43(thirteen->fourteen,in_place),AD-7(metrics_records_bullet;shapes_six->eight) reason=unattended_ruling inbox=U-181 lint=ok_except_preexisting_{id} roster_test=none_found
+2026-11-26T20:50:34Z	Story 24.17	note	story_end_spine: AD-7 shapes sentence read six while the wallet use row (Story 18.41) had made seven; U-181 corrected it to eight with the metrics bullet; marker trimmed to the standard form (orchestrator)
+2026-11-26T21:23:39Z	Story 24.17	ci_resolved	story=24.17-batch5 sha=de6eef2d0 runs=45892451647 result=success failed=none resolved_at=story_end
+2026-11-26T21:23:39Z	Story 24.17	story_complete	batches=1,2,3a,3b,4,5 code_head=de6eef2d0 spine=4d53ca0f0,944b294d0(+marker_trim) tracker=done

@@ -588,6 +588,9 @@ services:
       # reads OcuPilot's own audit row, and the refusals class meets every verdict, refusal and missing pair. The elsewhere class confirms the
       # agent's four writes from another namespace. The probe production's own class refuses to start one anywhere this variable is not set.
       # classes: InteropSuspendedElsewhere, InteropSuspendedList, InteropSuspendedRefusals, InteropSuspendedRemove, InteropSuspendedResubmit, ProductionProbe
+      # The system monitor classes start the probe production in USER, read the vendor's metrics with it running and stopped and create four principals
+      # (Story 24.17 Batch 5); the case class shared by the read, frame and gate classes refuses to start where this variable is not set.
+      # classes: InteropSystemMonitorCase
       # The message export classes store probe messages of four body kinds in USER and HSCUSTOM and remove them (Story 24.16 Batch 3), and start no
       # production: the main class exports from both callers and compares the bytes with the classic export's, the refusals class meets every verdict,
       # refusal, the size cap and missing pair, and the elsewhere class confirms the agent's export from another namespace and checks nothing is left.

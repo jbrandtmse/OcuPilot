@@ -2890,6 +2890,11 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.InteropSchemaViewer',
       // Story 24.16 Batch 2: Suspended messages own %Ens_MessageHeader:USE.
       'OcuPilot.Screen.Descriptor.InteropSuspendedMessageList',
+      // Story 24.17 Batch 5: System monitor and its three drill-downs own %Ens_Dashboard:USE and %DB_IRISSYS:READ.
+      'OcuPilot.Screen.Descriptor.InteropSystemMonitor',
+      'OcuPilot.Screen.Descriptor.InteropSystemMonitorProcesses',
+      'OcuPilot.Screen.Descriptor.InteropSystemMonitorQueues',
+      'OcuPilot.Screen.Descriptor.InteropSystemMonitorTasks',
       'OcuPilot.Screen.Descriptor.InteropTransformEditor',
       'OcuPilot.Screen.Descriptor.InteropTransformList',
       // Story 24.17 Batch 3b: Role members and Workflow roles own %Ens_WorkflowConfig:READ.

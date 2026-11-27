@@ -417,7 +417,7 @@ test('the README states the count of the agent actions that ship switched off an
     'the off list names the purge, the suspended message writes and the archive run'
   );
   assert.ok(
-    readme.includes('add, edit and remove schedule specs; keep the purge settings and purge old management data; resubmit, edit and resubmit, discard or delete suspended messages, up to 100 at a time; export up to 100 messages to a file in your browser\'s downloads; keep the archive settings and archive old messages into another interoperability namespace; and add, edit'),
+    readme.includes('add, edit and remove schedule specs; keep the purge settings and purge old management data; resubmit, edit and resubmit, discard or delete suspended messages, up to 100 at a time; export up to 100 messages to a file in your browser\'s downloads; keep the archive settings and archive old messages into another interoperability namespace; list managed alerts and each alert\'s history, and assign, unassign, close or reopen an alert, move its escalation level one step or set its next action time, each with a reason the alert\'s history keeps; list the business rule log and the business process log, and purge each by age; add, edit and remove workflow users and workflow roles, and add or remove a role\'s members; list workflow tasks and each user\'s worklist, and assign a task to a user or to no one, change its priority or cancel it; watch the system monitor, which shows the productions running in every namespace with their message counts, jobs, queues, errors and alerts beside the instance\'s own status, licensing and upcoming tasks; and add, edit'),
     'the Interoperability paragraph names what a person can do with each'
   );
 });
