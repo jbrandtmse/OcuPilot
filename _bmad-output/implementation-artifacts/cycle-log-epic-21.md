@@ -1229,3 +1229,5 @@
 2026-11-26T21:17:21Z	Story 21.28	fresh_check	env=recipe(ci-throwaway_rebuild) tests=35_classes+3_specs result=pass order=forward,reverse head=a4000b244
 2026-11-27T00:07:09Z	Story 21.28	gate_step	step=full_sweep+smoke head=a4000b244 sweep=20/20 smoke=50/50 result=pass
 2026-11-27T00:07:09Z	Story 21.28	smoke_complete	method=api(smoke.sh)+browser(fresh_specs) result=pass iterations=1 defects_caught=0 evidence=e21-kit/21-28/gate1
+2026-11-27T00:11:11Z	Story 21.28	integrated_forward	feature=ba0fa0702(24.17_B5) merge=M=8a391583a conflicts=3(EXPERIENCE,ReadTool_m3w;tracker_ts=feature) README=106_unchanged spine=auto-merged,lint_ok strings.ts_taskCreate=:685 checks=test:tools_2430,ReadTool,ToolRoundTrip,SurfaceCoverage,GovernanceBaseline_green
+2026-11-27T00:11:11Z	Story 21.28	committed	sha=8a391583a submodules= ci=pending runs=45915199803 amendments=none note=code_head(M_over_a4000b244_gates)_pushed_alone
