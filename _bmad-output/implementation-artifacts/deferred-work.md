@@ -14865,3 +14865,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-6.md | severity: low | fix-risk: low | footprint: in
 - evidence: 24.17 B5 review
 - 2026-11-26T20:37:48Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=a red shows another production running
+
+### DW-2909: The SQL troubleshooting reports list's Status fallback branch has no test
+- source: spec-21-29-troubleshooting-reports.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: 21.29 implement review: the list's Status fallback (a row whose plan is empty shows the instance's message) is untested
+- 2026-11-27T03:23:04Z status=open owner=21-29-troubleshooting-reports by=harvest note=for 21.29's code review
