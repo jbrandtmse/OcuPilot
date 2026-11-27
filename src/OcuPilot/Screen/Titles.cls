@@ -133,6 +133,7 @@ XData Titles
 "interopDefaultSettingsDiffLabel": "Compare default settings",
 "interopDefaultSettingsLabel": "System default settings",
 "interopDtlEditorTitle": "DTL editor",
+"interopHl7SchemasLabel": "HL7 schemas",
 "interopItemClassesLabel": "Host classes",
 "interopItemJobsLabel": "Item jobs",
 "interopItemLogLabel": "Item log",

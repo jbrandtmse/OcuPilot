@@ -1075,6 +1075,21 @@ describe('the proposal card', () => {
     }
   });
 
+  it('Story 24.18: an HL7 schema\'s deletion and its import each state their own published sentence, drawn destructive', () => {
+    // Mutation (Rule 19): drop one of the two INTEROP.HL7 codes from `consequenceSentence` -> its leg goes red.
+    for (const [code, sentence] of [
+      ['INTEROP.HL7.DELETE', STRINGS.interopHl7DeleteConsequence],
+      ['INTEROP.HL7.IMPORT', STRINGS.interopHl7ImportConsequence],
+    ] as const) {
+      const { card } = mount(liveView({ consequence: code, destructive: true, maskedFields: [] }), { phase: 'live' });
+      expect(card.classList.contains('ocu-proposal-card-destructive'), code).toBe(true);
+      const lines = card.querySelectorAll('[data-slot="consequence"]');
+      expect(lines.length, code).toBe(1);
+      expect(lines[0].textContent, code).toContain(sentence);
+      TestBed.resetTestingModule();
+    }
+  });
+
   // Mutation (Rule 19): drop the INTEROP.PARTNER.REMOVE branch from `consequenceSentence` -> the consequence line is empty and this goes red.
   it('Story 20.26: a business partner\'s removal states its published sentence, drawn destructive', () => {
     const { card } = mount(liveView({ consequence: 'INTEROP.PARTNER.REMOVE', destructive: true, maskedFields: [] }), { phase: 'live' });

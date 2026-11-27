@@ -77,6 +77,9 @@ Parameter INTEROPLOGPURGEDISABLED = "interop.processlog.purge,interop.rulelog.pu
 /// <p>The workflow user remove (Story 24.17 Batch 3a), the workflow role remove (Batch 3b) and the workflow task cancel (Batch 4): the writes of their families that ship disabled.</p>
 Parameter INTEROPWORKFLOWDISABLED = "interop.workflowusers.remove,interop.workflowroles.remove,interop.workflowtasks.cancel";
 
+/// <p>The HL7 schema import and delete (Story 24.18 Batch 1): the two writes of their family that ship disabled.</p>
+Parameter INTEROPHL7DISABLED = "interop.hl7schemas.import,interop.hl7schemas.delete";
+
 /// <p>Story 20.34's cube build, which ships disabled (AD-22): it deletes a cube's facts and those of the cubes that depend on it. Its
 /// synchronize ships enabled.</p>
 Parameter CUBEDISABLED = "analytics.cubemanager.build";
@@ -257,6 +260,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If $ListFind($ListFromString(..#INTEROPARCHIVEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPLOGPURGEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPWORKFLOWDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPHL7DISABLED), tKey) Set tExpected = "0|baseline"
         If tKey = ..#CUBEDISABLED Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#BACKUPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#TERMLISTDISABLED), tKey) Set tExpected = "0|baseline"

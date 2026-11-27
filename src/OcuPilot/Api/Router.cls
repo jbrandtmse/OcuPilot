@@ -303,6 +303,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/interop/workflow-users" Method="POST" Call="InteropWorkflowUserCreate"/>
   <Route Url="/interop/workflow-roles" Method="POST" Call="InteropWorkflowRoleCreate"/>
   <Route Url="/interop/workflow-members" Method="POST" Call="InteropWorkflowMemberCreate"/>
+  <Route Url="/interop/hl7-schemas" Method="POST" Call="InteropHl7SchemaCreate"/>
   <Route Url="/config/ddl-mappings" Method="POST" Call="DdlMappingCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
   <Route Url="/allowed-directories" Method="POST" Call="AllowedDirectorySave"/>
@@ -2157,6 +2158,13 @@ ClassMethod InteropWorkflowUserChoices() As %Status
 ClassMethod InteropWorkflowRoleCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Interop.WorkflowRoleSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/hl7-schemas</code> (Story 24.18 Batch 1): HL7 schemas' New HL7 schema, resolved through the one tool the agent's confirm uses
+/// (AD-55).</p>
+ClassMethod InteropHl7SchemaCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.Hl7SchemaSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /interop/workflow-members</code> (Story 24.17 Batch 3b): Role members' Add member, resolved through the one tool the agent's confirm uses

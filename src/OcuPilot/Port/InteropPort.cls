@@ -125,7 +125,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules,PurgeSettings,Purge,SuspendedMessages,ArchiveSettings,Archive,ArchiveErrors,ManagedAlerts,ManagedAlertActions,RuleLog,ProcessLog,WorkflowUsers,WorkflowRoles,WorkflowMembers,WorkflowTasks,WorkflowWorklist,SystemMonitor,SystemMonitorProcesses,SystemMonitorQueues,SystemMonitorTasks";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules,PurgeSettings,Purge,SuspendedMessages,ArchiveSettings,Archive,ArchiveErrors,ManagedAlerts,ManagedAlertActions,RuleLog,ProcessLog,WorkflowUsers,WorkflowRoles,WorkflowMembers,WorkflowTasks,WorkflowWorklist,SystemMonitor,SystemMonitorProcesses,SystemMonitorQueues,SystemMonitorTasks,Hl7Schemas";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -319,8 +319,9 @@ Parameter TESTPAIRS = "%Ens_Portal:USE,%Ens_TestingService:USE";
 /// lookup table export and import (Story 20.5), whose files and reviewed counts the port reads from its query, and the host test's
 /// send (Story 20.6), whose request class and field values it reads from its query, and the data transformation test (Story 20.27),
 /// whose pasted message it reads from its query, and the edit-and-resend (Story 20.31), whose edited body it builds from the fields its
-/// query carries, and the edit-and-resubmit of a suspended message (Story 24.16), which builds its edited body the same way.</p>
-Parameter COMPOSEDTYPES = "LookupTables/EXPORT,LookupTables/IMPORT,ItemTest/SENDTEST,Transforms/TRANSFORMTEST,Messages/EDITRESEND,SuspendedMessages/EDITRESUBMIT";
+/// query carries, and the edit-and-resubmit of a suspended message (Story 24.16), which builds its edited body the same way, and the HL7 schema
+/// export and import (Story 24.18), which read their files and reviewed values from their query as the lookup tables' do.</p>
+Parameter COMPOSEDTYPES = "LookupTables/EXPORT,LookupTables/IMPORT,ItemTest/SENDTEST,Transforms/TRANSFORMTEST,Messages/EDITRESEND,SuspendedMessages/EDITRESUBMIT,Hl7Schemas/EXPORTHL7SCHEMA,Hl7Schemas/IMPORTHL7SCHEMA";
 
 /// <p>The pair each item tab adds to the Productions endpoint's pairs (the classic configuration page's
 /// <code>initSecurity</code>): the queue, the event log, the message headers and the jobs.</p>
@@ -1222,7 +1223,7 @@ ClassMethod IsStartupWrite(pType As %String) As %Boolean
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
 ClassMethod IsAnyWrite(pType As %String) As %Boolean
 {
-    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsPurgeWrite(pType) || ..IsArchiveWrite(pType) || (pType = ..#TYPEARCHIVESETTINGSET) || ..IsSuspendedWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType) || ..IsAlertWrite(pType) || ..IsLogPurgeWrite(pType) || ..IsWorkflowWrite(pType) || ..IsWorkflowRoleWrite(pType) || ..IsWorkflowMemberWrite(pType) || ..IsWorkflowTaskWrite(pType)
+    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsPurgeWrite(pType) || ..IsArchiveWrite(pType) || (pType = ..#TYPEARCHIVESETTINGSET) || ..IsSuspendedWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType) || ..IsAlertWrite(pType) || ..IsLogPurgeWrite(pType) || ..IsWorkflowWrite(pType) || ..IsWorkflowRoleWrite(pType) || ..IsWorkflowMemberWrite(pType) || ..IsWorkflowTaskWrite(pType) || ..IsHl7SchemaWrite(pType)
 }
 
 /// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads, Story 20.30's session trace and Story 24.4's three session reads. Each serves
@@ -1278,6 +1279,8 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
         Set tSpec = ..#WORKFLOWTASKPAIRS
     } ElseIf $ListFind(..SystemMonitorEndpoints(), pEndpoint) {
         Set tSpec = ..#SYSTEMMONITORPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTHL7SCHEMAS {
+        Set tSpec = ..#HL7PAIRS
     } ElseIf pEndpoint = ..#ENDPOINTRULELOG {
         Set tSpec = ..#RULELOGPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTPROCESSLOG {
@@ -1327,6 +1330,7 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     If (pEndpoint = ..#ENDPOINTWORKFLOWUSERS) && (..IsWorkflowWrite(pType) || (pType = ..#TYPEWORKFLOWUSERCHOICES)) Set tSpec = tSpec _ "," _ ..#WORKFLOWWRITEPAIR
     If ((pEndpoint = ..#ENDPOINTWORKFLOWROLES) && ..IsWorkflowRoleWrite(pType)) || ((pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS) && ..IsWorkflowMemberWrite(pType)) Set tSpec = tSpec _ "," _ ..#WORKFLOWWRITEPAIR
     If (pEndpoint = ..#ENDPOINTWORKFLOWTASKS) && ..IsWorkflowTaskWrite(pType) Set tSpec = tSpec _ "," _ ..#WORKFLOWWRITEPAIR
+    If (pEndpoint = ..#ENDPOINTHL7SCHEMAS) && ..IsHl7SchemaWrite(pType) Set tSpec = tSpec _ "," _ ..#HL7WRITEPAIR
     If ((pEndpoint = ..#ENDPOINTRULELOG) || (pEndpoint = ..#ENDPOINTPROCESSLOG)) && ..IsLogPurgeWrite(pType) Set tSpec = tSpec _ "," _ ..#LOGPURGEPAIR
     If pType = ..#TYPEAUTOSTART Set tSpec = tSpec _ "," _ ..#AUTOSTARTPAIR
     If pType = ..#TYPESHUTDOWNGROUP Set tSpec = tSpec _ "," _ ..#GROUPPAIR
@@ -1378,6 +1382,7 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS Quit (pType = ..#TYPEWORKFLOWMEMBER) || ..IsWorkflowMemberWrite(pType)
     If pEndpoint = ..#ENDPOINTWORKFLOWTASKS Quit (pType = ..#TYPEWORKFLOWTASK) || ..IsWorkflowTaskWrite(pType)
     If pEndpoint = ..#ENDPOINTWORKFLOWWORKLIST Quit 0
+    If pEndpoint = ..#ENDPOINTHL7SCHEMAS Quit (pType = ..#TYPEHL7SCHEMA) || (pType = ..#TYPEHL7IMPORTFILE) || (pType = ..#TYPEEXPORTHL7SCHEMA) || ..IsHl7SchemaWrite(pType)
     If pEndpoint = ..#ENDPOINTRULELOG Quit (pType = ..#TYPERULELOGSTATE) || (pType = ..#TYPEPURGERULELOG)
     If pEndpoint = ..#ENDPOINTPROCESSLOG Quit (pType = ..#TYPEPROCESSLOGSTATE) || (pType = ..#TYPEPURGEPROCESSLOG)
     If pEndpoint = ..#ENDPOINTITEMTEST Quit (pType = ..#TYPETESTTARGET) || (pType = ..#TYPESENDTEST)
@@ -1575,6 +1580,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If pEndpoint = ..#ENDPOINTWORKFLOWUSERS {
             Set tSC = ..InvokeWorkflowUser(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTHL7SCHEMAS {
+            Set tSC = ..InvokeHl7Schema(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         If pEndpoint = ..#ENDPOINTWORKFLOWROLES {
@@ -7055,6 +7064,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTSCHEDULES) && ..IsScheduleWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTWORKFLOWUSERS) && ..IsWorkflowWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTWORKFLOWROLES) && ..IsWorkflowRoleWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTHL7SCHEMAS) && (..IsHl7SchemaWrite(pType) || (pType = ..#TYPEEXPORTHL7SCHEMA)) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS) && ..IsWorkflowMemberWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTWORKFLOWTASKS) && ..IsWorkflowTaskWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTPURGESETTINGS) && (pType = ..#TYPEPURGESETTINGSET) Quit "objectscript"
@@ -7127,6 +7137,10 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tText = tText _ ..ScheduleSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf pEndpoint = ..#ENDPOINTWORKFLOWUSERS {
         Set tPart = ..WorkflowSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTHL7SCHEMAS {
+        Set tPart = ..Hl7SchemaSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery)
         If tPart = "" Quit []
         Set tText = tText _ tPart
     } ElseIf pEndpoint = ..#ENDPOINTWORKFLOWROLES {
@@ -7864,11 +7878,12 @@ ClassMethod PerformLookup(pNamespace As %String, pType As %String, pTable As %St
 /// <parameter>CONTENTKEY</parameter> send. Refused before any vendor call: 400 <code>PORT.VALIDATION</code> when both files or neither
 /// is named, or a local file's name is longer than 255 characters or holds <code>/</code>, <code>\</code> or a control character; the
 /// resolve's own refusal on its field; and 409 <code>INTEROP.LOOKUP.TOOLARGE</code> for text longer than
-/// <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter>.</p>
-ClassMethod ImportText(ByRef pQuery, Output pText As %String, Output pLabel As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter>; <var>pTooLargeCode</var> names another code for that last refusal (the lookup tables' when empty).</p>
+ClassMethod ImportText(ByRef pQuery, Output pText As %String, Output pLabel As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pTooLargeCode As %String = "") As %Status [ Private ]
 {
     Set pText = ""
     Set pLabel = ""
+    If pTooLargeCode = "" Set pTooLargeCode = ##class(OcuPilot.Api.InteropError).#LOOKUPTOOLARGE
     Set tRoot = $Get(pQuery(..#ROOTKEY))
     Set tPath = $Get(pQuery(..#PATHKEY))
     Set tFileName = $Get(pQuery(..#FILENAMEKEY))
@@ -7881,7 +7896,7 @@ ClassMethod ImportText(ByRef pQuery, Output pText As %String, Output pLabel As %
         If (tFileName = "") || ($Length(tFileName) > ##class(OcuPilot.Port.AtelierPort).#MAXFILENAME) || (tFileName [ "/") || (tFileName [ "\") || ($ZStrip(tFileName, "*C") '= tFileName) {
             Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIMPORTFILENAME, .pHttpStatus, .pFault)
         }
-        If $Length(tContent) > tMax Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPTOOLARGE, .pHttpStatus, .pFault)
+        If $Length(tContent) > tMax Quit ..Conflict(pTooLargeCode, .pHttpStatus, .pFault)
         Set pLabel = tFileName
         Set pText = tContent
         Quit $$$OK
@@ -7894,7 +7909,7 @@ ClassMethod ImportText(ByRef pQuery, Output pText As %String, Output pLabel As %
     If $$$ISERR(tSC) Quit ..Fail("the import's file could not be read", tSC, .pHttpStatus, .pFault)
     If tTooLarge {
         Set pText = ""
-        Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPTOOLARGE, .pHttpStatus, .pFault)
+        Quit ..Conflict(pTooLargeCode, .pHttpStatus, .pFault)
     }
     Quit $$$OK
 }
@@ -7904,13 +7919,16 @@ ClassMethod ImportText(ByRef pQuery, Output pText As %String, Output pLabel As %
 /// document carries; <var>pDigest</var> its SHA-256 as lower-case hex. The vendor lists the file's documents without loading
 /// them (<code>$System.OBJ.LoadStream</code> with list-only), so a file that also holds a class or a routine, one that holds two tables,
 /// and the legacy form that holds no document (which the lister rejects) are each no table. A fault is <var>pCaught</var>, with
-/// the namespace restored.</p>
-ClassMethod ImportShape(pNamespace As %String, pText As %String, Output pTable As %String, Output pFileEntries As %Integer, Output pDigest As %String, Output pCaught) As %Status [ Private ]
+/// the namespace restored. <var>pSuffix</var> (default <parameter>LUTEXTENSION</parameter>) is the document's extension and <var>pElement</var> (default <code>entry</code>)
+/// the element counted into <var>pFileEntries</var>; when <var>pFlagAttribute</var> names an attribute, <var>pFlagged</var> is 1 when a counted element carries it with a value the
+/// vendor reads as true (not empty, <code>0</code> or <code>false</code>).</p>
+ClassMethod ImportShape(pNamespace As %String, pText As %String, Output pTable As %String, Output pFileEntries As %Integer, Output pDigest As %String, Output pCaught, pSuffix As %String = "", pElement As %String = "entry", pFlagAttribute As %String = "", Output pFlagged As %Boolean) As %Status [ Private ]
 {
     Set pTable = ""
     Set pFileEntries = 0
     Set pCaught = ""
     Set pDigest = ""
+    Set pFlagged = 0
     Set tOrigNS = $NAMESPACE
     Try {
         Set tBytes = ##class(%Stream.GlobalBinary).%New()
@@ -7932,7 +7950,7 @@ ClassMethod ImportShape(pNamespace As %String, pText As %String, Output pTable A
         If $$$ISERR(tListSC) Quit
         Set tItem = $Order(tLoaded(""))
         If (tItem = "") || ($Order(tLoaded(tItem)) '= "") Quit
-        Set tSuffix = ..#LUTEXTENSION
+        Set tSuffix = $Select(pSuffix '= "": pSuffix, 1: ..#LUTEXTENSION)
         Set tStem = $Length(tItem) - $Length(tSuffix)
         If (tStem < 1) || ($Extract(tItem, tStem + 1, $Length(tItem)) '= tSuffix) Quit
         Set tTable = $Extract(tItem, 1, tStem)
@@ -7941,7 +7959,13 @@ ClassMethod ImportShape(pNamespace As %String, pText As %String, Output pTable A
         Set tSC = ##class(%XML.TextReader).ParseStream(tBytes, .tReader)
         If $$$ISERR(tSC) Quit
         While tReader.Read() {
-            If (tReader.NodeType = "element") && (tReader.Name = "entry") Set tCount = tCount + 1
+            If (tReader.NodeType = "element") && (tReader.Name = pElement) {
+                Set tCount = tCount + 1
+                If (pFlagAttribute '= "") && tReader.MoveToAttributeName(pFlagAttribute) {
+                    If $Case($ZConvert(tReader.Value, "L"), "": 0, "0": 0, "false": 0, : 1) Set pFlagged = 1
+                    Do tReader.MoveToElement()
+                }
+            }
         }
         If tCount < 1 Quit
         Set pTable = tTable
@@ -8108,15 +8132,17 @@ ClassMethod ExportFile(pRoot As %String, pPath As %String, Output pResolved As %
 
 /// <p>The export's file for <var>pRoot</var> and <var>pPath</var>, resolved and checked exactly as <method>ExportTable</method> checks
 /// it before its vendor call, for a mint that must refuse what the write would (Story 20.5): the endpoint's pairs, then
-/// <method>ExportFile</method>. Nothing is written.</p>
-ClassMethod CheckExport(pRoot As %String, pPath As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+/// <method>ExportFile</method>. Nothing is written. <var>pEndpoint</var> is <parameter>ENDPOINTHL7SCHEMAS</parameter> for the HL7 schema export (Story 24.18) and the lookup
+/// tables' otherwise.</p>
+ClassMethod CheckExport(pRoot As %String, pPath As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pEndpoint As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set pHttpStatus = 0
     Set pFault = ""
+    If pEndpoint '= ..#ENDPOINTHL7SCHEMAS Set pEndpoint = ..#ENDPOINTLOOKUPTABLES
     Try {
         Set tFailedPair = ""
-        If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(..#ENDPOINTLOOKUPTABLES, ..#TYPEEXPORT), .tFailedPair) {
+        If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(pEndpoint, $Select(pEndpoint = ..#ENDPOINTHL7SCHEMAS: ..#TYPEEXPORTHL7SCHEMA, 1: ..#TYPEEXPORT)), .tFailedPair) {
             Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
@@ -16400,6 +16426,801 @@ ClassMethod InvokeSystemMonitor(pEndpoint As %String, pType As %String, ByRef pQ
         Set tSC = ..LogMapped(ex, "the system monitor call failed inside the port", .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>The HL7 schemas endpoint (Story 24.18 Batch 1): <code>LIST</code> (the namespace's HL7 schemas, standard first, from <code>EnsLib.HL7.Schema:TypeCategories</code>),
+/// <code>HL7SCHEMA</code> (one schema, fresh), <code>HL7IMPORTFILE</code> (the import file and the schema it holds, as it stands), and the writes <code>ADDHL7SCHEMA</code>,
+/// <code>IMPORTHL7SCHEMA</code>, <code>DELETEHL7SCHEMA</code> and the read-only <code>EXPORTHL7SCHEMA</code>. The vendor checks no privilege beyond the database for any of them
+/// (measured), so the gate is the whole gate. A write takes the vendor's own schema lock (<code>^EnsHL7.Schema(&lt;category&gt;)</code>), refuses a namespace under source control, and
+/// never changes a standard schema. A schema is named exactly (AD-13); only a name <method>Hl7NameOK</method> accepts is read or written.</p>
+Parameter ENDPOINTHL7SCHEMAS = "Hl7Schemas";
+
+Parameter TYPEHL7SCHEMA = "HL7SCHEMA";
+
+Parameter TYPEHL7IMPORTFILE = "HL7IMPORTFILE";
+
+Parameter TYPEADDHL7SCHEMA = "ADDHL7SCHEMA";
+
+Parameter TYPEIMPORTHL7SCHEMA = "IMPORTHL7SCHEMA";
+
+Parameter TYPEEXPORTHL7SCHEMA = "EXPORTHL7SCHEMA";
+
+Parameter TYPEDELETEHL7SCHEMA = "DELETEHL7SCHEMA";
+
+/// <p>The most schemas a list answers to a call that names no cap of its own: 2,000. The vendor's list ended in 1.3 seconds with 2,019 schemas held (measured); a call that names a cap
+/// gets that many (AD-36).</p>
+Parameter HL7SCHEMASMAX As INTEGER = 2000;
+
+/// <p>The most characters a schema's description holds (the published rule of Story 24.17 Batch 3b), its name, and the most a base name may be before it is judged held.</p>
+Parameter HL7DESCRIPTIONMAX As INTEGER = 2000;
+
+Parameter HL7NAMEMAX As INTEGER = 64;
+
+Parameter HL7BASEMAX As INTEGER = 255;
+
+/// <p>The pairs the endpoint requires: the portal's and the classic HL7 Schema Structures page's own resource (<code>EnsPortal.HL7.SchemaMain</code>, Story 24.18), and the pair an add, an
+/// import and a delete add: its <code>EDITRESOURCE</code>.</p>
+Parameter HL7PAIRS = "%Ens_Portal:USE,%Ens_EDISchema:READ";
+
+Parameter HL7WRITEPAIR = "%Ens_EDISchema:WRITE";
+
+/// <p>The extension of a schema's document, and what every HL7 schema refusal code begins with (<class>OcuPilot.Api.InteropError</class>).</p>
+Parameter HL7EXTENSION = ".HL7";
+
+Parameter HL7CODEPREFIX = "INTEROP.HL7.";
+
+/// <p>The query key of the reviewed <code>Present</code> value of an import.</p>
+Parameter PRESENTKEY = "present";
+
+Parameter ENTITYHL7SCHEMA = "interop-hl7-schema";
+
+/// <p>Whether <var>pType</var> is one of the HL7 schema writes this port carries: an add, an import or a delete. Each needs WRITE on the namespace's globals database. An export reads
+/// the schema and is not one.</p>
+ClassMethod IsHl7SchemaWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADDHL7SCHEMA) || (pType = ..#TYPEIMPORTHL7SCHEMA) || (pType = ..#TYPEDELETEHL7SCHEMA)
+}
+
+/// <p>Whether <var>pName</var> is a name this port reads or writes for an HL7 schema: 1 to <parameter>HL7NAMEMAX</parameter> letters, digits, <code>.</code>, <code>_</code> and
+/// <code>-</code>, beginning with a letter or digit. Pure.</p>
+ClassMethod Hl7NameOK(pName As %String) As %Boolean
+{
+    Quit $Match(pName, "^[A-Za-z0-9][A-Za-z0-9._-]*$") && ($Length(pName) '> ..#HL7NAMEMAX) && ($ZStrip(pName, "*C") = pName)
+}
+
+/// <p>Whether <var>pBase</var> is shaped so that it can be looked up as a schema name: empty, or at most <parameter>HL7BASEMAX</parameter> characters with no control character. Pure.</p>
+ClassMethod Hl7BaseShaped(pBase As %String) As %Boolean
+{
+    Quit ($Length(pBase) '> ..#HL7BASEMAX) && ($ZStrip(pBase, "*C") = pBase)
+}
+
+/// <p>The violations of a new schema's name and fields, as a <class>%List</class> of <code>$ListBuild(field, token)</code> where the token is <code>NAME</code>, <code>BASE</code>,
+/// <code>DESCRIPTION</code> or <code>SHAPE</code>, and <code>""</code> for none: a name <method>Hl7NameOK</method> refuses is <code>NAME</code> (judged only when <var>pJudgeName</var>); a
+/// base that is not a string, or is not shaped as a name, is <code>SHAPE</code> or <code>BASE</code>; a description over <parameter>HL7DESCRIPTIONMAX</parameter> characters is
+/// <code>DESCRIPTION</code> and one that is not a string <code>SHAPE</code>. Whether the base is held is judged where the namespace is read. Names no other class. Pure.</p>
+ClassMethod Hl7SchemaBad(pName As %String, pFields As %DynamicObject, pJudgeName As %Boolean = 1) As %List
+{
+    Set tBad = ""
+    If pJudgeName && '..Hl7NameOK(pName) Set tBad = tBad _ $ListBuild($ListBuild("Name", "NAME"))
+    If '$IsObject(pFields) || 'pFields.%IsA("%Library.DynamicObject") Set pFields = {}
+    Set tType = pFields.%GetTypeOf("Base")
+    If tType = "string" {
+        If '..Hl7BaseShaped(pFields.%Get("Base")) Set tBad = tBad _ $ListBuild($ListBuild("Base", "BASE"))
+    } ElseIf tType '= "unassigned" {
+        Set tBad = tBad _ $ListBuild($ListBuild("Base", "SHAPE"))
+    }
+    Set tType = pFields.%GetTypeOf("Description")
+    If tType = "string" {
+        If $Length(pFields.%Get("Description")) > ..#HL7DESCRIPTIONMAX Set tBad = tBad _ $ListBuild($ListBuild("Description", "DESCRIPTION"))
+    } ElseIf tType '= "unassigned" {
+        Set tBad = tBad _ $ListBuild($ListBuild("Description", "SHAPE"))
+    }
+    Quit tBad
+}
+
+/// <p>The code of the violation token <var>pToken</var> of <method>Hl7SchemaBad</method>.</p>
+ClassMethod Hl7ViolationCode(pToken As %String) As %String
+{
+    Quit $Case(pToken, "NAME": ##class(OcuPilot.Api.InteropError).#HL7NAME, "BASE": ##class(OcuPilot.Api.InteropError).#HL7BASE, "DESCRIPTION": ##class(OcuPilot.Api.InteropError).#HL7DESCRIPTION, : ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+}
+
+/// <p>The 422 violations of a new schema's name and fields, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field, code)</code> with the count in <code>pViolations</code>,
+/// from <method>Hl7SchemaBad</method>. With <var>pNamespace</var> a base that is shaped and not empty is also judged held there (<method>Hl7BaseHeld</method>), so a base the namespace does
+/// not hold is <code>BASE</code> too.</p>
+ClassMethod Hl7SchemaViolations(pName As %String, pFields As %DynamicObject, Output pViolations, pJudgeName As %Boolean = 1, pNamespace As %String = "") As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tBad = ..Hl7SchemaBad(pName, pFields, pJudgeName)
+    If (pNamespace '= "") && $IsObject(pFields) && pFields.%IsA("%Library.DynamicObject") && (pFields.%GetTypeOf("Base") = "string") {
+        Set tBase = pFields.%Get("Base")
+        If (tBase '= "") && ..Hl7BaseShaped(tBase) && '..Hl7BaseHeld(pNamespace, tBase) Set tBad = $ListBuild($ListBuild("Base", "BASE")) _ tBad
+    }
+    For tI = 1:1:$ListLength(tBad) {
+        Set tEntry = $List(tBad, tI)
+        Set pViolations($Increment(pViolations)) = $ListBuild($List(tEntry, 1), ..Hl7ViolationCode($List(tEntry, 2)))
+    }
+    Quit $$$OK
+}
+
+/// <p>Whether the namespace <var>pNamespace</var> holds the schema <var>pBase</var> under exactly that name. A fault answers 1: the write judges the base again where it runs.</p>
+ClassMethod Hl7BaseHeld(pNamespace As %String, pBase As %String) As %Boolean
+{
+    Set tHeld = 1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tHeld = ($Data(^EnsHL7.Schema(pBase)) > 0)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tHeld = 1
+    }
+    Quit tHeld
+}
+
+/// <p>The decision an HL7 schema add or delete <var>pType</var> is refused with, as a token, else <code>""</code>: an add of a name the namespace holds, in any letter case
+/// (<var>pExists</var>, or <var>pMatch</var> not empty), is <code>TAKEN</code>; a delete of a name not held exactly is <code>ABSENT</code>, and of a standard schema (<var>pStandard</var>)
+/// <code>STANDARD</code>. Pure.</p>
+ClassMethod Hl7WriteToken(pType As %String, pExists As %Boolean, pMatch As %String, pStandard As %Boolean) As %String
+{
+    If pType = ..#TYPEADDHL7SCHEMA Quit $Select(pExists || (pMatch '= ""): "TAKEN", 1: "")
+    If 'pExists Quit "ABSENT"
+    If pStandard Quit "STANDARD"
+    Quit ""
+}
+
+/// <p>Whether the namespace <var>pNamespace</var> carries the HL7 package, which the vendor answers for the current namespace. Overridable so a fixture can answer 0; production never
+/// overrides it.</p>
+ClassMethod Hl7Installed(pNamespace As %String) As %Boolean
+{
+    Set tInstalled = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tInstalled = ''##class(%Library.InteroperabilityMgr).IsPackageInstalled("HL7")
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tInstalled = 0
+    }
+    Quit tInstalled
+}
+
+/// <p>A point inside each namespace-switched block of the HL7 schema calls, which does nothing. A fixture overrides it to read the namespace or raise a fault there; production never
+/// overrides it.</p>
+ClassMethod Hl7Here() [ Private ]
+{
+}
+
+/// <p>Take the vendor's own lock on schema <var>pName</var> in the current namespace, as the vendor's import takes it, waiting at most <parameter>LOCKSECONDS</parameter>; 1 when it is held.
+/// Called while the schema's namespace is switched. Overridable so a fixture can answer 0; production never overrides it.</p>
+ClassMethod Hl7Lock(pName As %String) As %Boolean
+{
+    Set tWait = ..#LOCKSECONDS
+    Lock +^EnsHL7.Schema(pName):tWait
+    Quit $Test
+}
+
+/// <p>Release <method>Hl7Lock</method>'s lock. Called while the schema's namespace is switched.</p>
+ClassMethod Hl7Unlock(pName As %String)
+{
+    Lock -^EnsHL7.Schema(pName)
+}
+
+/// <p>The vendor's write of the HL7 schema write <var>pType</var> (an add or a delete) on <var>pName</var> in the current namespace, which the caller has already switched. A delete is
+/// <code>EnsLib.HL7.SchemaDocument.Delete</code>, which refuses a standard schema and records the vendor's audit row. An add sets the vendor's schema globals as the classic New HL7
+/// Schema dialog sets them (<code>EnsPortal.HL7.Dialog.CustomSchema.OnWizardCompletion</code>: the base, the description and the time), then records the vendor's audit row; no vendor
+/// method creates an empty schema. Overridable so a fixture can answer a status or a fault; production never overrides it.</p>
+ClassMethod Hl7VendorWrite(pType As %String, pName As %String, pBase As %String, pDescription As %String) As %Status
+{
+    If pType = ..#TYPEDELETEHL7SCHEMA Quit ##class(EnsLib.HL7.SchemaDocument).Delete(pName _ ..#HL7EXTENSION)
+    If pBase '= "" Set ^EnsHL7.Schema(pName, "base") = pBase
+    If pDescription '= "" Set ^EnsHL7.Description(pName) = pDescription
+    Set ^EnsHL7.Schema(pName, "time") = $ZTimeStamp
+    Set tActions = "Created schema based on " _ pBase
+    Set tAuditSC = ##class(Ens.Util.Auditing).AuditModifySchema("HL7 " _ pName, tActions)
+    Quit $$$OK
+}
+
+/// <p>The vendor's load of the one document <var>pItem</var> of <var>pStream</var> in the current namespace, which the caller has already switched, answering the documents it loaded in
+/// <var>pLoaded</var>. The vendor replaces the schema whole inside its own transaction. Overridable so a fixture can answer a status; production never overrides it.</p>
+ClassMethod Hl7VendorLoad(pStream As %Stream.Object, pItem As %String, Output pLoaded) As %Status
+{
+    Kill pLoaded, tSelected
+    Set tSelected(pItem) = ""
+    Quit $System.OBJ.LoadStream(pStream, "-d", .tErrorLog, .pLoaded, 0, .tSelected)
+}
+
+/// <p>The vendor's export of <var>pName</var>'s document in the current namespace, which the caller has already switched: to the server file <var>pFile</var> when <var>pToFile</var>, else
+/// to <var>pText</var>, which is left empty with <var>pTooLarge</var> 1 when the text is longer than <var>pMax</var> characters. Overridable so a fixture can answer a status; production
+/// never overrides it.</p>
+ClassMethod Hl7VendorExport(pName As %String, pToFile As %Boolean, pFile As %String, pMax As %Integer, Output pText As %String, Output pTooLarge As %Boolean) As %Status
+{
+    Set pText = ""
+    Set pTooLarge = 0
+    Kill tItems
+    Set tItems(pName _ ..#HL7EXTENSION) = ""
+    If pToFile Quit $System.OBJ.Export(.tItems, pFile, "-d")
+    Set tStream = ##class(%Stream.GlobalCharacter).%New()
+    Set tSC = $System.OBJ.ExportToStream(.tItems, .tStream, "-d")
+    If $$$ISOK(tSC) {
+        If tStream.Size > pMax {
+            Set pTooLarge = 1
+        } Else {
+            Do tStream.Rewind()
+            Set pText = tStream.Read(pMax)
+        }
+    }
+    Quit tSC
+}
+
+/// <p>The facts about schema <var>pName</var> in the current namespace, which the caller has already switched, kept in <var>pFacts</var>: <code>exists</code> (held under exactly that
+/// name), <code>match</code> (the spelling it is held under in another letter case, else <code>""</code>), and for a held schema <code>standard</code> (the vendor's
+/// <code>std</code> mark), <code>base</code>, <code>description</code> and <code>modified</code> (<code>EnsLib.HL7.SchemaDocument.TimeStamp</code>). Writes nothing.</p>
+ClassMethod Hl7FactsHere(pName As %String, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("exists") = ''$Data(^EnsHL7.Schema(pName))
+    Set pFacts("match") = ""
+    Set pFacts("standard") = 0
+    Set pFacts("base") = ""
+    Set pFacts("description") = ""
+    Set pFacts("modified") = ""
+    Set tUpper = $ZConvert(pName, "U")
+    Set tKey = ""
+    For {
+        Set tKey = $Order(^EnsHL7.Schema(tKey))
+        If tKey = "" Quit
+        If (tKey '= pName) && ($ZConvert(tKey, "U") = tUpper) {
+            Set pFacts("match") = tKey
+            Quit
+        }
+    }
+    If pFacts("exists") {
+        Set pFacts("standard") = ''+$Get(^EnsHL7.Description(pName, "std"))
+        Set pFacts("base") = $Get(^EnsHL7.Schema(pName, "base"))
+        Set pFacts("description") = $Get(^EnsHL7.Description(pName))
+        Set pFacts("modified") = ##class(EnsLib.HL7.SchemaDocument).TimeStamp(pName _ ..#HL7EXTENSION)
+    }
+}
+
+/// <p><method>Hl7FactsHere</method> for <var>pName</var> read in <var>pNamespace</var>, switched by explicit save and restore. A fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod Hl7Facts(pNamespace As %String, pName As %String, Output pFacts, Output pCaught) As %Status [ Private ]
+{
+    Set pCaught = ""
+    Kill pFacts
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..Hl7Here()
+        Do ..Hl7FactsHere(pName, .pFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>A vendor exception <var>pException</var> of an HL7 schema call in this port's own words, the status it logs carrying the vendor's error codes alone (AD-39).</p>
+ClassMethod Hl7Mapped(pException As %Exception.AbstractException, pMessage As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Statused(..VendorCodesStatus(pException.AsStatus(), "the HL7 schema call"), pMessage, .pHttpStatus, .pFault)
+}
+
+/// <p>422 <code>INTEROP.HL7.NAME</code>: the name is not one an HL7 schema takes.</p>
+ClassMethod Hl7NameRefusal(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tViolations = 1
+    Set tViolations(1) = $ListBuild("Name", ##class(OcuPilot.Api.InteropError).#HL7NAME)
+    Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+}
+
+/// <p>One schema's row: <code>{Category, Base, Description, Standard, Modified, Namespace}</code>.</p>
+ClassMethod Hl7SchemaRow(pCategory As %String, pBase As %String, pDescription As %String, pStandard As %Boolean, pModified As %String, pNamespace As %String = "") As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("Category", pCategory, "string")
+    Do tRow.%Set("Base", pBase, "string")
+    Do tRow.%Set("Description", pDescription, "string")
+    Do tRow.%Set("Standard", ''pStandard, "boolean")
+    Do tRow.%Set("Modified", pModified, "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The HL7 schemas of <var>pNamespace</var>, standard first as the vendor's own query orders them, at most <var>pMax</var> (<parameter>HL7SCHEMASMAX</parameter> when that is not above
+/// zero): <code>{Category, Base, Description, Standard, Modified, Namespace}</code>. Nothing is written. A longer list than the cap is the caller's truncation, which it reads from the
+/// one row it asked for beyond its own cap (AD-36).</p>
+ClassMethod ListHl7Schemas(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tCap = ..WorkflowCap(pMax, ..#HL7SCHEMASMAX)
+    Set tCaught = ""
+    Set tStatusSC = $$$OK
+    Kill tFound
+    Set tFound = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..Hl7Here()
+        Set tResultSet = ##class(%ResultSet).%New("EnsLib.HL7.Schema:TypeCategories")
+        Set tStatusSC = tResultSet.Execute()
+        If $$$ISOK(tStatusSC) {
+            While tResultSet.Next() {
+                If tFound '< tCap Quit
+                Set tFound = tFound + 1
+                Set tCategory = tResultSet.GetData(1)
+                Set tFound(tFound) = $ListBuild(tCategory, tResultSet.GetData(4), tResultSet.GetData(2), ''+tResultSet.GetData(3), ##class(EnsLib.HL7.SchemaDocument).TimeStamp(tCategory _ ..#HL7EXTENSION))
+            }
+            Do tResultSet.Close()
+        }
+        Set tResultSet = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the HL7 schema list failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tStatusSC) Quit ..Statused(..VendorCodesStatus(tStatusSC, "the HL7 schema list"), "the HL7 schema list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tLine = tFound(tI)
+        Do pRows.%Push(..Hl7SchemaRow($List(tLine, 1), $List(tLine, 2), $List(tLine, 3), $List(tLine, 4), $List(tLine, 5), pNamespace))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One HL7 schema, fresh: <code>{Category, Base, Description, Standard, Modified, Namespace, root, path}</code>, <code>root</code> and <code>path</code> being the file an export
+/// names, empty when none. A name <method>Hl7NameOK</method> refuses, or one the namespace does not hold exactly, is 404 <code>PORT.NOTFOUND</code>, unlogged. With a write as
+/// <var>pAction</var>, in this order: a namespace under source control is <code>INTEROP.HL7.SOURCECONTROL</code>; an add (AD-54, which inverts the read) refuses a name the namespace holds
+/// in any letter case with <code>TAKEN</code> and otherwise answers the 404 a create expects, and an add of a name that is not one is 422 <code>NAME</code>; a delete of a standard schema
+/// is <code>STANDARD</code>.</p>
+ClassMethod ReadHl7Schema(pNamespace As %String, pName As %String, pAction As %String, pRoot As %String, pPath As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If ..IsHl7SchemaWrite(pAction) && ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7SOURCECONTROL, .pHttpStatus, .pFault)
+    Set tAdd = (pAction = ..#TYPEADDHL7SCHEMA)
+    If '..Hl7NameOK(pName) Quit $Select(tAdd: ..Hl7NameRefusal(.pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
+    Set tSC = ..Hl7Facts(pNamespace, pName, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the HL7 schema read failed", .pHttpStatus, .pFault)
+    If tAdd {
+        If tFacts("exists") || (tFacts("match") '= "") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7TAKEN, .pHttpStatus, .pFault)
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    If (pAction = ..#TYPEDELETEHL7SCHEMA) && tFacts("standard") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7STANDARD, .pHttpStatus, .pFault)
+    Set pRow = ..Hl7SchemaRow(pName, tFacts("base"), tFacts("description"), tFacts("standard"), tFacts("modified"), pNamespace)
+    Do pRow.%Set(..#ROOTKEY, pRoot, "string")
+    Do pRow.%Set(..#PATHKEY, pPath, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Run HL7 schema write <var>pType</var> (an add or a delete) on the schema <var>pName</var> in <var>pNamespace</var> and answer what it leaves (Story 24.18 Batch 1). The sequence:</p>
+/// <ol>
+/// <li>A namespace under source control is <code>INTEROP.HL7.SOURCECONTROL</code>, before anything is read; an add's name that is not one is 422 <code>NAME</code>, and a delete's is 404.</li>
+/// <li>The vendor's schema lock is taken; a lock not got in <parameter>LOCKSECONDS</parameter> is <code>INTEROP.HL7.LOCKED</code>, with nothing written.</li>
+/// <li>Under the lock the schema is read again and judged by <method>Hl7WriteToken</method> (<code>TAKEN</code>, a 404, <code>STANDARD</code>), then an add's fields: a base the
+/// namespace does not hold and a description over its limit are 422.</li>
+/// <li>The vendor's write runs (<method>Hl7VendorWrite</method>), which records the vendor's own audit row; a write that failed after it was attempted also records OcuPilot's own, with
+/// <code>completed</code> false.</li>
+/// </ol>
+/// <p>A vendor error status or a fault is 500 <code>INTERNAL</code>, never 200, and reaches the log as its error codes alone. The answer is the schema's row read again; after a delete
+/// <code>{Category, Namespace}</code>.</p>
+ClassMethod PerformHl7Schema(pNamespace As %String, pType As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7SOURCECONTROL, .pHttpStatus, .pFault)
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tAdd = (pType = ..#TYPEADDHL7SCHEMA)
+    If '..Hl7NameOK(pName) Quit $Select(tAdd: ..Hl7NameRefusal(.pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
+    Set tBase = ""
+    Set tDescription = ""
+    If tAdd {
+        If pBody.%GetTypeOf("Base") = "string" Set tBase = pBody.%Get("Base")
+        If pBody.%GetTypeOf("Description") = "string" Set tDescription = pBody.%Get("Description")
+    }
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tAttempted = 0
+    Set tLocked = 0
+    Set tBad = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..Hl7Here()
+        Set tLocked = ..Hl7Lock(pName)
+        If 'tLocked {
+            Set tToken = "LOCKED"
+        } Else {
+            Do ..Hl7FactsHere(pName, .tFacts)
+            Set tToken = ..Hl7WriteToken(pType, tFacts("exists"), tFacts("match"), tFacts("standard"))
+            If (tToken = "") && tAdd {
+                Set tBad = ..Hl7SchemaBad(pName, pBody, 0)
+                If (tBase '= "") && ..Hl7BaseShaped(tBase) && ($Data(^EnsHL7.Schema(tBase)) = 0) Set tBad = $ListBuild($ListBuild("Base", "BASE")) _ tBad
+            }
+            If (tToken = "") && (tBad = "") {
+                Set tAttempted = 1
+                Set tVendorSC = ..Hl7VendorWrite(pType, pName, tBase, tDescription)
+            }
+            Do ..Hl7Unlock(pName)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+        If tLocked {
+            Try {
+                Set $NAMESPACE = pNamespace
+                Do ..Hl7Unlock(pName)
+            } Catch {
+            }
+            Set $NAMESPACE = tOrigNS
+        }
+    }
+    If tAttempted && ($$$ISERR(tVendorSC) || $IsObject(tCaught)) {
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        Do tEffects.%Set("completed", 0, "boolean")
+        Do ..AuditRuntime($Select(tAdd: ..#VERBADD, 1: ..#VERBDELETE), ..#ENTITYHL7SCHEMA, pName, tEffects)
+    }
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the HL7 schema write failed", .pHttpStatus, .pFault)
+    If tToken = "LOCKED" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7LOCKED, .pHttpStatus, .pFault)
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken = "TAKEN" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7TAKEN, .pHttpStatus, .pFault)
+    If tToken = "STANDARD" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7STANDARD, .pHttpStatus, .pFault)
+    If tBad '= "" {
+        Kill tViolations
+        Set tViolations = 0
+        For tI = 1:1:$ListLength(tBad) {
+            Set tEntry = $List(tBad, tI)
+            Set tViolations($Increment(tViolations)) = $ListBuild($List(tEntry, 1), ..Hl7ViolationCode($List(tEntry, 2)))
+        }
+        Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the HL7 schema write"), "the HL7 schema write failed", .pHttpStatus, .pFault)
+    If pType = ..#TYPEDELETEHL7SCHEMA {
+        Set pResult = {}
+        Do pResult.%Set("Category", pName, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tReadSC = ..ReadHl7Schema(pNamespace, pName, "", "", "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Category", pName, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The text of the import file a query names and the schema it holds, judged (Story 24.18 Batch 1): the file is read and cut as <method>ImportText</method> reads it
+/// (<code>INTEROP.HL7.TOOLARGE</code> past the cap), then <method>ImportShape</method> asks the vendor to list its documents without loading them. 409
+/// <code>INTEROP.HL7.IMPORTSHAPE</code> when the file is not exactly one <code>.HL7</code> document holding one <code>Category</code> of a name <method>Hl7NameOK</method> accepts, or
+/// holds another schema than <var>pId</var> names (<parameter>IMPORTID</parameter> names any). <var>pCategory</var> is the schema, <var>pDigest</var> the text's SHA-256 and
+/// <var>pFlagged</var> 1 when the file marks its <code>Category</code> standard, as the vendor reads the mark (<code>std</code> not empty, <code>0</code> or <code>false</code>).</p>
+ClassMethod Hl7ImportFile(pNamespace As %String, pId As %String, ByRef pQuery, Output pText As %String, Output pCategory As %String, Output pDigest As %String, Output pFlagged As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pCategory = ""
+    Set pDigest = ""
+    Set pFlagged = 0
+    Set tSC = ..ImportText(.pQuery, .pText, .tLabel, .pHttpStatus, .pFault, ##class(OcuPilot.Api.InteropError).#HL7TOOLARGE)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..ImportShape(pNamespace, pText, .pCategory, .tCount, .pDigest, .tCaught, ..#HL7EXTENSION, "Category", "std", .pFlagged)
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the import file could not be examined", .pHttpStatus, .pFault)
+    If (pCategory = "") || (tCount '= 1) || '..Hl7NameOK(pCategory) || ((pId '= ..#IMPORTID) && (pId '= pCategory)) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7IMPORTSHAPE, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The import row for the file <var>pQuery</var> names: <code>{Category, Digest, Present, Modified, Namespace, root, path, fileName, content}</code>, with <code>content</code> always
+/// empty (the row names the property a local file's text is set on and never holds the text). With <var>pAction</var>, in this order: a namespace under source control is
+/// <code>INTEROP.HL7.SOURCECONTROL</code>; then the file is judged (<method>Hl7ImportFile</method>); a file that marks its schema standard, or whose schema the namespace holds as
+/// standard, is <code>IMPORTSTANDARD</code>; a schema absent under exactly that name but held in another letter case is <code>CASE</code>.</p>
+ClassMethod ReadHl7Import(pNamespace As %String, pId As %String, pAction As %String, ByRef pQuery, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If (pAction '= "") && ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7SOURCECONTROL, .pHttpStatus, .pFault)
+    Set tSC = ..Hl7ImportFile(pNamespace, pId, .pQuery, .tText, .tCategory, .tDigest, .tFlagged, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..Hl7Facts(pNamespace, tCategory, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the HL7 schema read failed", .pHttpStatus, .pFault)
+    If pAction '= "" {
+        If tFlagged || tFacts("standard") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7IMPORTSTANDARD, .pHttpStatus, .pFault)
+        If 'tFacts("exists") && (tFacts("match") '= "") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7CASE, .pHttpStatus, .pFault)
+    }
+    Set pRow = {}
+    Do pRow.%Set("Category", tCategory, "string")
+    Do pRow.%Set("Digest", tDigest, "string")
+    Do pRow.%Set("Present", ''tFacts("exists"), "boolean")
+    Do pRow.%Set("Modified", tFacts("modified"), "string")
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    Do pRow.%Set(..#ROOTKEY, $Get(pQuery(..#ROOTKEY)), "string")
+    Do pRow.%Set(..#PATHKEY, $Get(pQuery(..#PATHKEY)), "string")
+    Do pRow.%Set(..#FILENAMEKEY, $Get(pQuery(..#FILENAMEKEY)), "string")
+    Do pRow.%Set(..#CONTENTKEY, "", "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Replace, or create, the schema the import file holds with the file's (Story 24.18 Batch 1). The sequence:</p>
+/// <ol>
+/// <li>A namespace under source control is <code>INTEROP.HL7.SOURCECONTROL</code>, before anything is read.</li>
+/// <li>The file is judged (<method>Hl7ImportFile</method>) and the schema read as it stands; a standard schema or a file that marks one is <code>IMPORTSTANDARD</code>, a name held only in
+/// another letter case <code>CASE</code>, and a reviewed digest, presence or stamp (<parameter>DIGESTKEY</parameter>, <parameter>PRESENTKEY</parameter>,
+/// <parameter>MODIFIEDKEY</parameter>) that moved <code>IMPORTCHANGED</code>, with nothing loaded.</li>
+/// <li>The vendor's schema lock is taken (<code>LOCKED</code> past <parameter>LOCKSECONDS</parameter>); under it the same judgments are made again and the file's one <code>.HL7</code>
+/// document is loaded by name (<method>Hl7VendorLoad</method>), which replaces the schema whole. A load that answers OK without loading that document is <code>IMPORTSHAPE</code>.</li>
+/// <li>OcuPilot's own audit row is recorded after the lock is released, naming the namespace, the schema, the file's kind and whether it completed, and never the text.</li>
+/// </ol>
+/// <p>The answer is the schema's row read again.</p>
+ClassMethod PerformHl7Import(pNamespace As %String, pId As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7SOURCECONTROL, .pHttpStatus, .pFault)
+    Set tSC = ..Hl7ImportFile(pNamespace, pId, .pQuery, .tText, .tCategory, .tDigest, .tFlagged, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..Hl7Facts(pNamespace, tCategory, .tPre, .tCaught)
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the HL7 schema read failed", .pHttpStatus, .pFault)
+    If tFlagged || tPre("standard") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7IMPORTSTANDARD, .pHttpStatus, .pFault)
+    If 'tPre("exists") && (tPre("match") '= "") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7CASE, .pHttpStatus, .pFault)
+    If '$Data(pQuery(..#DIGESTKEY)) || '$Data(pQuery(..#PRESENTKEY)) || '$Data(pQuery(..#MODIFIEDKEY)) || (pQuery(..#DIGESTKEY) '= tDigest) || (pQuery(..#PRESENTKEY) '= +tPre("exists")) || (pQuery(..#MODIFIEDKEY) '= tPre("modified")) {
+        Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7IMPORTCHANGED, .pHttpStatus, .pFault)
+    }
+    Set tItem = tCategory _ ..#HL7EXTENSION
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tLocked = 0
+    Set tAttempted = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tStream = ##class(%Stream.GlobalCharacter).%New()
+        Do tStream.Write(tText)
+        Do tStream.Rewind()
+        Set $NAMESPACE = pNamespace
+        Do ..Hl7Here()
+        Set tLocked = ..Hl7Lock(tCategory)
+        If 'tLocked {
+            Set tToken = "LOCKED"
+        } Else {
+            Do ..Hl7FactsHere(tCategory, .tNow)
+            If tNow("standard") {
+                Set tToken = "IMPORTSTANDARD"
+            } ElseIf 'tNow("exists") && (tNow("match") '= "") {
+                Set tToken = "CASE"
+            } ElseIf (tNow("modified") '= tPre("modified")) || (tNow("exists") '= tPre("exists")) {
+                Set tToken = "IMPORTCHANGED"
+            } Else {
+                Set tAttempted = 1
+                Set tVendorSC = ..Hl7VendorLoad(tStream, tItem, .tLoaded)
+                If $$$ISOK(tVendorSC) && '$Data(tLoaded(tItem)) Set tToken = "IMPORTSHAPE"
+            }
+            Do ..Hl7Unlock(tCategory)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+        If tLocked {
+            Try {
+                Set $NAMESPACE = pNamespace
+                Do ..Hl7Unlock(tCategory)
+            } Catch {
+            }
+            Set $NAMESPACE = tOrigNS
+        }
+    }
+    If tAttempted {
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        Do tEffects.%Set("schema", tCategory, "string")
+        Do tEffects.%Set("source", $Select($Get(pQuery(..#ROOTKEY)) '= "": "server file", 1: "local file"), "string")
+        Do tEffects.%Set("completed", ($$$ISOK(tVendorSC) && '$IsObject(tCaught) && (tToken = "")), "boolean")
+        Do ..AuditRuntime(..#VERBIMPORT, ..#ENTITYHL7SCHEMA, tCategory, tEffects)
+    }
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the HL7 schema import failed", .pHttpStatus, .pFault)
+    If tToken '= "" Quit ..Conflict(..#HL7CODEPREFIX _ tToken, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the HL7 schema import"), "the HL7 schema import failed", .pHttpStatus, .pFault)
+    Set tReadSC = ..ReadHl7Schema(pNamespace, tCategory, "", "", "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Category", tCategory, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>Export schema <var>pName</var>'s <code>.HL7</code> document, the vendor's own (Story 24.18 Batch 1): to the server file <parameter>ROOTKEY</parameter> and
+/// <parameter>PATHKEY</parameter> name, resolved and checked by <method>ExportFile</method> before the call (<code>$System.OBJ.Export</code>), the answer <code>{Category, Namespace, root,
+/// path}</code>; or, naming neither, as lines for the browser (<code>$System.OBJ.ExportToStream</code>), the answer <code>{Category, Namespace, lines}</code>, 409
+/// <code>INTEROP.HL7.TOOLARGE</code> past <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter> characters. A schema that is not held under exactly that name is 404. A
+/// standard schema may be exported. It writes nothing but the file, and records OcuPilot's own audit row, which carries no text.</p>
+ClassMethod ExportHl7Schema(pNamespace As %String, pName As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tRoot = $Get(pQuery(..#ROOTKEY))
+    Set tPath = $Get(pQuery(..#PATHKEY))
+    Set tToFile = (tRoot '= "") || (tPath '= "")
+    If '..Hl7NameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+    Set tSC = ..Hl7Facts(pNamespace, pName, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the HL7 schema read failed", .pHttpStatus, .pFault)
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    Set tResolved = ""
+    If tToFile {
+        Set tSC = ..ExportFile(tRoot, tPath, .tResolved, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tText = ""
+    Set tTooLarge = 0
+    Set tMax = ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..Hl7Here()
+        Set tVendorSC = ..Hl7VendorExport(pName, tToFile, tResolved, tMax, .tText, .tTooLarge)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("schema", pName, "string")
+    Do tEffects.%Set("toFile", ''tToFile, "boolean")
+    Do tEffects.%Set("completed", ($$$ISOK(tVendorSC) && '$IsObject(tCaught) && 'tTooLarge), "boolean")
+    Do ..AuditRuntime(..#VERBEXPORT, ..#ENTITYHL7SCHEMA, pName, tEffects)
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the HL7 schema export failed", .pHttpStatus, .pFault)
+    If tTooLarge Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7TOOLARGE, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the HL7 schema export"), "the HL7 schema export failed", .pHttpStatus, .pFault)
+    Set pResult = {}
+    Do pResult.%Set("Category", pName, "string")
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    If tToFile {
+        Do pResult.%Set(..#ROOTKEY, tRoot, "string")
+        Do pResult.%Set(..#PATHKEY, tPath, "string")
+    } Else {
+        Set tLines = []
+        Set tLength = $Length(tText, $Char(10))
+        For tI = 1:1:tLength {
+            Set tLine = $Piece(tText, $Char(10), tI)
+            If (tI = tLength) && (tLine = "") Quit
+            Do tLines.%Push(tLine, "string")
+        }
+        Do pResult.%Set("lines", tLines)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the Hl7Schemas endpoint's <code>LIST</code> and typed types after <method>Invoke</method>'s gate (Story 24.18 Batch 1), for a namespace that carries the HL7 package (else
+/// 501 <code>PORT.NOTIMPLEMENTED</code>): the <code>HL7SCHEMA</code> read, the import file's read, the add, import and delete, and the export, the schema named under
+/// <parameter>IDKEY</parameter> by its name, kept exactly (AD-13). An <parameter>ACTIONKEY</parameter> names the write a read is composed for.</p>
+ClassMethod InvokeHl7Schema(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If '..Hl7Installed(pNamespace) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListHl7Schemas(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tId = $Get(pQuery(..#IDKEY))
+        If tId = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsHl7SchemaWrite(pType) || (pType = ..#TYPEEXPORTHL7SCHEMA): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '(..IsHl7SchemaWrite(tAction) || (tAction = ..#TYPEEXPORTHL7SCHEMA)) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPEEXPORTHL7SCHEMA {
+            Set tSC = ..ExportHl7Schema(pNamespace, tId, .pQuery, .pResult, .pHttpStatus, .pFault)
+        } ElseIf pType = ..#TYPEHL7IMPORTFILE {
+            Set tSC = ..ReadHl7Import(pNamespace, tId, tAction, .pQuery, .pResult, .pHttpStatus, .pFault)
+        } ElseIf pType = ..#TYPEIMPORTHL7SCHEMA {
+            Set tSC = ..PerformHl7Import(pNamespace, tId, .pQuery, .pResult, .pHttpStatus, .pFault)
+        } ElseIf ..IsHl7SchemaWrite(pType) {
+            Set tSC = ..PerformHl7Schema(pNamespace, pType, tId, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadHl7Schema(pNamespace, tId, tAction, $Get(pQuery(..#ROOTKEY)), $Get(pQuery(..#PATHKEY)), .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the HL7 schema call failed inside the port", ..VendorCodesStatus(ex.AsStatus(), "the HL7 schema call"), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The lines <method>Snippet</method> adds for the HL7 schema write <var>pType</var> of the schema named <var>pName</var> (Story 24.18 Batch 1): the source control guard, each refusal as
+/// one guard that stops the write (an add's name held in any letter case and a base the namespace does not hold; a delete's schema held and not standard), and the write itself: the classic
+/// dialog's sets and the vendor's audit call for an add, or <code>EnsLib.HL7.SchemaDocument.Delete</code>, each inside the vendor's schema lock; an import and an export are
+/// <method>Hl7TransferSnippet</method>'s. Names and values are string literals, so nothing the query carries runs as code. <code>""</code> for a name or a value the port would refuse by
+/// shape, which renders no draft. Nothing here runs; a person runs it.</p>
+ClassMethod Hl7SchemaSnippet(pType As %String, pName As %String, pBody As %DynamicAbstractObject, ByRef pQuery) As %String [ Private ]
+{
+    If '..Hl7NameOK(pName) Quit ""
+    If (pType = ..#TYPEIMPORTHL7SCHEMA) || (pType = ..#TYPEEXPORTHL7SCHEMA) Quit ..Hl7TransferSnippet(pType, pName, .pQuery)
+    Set tAdd = (pType = ..#TYPEADDHL7SCHEMA)
+    If tAdd {
+        Set tSC = ..Hl7SchemaViolations(pName, pBody, .tViolations, 1)
+        If tViolations Quit ""
+    }
+    Set tNL = $Char(10)
+    Set tName = ..Literal(pName)
+    Set tError = "$System.Status.Error(5001, "
+    Set tText = tNL _ " Set tGo = '##class(%CSP.Portal.SourceControl.Util).IsEnabled($Namespace), tSC = $System.Status.OK()"
+    Set tText = tText _ tNL _ " If 'tGo Set tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7SOURCECONTROL) _ ")"
+    If tAdd {
+        Set tBase = ""
+        Set tDescription = ""
+        If $IsObject(pBody) && (pBody.%GetTypeOf("Base") = "string") Set tBase = pBody.%Get("Base")
+        If $IsObject(pBody) && (pBody.%GetTypeOf("Description") = "string") Set tDescription = pBody.%Get("Description")
+        Set tText = tText _ tNL _ " Set tKey = """", tUpper = $ZConvert(" _ tName _ ", ""U"")"
+        Set tText = tText _ tNL _ " If tGo { For { Set tKey = $Order(^EnsHL7.Schema(tKey)) If tKey = """" { Quit } If $ZConvert(tKey, ""U"") = tUpper { Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7TAKEN) _ ") Quit } } }"
+        If tBase '= "" Set tText = tText _ tNL _ " If tGo, $Data(^EnsHL7.Schema(" _ ..Literal(tBase) _ ")) = 0 Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7BASE) _ ")"
+        Set tText = tText _ tNL _ " If tGo Lock +^EnsHL7.Schema(" _ tName _ "):" _ ..#LOCKSECONDS
+        Set tText = tText _ tNL _ " If tGo, '$Test Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7LOCKED) _ ")"
+        If tBase '= "" Set tText = tText _ tNL _ " If tGo Set ^EnsHL7.Schema(" _ tName _ ", ""base"") = " _ ..Literal(tBase)
+        If tDescription '= "" Set tText = tText _ tNL _ " If tGo Set ^EnsHL7.Description(" _ tName _ ") = " _ ..Literal(tDescription)
+        Set tText = tText _ tNL _ " If tGo Set ^EnsHL7.Schema(" _ tName _ ", ""time"") = $ZTimeStamp, tActions = " _ ..Literal("Created schema based on " _ tBase) _ ", tSC = ##class(Ens.Util.Auditing).AuditModifySchema(""HL7 "" _ " _ tName _ ", tActions)"
+        Quit tText _ tNL _ " Lock -^EnsHL7.Schema(" _ tName _ ")"
+    }
+    Set tText = tText _ tNL _ " If tGo, $Data(^EnsHL7.Schema(" _ tName _ ")) = 0 Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.Error).#PORTNOTFOUND) _ ")"
+    Set tText = tText _ tNL _ " If tGo, +$Get(^EnsHL7.Description(" _ tName _ ", ""std"")) Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7STANDARD) _ ")"
+    Set tText = tText _ tNL _ " If tGo Lock +^EnsHL7.Schema(" _ tName _ "):" _ ..#LOCKSECONDS
+    Set tText = tText _ tNL _ " If tGo, '$Test Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7LOCKED) _ ")"
+    Set tText = tText _ tNL _ " If tGo Set tSC = ##class(EnsLib.HL7.SchemaDocument).Delete(" _ ..Literal(pName _ ..#HL7EXTENSION) _ ")"
+    Quit tText _ tNL _ " Lock -^EnsHL7.Schema(" _ tName _ ")"
+}
+
+/// <p>The lines <method>Hl7SchemaSnippet</method> adds for an import or an export of the schema <var>pName</var> (Story 24.18 Batch 1): the vendor's own call on the schema's one
+/// <code>.HL7</code> document, named in the array form the port passes, and for an import the guards and the vendor's schema lock it takes. A server file is named by its allowed directory
+/// and relative name in a comment, since the directory is resolved when the write runs; a local file's text is never in a script, so its import loads a stream the comment says it holds.</p>
+ClassMethod Hl7TransferSnippet(pType As %String, pName As %String, ByRef pQuery) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tName = ..Literal(pName)
+    Set tError = "$System.Status.Error(5001, "
+    Set tItems = tNL _ " Set tItems(" _ ..Literal(pName _ ..#HL7EXTENSION) _ ") = """""
+    Set tPath = $Get(pQuery(..#PATHKEY))
+    Set tFile = ..Literal(tPath)
+    Set tSource = tNL _ " ; The server file is the allowed directory " _ $Translate($Get(pQuery(..#ROOTKEY)), $Char(10) _ $Char(13), "  ") _ " and the name " _ $Translate(tPath, $Char(10) _ $Char(13), "  ")
+    If pType = ..#TYPEEXPORTHL7SCHEMA {
+        If tPath = "" Quit tItems _ tNL _ " Set tStream = ##class(%Stream.GlobalCharacter).%New()" _ tNL _ " Set tSC = $System.OBJ.ExportToStream(.tItems, .tStream, ""-d"")"
+        Quit tSource _ tItems _ tNL _ " Set tSC = $System.OBJ.Export(.tItems, " _ tFile _ ", ""-d"")"
+    }
+    Set tLoad = "$System.OBJ.Load(" _ tFile _ ", ""-d"", .tErrorLog, .tLoaded, 0, .tItems)"
+    If tPath = "" {
+        Set tSource = tNL _ " ; tStream holds the text of the file this browser sent, which no script carries"
+        Set tLoad = "$System.OBJ.LoadStream(tStream, ""-d"", .tErrorLog, .tLoaded, 0, .tItems)"
+    }
+    Set tText = tNL _ " Set tGo = '##class(%CSP.Portal.SourceControl.Util).IsEnabled($Namespace), tSC = $System.Status.OK()"
+    Set tText = tText _ tNL _ " If 'tGo Set tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7SOURCECONTROL) _ ")"
+    Set tText = tText _ tNL _ " If tGo, +$Get(^EnsHL7.Description(" _ tName _ ", ""std"")) Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7IMPORTSTANDARD) _ ")"
+    Quit tText _ tSource _ tItems _ tNL _ " If tGo Lock +^EnsHL7.Schema(" _ tName _ "):" _ ..#LOCKSECONDS _ tNL _ " If tGo, $Test { Set tSC = " _ tLoad _ " } ElseIf tGo { Set tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7LOCKED) _ ") }" _ tNL _ " If tGo Lock -^EnsHL7.Schema(" _ tName _ ")"
 }
 
 }

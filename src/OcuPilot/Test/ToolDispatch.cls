@@ -162,6 +162,7 @@ Method TestAGateDenialReachesNothingAndTheToolStaysAdvertised()
 /// and Story 18.42's allowed directories update (<parameter>OcuPilot.Test.Governance.ALLOWLISTUPDATE</parameter>),
 /// and Story 20.26's business partner remove (<parameter>OcuPilot.Test.Governance.INTEROPPARTNERDISABLED</parameter>),
 /// and Story 24.15's system default setting remove (<parameter>OcuPilot.Test.Governance.INTEROPDEFAULTSETTINGDISABLED</parameter>),
+/// and Story 24.18's HL7 schema import and delete (<parameter>OcuPilot.Test.Governance.INTEROPHL7DISABLED</parameter>),
 /// and Story 21.13's two DDL mapping deletes (<parameter>OcuPilot.Test.Governance.DDLMAPPINGDISABLED</parameter>),
 /// and Story 21.14's locale install and delete (<parameter>OcuPilot.Test.Governance.LOCALEDISABLED</parameter>), and Story 21.5's globals writes (<parameter>OcuPilot.Test.Governance.GLOBALDISABLED</parameter>),
 /// and Story 21.38's two source-control answers (<parameter>OcuPilot.Test.Governance.SOURCECONTROLDISABLED</parameter>),
@@ -199,6 +200,7 @@ Method TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled()
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPARCHIVEDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPLOGPURGEDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPWORKFLOWDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPHL7DISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If tTool.name = $Parameter("OcuPilot.Test.Governance", "CUBEDISABLED") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "BACKUPDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "TERMLISTDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED

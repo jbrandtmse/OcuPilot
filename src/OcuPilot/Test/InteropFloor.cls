@@ -84,16 +84,16 @@ Parameter OPERATORTOOLS = "interop.businesspartners.read,interop.credentials.rea
 /// Operator and Monitor roles do not), and the Schema viewer (Story 20.8) through the <code>%Ens_EDISchema:READ</code> the
 /// Administrator role holds and the Operator and Monitor roles do not, and a message's Contents tab (Story 20.9) through the
 /// <code>%Ens_MessageContent:USE</code> the Administrator role holds and the Operator role does not.</p>
-Parameter ADMINISTRATORSCREENS = "InteropArchiveErrorList,InteropArchiveList,InteropArchiveSettingList,InteropItemClassTab,InteropItemTestTab,InteropMessageContentsTab,InteropProcessEditor,InteropProcessList,InteropPurgeList,InteropPurgeSettingList,InteropRuleEditor,InteropRuleList,InteropSchemaViewer,InteropTransformEditor,InteropTransformList";
+Parameter ADMINISTRATORSCREENS = "InteropArchiveErrorList,InteropArchiveList,InteropArchiveSettingList,InteropHl7SchemaList,InteropItemClassTab,InteropItemTestTab,InteropMessageContentsTab,InteropProcessEditor,InteropProcessList,InteropPurgeList,InteropPurgeSettingList,InteropRuleEditor,InteropRuleList,InteropSchemaViewer,InteropTransformEditor,InteropTransformList";
 
 /// <p>See <parameter>ADMINISTRATORSCREENS</parameter>.</p>
-Parameter ADMINISTRATORTOOLS = "interop.archive.read,interop.archiveerrors.read,interop.archivesettings.read,interop.itemclasses.read,interop.itemtest.read,interop.message.body,interop.message.detail,interop.messagecontents.read,interop.processes.read,interop.purge.read,interop.purgesettings.read,interop.rules.read,interop.transforms.read";
+Parameter ADMINISTRATORTOOLS = "interop.archive.read,interop.archiveerrors.read,interop.archivesettings.read,interop.hl7schemas.read,interop.itemclasses.read,interop.itemtest.read,interop.message.body,interop.message.detail,interop.messagecontents.read,interop.processes.read,interop.purge.read,interop.purgesettings.read,interop.rules.read,interop.transforms.read";
 
 /// <p>The write tools whose declared pairs the Administrator principal holds in full, each one parity with a classic page that opens for that role:
 /// exactly <code>interop.messages.export</code>, whose classic Export dialog checks <code>%Ens_MessageExport:USE</code> beside the Message Viewer's
 /// <code>%Ens_MessageHeader:USE</code>, both of which the role holds, and which declares READ alone on the globals database. Any other write tool
 /// whose pairs this principal holds turns <method>TestTheToolsEachPrincipalHoldsAreItsRoster</method> red.</p>
-Parameter ADMINISTRATORWRITES = "interop.messages.export";
+Parameter ADMINISTRATORWRITES = "interop.hl7schemas.export,interop.messages.export";
 
 /// <p>The principals' password for this run.</p>
 Property PreparedPassword As %String;

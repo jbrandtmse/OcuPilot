@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:684 */
+  /** EXPERIENCE.md:685 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -10133,6 +10133,44 @@ export const STRINGS = {
   interopSystemMonitorQueuesPrompt2: 'Is one queue holding far more messages than the others?',
   /** EXPERIENCE.md:642 */
   interopSystemMonitorQueuesPrompt3: 'Which namespace\'s queues hold the most messages?',
+  // Story 24.18 Batch 1: the HL7 schemas screen, its New, Export, Import and Delete wording, the two consequences, the status lines, the empty state and the prompts.
+  /** EXPERIENCE.md:643 */
+  interopHl7SchemasLabel: 'HL7 schemas',
+  /** EXPERIENCE.md:643 */
+  interopHl7SchemaAddAction: 'New HL7 schema',
+  /** EXPERIENCE.md:643 */
+  interopHl7ColumnBase: 'Base schema',
+  /** EXPERIENCE.md:643 */
+  interopHl7ColumnStandard: 'Standard',
+  /** EXPERIENCE.md:643 */
+  interopHl7ImportTitle: 'Import an HL7 schema',
+  /** EXPERIENCE.md:643 */
+  interopHl7ExportTitle: 'Export HL7 schema <schema>',
+  /** EXPERIENCE.md:643 */
+  interopHl7DeleteTitle: 'Delete HL7 schema <schema>',
+  /** EXPERIENCE.md:643 */
+  interopHl7Help: 'A custom HL7 schema adds its own message types, structures and code tables to the schema it is based on.',
+  /** EXPERIENCE.md:643 */
+  interopHl7DeleteConsequence:
+    'Deleting this HL7 schema removes everything it defines. Schemas based on it, and items and rules that name it, can no longer find it. It cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:643 */
+  interopHl7ImportConsequence: 'Importing replaces this namespace\'s HL7 schema of the same name with the file\'s, and anything the file does not define is removed.',
+  /** EXPERIENCE.md:643 */
+  interopHl7ExportDone: 'Exported HL7 schema <schema> to <path>.',
+  /** EXPERIENCE.md:643 */
+  interopHl7ExportSaved: 'Saved HL7 schema <schema> as <file>.',
+  /** EXPERIENCE.md:643 */
+  interopHl7ImportDone: 'Imported the HL7 schema in <file>.',
+  /** EXPERIENCE.md:643 */
+  interopHl7SchemasEmpty: 'This namespace has no HL7 schemas.',
+  /** EXPERIENCE.md:643 */
+  interopHl7SchemasEmptyAgent: 'create a custom HL7 schema',
+  /** EXPERIENCE.md:643 */
+  interopHl7SchemasPrompt1: 'Which HL7 schemas here are custom, and what is each based on?',
+  /** EXPERIENCE.md:643 */
+  interopHl7SchemasPrompt2: 'Which custom HL7 schema changed most recently?',
+  /** EXPERIENCE.md:643 */
+  interopHl7SchemasPrompt3: 'Create a custom HL7 schema based on 2.5.1.',
 } as const;
 
 /**
