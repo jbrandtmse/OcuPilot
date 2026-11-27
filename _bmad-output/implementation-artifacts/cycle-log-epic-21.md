@@ -1226,3 +1226,6 @@
 2026-11-26T21:06:54Z	Story 21.28	ledger_adjudicated	owned=1 resolved=1(DW-2905) reowned=0 terminal=0 note=DW-2906_escalated_to_decision_sheet
 2026-11-26T21:06:54Z	Epic 21	spine_updated	ad=AD-7 reason=DW-2905(U-180_as_built;in-place) by=runner story=21-28-alternate-show-plans lint=preexisting_low_placeholder_only
 2026-11-26T21:08:56Z	Story 21.28	gate_step	step=fresh_check+full_sweep+smoke head=a4000b244 started=2026-11-26T21:08:56Z dir=e21-kit/21-28/gate1
+2026-11-26T21:17:21Z	Story 21.28	fresh_check	env=recipe(ci-throwaway_rebuild) tests=35_classes+3_specs result=pass order=forward,reverse head=a4000b244
+2026-11-27T00:07:09Z	Story 21.28	gate_step	step=full_sweep+smoke head=a4000b244 sweep=20/20 smoke=50/50 result=pass
+2026-11-27T00:07:09Z	Story 21.28	smoke_complete	method=api(smoke.sh)+browser(fresh_specs) result=pass iterations=1 defects_caught=0 evidence=e21-kit/21-28/gate1
