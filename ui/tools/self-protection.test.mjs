@@ -796,6 +796,16 @@ const ATELIER_REFUSALS = [
   ['REASONINDEXANALYSISRUN', 'sqlIndexAnalysisRunConsequence'],
   ['REASONINDEXANALYSISPURGE', 'sqlIndexAnalysisPurgeConsequence'],
   ['REASONSQLSELECTPRIVILEGE', 'sqlSelectPrivilegeRefusal'],
+  // Story 21.29: the troubleshooting reports' refusals and the three sentences the save, delete and generate cards and dialogs state.
+  ['REASONSQLREPORTVENDOR', 'sqlReportsRefusalVendor'],
+  ['REASONSQLREPORTGENERATEVENDOR', 'sqlReportsRefusalGenerateVendor'],
+  ['REASONSQLREPORTQUERYONLY', 'sqlReportsRefusalQueryOnly'],
+  ['REASONSQLREPORTWRC', 'sqlReportsRefusalWrc'],
+  ['REASONSQLREPORTNOROWS', 'sqlReportsRefusalNoRows'],
+  ['REASONSQLREPORTTOOLONG', 'sqlReportsRefusalTooLong'],
+  ['REASONSQLREPORTSAVE', 'sqlReportsSaveConsequence'],
+  ['REASONSQLREPORTDELETE', 'sqlReportsDeleteConsequence'],
+  ['REASONSQLREPORTGENERATE', 'sqlReportsGenerateConsequence'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {

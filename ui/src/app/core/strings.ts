@@ -5581,6 +5581,29 @@ export const STRINGS = {
   explorerSqlReportsPrompt1: 'Which queries are saved for a support case?',
   explorerSqlReportsPrompt2: 'Which saved queries failed to plan?',
   explorerSqlReportsPrompt3: 'When was each support case\'s query saved?',
+  // Story 21.29: the reports' actions, dialog fields, consequences, status lines and refusals. Each consequence and refusal is the sentence the server sends.
+  // The Delete action is actionDelete, the field names are explorerSqlReportsColumnWrc and explorerSqlColumnStatement, and the two destinations are
+  // explorerTransferServer and explorerTransferBrowser.
+  sqlReportsSaveAction: 'Save query',
+  sqlReportsGenerateAction: 'Generate report',
+  sqlReportsWrcHelp: 'The case number InterSystems support gave you, digits only.',
+  sqlReportsSaveTitle: 'Save query for a troubleshooting report',
+  sqlReportsGenerateTitle: 'Generate report for support case <wrc>',
+  sqlReportsSaveConsequence:
+    'Saving runs the statement once, without its values, to record its plan and statistics, then stores the statement, its plan, the definitions of the classes it reads and its compiled code under this support case.',
+  sqlReportsDeleteConsequence: 'This saved query is removed from its support case\'s report. Save it again to restore it.',
+  sqlReportsGenerateConsequence:
+    'The report holds every query you can see that is saved for this support case in this namespace, with its plan, the definitions of the classes it reads and its compiled code. A file already at this name is replaced.',
+  sqlReportsSaveDone: 'Saved the query for support case <wrc>.',
+  sqlReportsDeleteDone: 'Deleted the saved query.',
+  sqlReportsExportDone: 'Exported the report for support case <wrc> to <path>.',
+  sqlReportsExportSaved: 'Saved the report for support case <wrc> as <file>.',
+  sqlReportsRefusalVendor: 'The instance did not save this query.',
+  sqlReportsRefusalGenerateVendor: 'The instance did not write this report.',
+  sqlReportsRefusalQueryOnly: 'Saving a query runs it, so it takes a query only.',
+  sqlReportsRefusalWrc: 'A support case number is a whole number of up to 9 digits.',
+  sqlReportsRefusalNoRows: 'No query is saved for this support case in this namespace.',
+  sqlReportsRefusalTooLong: 'This report is longer than 3,000,000 characters, so it can be generated to a server file only.',
   // Story 21.27: the analyzer's three page actions, the dialog fields, the five report names, the consequences and refusals the actions state, and Advise on
   // SQL query with its findings. Each consequence and refusal is the sentence the server sends. The High and Low confidence names are taskPriorityHigh and
   // taskPriorityLow, and the Recommendation header is securityAdvisorColumnRecommendation.

@@ -378,10 +378,13 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
   - mutation: `SqlPort.ReportCall` clears `pId + 1` -> `SqlReportWrite` red on the delete legs (3 tests, run 1027); reverted, green (run 1031).
 - AC3: `GENERATE` skips the no-row precondition -> the no-row leg red (the seam counts a call). The store drops the browser branch -> `sql-reports.page.spec.ts` red.
   - mutation: `SqlPort.ReportGenerate` no-row refusal replaced by `If 0` -> `SqlReportWrite.TestTheGenerateRefusalsCallNothing` red (the refusal leg and the no-call leg, run 1028); reverted, green. The store half is Batch 2's.
+  - mutation (client): `SqlReportsPage.onGenerate` saves the file only `if (sent && file === '')` -> `sql-reports.page.spec.ts` "generates to this browser..." red; reverted, green (12/12).
 - AC4: the page offers a mail action -> its spec leg (asserting the absence) red.
   - mutation: the descriptor gains a `mail` row action -> `SqlReportWrite.TestThePageOffersNoMailAction` red (run 1030); reverted, green. The page spec leg is Batch 2's.
+  - mutation (client): `sql-reports.page.ts`'s template gains `<a href="mailto:someone@example.org">` -> `sql-reports.page.spec.ts` "offers no mail action, no mail link and no string that mails anyone (AC4)" red; reverted, green.
 - AC5: the write skips the `OCUPILOTCODE` check -> `SqlReportImport`'s own-code leg red, with the seam counting a call.
 - AC6: the page drops Save query's post -> after rebuild and redeploy, the browser spec red.
+  - mutation (client): `SqlReportsPage.onSave` sends nothing (`sent` is false) -> after `npm run build` and the copy into `ocupilot-ci`, `system-explorer-sql-reports.browser-spec.mjs` AC1 red (the dialog never closes, `TimeoutError` at `dialogClosed`, 64 s); reverted, rebuilt and redeployed, 4/4 green. The new spec then the runtime statistics spec, and the runtime statistics spec then the new spec, each 4/4 green and each leaving no saved row, probe table or cached query.
 
 ### Task 0 measurements
 

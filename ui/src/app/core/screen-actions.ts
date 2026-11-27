@@ -222,6 +222,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     run: STRINGS.sqlIndexAnalysisRunAction,
     purge: STRINGS.sqlIndexAnalysisPurgeAction,
   },
+  // Story 21.29: SQL troubleshooting reports' Save query, which opens the page's dialog, Generate report on the selected row's case, and Delete.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlReports': { save: STRINGS.sqlReportsSaveAction, generate: STRINGS.sqlReportsGenerateAction, delete: STRINGS.actionDelete },
   // Story 21.25: a table's Rebuild all indices, and one index's Rebuild index.
   'OcuPilot.Screen.Descriptor.ExplorerSqlTable': {
     'rebuild-indices': STRINGS.sqlTableRebuildAllAction,

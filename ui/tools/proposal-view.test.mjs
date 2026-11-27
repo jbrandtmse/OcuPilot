@@ -85,6 +85,9 @@ const {
   CONSEQUENCE_SQLINDEXANALYSISGATHERSYSTEM,
   CONSEQUENCE_SQLINDEXANALYSISRUN,
   CONSEQUENCE_SQLINDEXANALYSISPURGE,
+  CONSEQUENCE_SQLREPORTSAVE,
+  CONSEQUENCE_SQLREPORTDELETE,
+  CONSEQUENCE_SQLREPORTGENERATE,
   CONSEQUENCE_CONFIGSETTINGRESTART,
   CONSEQUENCE_CONFIGMAPPINGDELETE,
   CONSEQUENCE_CONFIGNLSRELOAD,
@@ -1485,6 +1488,10 @@ test('Story 21.6: the SQL statement writes and the cached-query purges state the
     ['ExplorerSqlIndexAnalysisGather', 'SQL.INDEXANALYSIS.GATHER', CONSEQUENCE_SQLINDEXANALYSISGATHER, STRINGS.sqlIndexAnalysisGatherConsequence],
     ['ExplorerSqlIndexAnalysisRun', 'SQL.INDEXANALYSIS.RUN', CONSEQUENCE_SQLINDEXANALYSISRUN, STRINGS.sqlIndexAnalysisRunConsequence],
     ['ExplorerSqlIndexAnalysisPurge', 'SQL.INDEXANALYSIS.PURGE', CONSEQUENCE_SQLINDEXANALYSISPURGE, STRINGS.sqlIndexAnalysisPurgeConsequence],
+    // Story 21.29: the troubleshooting reports' save, delete and generate to a server file.
+    ['ExplorerSqlReportSave', 'EXPLORER.SQLREPORT.SAVE', CONSEQUENCE_SQLREPORTSAVE, STRINGS.sqlReportsSaveConsequence],
+    ['ExplorerSqlReportDelete', 'EXPLORER.SQLREPORT.DELETE', CONSEQUENCE_SQLREPORTDELETE, STRINGS.sqlReportsDeleteConsequence],
+    ['ExplorerSqlReportGenerate', 'EXPLORER.SQLREPORT.GENERATE', CONSEQUENCE_SQLREPORTGENERATE, STRINGS.sqlReportsGenerateConsequence],
   ];
   for (const [name, code, constant, sentence] of rows) {
     assert.equal(constant, code, `${name}'s code is the constant the card reads`);

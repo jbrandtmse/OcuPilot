@@ -191,6 +191,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStatsSettings',
   // Story 21.27: SQL index analyzer, whose Purge analysis warns first and whose Gather statements and Run report send the choices their dialogs ask for.
   'OcuPilot.Screen.Descriptor.ExplorerSqlIndexAnalysis',
+  // Story 21.29: SQL troubleshooting reports, whose Delete types the saved query's ID and whose Save query and Generate report its own page's dialogs send.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlReports',
   'OcuPilot.Screen.Descriptor.ExplorerSqlTable',
   'OcuPilot.Screen.Descriptor.ExplorerSqlIndices',
   'OcuPilot.Screen.Descriptor.ExplorerSqlSchema',
@@ -384,6 +386,16 @@ export const EXPLORER_SQL_INDEX_ANALYSIS = 'OcuPilot.Screen.Descriptor.ExplorerS
 export const SQL_INDEX_ANALYSIS_GATHER = 'gather';
 export const SQL_INDEX_ANALYSIS_RUN = 'run';
 export const SQL_INDEX_ANALYSIS_PURGE = 'purge';
+
+/**
+ * SQL troubleshooting reports (Story 21.29): Save query is the page's own primary action on `SQL_TUNING_ALL_TARGET`, and its dialog asks for the case number
+ * and the statement. Generate report acts on the support case of the selected row, to a server file (`generate`) or this browser (`generate-browser`). Delete is
+ * the handler's own row action, typing the saved query's ID.
+ */
+export const EXPLORER_SQL_REPORTS = 'OcuPilot.Screen.Descriptor.ExplorerSqlReports';
+export const SQL_REPORTS_SAVE = 'save';
+export const SQL_REPORTS_GENERATE = 'generate';
+export const SQL_REPORTS_GENERATE_BROWSER = 'generate-browser';
 
 /**
  * A SQL table's Table info and Indices tabs (Story 21.25). The Indices tab's Rebuild index is a row action on the selected index's composite id,
@@ -682,6 +694,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStatsSettings': ['set'],
   // SQL index analyzer's page registers its three actions itself, each on the namespace's whole analysis (Story 21.27).
   [EXPLORER_SQL_INDEX_ANALYSIS]: [SQL_INDEX_ANALYSIS_GATHER, SQL_INDEX_ANALYSIS_RUN, SQL_INDEX_ANALYSIS_PURGE],
+  // SQL troubleshooting reports' page registers Save query and Generate report itself, whose dialogs name the case and the file; the report to this browser is sent from the Generate dialog (Story 21.29).
+  [EXPLORER_SQL_REPORTS]: [SQL_REPORTS_SAVE, SQL_REPORTS_GENERATE, SQL_REPORTS_GENERATE_BROWSER],
   // The Table info tab's page registers Rebuild all indices, Collect statistics and Clear fixed statistics itself, on the table the route names, and
   // the schema's Tables tab Tune all tables on the schema the route names (Story 21.25).
   [EXPLORER_SQL_TABLE]: [SQL_TABLE_REBUILD_INDICES, SQL_TABLE_TUNE, SQL_TABLE_CLEAR_STATISTICS, SQL_TABLE_SET_EXTENT_SIZE],
@@ -1034,6 +1048,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   },
   // Story 24.9: a promote writes each document over the other namespace's copy, and nothing is undone.
   [EXPLORER_NAMESPACE_DIFF]: { [NAMESPACE_PROMOTE]: STRINGS.explorerPromoteConsequence },
+  // Story 21.29: a deleted saved query leaves its support case's report; saving it again restores it.
+  [EXPLORER_SQL_REPORTS]: { delete: STRINGS.sqlReportsDeleteConsequence },
 };
 
 /**

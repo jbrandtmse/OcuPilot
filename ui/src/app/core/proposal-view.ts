@@ -502,6 +502,10 @@ export const CONSEQUENCE_SQLINDEXANALYSISGATHER = 'SQL.INDEXANALYSIS.GATHER';
 export const CONSEQUENCE_SQLINDEXANALYSISGATHERSYSTEM = 'SQL.INDEXANALYSIS.GATHERSYSTEM';
 export const CONSEQUENCE_SQLINDEXANALYSISRUN = 'SQL.INDEXANALYSIS.RUN';
 export const CONSEQUENCE_SQLINDEXANALYSISPURGE = 'SQL.INDEXANALYSIS.PURGE';
+/** Story 21.29: the troubleshooting reports' save, delete and generate (to a server file) cards; each is one published sentence. */
+export const CONSEQUENCE_SQLREPORTSAVE = 'EXPLORER.SQLREPORT.SAVE';
+export const CONSEQUENCE_SQLREPORTDELETE = 'EXPLORER.SQLREPORT.DELETE';
+export const CONSEQUENCE_SQLREPORTGENERATE = 'EXPLORER.SQLREPORT.GENERATE';
 /** Story 21.25: the table maintenance rebuilds' and statistics writes' cards; each is one published sentence. */
 export const CONSEQUENCE_SQLTABLEREBUILD = 'SQL.TABLE.REBUILD';
 export const CONSEQUENCE_SQLTABLEREBUILDALL = 'SQL.TABLE.REBUILDALL';
@@ -813,6 +817,9 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_SQLINDEXANALYSISGATHERSYSTEM) return STRINGS.sqlIndexAnalysisGatherSystemConsequence;
   if (code === CONSEQUENCE_SQLINDEXANALYSISRUN) return STRINGS.sqlIndexAnalysisRunConsequence;
   if (code === CONSEQUENCE_SQLINDEXANALYSISPURGE) return STRINGS.sqlIndexAnalysisPurgeConsequence;
+  if (code === CONSEQUENCE_SQLREPORTSAVE) return STRINGS.sqlReportsSaveConsequence;
+  if (code === CONSEQUENCE_SQLREPORTDELETE) return STRINGS.sqlReportsDeleteConsequence;
+  if (code === CONSEQUENCE_SQLREPORTGENERATE) return STRINGS.sqlReportsGenerateConsequence;
   if (code === CONSEQUENCE_SQLTABLEREBUILD) return STRINGS.sqlTableRebuildConsequence;
   if (code === CONSEQUENCE_SQLTABLEREBUILDALL) return STRINGS.sqlTableRebuildAllConsequence;
   if (code === CONSEQUENCE_SQLTABLETUNE) return STRINGS.sqlTableTuneConsequence;
