@@ -14827,3 +14827,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-6.md | severity: low | fix-risk: low | footprint: in
 - evidence: 24.17 B5 review
 - 2026-11-26T20:37:48Z status=wontfix-accepted owner=24-17-managed-alerts-logs-the-system-monitor-and-workflow by=cr note=reopen_if=a red shows another production running
+
+### DW-2910: Two HL7 schema adds at once whose names differ only in letter case each lock their own node, so both can pass TAKEN (inference)
+- source: spec-24-18-pex-record-maps-and-hl7-authoring.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.18 B1 review; PerformHl7Schema locks ^EnsHL7.Schema(pName) by exact name
+- 2026-11-27T03:55:14Z status=routed owner=24-18-pex-record-maps-and-hl7-authoring by=cr note=fix in a later 24.18 batch touching the add, or wontfix
+
+### DW-2911: HL7 schema tests count audit rows exactly while AuditNow rounds to the whole second, so the counts can depend on test order
+- source: spec-24-18-pex-record-maps-and-hl7-authoring.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.18 B1 review; runs 1075 and 1077 red this way before the fixes
+- 2026-11-27T03:55:14Z status=routed owner=24-18-pex-record-maps-and-hl7-authoring by=cr note=reopen as flake if a CI leg reddens on an HL7 audit count
+
+### DW-2912: Hl7BaseHeld, Hl7Installed and ImportShape's listing block have no Hl7Here fault hook
+- source: spec-24-18-pex-record-maps-and-hl7-authoring.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.18 B1 review; InteropPort HL7 helpers
+- 2026-11-27T03:55:14Z status=routed owner=24-18-pex-record-maps-and-hl7-authoring by=cr note=add with Batch 2's element editors
+
+### DW-2913: No principal runs a real HL7 schema import write; the Gate test's admitted principal stops at IMPORTSHAPE
+- source: spec-24-18-pex-record-maps-and-hl7-authoring.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.18 B1 implement and review; InteropHl7SchemaGate
+- 2026-11-27T03:55:15Z status=routed owner=24-18-pex-record-maps-and-hl7-authoring by=cr note=the lookup gate pins the server-file pairs
