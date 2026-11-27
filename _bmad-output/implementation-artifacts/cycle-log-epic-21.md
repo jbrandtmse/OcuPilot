@@ -1241,3 +1241,4 @@
 2026-11-27T01:26:50Z	Story 21.41	story_parked	stage=before_plan reason=owner_only(dropping_scope:import_writes_IRISLOCALDATA,crafted_%zz_into_IRISSYS) category=park inbox=U-184 code=none split_from=21.29
 2026-11-27T01:26:50Z	Epic 21	deps_hash_rerecorded	reason=split story=21.29->21.29,21.41 note=orchestrator_rerecords_at_merge
 2026-11-27T01:26:50Z	Epic 21	spine_updated	ad=AD-7,AD-51 reason=orchestrator_ruling(U-183;in-place_21.29_lines) by=runner story=21-29-troubleshooting-reports lint=preexisting_low_placeholder_only
+2026-11-27T01:27:43Z	Story 21.29	stage_spawned	stage=implement spawn_at=2026-11-27T01:27:43Z model=sonnet agent_name=21-29-impl-2 cycle_iteration=2 prompt=e21-kit/21-29/impl/prompt.md(re-dispatch;Batches_1-2)
