@@ -69,7 +69,7 @@ Parameter TYPERUN = "RUN";
 /// <p>The writes this port composes from the caller's declared values, as <code>endpoint/type</code>
 /// (AD-51): the run, from its statement, values and Max rows; and the data browser's save, from its
 /// schema, table and staged changes.</p>
-Parameter COMPOSEDTYPES = "Sql/RUN,SqlData/RUN,Statements/FREEZE,Statements/UNFREEZE,Statements/CLEARSTATISTICS,Statements/CLEARERROR,Statements/CLEAN,CachedQueries/PURGEQUERIES,Tables/REBUILD,Tables/REBUILDALL,Tables/TUNE,Tables/CLEARSTATS,Tables/TUNESCHEMA,Tables/SETEXTENT,Tables/SETSELECTIVITY,Tables/SETMAPSIZE,RuntimeStats/PURGESTATS,IndexAnalysis/GATHER,IndexAnalysis/RUNREPORT,IndexAnalysis/PURGEANALYSIS";
+Parameter COMPOSEDTYPES = "Sql/RUN,SqlData/RUN,Statements/FREEZE,Statements/UNFREEZE,Statements/CLEARSTATISTICS,Statements/CLEARERROR,Statements/CLEAN,CachedQueries/PURGEQUERIES,Tables/REBUILD,Tables/REBUILDALL,Tables/TUNE,Tables/CLEARSTATS,Tables/TUNESCHEMA,Tables/SETEXTENT,Tables/SETSELECTIVITY,Tables/SETMAPSIZE,RuntimeStats/PURGESTATS,IndexAnalysis/GATHER,IndexAnalysis/RUNREPORT,IndexAnalysis/PURGEANALYSIS,Reports/SAVEQUERY,Reports/DELETEQUERY,Reports/GENERATE";
 
 /// <p>The index analyzer endpoint (Story 21.27, AD-51): <parameter>TYPEANALYSIS</parameter> answers how many statements the namespace has gathered
 /// and how many rows each report holds, for the target <parameter>ALLID</parameter>. Its writes are <parameter>ANALYSISWRITES</parameter>:
@@ -107,6 +107,56 @@ Parameter ANALYSISCLASS = "%SYS.PTools.UtilSQLAnalysis";
 /// <p>The counts <parameter>TYPEANALYSIS</parameter> reads: the gathered statements and each report's rows in the current namespace, one fixed
 /// statement with nothing bound, prepared with SQL privilege checks on as <parameter>STATSCOUNTQUERY</parameter> is.</p>
 Parameter ANALYSISCOUNTQUERY = "SELECT (SELECT COUNT(*) FROM %SYS_PTools.UtilSQLStatements), COUNT(CASE OptionName WHEN 'IU' THEN 1 END), COUNT(CASE OptionName WHEN 'TS' THEN 1 END), COUNT(CASE OptionName WHEN 'TI' THEN 1 END), COUNT(CASE OptionName WHEN 'JI' THEN 1 END), COUNT(CASE OptionName WHEN 'OI' THEN 1 END) FROM %SYS_PTools.UtilSQLAnalysisDB";
+
+/// <p>The troubleshooting reports endpoint (Story 21.29, AD-51): <parameter>TYPECASE</parameter> answers, for the target <parameter>ALLID</parameter> and the
+/// declared <code>WRCNumber</code>, how many queries are saved for that support case, with the guard of the declared <code>Statement</code> beside it, and
+/// <parameter>TYPESAVEDQUERY</parameter> answers one saved query by its id. Its writes are <parameter>REPORTWRITES</parameter>: <code>SAVEQUERY</code>
+/// saves a query for a case, <code>DELETEQUERY</code> removes one saved query by its id, and <code>GENERATE</code> writes a case's saved queries as the
+/// vendor's report, to a server file or as the lines for the screen. Each is made in the request.</p>
+Parameter ENDPOINTREPORTS = "Reports";
+
+Parameter TYPECASE = "CASE";
+
+Parameter TYPESAVEDQUERY = "SAVEDQUERY";
+
+Parameter TYPESAVEQUERY = "SAVEQUERY";
+
+Parameter TYPEDELETEQUERY = "DELETEQUERY";
+
+Parameter TYPEGENERATE = "GENERATE";
+
+Parameter REPORTWRITES = "SAVEQUERY,DELETEQUERY,GENERATE";
+
+/// <p>The declared values of the report writes: the support case number, and the statement a save stores. The file a generate writes is named by
+/// <parameter>OcuPilot.Port.AtelierPort.ROOTKEY</parameter> and <parameter>OcuPilot.Port.AtelierPort.PATHKEY</parameter>, and none names the screen.</p>
+Parameter WRCKEY = "WRCNumber";
+
+Parameter REPORTSTATEMENTKEY = "Statement";
+
+/// <p>A support case number: one to nine digits, not zero. The vendor takes more shapes than this and stores some of them altered.</p>
+Parameter WRCPATTERN = "^[0-9]{1,9}$";
+
+/// <p>The vendor class whose <code>InsertQuery</code>, <code>ClearRow</code> and <code>WriteAllToFile</code> the report writes call, and the table it keeps its
+/// rows in.</p>
+Parameter REPORTCLASS = "%SQL.Manager.QButtons.Base";
+
+Parameter REPORTTABLES = "%SQL_Manager_QButtons.Base";
+
+/// <p>The most characters of a generated report answered to the screen, which is <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter>.</p>
+Parameter MAXREPORTCHARACTERS As INTEGER = 3000000;
+
+/// <p>A saved query's id: the vendor's own whole number.</p>
+Parameter REPORTIDPATTERN = "^[1-9][0-9]{0,14}$";
+
+/// <p>The longest statement a saved query holds: the vendor's own bound on the stored text.</p>
+Parameter MAXREPORTSTATEMENT As INTEGER = 32000;
+
+/// <p>The reads of <parameter>TYPECASE</parameter> and <parameter>TYPESAVEDQUERY</parameter>: fixed statements with the case number or the id bound,
+/// prepared with SQL privilege checks on. The vendor's row-level security shows each caller its own rows, and every holder of <code>%All</code> or
+/// <code>%Developer</code> all of them.</p>
+Parameter CASEIDSQUERY = "SELECT ID FROM %SQL_Manager_QButtons.Base WHERE WRCNumber = ? ORDER BY ID";
+
+Parameter SAVEDQUERYQUERY = "SELECT ID, WRCNumber FROM %SQL_Manager_QButtons.Base WHERE ID = ?";
 
 /// <p>The runtime statistics endpoint (Story 21.26, AD-51): <parameter>TYPESTATS</parameter> answers how many runtime statistics rows the namespace holds
 /// for the target <parameter>ALLID</parameter>, and <parameter>TYPEPURGESTATS</parameter> removes every one of them with
@@ -1441,7 +1491,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Set pFault = ""
     Set tSC = $$$OK
     Try {
-        If (pEndpoint = ..#ENDPOINTSTATEMENTS) || (pEndpoint = ..#ENDPOINTCACHEDQUERIES) || (pEndpoint = ..#ENDPOINTRUNTIMESTATS) || (pEndpoint = ..#ENDPOINTINDEXANALYSIS) {
+        If (pEndpoint = ..#ENDPOINTSTATEMENTS) || (pEndpoint = ..#ENDPOINTCACHEDQUERIES) || (pEndpoint = ..#ENDPOINTRUNTIMESTATS) || (pEndpoint = ..#ENDPOINTINDEXANALYSIS) || (pEndpoint = ..#ENDPOINTREPORTS) {
             Set tSC = ..TuningInvoke(pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             If $$$ISOK(tSC) Set pHttpStatus = 200
             Quit
@@ -1524,7 +1574,11 @@ ClassMethod TuningInvoke(pEndpoint As %String, pType As %String, ByRef pQuery, O
     Set tAnalysisWrite = ''$ListFind($ListFromString(..#ANALYSISWRITES), pType)
     Set tWrite = tStatementWrite || (pType = ..#TYPEPURGEQUERIES) || (pType = ..#TYPEPURGESTATS)
     If pEndpoint = ..#ENDPOINTINDEXANALYSIS Set tWrite = tAnalysisWrite
-    If pEndpoint = ..#ENDPOINTSTATEMENTS {
+    Set tReportWrite = ''$ListFind($ListFromString(..#REPORTWRITES), pType)
+    If pEndpoint = ..#ENDPOINTREPORTS Set tWrite = tReportWrite
+    If pEndpoint = ..#ENDPOINTREPORTS {
+        Set tServed = (pType = ..#TYPECASE) || (pType = ..#TYPESAVEDQUERY) || tReportWrite
+    } ElseIf pEndpoint = ..#ENDPOINTSTATEMENTS {
         Set tServed = (pType = ..#TYPESTATEMENT) || tStatementWrite
     } ElseIf pEndpoint = ..#ENDPOINTRUNTIMESTATS {
         Set tServed = (pType = ..#TYPESTATS) || (pType = ..#TYPEPURGESTATS)
@@ -1541,6 +1595,7 @@ ClassMethod TuningInvoke(pEndpoint As %String, pType As %String, ByRef pQuery, O
     Set tSC = ..Gate(tNamespace, .pHttpStatus, .pFault, tWrite)
     If $$$ISERR(tSC) Quit tSC
     Set tId = $Get(pQuery(..#IDKEY))
+    If pEndpoint = ..#ENDPOINTREPORTS Quit ..ReportsServe(tNamespace, pType, tId, .pQuery, .pResult, .pHttpStatus, .pFault)
     If pEndpoint = ..#ENDPOINTINDEXANALYSIS {
         If tId '= ..#ALLID {
             Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Api.Error).#REASONPORTFIELDSHAPE, .pHttpStatus, .pFault)
@@ -1838,6 +1893,327 @@ ClassMethod AnalysisWrite(pNamespace As %String, pType As %String, pId As %Strin
     Quit tSC
 }
 
+/// <p>The troubleshooting reports' way in (Story 21.29, AD-51): serve <var>pType</var> of <parameter>ENDPOINTREPORTS</parameter> in <var>pNamespace</var>.
+/// <parameter>TYPESAVEDQUERY</parameter> and <parameter>TYPEDELETEQUERY</parameter> take a saved query's id as <var>pId</var>; every other type takes
+/// <parameter>ALLID</parameter>. A shape that is not one is 400 <code>PORT.VALIDATION</code> before any call.</p>
+ClassMethod ReportsServe(pNamespace As %String, pType As %String, pId As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tByRow = (pType = ..#TYPESAVEDQUERY) || (pType = ..#TYPEDELETEQUERY)
+    If $Select(tByRow: '$Match(pId, ..#REPORTIDPATTERN), 1: pId '= ..#ALLID) {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Api.Error).#REASONPORTFIELDSHAPE, .pHttpStatus, .pFault)
+    }
+    If pType = ..#TYPESAVEDQUERY Quit ..ReportRow(pNamespace, pId, .pResult, .pHttpStatus, .pFault)
+    If pType = ..#TYPEDELETEQUERY {
+        Set tSC = ..ReportRow(pNamespace, pId, .tRow, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        Quit ..ReportWrite(pNamespace, pType, pId, "", .pResult, .pHttpStatus, .pFault)
+    }
+    If (pType = ..#TYPECASE) && ($Get(pQuery(..#WRCKEY)) = "") {
+        Quit ..ReportCase(pNamespace, "", $Get(pQuery(..#REPORTSTATEMENTKEY)), .pResult, .pHttpStatus, .pFault)
+    }
+    Set tSC = ..ReportValues(.pQuery, .tValues, .tWrc, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If pType = ..#TYPECASE Quit ..ReportCase(pNamespace, tWrc, $Get(pQuery(..#REPORTSTATEMENTKEY)), .pResult, .pHttpStatus, .pFault)
+    Quit ..ReportWrite(pNamespace, pType, pId, tValues, .pResult, .pHttpStatus, .pFault, .pQuery)
+}
+
+/// <p>The declared values of a case-level report read or write read from <var>pQuery</var>: the case number <var>pWrc</var>, which must be a whole number of up
+/// to 9 digits (<method>ValueProblem</method>), and, for a save, the statement. <var>pValues</var> is their JSON object. A refusal is 400 with the value's own
+/// published sentence, before any call.</p>
+ClassMethod ReportValues(ByRef pQuery, Output pValues As %String, Output pWrc As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pValues = ""
+    Set pWrc = $Get(pQuery(..#WRCKEY))
+    Set tReason = ..ValueProblem(..#WRCKEY, pWrc, .tCode)
+    If tReason '= "" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, tCode, tReason, .pHttpStatus, .pFault)
+    Set tSet = {}
+    Do tSet.%Set(..#WRCKEY, pWrc, "string")
+    Set tText = $Get(pQuery(..#REPORTSTATEMENTKEY))
+    If tText '= "" {
+        Set tReason = ..ValueProblem(..#REPORTSTATEMENTKEY, tText, .tCode)
+        If tReason '= "" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, tCode, tReason, .pHttpStatus, .pFault)
+        Do tSet.%Set(..#REPORTSTATEMENTKEY, tText, "string")
+    }
+    Set pValues = tSet.%ToJSON()
+    Quit $$$OK
+}
+
+/// <p>The guard of the statement <var>pText</var> in <var>pNamespace</var> after the console's own checks (<method>OcuPilot.Area.Explorer.SqlConsole.Check</method>:
+/// the checked prepare and the kernel's refusal of OcuPilot's own tables), and a statement the instance would not prepare refused as the console's confirmed
+/// run refuses it, 422 <code>EXPLORER.SQL.NOTPREPARED</code>, with its SQLCODE in <code>detail</code>.</p>
+ClassMethod ReportGuard(pNamespace As %String, pText As %String, Output pGuard As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = ##class(OcuPilot.Area.Explorer.SqlConsole).Check(pNamespace, pText, .pGuard, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pHttpStatus = 0
+    Set pFault = ""
+    If pGuard.%GetTypeOf("error") = "object" {
+        Set tDetail = {}
+        Do tDetail.%Set("sqlcode", pGuard.%Get("error").%Get("sqlcode"), "number")
+        Quit ..RefuseFor("notprepared", .pHttpStatus, .pFault, tDetail)
+    }
+    Quit $$$OK
+}
+
+/// <p>The case read (<parameter>TYPECASE</parameter>): <code>{Namespace, WRCNumber, Saved, Kind, StatementType, Tables, Statement, root, path}</code>. <code>Saved</code>
+/// is how many queries the caller can see saved for <var>pWrc</var> (<method>ReportIds</method>), none for an empty case, which the kernel's target read
+/// sends before any value is known. A non-empty <var>pText</var> is classified as the console
+/// classifies it (<method>Classify</method>), and its kind, type and tables answered, so a save is reviewed against the statement itself; with none they
+/// are empty. <code>Statement</code> is answered <code>null</code>, and <code>root</code> and <code>path</code> empty, as a mint merges the caller's values over
+/// members of the read.</p>
+ClassMethod ReportCase(pNamespace As %String, pWrc As %String, pText As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pAnswer = ""
+    Set tIds = ""
+    If pWrc '= "" {
+        Set tSC = ..ReportIds(pNamespace, pWrc, .tIds, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Set tGuard = ..EmptyGuard(pNamespace)
+    If pText '= "" {
+        Set tSC = ..ReportGuard(pNamespace, pText, .tGuard, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Set pAnswer = {}
+    Do pAnswer.%Set("Namespace", pNamespace, "string")
+    Do pAnswer.%Set(..#WRCKEY, pWrc, "string")
+    Do pAnswer.%Set("Saved", $ListLength(tIds), "number")
+    Do pAnswer.%Set("Kind", tGuard.%Get("Kind"), "string")
+    Do pAnswer.%Set("StatementType", tGuard.%Get("StatementType"), "string")
+    Do pAnswer.%Set("Tables", tGuard.%Get("Tables"))
+    Do pAnswer.%Set(..#REPORTSTATEMENTKEY, "", "null")
+    Do pAnswer.%Set(##class(OcuPilot.Port.AtelierPort).#ROOTKEY, "", "string")
+    Do pAnswer.%Set(##class(OcuPilot.Port.AtelierPort).#PATHKEY, "", "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The ids, as a list, of the queries the caller can see saved for the support case <var>pWrc</var> in <var>pNamespace</var>, from
+/// <parameter>CASEIDSQUERY</parameter> with the case bound, prepared with SQL privilege checks on. A caller without the SQL SELECT privilege on the table is the
+/// 403 of <method>SelectRefusal</method>.</p>
+ClassMethod ReportIds(pNamespace As %String, pWrc As %String, Output pIds As %List, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pIds = ""
+    Set tSC = ..CheckedRows(pNamespace, ..#CASEIDSQUERY, [(pWrc)], 100000, "the saved query ids", ..#REPORTTABLES, .tRows, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    For tI = 0:1:tRows.%Size() - 1 Set pIds = pIds _ $ListBuild(tRows.%Get(tI).%Get(0))
+    Quit $$$OK
+}
+
+/// <p>The saved query <var>pId</var> (<parameter>TYPESAVEDQUERY</parameter>): <code>{Namespace, ID, WRCNumber}</code>, or 404 <code>PORT.NOTFOUND</code> when the
+/// caller can see none by that id.</p>
+ClassMethod ReportRow(pNamespace As %String, pId As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pAnswer = ""
+    Set tSC = ..CheckedRows(pNamespace, ..#SAVEDQUERYQUERY, [(pId)], 1, "the saved query", ..#REPORTTABLES, .tRows, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If tRows.%Size() = 0 {
+        Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ##class(OcuPilot.Api.AtelierError).#REASONSQLREPORTNOTFOUND, .pHttpStatus, .pFault)
+    }
+    Set pAnswer = {}
+    Do pAnswer.%Set("Namespace", pNamespace, "string")
+    Do pAnswer.%Set("ID", tRows.%Get(0).%Get(0), "string")
+    Do pAnswer.%Set(..#WRCKEY, tRows.%Get(0).%Get(1), "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Report write <var>pType</var> in <var>pNamespace</var>, made in the request:</p>
+/// <ul>
+/// <li><parameter>TYPESAVEQUERY</parameter> refuses a statement the instance does not type as a query (422, nothing called), then runs the vendor's
+/// <code>InsertQuery</code> once, without a time bound. After an error status the port removes every row that call left for the case, whatever the status
+/// says, and answers 409 <code>EXPLORER.SQLREPORT.VENDOR</code>; after success the new row is read back.</li>
+/// <li><parameter>TYPEDELETEQUERY</parameter> removes the row <var>pId</var> names and reads it back absent.</li>
+/// <li><parameter>TYPEGENERATE</parameter> refuses a case with no saved query, then writes the case's report to a temporary file OcuPilot names, which it
+/// copies to the file <code>root</code> and <code>path</code> resolve to, or answers as lines for the screen when no root is sent. The temporary file is
+/// deleted on every path.</li>
+/// </ul>
+ClassMethod ReportWrite(pNamespace As %String, pType As %String, pId As %String, pValues As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, ByRef pQuery) As %Status [ Private ]
+{
+    Set pAnswer = ""
+    If pType = ..#TYPEDELETEQUERY {
+        Set tSC = ..Applied(pNamespace, pType, pId, .tStatus)
+        If $$$ISERR(tSC) Quit ..Fail("a saved query delete failed", tSC, .pHttpStatus, .pFault)
+        If $$$ISERR(tStatus) Quit ..Fail("a saved query delete answered an error", tStatus, .pHttpStatus, .pFault)
+        Set tSC = ..ReportRow(pNamespace, pId, .tGone, .tHttp, .tFault)
+        If $$$ISOK(tSC) Quit ..Fail("a deleted saved query is still listed", $$$ERROR($$$GeneralError, "ClearRow left the row"), .pHttpStatus, .pFault)
+        If tHttp '= 404 Quit ..Fail("a deleted saved query could not be read back", tSC, .pHttpStatus, .pFault)
+        Set pAnswer = {}
+        Do pAnswer.%Set("Namespace", pNamespace, "string")
+        Do pAnswer.%Set("Target", pId, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tWrc = ##class(%DynamicObject).%FromJSON(pValues).%Get(..#WRCKEY)
+    If pType = ..#TYPEGENERATE Quit ..ReportGenerate(pNamespace, tWrc, pValues, .pQuery, .pAnswer, .pHttpStatus, .pFault)
+    Set tText = $Get(pQuery(..#REPORTSTATEMENTKEY))
+    Set tReason = ..ValueProblem(..#REPORTSTATEMENTKEY, tText, .tCode)
+    If tReason '= "" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, tCode, tReason, .pHttpStatus, .pFault)
+    Set tSC = ..ReportGuard(pNamespace, tText, .tGuard, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If tGuard.%Get("Kind") '= ..#KINDQUERY {
+        Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AtelierError).#SQLREPORTQUERYONLY, ##class(OcuPilot.Api.AtelierError).#REASONSQLREPORTQUERYONLY, .pHttpStatus, .pFault)
+    }
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tSC = ..ReportIds(pNamespace, tWrc, .tBefore, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..Applied(pNamespace, pType, pId, .tStatus, pValues)
+    Set tRaised = $$$ISERR(tSC)
+    Set tSC2 = ..ReportIds(pNamespace, tWrc, .tAfter, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC2) Quit tSC2
+    Set tNew = ""
+    For tI = 1:1:$ListLength(tAfter) {
+        If '$ListFind(tBefore, $List(tAfter, tI)) Set tNew = tNew _ $ListBuild($List(tAfter, tI))
+    }
+    If tRaised || $$$ISERR(tStatus) {
+        For tI = 1:1:$ListLength(tNew) Do ..Applied(pNamespace, ..#TYPEDELETEQUERY, $List(tNew, tI), .tIgnored)
+        If tRaised Quit ..Fail("a query save failed", tSC, .pHttpStatus, .pFault)
+        Set tDetail = {}
+        Do tDetail.%Set("message", $System.Status.GetErrorText(tStatus), "string")
+        Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#SQLREPORTVENDOR, ##class(OcuPilot.Api.AtelierError).#REASONSQLREPORTVENDOR, .pHttpStatus, .pFault, tDetail)
+    }
+    If $ListLength(tNew) '= 1 {
+        Quit ..Fail("a saved query was not read back as one new row", $$$ERROR($$$GeneralError, "new rows: " _ $ListLength(tNew)), .pHttpStatus, .pFault)
+    }
+    Set pAnswer = {}
+    Do pAnswer.%Set("Namespace", pNamespace, "string")
+    Do pAnswer.%Set("Target", pId, "string")
+    Do pAnswer.%Set(..#WRCKEY, tWrc, "string")
+    Do pAnswer.%Set("ID", $List(tNew, 1), "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The generate of <var>pWrc</var>'s report in <var>pNamespace</var> (<method>ReportWrite</method>). A <code>root</code> in <var>pQuery</var> names a server
+/// file, resolved by <class>OcuPilot.Port.PathPort</class> as an overwriting file with <code>path</code>, whose directory must exist; none answers the report as
+/// <code>lines</code>, refused past <parameter>MAXREPORTCHARACTERS</parameter>. The answer is <code>{Namespace, WRCNumber, Count}</code> and the file's
+/// <code>root</code> and <code>path</code>, or the <code>lines</code>.</p>
+ClassMethod ReportGenerate(pNamespace As %String, pWrc As %String, pValues As %String, ByRef pQuery, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pAnswer = ""
+    Set tRoot = $Get(pQuery(##class(OcuPilot.Port.AtelierPort).#ROOTKEY))
+    Set tPath = $Get(pQuery(##class(OcuPilot.Port.AtelierPort).#PATHKEY))
+    Set tResolved = ""
+    Set tAbsent = 0
+    If tRoot '= "" {
+        Set tPathPort = "OcuPilot.Port.PathPort"
+        Set tSC = $ClassMethod(tPathPort, "Resolve", tRoot, tPath, $Parameter(tPathPort, "KINDFILE"), ##class(OcuPilot.Port.AtelierPort).#ROOTKEY, ##class(OcuPilot.Port.AtelierPort).#PATHKEY, .tResolved, .pHttpStatus, .pFault, 1)
+        If $$$ISERR(tSC) Quit tSC
+        If '##class(%File).DirectoryExists(##class(%File).GetDirectory(tResolved)) {
+            Set tViolation = {}
+            Do tViolation.%Set("field", ##class(OcuPilot.Port.AtelierPort).#PATHKEY, "string")
+            Do tViolation.%Set("code", ##class(OcuPilot.Api.Error).#TASKEXPORTDIRECTORY, "string")
+            Do tViolation.%Set("reason", ##class(OcuPilot.Api.Error).#REASONTASKEXPORTDIRECTORY, "string")
+            Set tDetail = {}
+            Do tDetail.%Set("violations", [(tViolation)])
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#TASKEXPORTDIRECTORY, ##class(OcuPilot.Api.Error).#REASONTASKEXPORTDIRECTORY, .pHttpStatus, .pFault, tDetail)
+        }
+        Set tAbsent = '##class(%File).Exists(tResolved)
+    }
+    Set tSC = ..ReportIds(pNamespace, pWrc, .tIds, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If $ListLength(tIds) = 0 {
+        Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#SQLREPORTNOROWS, ##class(OcuPilot.Api.AtelierError).#REASONSQLREPORTNOROWS, .pHttpStatus, .pFault)
+    }
+    Set tTemp = ##class(%File).TempFilename("xml")
+    Set tSC = $$$OK
+    Try {
+        Set tSet = ##class(%DynamicObject).%FromJSON(pValues)
+        Do tSet.%Set("File", tTemp, "string")
+        Set tSC = ..Applied(pNamespace, ..#TYPEGENERATE, ..#ALLID, .tStatus, tSet.%ToJSON())
+        If $$$ISERR(tSC) {
+            Set tSC = ..Fail("a report write failed", tSC, .pHttpStatus, .pFault)
+            Quit
+        }
+        If $$$ISERR(tStatus) || '##class(%File).Exists(tTemp) || (##class(%File).GetFileSize(tTemp) < 1) {
+            Set tDetail = {}
+            Do tDetail.%Set("message", $Select($$$ISERR(tStatus): $System.Status.GetErrorText(tStatus), 1: "no report file was written"), "string")
+            Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#SQLREPORTGENERATEVENDOR, ##class(OcuPilot.Api.AtelierError).#REASONSQLREPORTGENERATEVENDOR, .pHttpStatus, .pFault, tDetail)
+            Quit
+        }
+        Set pAnswer = {}
+        Do pAnswer.%Set("Namespace", pNamespace, "string")
+        Do pAnswer.%Set(..#WRCKEY, pWrc, "string")
+        Do pAnswer.%Set("Count", $ListLength(tIds), "number")
+        If tRoot '= "" {
+            Set tCopied = ##class(%File).CopyFile(tTemp, tResolved, 1)
+            If 'tCopied || (##class(%File).GetFileSize(tResolved) '= ##class(%File).GetFileSize(tTemp)) {
+                If tAbsent && ##class(%File).Exists(tResolved) Do ##class(%File).Delete(tResolved)
+                Set pAnswer = ""
+                Set tSC = ..Fail("the report could not be copied to its file", $$$ERROR($$$GeneralError, "copy failed"), .pHttpStatus, .pFault)
+                Quit
+            }
+            Do pAnswer.%Set(##class(OcuPilot.Port.AtelierPort).#ROOTKEY, tRoot, "string")
+            Do pAnswer.%Set(##class(OcuPilot.Port.AtelierPort).#PATHKEY, tPath, "string")
+        } Else {
+            Set tSC = ##class(OcuPilot.Port.AtelierPort).ReadText(tTemp, .tText, .tTooLarge)
+            If $$$ISERR(tSC) {
+                Set pAnswer = ""
+                Set tSC = ..Fail("the generated report could not be read", tSC, .pHttpStatus, .pFault)
+                Quit
+            }
+            If tTooLarge || ($Length(tText) > ..#MAXREPORTCHARACTERS) {
+                Set pAnswer = ""
+                Set tSC = ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AtelierError).#SQLREPORTTOOLONG, ##class(OcuPilot.Api.AtelierError).#REASONSQLREPORTTOOLONG, .pHttpStatus, .pFault)
+                Quit
+            }
+            Do pAnswer.%Set("lines", ##class(OcuPilot.Port.AtelierPort).Lines(tText))
+        }
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pAnswer = ""
+        Set tSC = ..Fail("a report generate failed", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    If ##class(%File).Exists(tTemp) Do ##class(%File).Delete(tTemp)
+    Quit tSC
+}
+
+/// <p>The one vendor call of report write <var>pType</var> in <var>pNamespace</var> with the JSON <var>pValues</var>, as its status, under the null device and
+/// in the namespace, both restored whatever the call does: <code>InsertQuery</code> with the statement and the case, <code>includeresults</code> and
+/// <code>debug</code> both 0; <code>ClearRow</code> with the id alone, whose answer 0 is an error; <code>WriteAllToFile</code> with the case and the
+/// temporary file <code>File</code> names. Overridable through <method>StatementCall</method>'s seam; production overrides none.</p>
+ClassMethod ReportCall(pType As %String, pId As %String, pNamespace As %String, pValues As %String) As %Status
+{
+    Set tValues = $Select(pValues = "": {}, 1: ##class(%DynamicObject).%FromJSON(pValues))
+    If pType = ..#TYPEDELETEQUERY {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).CallWithNullDevice(pNamespace, ..#REPORTCLASS, "ClearRow", 1, .tResult, pId)
+        If $$$ISERR(tSC) Quit tSC
+        Quit $Select(tResult = 1: $$$OK, 1: $$$ERROR($$$GeneralError, "ClearRow answered " _ tResult))
+    }
+    If pType = ..#TYPESAVEQUERY {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).CallWithNullDevice(pNamespace, ..#REPORTCLASS, "InsertQuery", 1, .tResult, tValues.%Get(..#REPORTSTATEMENTKEY), tValues.%Get(..#WRCKEY), 0, 0)
+    } Else {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).CallWithNullDevice(pNamespace, ..#REPORTCLASS, "WriteAllToFile", 1, .tResult, tValues.%Get(..#WRCKEY), tValues.%Get("File"))
+    }
+    If $$$ISERR(tSC) Quit tSC
+    If tResult = "" Quit $$$OK
+    Quit tResult
+}
+
+/// <p>The report write <var>pType</var> as a script (AD-59) in the namespace <code>namespace</code> names: the vendor call <method>ReportCall</method> makes,
+/// with the same arguments, each caller value shown as a string literal so nothing the query carries runs as code. A generate writes the file the
+/// query's <code>path</code> names, which the script's reader places under the allowed directory <code>root</code> names. The script gives the vendor no
+/// device, so the output a request would hide is the terminal's.</p>
+ClassMethod ReportSnippet(pType As %String, ByRef pQuery) As %DynamicArray [ Private ]
+{
+    Set tClass = "##class(" _ ..#REPORTCLASS _ ")."
+    Set tShow = $Char(10) _ " If $System.Status.IsError(tSC) Do $System.Status.DisplayError(tSC)"
+    Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
+    If pType = ..#TYPEDELETEQUERY {
+        Set tText = tText _ $Char(10) _ " Set tDeleted = " _ tClass _ "ClearRow(" _ ..Literal($Get(pQuery(..#IDKEY))) _ ")"
+        Set tText = tText _ $Char(10) _ " If 'tDeleted Do $System.Status.DisplayError($System.Status.Error(5001, ""the saved query was not deleted""))"
+        Quit ..SnippetSteps(tText)
+    }
+    If pType = ..#TYPESAVEQUERY {
+        Set tText = tText _ $Char(10) _ " Set tSC = " _ tClass _ "InsertQuery(" _ ..Literal($Get(pQuery(..#REPORTSTATEMENTKEY))) _ ", " _ ..Literal($Get(pQuery(..#WRCKEY))) _ ", 0, 0)" _ tShow
+        Quit ..SnippetSteps(tText)
+    }
+    Set tText = tText _ $Char(10) _ " Set tSC = " _ tClass _ "WriteAllToFile(" _ ..Literal($Get(pQuery(..#WRCKEY))) _ ", " _ ..Literal($Get(pQuery(##class(OcuPilot.Port.AtelierPort).#PATHKEY))) _ ")" _ tShow
+    Quit ..SnippetSteps(tText)
+}
+
 /// <p>Takes (<var>pTake</var> 1, answering whether it was free) or releases (0) the lock the vendor's analysis holds while it runs,
 /// <code>^%sqlcq(namespace, "PTools", "util", "SQLAnlsys")</code>. A report holds it for its whole run, and a gather or a purge that starts during one
 /// empties the report's input, so all three writes take it first, with no wait.</p>
@@ -1863,6 +2239,7 @@ ClassMethod AnalysisLocked(pNamespace As %String, pTake As %Boolean) As %Boolean
 ClassMethod StatementCall(pType As %String, pHash As %String, pNamespace As %String, pValues As %String = "") As %Status
 {
     If $ListFind($ListFromString(..#ANALYSISWRITES), pType) Quit ..AnalysisCall(pType, pNamespace, pValues)
+    If $ListFind($ListFromString(..#REPORTWRITES), pType) Quit ..ReportCall(pType, pHash, pNamespace, pValues)
     Set tStatus = $$$ERROR($$$GeneralError, "no statement call for " _ pType)
     Set tOrigNS = $NAMESPACE
     Try {
@@ -2204,6 +2581,13 @@ ClassMethod ValueProblem(pName As %String, pValue As %String, Output pCode As %S
         If '$Match(pValue, ..#WHOLEPATTERN) Set pCode = $Parameter(tError, "TABLEWHOLENUMBER")
     } ElseIf pName = ..#REPORTKEY {
         If '$ListFind($ListFromString(..#REPORTCODES), pValue) Set pCode = $Parameter(tError, "INDEXANALYSISREPORT")
+    } ElseIf pName = ..#WRCKEY {
+        If '$Match(pValue, ..#WRCPATTERN) || (+pValue = 0) Set pCode = $Parameter(tError, "SQLREPORTWRC")
+    } ElseIf pName = ..#REPORTSTATEMENTKEY {
+        If (pValue = "") || ($Length(pValue) > ..#MAXREPORTSTATEMENT) {
+            Set pCode = ##class(OcuPilot.Api.Error).#PORTVALIDATION
+            Quit ##class(OcuPilot.Api.Error).#REASONPORTFIELDSHAPE
+        }
     } ElseIf (pName = ..#SKIPSYSTEMKEY) || (pName = ..#SKIPINSERTSKEY) || (pName = ..#SKIPIDKEYSKEY) {
         If (pValue '= "true") && (pValue '= "false") {
             Set pCode = ##class(OcuPilot.Api.Error).#PORTVALIDATION
@@ -2836,6 +3220,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTCACHEDQUERIES) && (pType = ..#TYPEPURGEQUERIES) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTRUNTIMESTATS) && (pType = ..#TYPEPURGESTATS) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTINDEXANALYSIS) && $ListFind($ListFromString(..#ANALYSISWRITES), pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTREPORTS) && $ListFind($ListFromString(..#REPORTWRITES), pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTTABLES) && $ListFind($ListFromString(..#TABLEWRITES), pType) Quit "objectscript"
     Quit ""
 }
@@ -2853,6 +3238,7 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     If (pEndpoint = ..#ENDPOINTSTATEMENTS) || (pEndpoint = ..#ENDPOINTCACHEDQUERIES) || (pEndpoint = ..#ENDPOINTRUNTIMESTATS) Quit ..TuningSnippet(pType, .pQuery)
     If pEndpoint = ..#ENDPOINTTABLES Quit ..TableSnippet(pType, .pQuery)
     If pEndpoint = ..#ENDPOINTINDEXANALYSIS Quit ..AnalysisSnippet(pType, .pQuery)
+    If pEndpoint = ..#ENDPOINTREPORTS Quit ..ReportSnippet(pType, .pQuery)
     Set tValues = ..ValuesFrom($Get(pQuery(..#PARAMETERSKEY)), .tReadable)
     Set tList = ""
     Set tIterator = tValues.%GetIterator()

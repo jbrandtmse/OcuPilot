@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:685 */
+  /** EXPERIENCE.md:686 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5572,6 +5572,15 @@ export const STRINGS = {
   explorerSqlIndexAnalysisPrompt1: 'Which indices are never used?',
   explorerSqlIndexAnalysisPrompt2: 'Which queries scan a whole table?',
   explorerSqlIndexAnalysisPrompt3: 'Which queries need an index for a join?',
+  explorerSqlTabReports: 'SQL troubleshooting reports',
+  explorerSqlReportsColumnWrc: 'Support case (WRC)',
+  explorerSqlReportsColumnDelimited: 'Delimited identifiers',
+  explorerSqlReportsEmpty: 'No query is saved for a troubleshooting report in this namespace.',
+  explorerSqlReportsEmptyAgent: 'save a query for a troubleshooting report',
+  explorerSqlReportsNote: 'A saved query is listed for the person who saved it and for holders of %All or %Developer.',
+  explorerSqlReportsPrompt1: 'Which queries are saved for a support case?',
+  explorerSqlReportsPrompt2: 'Which saved queries failed to plan?',
+  explorerSqlReportsPrompt3: 'When was each support case\'s query saved?',
   // Story 21.27: the analyzer's three page actions, the dialog fields, the five report names, the consequences and refusals the actions state, and Advise on
   // SQL query with its findings. Each consequence and refusal is the sentence the server sends. The High and Low confidence names are taskPriorityHigh and
   // taskPriorityLow, and the Recommendation header is securityAdvisorColumnRecommendation.

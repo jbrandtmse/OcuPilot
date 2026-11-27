@@ -443,6 +443,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/sql-runtime-stats-settings',
       // Story 21.27: SQL index analyzer, after Runtime statistics collection.
       'system-explorer/sql-index-analysis',
+      'system-explorer/sql-reports',
       // Story 20.3: the unlisted Production items list, reached from a Productions row, ahead of its area's listed lists.
       // Story 20.4: the item's tabs around it -- Jobs, Log, Messages, Queue, Item settings (Story 20.22) and the Status
       // head -- and Queue messages after them, all unlisted, in the descriptors' class order.

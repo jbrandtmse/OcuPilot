@@ -19,6 +19,10 @@ ClassMethod StatementCall(pType As %String, pHash As %String, pNamespace As %Str
     Set ^||OcuPilotSqlTuningStatement($Increment(^||OcuPilotSqlTuningStatement)) = pType _ "|" _ pValues
     If $Get(^||OcuPilotSqlTuningRefuse) '= "" Quit $$$ERROR($$$GeneralError, ^||OcuPilotSqlTuningRefuse)
     If $Get(^||OcuPilotSqlTuningRaise) '= "" Throw ##class(%Exception.General).%New("StatementCallRaised", 5001, , "the statement call raised")
+    If (pType = ..#TYPESAVEQUERY) && ($Get(^||OcuPilotSqlTuningLeaveRow) '= "") {
+        Set tSaved = ##super(pType, pHash, pNamespace, pValues)
+        Quit $$$ERROR($$$GeneralError, ^||OcuPilotSqlTuningLeaveRow)
+    }
     Quit ##super(pType, pHash, pNamespace, pValues)
 }
 

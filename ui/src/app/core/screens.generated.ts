@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting' | 'statement-index-entry' | 'cached-query' | 'sql-table' | 'sql-index' | 'sql-schema' | 'interop-archive' | 'interop-archive-setting' | 'sql-field' | 'interop-managed-alert' | 'sql-runtime-stat' | 'sql-runtime-stats-setting' | 'interop-rule-log' | 'interop-process-log' | 'interop-workflow-user' | 'interop-workflow-role' | 'interop-workflow-member' | 'sql-index-analysis' | 'interop-workflow-task';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item' | 'listing-group' | 'listing-group-listing' | 'quality-measure' | 'quality-measure-element' | 'quality-measure-meta' | 'analytics-setting' | 'analytics-worklist' | 'analytics-runtime-variable' | 'analytics-user-icon' | 'dashboard-widget' | 'pmml-model' | 'pmml-definition' | 'backup-task' | 'backup-database' | 'startup-setting' | 'memory-setting' | 'compatibility-setting' | 'sql-setting' | 'sql-shell-setting' | 'tsql-setting' | 'isql-setting' | 'mirror' | 'system-ddl-mapping' | 'user-ddl-mapping' | 'nls-default' | 'locale' | 'locale-property' | 'global' | 'global-node' | 'system-security-setting' | 'phone-provider' | 'security-recommendation' | 'task-mail-setting' | 'system-alerts' | 'page-resource' | 'default-setting' | 'interop-credential' | 'interop-schedule' | 'interop-purge' | 'interop-purge-setting' | 'statement-index-entry' | 'cached-query' | 'sql-table' | 'sql-index' | 'sql-schema' | 'interop-archive' | 'interop-archive-setting' | 'sql-field' | 'interop-managed-alert' | 'sql-runtime-stat' | 'sql-runtime-stats-setting' | 'interop-rule-log' | 'interop-process-log' | 'interop-workflow-user' | 'interop-workflow-role' | 'interop-workflow-member' | 'sql-index-analysis' | 'interop-workflow-task' | 'sql-saved-query';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -614,7 +614,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "interop-workflow-role",
   "interop-workflow-member",
   "sql-index-analysis",
-  "interop-workflow-task"
+  "interop-workflow-task",
+  "sql-saved-query"
 ];
 
 /**
@@ -16216,6 +16217,181 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "read": null,
     "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerSqlReports",
+    "route": "system-explorer/sql-reports",
+    "area": "system-explorer",
+    "labelKey": "explorerSqlTabReports",
+    "sideBarPosition": 24,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "sql-saved-query",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "save",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "save",
+        "selfProtection": ""
+      },
+      {
+        "id": "generate",
+        "selfProtection": ""
+      },
+      {
+        "id": "generate-browser",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "ID",
+        "WRCNumber",
+        "Saved",
+        "Status",
+        "Schema",
+        "Statement"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerSqlReportsEmpty",
+    "commandAliases": [
+      "troubleshooting report",
+      "report generator",
+      "WRC report"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "explorerSqlReportsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "explorerSqlReportsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "explorerSqlReportsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.QButtons.ReportGenerator",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "saved troubleshooting report query",
+      "label": "Queries saved in this namespace for InterSystems support cases: case number, time saved, status, schema and statement. Lists the caller's own, or all for holders of %All or %Developer.",
+      "source": {
+        "port": "atelier",
+        "endpoint": "Catalog.SqlReports",
+        "type": "LIST"
+      },
+      "fields": [
+        "ID",
+        "WRCNumber",
+        "Saved",
+        "Status",
+        "DelimitedIdentifiers",
+        "Schema",
+        "Statement"
+      ],
+      "filter": [
+        "ID",
+        "Status",
+        "Schema",
+        "Statement"
+      ],
+      "sort": {
+        "fields": [
+          "ID",
+          "WRCNumber",
+          "Saved",
+          "Status",
+          "Schema"
+        ],
+        "default": "WRCNumber",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "note": {
+        "key": "explorerSqlReportsNote",
+        "text": "A saved query is listed for the person who saved it and for holders of %All or %Developer."
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ID",
+          "labelKey": "interopColumnId",
+          "kind": "name"
+        },
+        {
+          "field": "WRCNumber",
+          "labelKey": "explorerSqlReportsColumnWrc",
+          "kind": "number"
+        },
+        {
+          "field": "Saved",
+          "labelKey": "formSaved",
+          "kind": "text"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "text"
+        },
+        {
+          "field": "DelimitedIdentifiers",
+          "labelKey": "explorerSqlReportsColumnDelimited",
+          "kind": "text"
+        },
+        {
+          "field": "Schema",
+          "labelKey": "explorerSqlColumnSchema",
+          "kind": "text"
+        },
+        {
+          "field": "Statement",
+          "labelKey": "explorerSqlColumnStatement",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "explorerSqlReportsEmptyAgent"
+    },
+    "toolIdentifier": "explorer.sqlreports",
+    "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,

@@ -190,6 +190,7 @@ XData Coverage
 <screen name="ExplorerSqlRuntimeStats" class="OcuPilot.Test.SqlRuntimeStatsRead" method="TestTheScreensDeclareTheirShape" corpus="the list's declaration and the settings list's are asserted together in one method"/>
 <screen name="ExplorerSqlRuntimeStatsSettings" class="OcuPilot.Test.SqlRuntimeStatsRead" method="TestTheScreensDeclareTheirShape" corpus="the list's declaration and the settings list's are asserted together in one method"/>
 <screen name="ExplorerSqlIndexAnalysis" class="OcuPilot.Test.SqlIndexAnalysisRead" method="TestTheScreenAndTheToolsDeclareTheirShape" corpus="the list's declaration and the three tools' are asserted together in one method"/>
+<screen name="ExplorerSqlReports" class="OcuPilot.Test.SqlReportRead" method="TestTheScreenDeclaresItsShape" corpus="the list's declaration and the three tools' are asserted together in one method"/>
 <screen name="ExplorerSqlView" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlViewFields" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlViewStatements" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
@@ -595,6 +596,9 @@ XData Coverage
 <tool name="explorer.sqlindexanalysis.gather" class="OcuPilot.Test.SqlIndexAnalysisRead" method="TestTheScreenAndTheToolsDeclareTheirShape" corpus="the gather, the run and the purge are asserted together in one method"/>
 <tool name="explorer.sqlindexanalysis.run" class="OcuPilot.Test.SqlIndexAnalysisRead" method="TestTheScreenAndTheToolsDeclareTheirShape" corpus="the gather, the run and the purge are asserted together in one method"/>
 <tool name="explorer.sqlindexanalysis.purge" class="OcuPilot.Test.SqlIndexAnalysisRead" method="TestTheScreenAndTheToolsDeclareTheirShape" corpus="the gather, the run and the purge are asserted together in one method"/>
+<tool name="explorer.sqlreports.save" class="OcuPilot.Test.SqlReportRead" method="TestTheScreenDeclaresItsShape" corpus="the save, the delete and the generate are asserted together in one method"/>
+<tool name="explorer.sqlreports.delete" class="OcuPilot.Test.SqlReportRead" method="TestTheScreenDeclaresItsShape" corpus="the save, the delete and the generate are asserted together in one method"/>
+<tool name="explorer.sqlreports.generate" class="OcuPilot.Test.SqlReportRead" method="TestTheScreenDeclaresItsShape" corpus="the save, the delete and the generate are asserted together in one method"/>
 <tool name="explorer.sqlfieldstatistics.setselectivity" class="OcuPilot.Test.SqlTableFixedStats" method="TestTheToolsDeclareTheirWritePath" corpus="the three setters are asserted together in one loop"/>
 <tool name="explorer.globals.delete" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
 <tool name="explorer.globalnodes.save" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>

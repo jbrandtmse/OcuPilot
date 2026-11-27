@@ -3,7 +3,7 @@ title: 'Story 21.29: Troubleshooting reports'
 type: 'feature'
 created: '2026-11-25'
 status: 'in-progress'
-baseline_revision: 'cac401a9fe0474548c04b3b6f0c9df975843a71d'
+baseline_revision: '9cb4fe007aa5767c1ad8de61c100a5ee06b561fa'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -102,7 +102,7 @@ deferred:
 
 **Execution:** Task 0 first, then four batches, each committed on its own. A handoff builds one batch. Build after Story 21.27 is on the branch (its null-device helper and value machinery). Batches 3 and 4 wait for the owner's ruling. Strings are only the ruled set (Design Notes, "Strings, escalated"). Any other sentence a person reads is `## Clarification Needed`.
 
-**Dispatch state (written by the stage lead; each handoff does exactly the pass named here, edits no ruled text, commits nothing):** Task 0 is done (measurements under `## Verification`, `### Task 0 measurements`). The next pass is named here by the lead once the two intent gaps in `## Auto Run Result` are ruled.
+**Dispatch state (written by the stage lead; each handoff does exactly the pass named here, edits no ruled text, commits nothing):** Task 0 is done (measurements under `## Verification`, `### Task 0 measurements`). The two intent gaps are ruled (Spec Change Log, 2026-11-27). Batch 1 is committed (server: list, save, delete, generate; Save runs unbounded in its request and the port deletes any row left after an error status). **Current pass: Batch 2 only** (client; extend the one EXPERIENCE.md row Batch 1 appended for 21.29 rather than adding a second; the descriptor's strings are already in `strings.ts`). Batch 3 is empty and Batch 4 is not built.
 
 **Task 0, measured on `ocupilot-ci` before code, in `USER` and `HSCUSTOM`.** Record each result under Verification. Remove every row, file, class, table and principal you create, and read each back absent.
 
@@ -371,9 +371,15 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
 **Mutations (Rule 19), one per AC, each recorded here as `mutation: … -> …` when observed:**
 
 - AC1: `SAVEQUERY` skips the query-only check -> `SqlReportWrite`'s DML leg red (the seam counts a call). The catalog drops `WRCNumber` -> `SqlReportRead`'s columns leg red.
+  - mutation: `SqlPort.ReportWrite` kind check replaced by `If 0` -> `SqlReportRead.TestAStatementThatIsNotAQueryOrIsOcuPilotsOwnIsRefused` red (three direct-write 422 legs); reverted, green (run 1032).
+  - mutation: `AtelierPort.CATALOGSQLREPORTSCOLUMNS` drops `WRCNumber` -> `SqlReportRead.TestTheListCapsItsRowsAndReportsTheCut` red (row case/status leg, run 1029); reverted, green.
+  - mutation (the 2026-11-27 ruling, save after an error status): `SqlPort.ReportWrite` skips the removal of rows the failed call left -> `SqlReportWrite.TestASaveThatEndsInAnErrorStatusLeavesNoRowAndTheErrorReachesTheCaller` red on both its legs, compile error and negative case number (run 1026); reverted, green.
 - AC2: `DELETEQUERY` calls `ClearRow` with another id -> `SqlReportWrite`'s other-rows-stay leg red.
+  - mutation: `SqlPort.ReportCall` clears `pId + 1` -> `SqlReportWrite` red on the delete legs (3 tests, run 1027); reverted, green (run 1031).
 - AC3: `GENERATE` skips the no-row precondition -> the no-row leg red (the seam counts a call). The store drops the browser branch -> `sql-reports.page.spec.ts` red.
+  - mutation: `SqlPort.ReportGenerate` no-row refusal replaced by `If 0` -> `SqlReportWrite.TestTheGenerateRefusalsCallNothing` red (the refusal leg and the no-call leg, run 1028); reverted, green. The store half is Batch 2's.
 - AC4: the page offers a mail action -> its spec leg (asserting the absence) red.
+  - mutation: the descriptor gains a `mail` row action -> `SqlReportWrite.TestThePageOffersNoMailAction` red (run 1030); reverted, green. The page spec leg is Batch 2's.
 - AC5: the write skips the `OCUPILOTCODE` check -> `SqlReportImport`'s own-code leg red, with the seam counting a call.
 - AC6: the page drops Save query's post -> after rebuild and redeploy, the browser spec red.
 

@@ -254,6 +254,8 @@ test('every read note\'s text is the string its key names, and the four SQL stat
       // Story 21.27: SQL index analyzer states which statements its reports read.
       'OcuPilot.Screen.Descriptor.ExplorerSqlIndexAnalysis',
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
+      // Story 21.29: SQL troubleshooting reports states who sees a saved query.
+      'OcuPilot.Screen.Descriptor.ExplorerSqlReports',
       // Story 21.26: SQL runtime statistics states when a statistic is recorded.
       'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStats',
       // Story 21.6: the namespace's SQL statements list states the same statistics note.

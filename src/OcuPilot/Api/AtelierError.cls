@@ -523,6 +523,63 @@ Parameter INDEXANALYSISPURGE = "SQL.INDEXANALYSIS.PURGE";
 
 Parameter REASONINDEXANALYSISPURGE = "This namespace's gathered statements and every report's results are removed. Gather statements again before running a report.";
 
+/// <p>Envelope code: the instance answered an error status for the save of a troubleshooting report query (Story 21.29). Rendered on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, the instance's message in <code>detail</code> alone and never logged (AD-39). A row the
+/// instance left behind is removed before the answer.</p>
+Parameter SQLREPORTVENDOR = "EXPLORER.SQLREPORT.VENDOR";
+
+Parameter REASONSQLREPORTVENDOR = "The instance did not save this query.";
+
+/// <p>Envelope code: the instance answered an error status for the write of a troubleshooting report (Story 21.29). Rendered on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, the instance's message in <code>detail</code> alone and never logged.</p>
+Parameter SQLREPORTGENERATEVENDOR = "EXPLORER.SQLREPORT.GENERATEVENDOR";
+
+Parameter REASONSQLREPORTGENERATEVENDOR = "The instance did not write this report.";
+
+/// <p>Envelope code: a statement that is not a query was offered to save (Story 21.29). Rendered on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422.</p>
+Parameter SQLREPORTQUERYONLY = "EXPLORER.SQLREPORT.QUERYONLY";
+
+Parameter REASONSQLREPORTQUERYONLY = "Saving a query runs it, so it takes a query only.";
+
+/// <p>Envelope code: a support case number that is not a whole number of up to 9 digits (Story 21.29). Rendered on the
+/// <parameter>OcuPilot.Api.Error.BADREQUEST</parameter> slug with 400.</p>
+Parameter SQLREPORTWRC = "EXPLORER.SQLREPORT.WRC";
+
+Parameter REASONSQLREPORTWRC = "A support case number is a whole number of up to 9 digits.";
+
+/// <p>Envelope code: no query is saved for the support case, so there is no report to generate (Story 21.29). Rendered on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409.</p>
+Parameter SQLREPORTNOROWS = "EXPLORER.SQLREPORT.NOROWS";
+
+Parameter REASONSQLREPORTNOROWS = "No query is saved for this support case in this namespace.";
+
+/// <p>Envelope code: the generated report is longer than the screen can be answered (Story 21.29). Rendered on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422; the report is then a server file alone.</p>
+Parameter SQLREPORTTOOLONG = "EXPLORER.SQLREPORT.TOOLONG";
+
+Parameter REASONSQLREPORTTOOLONG = "This report is longer than 3,000,000 characters, so it can be generated to a server file only.";
+
+/// <p>Envelope code: no saved query with that id is visible to the caller (Story 21.29). Rendered on the
+/// <parameter>OcuPilot.Api.Error.NOTFOUND</parameter> slug with 404, unlogged.</p>
+Parameter SQLREPORTNOTFOUND = "EXPLORER.SQLREPORT.NOTFOUND";
+
+Parameter REASONSQLREPORTNOTFOUND = "This namespace holds no saved query with that id that this account can see.";
+
+/// <p>Consequence codes (Story 21.29): what a save, a delete and a generate to a server file do, stated on the proposal card and the dialog. A
+/// generate to this browser writes no file and states none.</p>
+Parameter SQLREPORTSAVE = "EXPLORER.SQLREPORT.SAVE";
+
+Parameter REASONSQLREPORTSAVE = "Saving runs the statement once, without its values, to record its plan and statistics, then stores the statement, its plan, the definitions of the classes it reads and its compiled code under this support case.";
+
+Parameter SQLREPORTDELETE = "EXPLORER.SQLREPORT.DELETE";
+
+Parameter REASONSQLREPORTDELETE = "This saved query is removed from its support case's report. Save it again to restore it.";
+
+Parameter SQLREPORTGENERATE = "EXPLORER.SQLREPORT.GENERATE";
+
+Parameter REASONSQLREPORTGENERATE = "The report holds every query you can see that is saved for this support case in this namespace, with its plan, the definitions of the classes it reads and its compiled code. A file already at this name is replaced.";
+
 /// <p>Envelope code: the instance answered an error status for a table write -- an index rebuild (Story 21.25). Rendered on the
 /// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, the instance's message in <code>detail</code> alone and never logged
 /// (AD-39).</p>
@@ -642,6 +699,16 @@ ClassMethod SqlReasonFor(pCode As %String) As %String
     If pCode = ..#INDEXANALYSISRUN Quit ..#REASONINDEXANALYSISRUN
     If pCode = ..#INDEXANALYSISPURGE Quit ..#REASONINDEXANALYSISPURGE
     If pCode = ..#SQLSELECTPRIVILEGE Quit ..#REASONSQLSELECTPRIVILEGE
+    If pCode = ..#SQLREPORTVENDOR Quit ..#REASONSQLREPORTVENDOR
+    If pCode = ..#SQLREPORTGENERATEVENDOR Quit ..#REASONSQLREPORTGENERATEVENDOR
+    If pCode = ..#SQLREPORTQUERYONLY Quit ..#REASONSQLREPORTQUERYONLY
+    If pCode = ..#SQLREPORTWRC Quit ..#REASONSQLREPORTWRC
+    If pCode = ..#SQLREPORTNOROWS Quit ..#REASONSQLREPORTNOROWS
+    If pCode = ..#SQLREPORTTOOLONG Quit ..#REASONSQLREPORTTOOLONG
+    If pCode = ..#SQLREPORTNOTFOUND Quit ..#REASONSQLREPORTNOTFOUND
+    If pCode = ..#SQLREPORTSAVE Quit ..#REASONSQLREPORTSAVE
+    If pCode = ..#SQLREPORTDELETE Quit ..#REASONSQLREPORTDELETE
+    If pCode = ..#SQLREPORTGENERATE Quit ..#REASONSQLREPORTGENERATE
     If pCode = ..#SQLEXECUTEPRIVILEGE Quit ..#REASONSQLEXECUTEPRIVILEGE
     Quit ""
 }

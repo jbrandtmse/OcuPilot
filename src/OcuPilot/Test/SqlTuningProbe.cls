@@ -1038,4 +1038,126 @@ ClassMethod AlternateState(pNamespace As %String) As %String
     Quit tTables _ "|" _ ..CachedQueryCount(pNamespace, ..#ALTERNATESCHEMA) _ "|" _ ..StatsRowCount(pNamespace, ..#ALTERNATETOKEN) _ "|" _ tRows
 }
 
+/// <p>Story 21.29's probe objects: the table <parameter>REPORTTABLE</parameter> with three rows, the query <parameter>REPORTQUERY</parameter> over it and the
+/// support case <parameter>REPORTCASE</parameter> the tests save it under.</p>
+Parameter REPORTSCHEMA = "OcuProbe229";
+
+Parameter REPORTTABLE = "OcuProbe229.T";
+
+Parameter REPORTQUERY = "SELECT A, B FROM OcuProbe229.T WHERE A > 0";
+
+Parameter REPORTCASE = 2291;
+
+/// <p>Create <parameter>REPORTTABLE</parameter> in <var>pNamespace</var> with three rows, after <method>RemoveReport</method> clears any earlier probe.</p>
+ClassMethod MakeReport(pNamespace As %String) As %Status
+{
+    Set tSC = ..RemoveReport(pNamespace)
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ..Run("CREATE TABLE " _ ..#REPORTTABLE _ " (A INTEGER, B VARCHAR(20))")
+        If $$$ISERR(tSC) Quit
+        For tI = 1:1:3 {
+            Set tSC = ..Run("INSERT INTO " _ ..#REPORTTABLE _ " (A, B) VALUES (" _ tI _ ", 'row" _ tI _ "')")
+            If $$$ISERR(tSC) Quit
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The ids, as a list, of the saved queries <var>pNamespace</var> holds for the case <var>pWrc</var>, through an unchecked read as the calling process.</p>
+ClassMethod ReportIds(pNamespace As %String, pWrc As %Integer = {..#REPORTCASE}) As %List
+{
+    Set tIds = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT ID FROM %SQL_Manager_QButtons.Base WHERE WRCNumber = ? ORDER BY ID", 0)
+        If $$$ISOK(tSC) {
+            Set tResult = tStatement.%Execute(pWrc)
+            While tResult.%Next() {
+                Set tIds = tIds _ $ListBuild(tResult.%GetData(1))
+            }
+        }
+        Set (tResult, tStatement) = ""
+    } Catch {
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tIds
+}
+
+/// <p>The text of the saved query <var>pId</var>, or <code>""</code>, and how many saved queries of the whole namespace mention the probe schema
+/// (<method>ReportLeft</method>).</p>
+ClassMethod ReportStatement(pNamespace As %String, pId As %String) As %String
+{
+    Set tText = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT QueryStatement FROM %SQL_Manager_QButtons.Base WHERE ID = ?", 0)
+        If $$$ISOK(tSC) {
+            Set tResult = tStatement.%Execute(pId)
+            If tResult.%Next() Set tText = tResult.%GetData(1)
+        }
+        Set (tResult, tStatement) = ""
+    } Catch {
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tText
+}
+
+/// <p>How many saved queries <var>pNamespace</var> holds that name the probe schema or the case <parameter>REPORTCASE</parameter>, -1 when the read fails.</p>
+ClassMethod ReportLeft(pNamespace As %String) As %Integer
+{
+    Set tCount = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare("SELECT COUNT(*) FROM %SQL_Manager_QButtons.Base WHERE WRCNumber = ? OR QueryStatement [ ?", 0)
+        If $$$ISOK(tSC) {
+            Set tResult = tStatement.%Execute(..#REPORTCASE, ..#REPORTSCHEMA)
+            If tResult.%Next() Set tCount = tResult.%GetData(1)
+        }
+        Set (tResult, tStatement) = ""
+    } Catch {
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tCount
+}
+
+/// <p>Put <var>pNamespace</var> back as an unmade probe has it: every saved query of the case <parameter>REPORTCASE</parameter> or over the probe schema
+/// removed by id through the vendor, the probe table's cached queries purged and the table dropped. A table or a row already gone is not an error.</p>
+ClassMethod RemoveReport(pNamespace As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tPrepared = tStatement.%Prepare("SELECT ID FROM %SQL_Manager_QButtons.Base WHERE WRCNumber = ? OR QueryStatement [ ?", 0)
+        Set tIds = ""
+        If $$$ISOK(tPrepared) {
+            Set tResult = tStatement.%Execute(..#REPORTCASE, ..#REPORTSCHEMA)
+            While tResult.%Next() {
+                Set tIds = tIds _ $ListBuild(tResult.%GetData(1))
+            }
+        }
+        Set (tResult, tStatement) = ""
+        For tI = 1:1:$ListLength(tIds) Do ##class(%SQL.Manager.QButtons.Base).ClearRow($List(tIds, tI))
+        Do $SYSTEM.SQL.PurgeQueries({"table": [(..#REPORTTABLE)]})
+        Do ..Run("DROP TABLE " _ ..#REPORTTABLE)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
 }

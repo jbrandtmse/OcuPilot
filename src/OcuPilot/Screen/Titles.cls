@@ -112,6 +112,7 @@ XData Titles
 "explorerSqlTabIndices": "Maps/Indices",
 "explorerSqlTabPartitionMappings": "Partition mappings",
 "explorerSqlTabPartitions": "Partitions",
+"explorerSqlTabReports": "SQL troubleshooting reports",
 "explorerSqlTabRuntimeStats": "SQL runtime statistics",
 "explorerSqlTabStatements": "SQL statements",
 "explorerSqlTabTriggers": "Triggers",
