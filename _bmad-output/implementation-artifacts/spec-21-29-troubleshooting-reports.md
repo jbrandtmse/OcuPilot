@@ -2,7 +2,7 @@
 title: 'Story 21.29: Troubleshooting reports'
 type: 'feature'
 created: '2026-11-25'
-status: 'blocked'
+status: 'in-progress'
 baseline_revision: 'cac401a9fe0474548c04b3b6f0c9df975843a71d'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -172,7 +172,7 @@ deferred:
 
 **Batch 3 is empty** (B1, Spec Change Log): no mail action; `sql-reports.page.spec.ts` asserts its absence (AC4).
 
-**Batch 4, import (A2: screen only, built only if Task 0 (f) measures every Import write inside the target namespace; Spec Change Log).**
+**Batch 4 is not built in this story** (split to Story 21.41, parked U-184; Task 0 (f) measured Import writing outside the target namespace). The items below stay as the record for 21.41's option B and are not worked here.
 
 - `SqlPort`:
   - `Reports/IMPORT` and the fresh read `REPORTFILE`, on the `ResourceTransferPort` model.
@@ -198,7 +198,7 @@ deferred:
 - AC2. Given a saved row, when either caller deletes it and confirms, then `SavedQueries` no longer answers it and every other row stays. A row gone after the mint refuses the confirm.
 - AC3. Given rows saved for a case number, when either caller generates the report to an allowed server file, or the person to this browser, then the file holds every row of that case in the namespace and parses back into the vendor's class. A refused root or name, a missing directory and a case with no row call nothing.
 - AC4. Given a generated report, the page offers no mail action, and the server sends nothing.
-- AC5. Given a report Generate wrote for the probe, when a person imports it into a namespace on the screen (no agent path) and confirms, then the probe class reads back compiled there. A report holding an `OcuPilot` document, a file changed after review and a file that is not a report are refused before any vendor call.
+- AC5. Moved to Story 21.41 (split 2026-11-27, orchestrator ruling; parked U-184).
 - AC6. Given the throwaway, when the browser spec runs forward and in reverse with `system-explorer-sql-runtime-stats.browser-spec.mjs`, then it passes and leaves no saved row, report file, probe table or cached query.
 
 ## Spec Change Log
@@ -214,6 +214,11 @@ deferred:
   6. **Gate** (veto U-167): `%Development:USE`; writes add `AtelierPort.WritePairs(ns)`; server-file Generate and Import add `%Admin_FileSystemAccess:USE` and `%DB_IRISSYS:READ`; every action honours a custom resource on the classic pages.
   7. **Strings** (veto U-167): accepted without any mail string. The list note on who sees a saved query ships only as measured, with role names read from the instance. The Import consequence is kept verbatim if measured; "without asking" must be true of the vendor call.
   8. The fifth copy of the file-transfer code is ledgered LOW at harvest; the other four are not refactored here.
+
+- 2026-11-27, orchestrator rulings on the Task 0 intent gap (veto U-183; split and park U-184), authoritative:
+  1. **Import:** U-167's condition fired (every real import writes routines to IRISLOCALDATA; a crafted `%zz` routine wrote into IRISSYS). Batch 4 is not built here; AC5 and Batch 4 move to Story 21.41, parked for the owner (A: no Import; B: allow-list of classes, `.ext` and `%sqlcq.<ns>.QButtons.WRC*` routines parsed before any vendor call, `%DB_IRISLOCALDATA:WRITE` in the gate, null device, report-shape check). This story keeps AC1-AC4 and Batches 1-2.
+  2. **Save** (veto U-183): runs in its request with no alarm bound (measured 0.01-0.20 s; the named gateway limit is the backstop), query-only. After any error status the port deletes the row the vendor left; tests for the compile-error and negative-case-number paths: the row is absent afterwards and the error still reaches the person. AD-7's 21.29 line: "leaves no row after an error".
+  3. Accepted: "Planned" read from a non-empty plan; Save's side effects (runtime-statistics rows, statement-index rows, one cached query) named in AD-7's 21.29 line; the list note worded to what was measured (the saving user and holders of the roles read from the instance see a row; `%Development:USE` alone sees none of another person's rows); the case number stays a 1-9 digit whole number.
 
 ## Review Triage Log
 

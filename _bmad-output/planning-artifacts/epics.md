@@ -9851,6 +9851,20 @@ So that the page settles on a slow runner as its key list grows.
 - **When** the plan reaches that point
 - **Then** the evidence goes to the orchestrator before any mitigation.
 
+### Story 21.41: Troubleshooting report import
+
+[ADDED 2026-11-27, Story 21.29 Task 0, orchestrator ruling: split, Rule 5] Split from Story 21.29; it carries that story's import criterion (its AC5 and Batch 4). Measured on `ocupilot-ci` at 21.29's Task 0: every real import writes its `%sqlcq.<ns>.QButtons.WRC<case><n>` routines to IRISLOCALDATA, outside the target namespace's database, and a crafted report whose routine was renamed `%zz...` wrote into IRISSYS; the vendor checks nothing about a document's name. Whether to build it is the owner's call (parked).
+
+As a developer helping support diagnose a slow query,
+I want to import a troubleshooting report into a namespace,
+So that a report from another instance can be reproduced here.
+
+**Acceptance Criteria:**
+
+- **Given** a report Generate wrote for a probe
+- **When** a person imports it into a namespace on the screen (no agent path) and confirms
+- **Then** the probe class reads back compiled there, and a report holding an OcuPilot document, a file changed after review and a file that is not a report are refused before any vendor call.
+
 ---
 
 ## Epic 22: Stage 6 - the long tail, on demand
