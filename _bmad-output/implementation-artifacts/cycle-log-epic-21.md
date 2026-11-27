@@ -1233,3 +1233,4 @@
 2026-11-27T00:11:11Z	Story 21.28	committed	sha=8a391583a submodules= ci=pending runs=45915199803 amendments=none note=code_head(M_over_a4000b244_gates)_pushed_alone
 2026-11-27T01:03:14Z	Story 21.28	ci_resolved	story=21.28 sha=8a391583a runs=45915199803 result=success failed=none via=none resolved_at=next_plan attempt=1
 2026-11-27T01:03:14Z	Story 21.28	story_complete	head=8a391583a(M_feature_ba0fa0702_over_a4000b244) run=45915199803(green_attempt1) gates=a4000b244(fresh_35+3,sweep20/20,smoke50/50)+postmerge(ReadTool,ToolRoundTrip,SurfaceCoverage,GovernanceBaseline,tools_2430) vetoes=U-166,U-178,U-180 spine=AD-7,AD-21,AD-44_21.28_lines ledger=DW-2899,DW-2905_resolved;DW-2900,2901,2907,2908_wontfix;DW-2906_escalated next_cut_keys=none
+2026-11-27T01:03:30Z	Story 21.29	stage_spawned	stage=implement spawn_at=2026-11-27T01:03:30Z model=sonnet agent_name=21-29-impl cycle_iteration=1 story_base=8230fddba prompt=e21-kit/21-29/impl/prompt.md
