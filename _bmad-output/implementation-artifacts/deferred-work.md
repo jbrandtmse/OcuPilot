@@ -14107,6 +14107,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: LocalePort.ImportText vs InteropPort (Rule 31 copy)
 - 2026-11-19T09:18:39Z status=routed owner=burndown by=harvest note=dedupe
 - 2026-11-20T05:08:50Z occurrence=21-19-shell-advisor-permission-and-task-leaves
+- 2026-11-28T03:18:11Z occurrence=21-29-troubleshooting-reports by=harvest note=SqlPort repeats ResourceTransferPort's file-transfer shape (server-or-local text, resolve, temp file), a fifth copy beside LocalePort, InteropPort and AnalyticsPort (spec-21-29 deferred; U-167 ruling 8)
 
 ### DW-2764: The vendor's ImportAll deletes an existing custom locale before reading its replacement, so a record it then fails to import leaves the locale gone
 - source: spec-21-15-locale-and-table-import.md | severity: med | fix-risk: med | footprint: in-epic
