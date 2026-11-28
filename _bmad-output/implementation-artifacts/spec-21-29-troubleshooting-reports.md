@@ -262,6 +262,8 @@ Rejected:
   2. **Save** (veto U-183): runs in its request with no alarm bound (measured 0.01-0.20 s; the named gateway limit is the backstop), query-only. After any error status the port deletes the row the vendor left; tests for the compile-error and negative-case-number paths: the row is absent afterwards and the error still reaches the person. AD-7's 21.29 line: "leaves no row after an error".
   3. Accepted: "Planned" read from a non-empty plan; Save's side effects (runtime-statistics rows, statement-index rows, one cached query) named in AD-7's 21.29 line; the list note worded to what was measured (the saving user and holders of the roles read from the instance see a row; `%Development:USE` alone sees none of another person's rows); the case number stays a 1-9 digit whole number.
 
+- 2026-11-28, owner answer U-184 (A): Import is not built. Story 21.41 is dropped; this story's AC5 and Batch 4 stay out, and the classic Import Report page remains for support engineers.
+
 ## Review Triage Log
 
 ### 2026-11-26 — Review pass

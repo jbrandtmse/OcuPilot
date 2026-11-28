@@ -9851,9 +9851,9 @@ So that the page settles on a slow runner as its key list grows.
 - **When** the plan reaches that point
 - **Then** the evidence goes to the orchestrator before any mitigation.
 
-### Story 21.41: Troubleshooting report import
+Dropped, formerly Story 21.41: Troubleshooting report import.
 
-[ADDED 2026-11-27, Story 21.29 Task 0, orchestrator ruling: split, Rule 5] Split from Story 21.29; it carries that story's import criterion (its AC5 and Batch 4). Measured on `ocupilot-ci` at 21.29's Task 0: every real import writes its `%sqlcq.<ns>.QButtons.WRC<case><n>` routines to IRISLOCALDATA, outside the target namespace's database, and a crafted report whose routine was renamed `%zz...` wrote into IRISSYS; the vendor checks nothing about a document's name. Whether to build it is the owner's call (parked).
+[DROPPED 2026-11-28, owner answer U-184: A, do not build Import; the classic Import Report page remains for support engineers. Kept for the record; not a story.] [ADDED 2026-11-27, Story 21.29 Task 0, orchestrator ruling: split, Rule 5] Split from Story 21.29; it carries that story's import criterion (its AC5 and Batch 4). Measured on `ocupilot-ci` at 21.29's Task 0: every real import writes its `%sqlcq.<ns>.QButtons.WRC<case><n>` routines to IRISLOCALDATA, outside the target namespace's database, and a crafted report whose routine was renamed `%zz...` wrote into IRISSYS; the vendor checks nothing about a document's name. Whether to build it is the owner's call (parked).
 
 As a developer helping support diagnose a slow query,
 I want to import a troubleshooting report into a namespace,
