@@ -88,6 +88,12 @@ Method OnAfterOneTest() As %Status
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveReport", ..#NAMESPACE), "the probe's saved queries, cached queries and table are removed")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "ReportLeft", ..#NAMESPACE) _ "|" _ $ClassMethod(..#PROBE, "CachedQueryCount", ..#NAMESPACE, $Parameter(..#PROBE, "REPORTSCHEMA")), "0|0", "and no saved query or cached query of the probe is left")
+    Set tTable = $Parameter(..#PROBE, "REPORTTABLE")
+    Set tOrigNS = $NAMESPACE
+    Set $NAMESPACE = ..#NAMESPACE
+    Set tTable = ##class(%Dictionary.CompiledClass).%ExistsId(tTable)
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertEquals(tTable, 0, "and the probe table is dropped")
     Do $ClassMethod(..#DIRECTORY, "RemoveDirectory")
     Do $$$AssertEquals(##class(%File).DirectoryExists($ClassMethod(..#DIRECTORY, "Directory")), 0, "the probe directory and its report files are removed")
     If '..PreparedPolicyTaken Quit $$$OK
@@ -256,16 +262,18 @@ Method TestTheRefusalsCallNothingOnBothCallers()
     Do $$$AssertEquals(..Ids() _ "|" _ $ClassMethod(..#PROBE, "ReportLeft", ..#NAMESPACE), "|0", "no row was saved")
 }
 
-/// <p>The 2026-11-27 ruling. A save the instance answers with an error status leaves no row, and the error reaches the caller: the vendor's own call is made,
-/// leaves the row it saved before it failed (the seam stands in for the vendor's answer, a compile error after the row is written, and for a case number the
-/// vendor stored and then raised on), and the port removes it by id before answering 409 <code>EXPLORER.SQLREPORT.VENDOR</code> with the message in
-/// <code>detail</code> alone. A row of another case, and an earlier row of the same case, stay.</p>
+/// <p>The 2026-11-27 ruling. A save the instance answers with an error status leaves no row, and the error reaches the caller: the vendor's own call is made
+/// and leaves the row it saved (read back before the port answers), the seam answers the vendor's error text in its place (a compile error after the row is
+/// written, and the text the vendor raises for a negative case number), and the port removes the row by id before answering 409
+/// <code>EXPLORER.SQLREPORT.VENDOR</code> with the message in <code>detail</code> alone. An earlier row of the same case stays. A negative case number itself
+/// never reaches the vendor: <method>TestTheRefusalsCallNothingOnBothCallers</method> pins its refusal before any call.</p>
 /// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.ReportWrite</code> skips its clean-up of new rows -> both legs go red.</p>
 Method TestASaveThatEndsInAnErrorStatusLeavesNoRowAndTheErrorReachesTheCaller()
 {
     Set tKept = ..Seed()
     Do $$$AssertTrue(tKept '= "", "an earlier row of the case is saved: " _ tKept)
     For tCase = $ListBuild("compile", "Error compiling routine %sqlcq.USER.QButtons.WRC22911 : <UNDEFINED>probe"), $ListBuild("negative", "<INVALID OREF>QueryIntCodeCreate+5^%SYS.PTools") {
+        Kill ^||OcuPilotSqlTuningLeaveRow
         Set ^||OcuPilotSqlTuningLeaveRow = $List(tCase, 2)
         Kill tQuery
         Set tQuery("WRCNumber") = ..#CASE
@@ -275,6 +283,7 @@ Method TestASaveThatEndsInAnErrorStatusLeavesNoRowAndTheErrorReachesTheCaller()
         Set tSC = $ClassMethod(..#FIXTURE, "Invoke", "Reports", "SAVEQUERY", .tQuery, "", .tAnswer, .tHttp, .tFault)
         Do $$$AssertEquals($Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code _ "|" _ tFault.reason, 1: ""), "409 " _ $Parameter(..#ERROR, "SQLREPORTVENDOR") _ "|" _ $Parameter(..#ERROR, "REASONSQLREPORTVENDOR"), $List(tCase, 1) _ ": 409 with the ruled sentence")
         Do $$$AssertTrue($IsObject($Get(tFault)) && (tFault.detail.message [ $List(tCase, 2)) && (tFault.reason '[ "UNDEFINED"), $List(tCase, 1) _ ": the instance's message is in detail alone")
+        Do $$$AssertEquals($Get(^||OcuPilotSqlTuningLeaveRow("left")), 2, $List(tCase, 1) _ ": the instance's call left its row beside the earlier one")
         Do $$$AssertEquals(..Ids(), tKept, $List(tCase, 1) _ ": the row the failed call left is gone and the earlier row stays")
     }
     Kill ^||OcuPilotSqlTuningLeaveRow
@@ -345,6 +354,13 @@ Method TestTheReportHoldsEveryStatementOfTheCaseOnEachRoute()
     Do tStream.Write(tText)
     Do tStream.Rewind()
     Do $$$AssertEquals(..Statements(tStream, .tCount) _ "|" _ tCount, tOne _ "|" _ tTwo _ "|2", "the lines answered to the screen hold both statements and parse the same")
+    Kill ^||OcuPilotSqlTuningStatement, tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("id") = "*"
+    Set tQuery("WRCNumber") = ..#CASE
+    Set tSC = $ClassMethod(..#FIXTURE, "Invoke", "Reports", "GENERATE", .tQuery, "", .tAnswer, .tHttp, .tFault)
+    Set tTemp = $Select($Data(^||OcuPilotSqlTuningStatement): ##class(%DynamicObject).%FromJSON($Piece(^||OcuPilotSqlTuningStatement(^||OcuPilotSqlTuningStatement), "|", 2, *)).File, 1: "")
+    Do $$$AssertTrue(($Get(tHttp) = 200) && (tTemp '= "") && '##class(%File).Exists(tTemp), "a report answered to the screen leaves no temporary file: " _ $Get(tHttp) _ " " _ tTemp)
     Set tArgs = {"WRCNumber": "2291", "root": ($ClassMethod(..#DIRECTORY, "Root")), "path": ($ClassMethod(..#DIRECTORY, "RelativeName", "agent.xml"))}
     Set tOutcome = ..Agent(..#GENERATE, tArgs, , 0, .tProposal)
     Do $$$AssertEquals(tOutcome _ "|" _ ##class(%File).Exists($ClassMethod(..#DIRECTORY, "Directory") _ "agent.xml"), "minted|0", "the agent's mint writes no file")
@@ -413,8 +429,8 @@ Method TestAReportLongerThanTheCapIsRefusedForTheBrowserAndNothingIsLeft()
     Do $$$AssertEquals(##class(%File).Exists(tFile), 0, "and that file is deleted")
 }
 
-/// <p>AC1, AC3. The instance's own refusal of a report write is 409 with the ruled sentence and the message in <code>detail</code> alone, one call made, no
-/// file left and no row saved; a call that raises is the internal fault; a delete the instance answers an error for is the internal fault.</p>
+/// <p>AC1, AC3. The instance's own refusal of a report write is 409 with the ruled sentence and the message in <code>detail</code> alone, one call made and
+/// no row saved; a call that raises is the internal fault; a delete the instance answers an error for is the internal fault.</p>
 /// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.ReportGenerate</code> puts the message in the reason -> the reason assertion goes red.</p>
 Method TestTheInstancesRefusalIsAnsweredAndNothingIsLeft()
 {
@@ -452,7 +468,8 @@ Method TestTheInstancesRefusalIsAnsweredAndNothingIsLeft()
 
 /// <p>The null device and the caller's namespace are as they were after a vendor call that raises and after one that answers, so the response's own device is
 /// never left redirected.</p>
-/// <p>Mutation (Rule 19): <code>OcuPilot.Kernel.Utils.CallWithNullDevice</code> skips the namespace restore -> the namespace assertion goes red.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Kernel.Utils.CallWithNullDevice</code> restores the namespace only when the call answered OK -> the namespace
+/// assertion goes red.</p>
 Method TestTheDeviceAndTheNamespaceAreRestoredAfterARaisedCall()
 {
     Set tDevice = $IO

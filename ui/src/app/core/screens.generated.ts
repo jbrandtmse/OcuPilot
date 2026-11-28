@@ -16336,7 +16336,6 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "fields": [
           "ID",
           "WRCNumber",
-          "Saved",
           "Status",
           "Schema"
         ],
@@ -16374,7 +16373,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         {
           "field": "DelimitedIdentifiers",
           "labelKey": "explorerSqlReportsColumnDelimited",
-          "kind": "text"
+          "kind": "status"
         },
         {
           "field": "Schema",

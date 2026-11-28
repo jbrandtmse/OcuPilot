@@ -21,6 +21,7 @@ ClassMethod StatementCall(pType As %String, pHash As %String, pNamespace As %Str
     If $Get(^||OcuPilotSqlTuningRaise) '= "" Throw ##class(%Exception.General).%New("StatementCallRaised", 5001, , "the statement call raised")
     If (pType = ..#TYPESAVEQUERY) && ($Get(^||OcuPilotSqlTuningLeaveRow) '= "") {
         Set tSaved = ##super(pType, pHash, pNamespace, pValues)
+        Set ^||OcuPilotSqlTuningLeaveRow("left") = $ListLength(##class(OcuPilot.Test.SqlTuningProbe).ReportIds(pNamespace))
         Quit $$$ERROR($$$GeneralError, ^||OcuPilotSqlTuningLeaveRow)
     }
     Quit ##super(pType, pHash, pNamespace, pValues)

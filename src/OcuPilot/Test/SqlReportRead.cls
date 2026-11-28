@@ -1,7 +1,8 @@
 /// <p>Pins Story 21.29's list, reads and refusals (AC1, AC3; AD-4, AD-21, AD-36, AD-51, AD-53, AD-58): the declared shape of the SQL troubleshooting reports
 /// list and its three tools, the list's columns equal to the catalog statement's, the port's case and saved-query reads answering the instance's own rows,
 /// every value shape refused on both callers before any call (the seam counts calls), a statement that is not a query refused, a statement over
-/// OcuPilot's own tables refused, the gates refusing before any read or call, the copy-out scripts, and the list's cap reported as truncation.</p>
+/// OcuPilot's own tables refused, the gates refusing before any read or call, the copy-out scripts, the list's cap reported as truncation, the instance's
+/// own status for a row with no plan, and the list's note against the instance's row-level security policy.</p>
 /// <p><b>What it needs from the environment:</b> a <code>USER</code> namespace and a calling process that holds <code>%Development:USE</code>, SELECT on
 /// <code>%SQL_Manager_QButtons.Base</code> and WRITE on <code>USER</code>'s routines database. It makes <class>OcuPilot.Test.SqlTuningProbe</class>'s report
 /// objects and removes every saved query, cached query and table it made when each test ends.</p>
@@ -49,6 +50,12 @@ Method OnAfterOneTest() As %Status
     Do $ClassMethod(..#SEAM, "Reset")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveReport", ..#NAMESPACE), "the probe's saved queries, cached queries and table are removed")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "ReportLeft", ..#NAMESPACE) _ "|" _ $ClassMethod(..#PROBE, "CachedQueryCount", ..#NAMESPACE, $Parameter(..#PROBE, "REPORTSCHEMA")), "0|0", "and no saved query or cached query of the probe is left")
+    Set tTable = $Parameter(..#PROBE, "REPORTTABLE")
+    Set tOrigNS = $NAMESPACE
+    Set $NAMESPACE = ..#NAMESPACE
+    Set tTable = ##class(%Dictionary.CompiledClass).%ExistsId(tTable)
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertEquals(tTable, 0, "and the probe table is dropped")
     Quit $$$OK
 }
 
@@ -135,7 +142,7 @@ Method TestTheCaseAndTheSavedQueryReadTheInstancesRows()
     Do $$$AssertEquals(..Call(..#PORT, "SAVEDQUERY", tFirst, .tQuery, .tAnswer, .tFault) _ "|" _ tAnswer.ID _ "|" _ tAnswer.WRCNumber, "200 |" _ tFirst _ "|" _ ..#CASE, "the saved-query read answers the row")
     Set tText = $ClassMethod(..#PROBE, "ReportStatement", ..#NAMESPACE, tFirst)
     Do $$$AssertEquals(tText, $Parameter(..#PROBE, "REPORTQUERY"), "and the instance holds the statement as it was saved")
-    Do $$$AssertEquals(..Call(..#PORT, "SAVEDQUERY", tSecond + 1000000, .tQuery, .tAnswer, .tFault), "404 PORT.NOTFOUND", "an id no row has is 404")
+    Do $$$AssertEquals(..Call(..#PORT, "SAVEDQUERY", tSecond + 1000000, .tQuery, .tAnswer, .tFault) _ "|" _ $Select($IsObject(tFault): tFault.reason, 1: ""), "404 PORT.NOTFOUND|No query is saved for this support case in this namespace.", "an id no row has is 404 with the ruled sentence")
     For tId = "0", "x", "1 2", "-3", "*", "" {
         Kill tQuery
         Do $$$AssertEquals(..Call(..#PORT, "SAVEDQUERY", tId, .tQuery, .tAnswer, .tFault), "400 PORT.VALIDATION", "the id '" _ tId _ "' is refused")
@@ -162,13 +169,20 @@ Method TestAServerFileAddsThePathPairsAndABrowserReportAddsNone()
 }
 
 /// <p>AC1, AC3. Every value shape is refused before any call, on both callers: the port's reads and writes answer 400 with the published sentence for an
-/// empty, non-numeric, zero, signed, spaced or over-long case number and for an empty or over-long statement, and the tools' own argument checks refuse the
-/// same values with the same sentence. The seam counts no call.</p>
+/// empty, non-numeric, zero, zero-led, signed, spaced or over-long case number and for an empty or over-long statement, and the tools' own argument checks
+/// refuse the same values with the same sentence; a case number of one and of nine digits is admitted. The seam counts no call. The browser report's cap is
+/// 3,000,000 characters, the cap of a text the instance reads, and its sentence says so.</p>
 /// <p>Mutation (Rule 19): <code>OcuPilot.Port.SqlPort.WRCPATTERN</code> allows 10 digits -> the case number legs go red.</p>
 Method TestEveryValueShapeIsRefusedBeforeAnyCall()
 {
     Set tSentence = $Parameter(..#ERROR, "REASONSQLREPORTWRC")
-    For tWrc = "", "abc", "12ab", "0", "000", "1234567890", "-5", "1.5", " 12", "1E3", "+7" {
+    For tWrc = "1", "999999999" {
+        Kill tQuery
+        Set tQuery("WRCNumber") = tWrc
+        Do $$$AssertEquals(..Call(..#FIXTURE, "CASE", "*", .tQuery, .tAnswer, .tFault) _ "|" _ $ClassMethod(..#SAVE, "ValueProblem", "WRCNumber", tWrc), "200 |", "the case number '" _ tWrc _ "' is admitted")
+    }
+    Do $$$AssertEquals($Parameter(..#PORT, "MAXREPORTCHARACTERS") _ "|" _ $Parameter(..#ATELIER, "MAXIMPORTCHARACTERS") _ "|" _ ($Parameter(..#ERROR, "REASONSQLREPORTTOOLONG") [ "3,000,000 characters"), "3000000|3000000|1", "the browser report's cap is the instance's text cap and its sentence names it")
+    For tWrc = "", "abc", "12ab", "0", "000", "007", "01", "1234567890", "-5", "1.5", " 12", "1E3", "+7" {
         Kill tQuery
         Set tQuery("WRCNumber") = tWrc
         Set tQuery("Statement") = $Parameter(..#PROBE, "REPORTQUERY")
@@ -190,6 +204,9 @@ Method TestEveryValueShapeIsRefusedBeforeAnyCall()
     Do $$$AssertEquals(..Call(..#FIXTURE, "SAVEQUERY", "*", .tQuery, .tAnswer, .tFault), "400 PORT.VALIDATION", "an empty statement is refused")
     Set tQuery("Statement") = $Justify("x", 32001)
     Do $$$AssertEquals(..Call(..#FIXTURE, "SAVEQUERY", "*", .tQuery, .tAnswer, .tFault), "400 PORT.VALIDATION", "a statement over the vendor's bound is refused")
+    Kill tQuery
+    Set tQuery("Statement") = $Justify("x", 32001)
+    Do $$$AssertEquals(..Call(..#FIXTURE, "CASE", "*", .tQuery, .tAnswer, .tFault), "400 PORT.VALIDATION", "and so it is at the case read the kernel sends before a case number is known")
     Set tSC = $ClassMethod(..#SAVE, "ArgumentProblem", "*", {"Statement": "", "WRCNumber": "2291"}, .tProblem)
     Do $$$AssertTrue(tProblem '= "", "the agent's empty statement is refused: " _ tProblem)
     Set tSC = $ClassMethod(..#SAVE, "ArgumentProblem", "x", {"Statement": "SELECT 1", "WRCNumber": "2291"}, .tProblem)
@@ -224,7 +241,6 @@ Method TestAStatementThatIsNotAQueryOrIsOcuPilotsOwnIsRefused()
     }
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls"), 0, "no vendor call was made for any")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "ReportLeft", ..#NAMESPACE), 0, "and no row was saved")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "ReportStatement", ..#NAMESPACE, 0), "", "nothing is stored")
     Kill tQuery
     Set tQuery("WRCNumber") = ..#CASE
     Set tQuery("Statement") = "SELECT COUNT(*) AS Probe229 FROM OcuPilot_Kernel_State.Version"
@@ -289,9 +305,10 @@ Method TestTheCopyOutScriptsAreTheirVendorCall()
     Kill tQuery
     Set tQuery("namespace") = ..#NAMESPACE
     Set tQuery("WRCNumber") = "2291"
+    Set tQuery("root") = "/r/"
     Set tQuery("path") = "r.xml"
     Set tSteps = $ClassMethod(..#PORT, "Snippet", "Reports", "GENERATE", .tQuery)
-    Do $$$AssertTrue(tSteps.%Get(0).text [ "WriteAllToFile(""2291"", ""r.xml"")", "a generate is one WriteAllToFile")
+    Do $$$AssertTrue(tSteps.%Get(0).text [ ("Set tFile = ##class(%File).NormalizeFilename(""r.xml"", ""/r/"")" _ $Char(10) _ " Set tSC = ##class(%SQL.Manager.QButtons.Base).WriteAllToFile(""2291"", tFile)"), "a generate is one WriteAllToFile to the file path names under root, as the reviewed write's: " _ tSteps.%Get(0).text)
     Do $$$AssertEquals($ClassMethod(..#PORT, "SnippetForm", "Reports", "CASE") _ "|" _ $ClassMethod(..#PORT, "SnippetForm", "Reports", "SAVEQUERY"), "|objectscript", "the reads have no script and the writes have one")
 }
 
@@ -323,6 +340,52 @@ Method TestTheListCapsItsRowsAndReportsTheCut()
     Set tSC = ##class(OcuPilot.Screen.Read).Execute(..#LIST, 1, .tCut, .tHttp, .tFault)
     Do ##class(OcuPilot.Kernel.Scope).Clear()
     Do $$$AssertEquals($Select($$$ISOK(tSC) && $IsObject(tCut): tHttp _ "|" _ tCut.rows.%Size() _ "|" _ tCut.truncated, 1: ""), "200|1|1", "a cap of one row is reported as truncation")
+}
+
+/// <p>A saved query whose plan is empty, as for an <code>INSERT</code> the instance saves without running it, is listed with the instance's own status
+/// for the row, read from the vendor's table, and not as <code>Planned</code>.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Port.AtelierPort.CATALOGSQLREPORTSQUERY</code> answers <code>Planned</code> for every row -> the status assertion
+/// goes red.</p>
+Method TestARowWithNoPlanShowsTheInstancesOwnStatus()
+{
+    Set tId = ..SaveOne("INSERT INTO " _ $Parameter(..#PROBE, "REPORTTABLE") _ " (A, B) VALUES (99, 'zz')")
+    Do $$$AssertTrue(tId '= "", "the instance saves an INSERT for the case: " _ tId)
+    Set tOrigNS = $NAMESPACE
+    Set $NAMESPACE = ..#NAMESPACE
+    Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT QueryCompileDecomposedStatus, CASE WHEN QueryPlan IS NULL THEN 1 ELSE 0 END FROM %SQL_Manager_QButtons.Base WHERE ID = ?", tId)
+    Set (tOwn, tEmpty) = ""
+    If tResult.%Next() Set tOwn = tResult.%GetData(1), tEmpty = tResult.%GetData(2)
+    Set tResult = ""
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertEquals(tEmpty, 1, "the saved INSERT has no plan")
+    Do ##class(OcuPilot.Kernel.Scope).Set(..#NAMESPACE)
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute(..#LIST, 100000, .tAll, .tHttp, .tFault)
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Set tStatus = "(not listed)"
+    If $$$ISOK(tSC) && $IsObject(tAll) {
+        Set tIterator = tAll.rows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            If tRow.ID = tId Set tStatus = tRow.Status
+        }
+    }
+    Do $$$AssertTrue((tStatus '= "Planned") && (tStatus = tOwn), "the list shows the instance's own status, not Planned: '" _ tStatus _ "' against '" _ tOwn _ "'")
+}
+
+/// <p>The list's note names who sees a saved query as the instance's own row-level security policy for the vendor's table says: the person who saved it
+/// and each role <code>%SQL.Manager.QButtons.Base.%SecurityPolicy</code> answers beside that person, read from the instance, and no other role.</p>
+/// <p>Mutation (Rule 19): the note drops <code>%Developer</code> -> the role assertion goes red.</p>
+Method TestTheListNoteNamesTheRolesTheInstanceAdmits()
+{
+    Set tNote = ..Declaration(..#LIST).read.note.text
+    Set tPolicy = ##class(%SQL.Manager.QButtons.Base).%SecurityPolicy("OcuProbeUser2129")
+    Do $$$AssertEquals($Piece(tPolicy, ",", 1), "OcuProbeUser2129", "the instance's policy admits the user who saved a row")
+    Set tRoles = $Piece(tPolicy, ",", 2, *)
+    Do $$$AssertTrue(tRoles '= "", "and roles beside that user: " _ tPolicy)
+    For tI = 1:1:$Length(tRoles, ",") {
+        Do $$$AssertTrue(tNote [ (" " _ $Piece(tRoles, ",", tI)), "the note names the role " _ $Piece(tRoles, ",", tI) _ ": " _ tNote)
+    }
+    Do $$$AssertTrue(tNote [ "the person who saved it", "and the person who saved it: " _ tNote)
+    Do $$$AssertEquals($Length(tNote, "%") - 1, $Length(tRoles, ","), "and no role the policy does not name: " _ tNote)
 }
 
 }

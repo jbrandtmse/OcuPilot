@@ -133,8 +133,9 @@ Parameter WRCKEY = "WRCNumber";
 
 Parameter REPORTSTATEMENTKEY = "Statement";
 
-/// <p>A support case number: one to nine digits, not zero. The vendor takes more shapes than this and stores some of them altered.</p>
-Parameter WRCPATTERN = "^[0-9]{1,9}$";
+/// <p>A support case number: one to nine digits with no leading zero, so not zero. The vendor takes more shapes than this and stores some of them altered,
+/// and its report matches a case only by the number as stored.</p>
+Parameter WRCPATTERN = "^[1-9][0-9]{0,8}$";
 
 /// <p>The vendor class whose <code>InsertQuery</code>, <code>ClearRow</code> and <code>WriteAllToFile</code> the report writes call, and the table it keeps its
 /// rows in.</p>
@@ -1910,7 +1911,10 @@ ClassMethod ReportsServe(pNamespace As %String, pType As %String, pId As %String
         Quit ..ReportWrite(pNamespace, pType, pId, "", .pResult, .pHttpStatus, .pFault)
     }
     If (pType = ..#TYPECASE) && ($Get(pQuery(..#WRCKEY)) = "") {
-        Quit ..ReportCase(pNamespace, "", $Get(pQuery(..#REPORTSTATEMENTKEY)), .pResult, .pHttpStatus, .pFault)
+        Set tText = $Get(pQuery(..#REPORTSTATEMENTKEY))
+        Set tReason = $Select(tText = "": "", 1: ..ValueProblem(..#REPORTSTATEMENTKEY, tText, .tCode))
+        If tReason '= "" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, tCode, tReason, .pHttpStatus, .pFault)
+        Quit ..ReportCase(pNamespace, "", tText, .pResult, .pHttpStatus, .pFault)
     }
     Set tSC = ..ReportValues(.pQuery, .tValues, .tWrc, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
@@ -2009,7 +2013,7 @@ ClassMethod ReportRow(pNamespace As %String, pId As %String, Output pAnswer As %
     Set tSC = ..CheckedRows(pNamespace, ..#SAVEDQUERYQUERY, [(pId)], 1, "the saved query", ..#REPORTTABLES, .tRows, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     If tRows.%Size() = 0 {
-        Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ##class(OcuPilot.Api.AtelierError).#REASONSQLREPORTNOTFOUND, .pHttpStatus, .pFault)
+        Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ##class(OcuPilot.Api.AtelierError).#REASONSQLREPORTNOROWS, .pHttpStatus, .pFault)
     }
     Set pAnswer = {}
     Do pAnswer.%Set("Namespace", pNamespace, "string")
@@ -2148,13 +2152,13 @@ ClassMethod ReportGenerate(pNamespace As %String, pWrc As %String, pValues As %S
             Do pAnswer.%Set(##class(OcuPilot.Port.AtelierPort).#ROOTKEY, tRoot, "string")
             Do pAnswer.%Set(##class(OcuPilot.Port.AtelierPort).#PATHKEY, tPath, "string")
         } Else {
-            Set tSC = ##class(OcuPilot.Port.AtelierPort).ReadText(tTemp, .tText, .tTooLarge)
+            Set tSC = ##class(OcuPilot.Port.AtelierPort).ReadText(tTemp, .tText, .tTooLarge, ..#MAXREPORTCHARACTERS)
             If $$$ISERR(tSC) {
                 Set pAnswer = ""
                 Set tSC = ..Fail("the generated report could not be read", tSC, .pHttpStatus, .pFault)
                 Quit
             }
-            If tTooLarge || ($Length(tText) > ..#MAXREPORTCHARACTERS) {
+            If tTooLarge {
                 Set pAnswer = ""
                 Set tSC = ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AtelierError).#SQLREPORTTOOLONG, ##class(OcuPilot.Api.AtelierError).#REASONSQLREPORTTOOLONG, .pHttpStatus, .pFault)
                 Quit
@@ -2194,8 +2198,8 @@ ClassMethod ReportCall(pType As %String, pId As %String, pNamespace As %String, 
 
 /// <p>The report write <var>pType</var> as a script (AD-59) in the namespace <code>namespace</code> names: the vendor call <method>ReportCall</method> makes,
 /// with the same arguments, each caller value shown as a string literal so nothing the query carries runs as code. A generate writes the file the
-/// query's <code>path</code> names, which the script's reader places under the allowed directory <code>root</code> names. The script gives the vendor no
-/// device, so the output a request would hide is the terminal's.</p>
+/// query's <code>path</code> names under the allowed directory <code>root</code> names, joined by <code>%File.NormalizeFilename</code> as the export
+/// script joins them. The script gives the vendor no device, so the output a request would hide is the terminal's.</p>
 ClassMethod ReportSnippet(pType As %String, ByRef pQuery) As %DynamicArray [ Private ]
 {
     Set tClass = "##class(" _ ..#REPORTCLASS _ ")."
@@ -2210,7 +2214,8 @@ ClassMethod ReportSnippet(pType As %String, ByRef pQuery) As %DynamicArray [ Pri
         Set tText = tText _ $Char(10) _ " Set tSC = " _ tClass _ "InsertQuery(" _ ..Literal($Get(pQuery(..#REPORTSTATEMENTKEY))) _ ", " _ ..Literal($Get(pQuery(..#WRCKEY))) _ ", 0, 0)" _ tShow
         Quit ..SnippetSteps(tText)
     }
-    Set tText = tText _ $Char(10) _ " Set tSC = " _ tClass _ "WriteAllToFile(" _ ..Literal($Get(pQuery(..#WRCKEY))) _ ", " _ ..Literal($Get(pQuery(##class(OcuPilot.Port.AtelierPort).#PATHKEY))) _ ")" _ tShow
+    Set tText = tText _ $Char(10) _ " Set tFile = ##class(%File).NormalizeFilename(" _ ..Literal($Get(pQuery(##class(OcuPilot.Port.AtelierPort).#PATHKEY))) _ ", " _ ..Literal($Get(pQuery(##class(OcuPilot.Port.AtelierPort).#ROOTKEY))) _ ")"
+    Set tText = tText _ $Char(10) _ " Set tSC = " _ tClass _ "WriteAllToFile(" _ ..Literal($Get(pQuery(..#WRCKEY))) _ ", tFile)" _ tShow
     Quit ..SnippetSteps(tText)
 }
 

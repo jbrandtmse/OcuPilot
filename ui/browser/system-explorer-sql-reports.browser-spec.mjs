@@ -93,6 +93,7 @@ after(async () => {
       assert.equal(removed.value, '1', `the probe objects are removed: ${removed.output}`);
       assert.equal(probe('RLEFT2', `##class(${PROBE}).ReportLeft("${NS}")`).value, '0', 'no saved query of the probe is left');
       assert.equal(probe('RTABLE', `##class(%Dictionary.CompiledClass).%ExistsId("${SCHEMA}.T")`).value, '0', 'the probe table is gone');
+      assert.equal(probe('RCACHE', `##class(${PROBE}).CachedQueryCount("${NS}", "${SCHEMA}")`).value, '0', 'no cached query of the probe is left');
     }
   }
 });
@@ -241,7 +242,7 @@ test('AC1: Save query, with no row selected, asks for the case and the statement
     assert.equal(savedStatement(), STATEMENT, 'it holds the statement as written');
     assert.equal(await statusLine(page), STRINGS.sqlReportsSaveDone.replace('<wrc>', WRC), 'the page says which case was saved');
     await filterToProbe(page);
-    // Mutation (Rule 19): `SqlReportsPage.onSave` posts no `Statement` value -> the instance refuses the save, the dialog stays open and this wait times out.
+    // Mutation (Rule 19): `SqlReportsPage.onSave` sends nothing (rebuilt and redeployed) -> the dialog never closes and this wait times out.
     await waitForProbeRow(page);
   } finally {
     await context.close();

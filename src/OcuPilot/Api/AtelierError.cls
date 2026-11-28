@@ -549,7 +549,8 @@ Parameter SQLREPORTWRC = "EXPLORER.SQLREPORT.WRC";
 Parameter REASONSQLREPORTWRC = "A support case number is a whole number of up to 9 digits.";
 
 /// <p>Envelope code: no query is saved for the support case, so there is no report to generate (Story 21.29). Rendered on the
-/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409.</p>
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409. Its sentence is also the reason of the 404 <code>PORT.NOTFOUND</code> a saved query
+/// the caller cannot see by its id answers.</p>
 Parameter SQLREPORTNOROWS = "EXPLORER.SQLREPORT.NOROWS";
 
 Parameter REASONSQLREPORTNOROWS = "No query is saved for this support case in this namespace.";
@@ -559,12 +560,6 @@ Parameter REASONSQLREPORTNOROWS = "No query is saved for this support case in th
 Parameter SQLREPORTTOOLONG = "EXPLORER.SQLREPORT.TOOLONG";
 
 Parameter REASONSQLREPORTTOOLONG = "This report is longer than 3,000,000 characters, so it can be generated to a server file only.";
-
-/// <p>Envelope code: no saved query with that id is visible to the caller (Story 21.29). Rendered on the
-/// <parameter>OcuPilot.Api.Error.NOTFOUND</parameter> slug with 404, unlogged.</p>
-Parameter SQLREPORTNOTFOUND = "EXPLORER.SQLREPORT.NOTFOUND";
-
-Parameter REASONSQLREPORTNOTFOUND = "No query is saved for this support case in this namespace.";
 
 /// <p>Consequence codes (Story 21.29): what a save, a delete and a generate to a server file do, stated on the proposal card and the dialog. A
 /// generate to this browser writes no file and states none.</p>
@@ -705,7 +700,6 @@ ClassMethod SqlReasonFor(pCode As %String) As %String
     If pCode = ..#SQLREPORTWRC Quit ..#REASONSQLREPORTWRC
     If pCode = ..#SQLREPORTNOROWS Quit ..#REASONSQLREPORTNOROWS
     If pCode = ..#SQLREPORTTOOLONG Quit ..#REASONSQLREPORTTOOLONG
-    If pCode = ..#SQLREPORTNOTFOUND Quit ..#REASONSQLREPORTNOTFOUND
     If pCode = ..#SQLREPORTSAVE Quit ..#REASONSQLREPORTSAVE
     If pCode = ..#SQLREPORTDELETE Quit ..#REASONSQLREPORTDELETE
     If pCode = ..#SQLREPORTGENERATE Quit ..#REASONSQLREPORTGENERATE

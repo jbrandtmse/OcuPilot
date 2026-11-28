@@ -19,7 +19,7 @@ Parameter READSVALUES As BOOLEAN = 1;
 
 Parameter READANSWERS = "Namespace,WRCNumber,Saved,Kind,StatementType,Tables,Statement,root,path";
 
-/// <p>The classic pages whose operations these writes perform (AD-44): the report generator and its generate dialog.</p>
+/// <p>The classic page whose operations these writes perform (AD-44): the report generator. Generate adds its dialog.</p>
 Parameter CLASSICPAGES = "%CSP.UI.Portal.SQL.QButtons.ReportGenerator";
 
 Parameter IDDESCRIPTION = "Send the literal '*': this acts on the support case the values name in this namespace.";

@@ -2398,12 +2398,13 @@ ClassMethod ImportSource(ByRef pQuery, Output pText As %String, Output pLabel As
 }
 
 /// <p><var>pFile</var>'s text, read as UTF-8, in <var>pText</var>; <var>pTooLarge</var> is 1, and
-/// <var>pText</var> empty, once it passes <parameter>MAXIMPORTCHARACTERS</parameter>.</p>
-ClassMethod ReadText(pFile As %String, Output pText As %String, Output pTooLarge As %Boolean) As %Status
+/// <var>pText</var> empty, once it passes <var>pMax</var> characters, <parameter>MAXIMPORTCHARACTERS</parameter> when none is given.</p>
+ClassMethod ReadText(pFile As %String, Output pText As %String, Output pTooLarge As %Boolean, pMax As %Integer = "") As %Status
 {
     Set tSC = $$$OK
     Set pText = ""
     Set pTooLarge = 0
+    Set tMax = $Select(pMax = "": ..#MAXIMPORTCHARACTERS, 1: pMax)
     Try {
         Set tStream = ##class(%Stream.FileCharacter).%New()
         Set tStream.TranslateTable = "UTF8"
@@ -2412,7 +2413,7 @@ ClassMethod ReadText(pFile As %String, Output pText As %String, Output pTooLarge
         While 'tStream.AtEnd {
             Set tChunk = tStream.Read(32000, .tSC)
             If $$$ISERR(tSC) Quit
-            If ($Length(pText) + $Length(tChunk)) > ..#MAXIMPORTCHARACTERS {
+            If ($Length(pText) + $Length(tChunk)) > tMax {
                 Set pTooLarge = 1
                 Set pText = ""
                 Quit

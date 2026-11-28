@@ -15,6 +15,9 @@ Parameter DESCRIPTION = "Propose writing the troubleshooting report of one Inter
 
 Parameter WRITETYPE = "GENERATE";
 
+/// <p>The classic pages whose operation this write performs (AD-44): the report generator and its generate dialog, whose custom resource also gates it.</p>
+Parameter CLASSICPAGES = "%CSP.UI.Portal.SQL.QButtons.ReportGenerator,%CSP.UI.Portal.Dialog.SQLReportGenerator";
+
 /// <p>The report to a server file, whose two values are the file, and the report to this browser, which admits none.</p>
 Parameter SCREENACTIONS = "generate,generate-browser";
 

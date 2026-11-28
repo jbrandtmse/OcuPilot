@@ -50,7 +50,7 @@ XData Declaration
     "source": {"port": "atelier", "endpoint": "Catalog.SqlReports", "type": "LIST"},
     "fields": ["ID", "WRCNumber", "Saved", "Status", "DelimitedIdentifiers", "Schema", "Statement"],
     "filter": ["ID", "Status", "Schema", "Statement"],
-    "sort": {"fields": ["ID", "WRCNumber", "Saved", "Status", "Schema"], "default": "WRCNumber", "direction": "asc"},
+    "sort": {"fields": ["ID", "WRCNumber", "Status", "Schema"], "default": "WRCNumber", "direction": "asc"},
     "paging": "cap",
     "note": {"key": "explorerSqlReportsNote", "text": "A saved query is listed for the person who saved it and for holders of %All or %Developer."}
   },
@@ -60,7 +60,7 @@ XData Declaration
       {"field": "WRCNumber", "labelKey": "explorerSqlReportsColumnWrc", "kind": "number"},
       {"field": "Saved", "labelKey": "formSaved", "kind": "text"},
       {"field": "Status", "labelKey": "taskHistoryColumnStatus", "kind": "text"},
-      {"field": "DelimitedIdentifiers", "labelKey": "explorerSqlReportsColumnDelimited", "kind": "text"},
+      {"field": "DelimitedIdentifiers", "labelKey": "explorerSqlReportsColumnDelimited", "kind": "status"},
       {"field": "Schema", "labelKey": "explorerSqlColumnSchema", "kind": "text"},
       {"field": "Statement", "labelKey": "explorerSqlColumnStatement", "kind": "text"}
     ],
