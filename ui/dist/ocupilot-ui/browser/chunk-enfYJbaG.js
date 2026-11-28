@@ -1,0 +1,1 @@
+import{jt as Vx}from"./chunk-D79-g0RS.js";function t(n){return n.toTimeString().slice(0,8)}function a(n,r,i){return r===`running`?Vx.databaseOperationRunning.replace(`<operation>`,()=>n).replace(`<time>`,()=>i===null?``:t(i)):r===`finished`?Vx.databaseOperationFinished.replace(`<operation>`,()=>n):r===`continues`?Vx.auditDatabaseStillRunning:``}export{t as n,a as t};
