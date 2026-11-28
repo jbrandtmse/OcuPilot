@@ -2,16 +2,7 @@
 
 Answer an item with `bash _bmad/scripts/unattended-inbox.sh <this directory> answer U-<n> "<answer>" --by owner`, or run `/epic-cycle --review`. This file is generated: a hand edit is saved aside and never applied.
 
-**Hold requested 2026-11-27T03:00:40Z: owner: planned pause at 95% weekly usage (reading 95% at 2026-11-27T03:00:40Z); owner to the Planner 2026-11-26: "We're at 50% usage right now, I want a planned pause at 95%, but I plan to reset the account before that."**
-
-## Parked
-
-### U-184 | parked | Story 21.41 (troubleshooting report import) | 2026-11-27T01:26:24Z
-question: Should OcuPilot import troubleshooting reports at all? Measured on the test instance: every real import writes its saved-query routines into the IRISLOCALDATA database, outside the namespace you import into, and a crafted report whose routine was renamed %zz... wrote into IRISSYS; the instance checks nothing about a document's name.
-options: A: do not build Import; the classic page remains for support engineers. B: build it with an allow-list - only classes, .ext items and the report's own %sqlcq.<namespace>.QButtons.WRC* routines, read from the report before anything is imported; IRISLOCALDATA write permission joins the gate; anything else refused.
-recommendation: A (the instance writes any document name anywhere, and IRISSYS was measured)
-blocks: Story 21.41; Epic 21's merge waits for this answer
-answer: A: do not build Import; the classic page remains for support engineers (by planner via Planner AskUserQuestion 2026-11-26, 2026-11-27T01:46:57Z#560; quoting the owner: "Don't build Import (Recommended)")
+**Hold requested 2026-11-28T08:15:33Z: owner (via Planner, 2026-11-28 ~02:20Z): release what is finished as 1.0.19, then pause the project to conserve quota; scoped run done (21.29 and 24.18 B1 merged)**
 
 ## Veto window
 
@@ -73,6 +64,13 @@ recommendation: Resume when the owner says
 blocks: the run
 answer: (none yet -- answer with the script or --review)
 
+### U-186 | hold | Run 20261114T1656Z-21,22 | 2026-11-28T08:15:39Z
+question: Run held for the 1.0.19 cut and project pause (owner via Planner). Feature 3f721a7c3 carries 21.29 and 24.18 B1. Resume with /epic-cycle 21,22 --unattended after the pause.
+options: resume when the owner says | keep paused
+recommendation: keep paused until the owner restarts; the Planner cuts 1.0.19 from feature 3f721a7c3
+blocks: all dispatch (Epics 21 and 24 held)
+answer: (none yet -- answer with the script or --review)
+
 ## Run reports
 
 ### U-2 | report | Run 20261020T0940Z-20,23 | 2026-10-20T15:30:42Z
@@ -115,6 +113,13 @@ question: After merging Epic 24's 24.3, 24.4 and 24.8 (green on their own stagin
 options: acknowledge
 recommendation: acknowledge
 blocks: dispatch only
+answer: (none yet -- answer with the script or --review)
+
+### U-187 | report | Run 20261114T1656Z-21,22 | 2026-11-28T08:15:39Z
+question: Run report 2026-11-28 (scoped resume): merged 24.18 B1 (456594171, run 46103931006) and 21.29 (3f721a7c3, run 46120576853); U-184 applied (21.41 dropped); one veto ruling (21.29 Generate wording, folded into U-183); veto_open 4/20; new flakes DW-2919 (SqlAlternatePlansRoutes, burndown), DW-2920 (local timing tests under host load); next after the pause: Epic 21 burn-down gate + Story 21.42 (DW-1822 first) and epic close; Epic 24 24.18 Batch 2 onward.
+options: read
+recommendation: none
+blocks: nothing
 answer: (none yet -- answer with the script or --review)
 
 ## Resolved
@@ -288,5 +293,6 @@ answer: (none yet -- answer with the script or --review)
 - U-177 | veto | Story 24.17 (Batch 5, System monitor): Orchestrator ruling: the System monitor's vendor call writes the vendor's own metrics records on every call, as the classic page does on every refresh; accepted as the vendor's maintenance records (as the business rule log purge's bookkeeping was), named in the architecture's privilege rule at story end. Conditions: tests allow exactly those records and nothing else; OcuPilot never refreshes it faster than the classic page; the agent's background-job path is measured with a production running and handled before the agent read is built. -> keep (accept the vendor metrics records) (by planner via Planner AskUserQuestion 2026-11-26, 2026-11-26T17:59:37Z#460; quoting the owner: "Accept (Recommended)"); resolved by orchestrator, 2026-11-26T18:00:00Z -- owner via planner: keep (accept the vendor metrics records)
 - U-178 | veto | Story 21.28 (U-166 addendum: limits, privilege, plan ids): More choices on Story 21.28, decided without you after measurement. (1) Listing, showing and comparing alternate plans refuse a statement larger than a measured limit before anything runs: 'Alternate plans take a statement with at most %1 tables and %2 conditions.' (a large statement's plan generation ran past the page's wait and left worker processes behind). Compare runs never start parallel workers. (2) A person without the SQL EXECUTE privilege on the instance's plan procedures sees: 'Reading this needs the SQL EXECUTE privilege on %1.' (3) Compare runs the plan listing's own statement text, with values replaced by placeholders, so a listed plan is always the one that runs. -> keep (by planner via Planner AskUserQuestion 2026-11-26, 2026-11-26T17:59:43Z#505; quoting the owner: "Keep all 48 (Recommended)"); resolved by orchestrator, 2026-11-26T18:00:03Z -- owner via planner: keep
 - U-179 | held-merge | Feature merges (run 20261114T1656Z-21,22): 48 veto items are open (U-130..U-178) against limits.veto_open_max 20, so merges to the feature branch are held until the owner reviews them. The cap was already passed before the 11-24 hold (30 open) and the orchestrator kept merging through 11-26: 21.31, 24.17 B1, 21.40, 21.26, 24.17 B2, B3a, B3b, 21.27, B4 merged over the cap (breach, reported). -> A: keep all open vetoes; merges resume (by planner via Planner AskUserQuestion 2026-11-26, 2026-11-26T17:59:37Z#457; quoting the owner: "Keep all 48 (Recommended)"); resolved by orchestrator, 2026-11-26T18:00:00Z -- owner via planner: A: keep all open vetoes; merges resume
+- U-184 | parked | Story 21.41 (troubleshooting report import): Should OcuPilot import troubleshooting reports at all? Measured on the test instance: every real import writes its saved-query routines into the IRISLOCALDATA database, outside the namespace you import into, and a crafted report whose routine was renamed %zz... wrote into IRISSYS; the instance checks nothing about a document's name. -> A: do not build Import; the classic page remains for support engineers (by planner via Planner AskUserQuestion 2026-11-26, 2026-11-27T01:46:57Z#560; quoting the owner: "Don't build Import (Recommended)"); resolved by orchestrator, 2026-11-28T08:15:13Z -- epic 21: 21.41 dropped (story_dropped), applied by epic-runner-21; merged with 21.29 at 3f721a7c3
 
-<!-- journal: 562 lines -->
+<!-- journal: 569 lines -->

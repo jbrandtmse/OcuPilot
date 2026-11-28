@@ -14928,3 +14928,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-21 (21.29 post-merge) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: 21.29 post-merge test:tools runs at 07:09Z and 07:12Z, each 1 fail of 2430 in a different timing test, load average 7 with fseventsd at 100% CPU; both files unchanged by the merge and green on isolated reruns
 - 2026-11-28T07:15:41Z status=wontfix-accepted owner=21-29-troubleshooting-reports by=runner note=reopen_if=either test fails in a CI gates leg or on an idle host
+- 2026-11-28T08:15:13Z occurrence=merge_gate_21-29 by=merge_gate note=orchestrator_local_test:tools_2428/2430_at_load_avg_57_(macOS_fseventsd/mediaanalysisd/mds);_ci-flake-waits_and_shell-scripts_green_alone_at_load_35;_CI_46120576853_green_on_the_code_head
