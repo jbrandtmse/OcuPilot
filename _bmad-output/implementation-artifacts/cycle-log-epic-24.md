@@ -972,3 +972,5 @@
 2026-11-28T03:40:09Z	Story 24.18	fresh_check	scope=batch1 env=ocupilot-b-ci(rebuilt_03:3xZ_on_7ef2ab79d_tree,this_run) tests=tools2430,components355files,ReadTool28,ToolRoundTrip2,browser_hl7:2,lookup-tables:3,lookup-transfer:2,a11y:13 build=green smoke=50/50 result=pass order=forward
 2026-11-28T03:40:09Z	Story 24.18	committed	scope=batch1 sha=7ef2ab79d code=c613abc33+73bc05cf5+merge(feature_cb03bbaa9) ci=pending runs=46103931006 missing=none baseline_keys=interop.hl7schemas.add:true,interop.hl7schemas.delete:false,interop.hl7schemas.export:true,interop.hl7schemas.import:false
 2026-11-28T03:40:09Z	Story 24.18	hold_restored	story=24-18 note=committed_locally bundle=hold-2026-11-27-93b052bd1(deleted;tip_on_origin)
+2026-11-28T04:30:53Z	Story 24.18	ci_resolved	story=24.18(batch1) sha=7ef2ab79d runs=46103931006 failed=none via=none result=success resolved_at=gate
+2026-11-28T04:30:53Z	Story 24.18	story_merge_reported	scope=batch1 to=main code_head=7ef2ab79d run=46103931006 ledger_delta=+4(DW-2910..DW-2913_routed_24.18) baseline_keys=4
