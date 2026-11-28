@@ -13777,6 +13777,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 24.10's copy of the same branch, run on ocupilot-b-ci, ended not OK with the relative path and wrote the file once resolved through PathPort; 20.5's branch is the same text (inference for Interop's outcome)
 - 2026-11-17T13:04:24Z status=routed owner=burndown by=cr note=AD-59 prevents a script that makes a different change; resolve through ExportFile/PathPort as AnalyticsPort now does
 - 2026-11-19T19:15:46Z occurrence=21-10-the-remaining-leaves-across-the-six-areas
+- 2026-11-28T03:50:18Z occurrence=21-29-troubleshooting-reports by=cr note=SqlPort.ReportSnippet had the same unresolved path; patched in-story with NormalizeFilename(path, root)
 
 ### DW-2703: AD-39's fifth exception names an export's XML lines; Story 24.10's term list export answers CSV lines to the screen, which no spine line names
 - source: spec-24-10-folder-manager-transfer-and-term-list-import-export-and-copy.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -14871,3 +14872,29 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-29-troubleshooting-reports.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: 21.29 implement review: the list's Status fallback (a row whose plan is empty shows the instance's message) is untested
 - 2026-11-27T03:23:04Z status=open owner=21-29-troubleshooting-reports by=harvest note=for 21.29's code review
+- 2026-11-28T03:50:15Z status=resolved-by:21-29-troubleshooting-reports by=cr note=SqlReportRead.TestARowWithNoPlanShowsTheInstancesOwnStatus (INSERT row); mutation observed red
+
+### DW-2914: A failed troubleshooting report save can leave its row when the read after the vendor call fails or the clean-up delete fails
+- source: spec-21-29-troubleshooting-reports.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlPort.ReportWrite quits on the after-read error before its clean-up loop and ignores each ClearRow status; both reads and the delete act on the caller's own row in one request
+- 2026-11-28T03:50:21Z status=wontfix-theoretical owner=21-29-troubleshooting-reports by=cr note=real if a SELECT that just succeeded, or ClearRow of the caller's own row, can fail within one request
+
+### DW-2915: The troubleshooting report save's clean-up after a vendor call that raises has no test
+- source: spec-21-29-troubleshooting-reports.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlPort.ReportWrite removes new rows when Applied raises (tRaised); the fixture's Raise seam throws before the vendor saves, so no test leaves a row first
+- 2026-11-28T03:50:25Z status=wontfix-theoretical owner=21-29-troubleshooting-reports by=cr note=real if InsertQuery is measured to raise after writing its row
+
+### DW-2916: A holder of %Development:USE without SQL SELECT on the vendor's saved-query table sees the troubleshooting reports list but every write is refused
+- source: spec-21-29-troubleshooting-reports.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Task 0 (a): checked prepare of %SQL_Manager_QButtons.Base answers -99 for that principal; SqlPort.ReportIds/ReportRow use checked prepares (U-174), so Save, Delete and Generate answer 403 SQL.SELECT.PRIVILEGE
+- 2026-11-28T03:50:29Z status=by-design owner=21-29-troubleshooting-reports by=cr note=stricter than the classic page by the U-174 checked-prepare ruling; decided in-stage at implement
+
+### DW-2917: Story 21.29's tests leave the runtime-statistics and statement-index rows each probe save makes
+- source: spec-21-29-troubleshooting-reports.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Task 0 (c): one save adds 4-6 runtime-statistics rows and 3 statement-index rows; RemoveReport removes rows, cached queries and the table only, and removing these needs a namespace-wide purge an unarmed test may not run
+- 2026-11-28T03:50:33Z status=wontfix-accepted owner=21-29-troubleshooting-reports by=cr note=reopen_if=a test counts a namespace's runtime-statistics or statement-index rows without its own token or table filter
+
+### DW-2918: Several Story 21.29 test comments name a mutation that was never applied
+- source: spec-21-29-troubleshooting-reports.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlReportWrite case-swap, StateDiff by two, Holds every kind, first row only and reason-message comments, and two browser-spec comments; each AC's pinning mutation is recorded and observed in the spec
+- 2026-11-28T03:50:37Z status=wontfix-accepted owner=21-29-troubleshooting-reports by=cr note=reopen_if=a mutation named in a 21.29 test comment is applied and the test stays green

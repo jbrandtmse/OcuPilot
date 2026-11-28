@@ -206,6 +206,43 @@ deferred:
 - AC5. Moved to Story 21.41 (split 2026-11-27, orchestrator ruling; parked U-184).
 - AC6. Given the throwaway, when the browser spec runs forward and in reverse with `system-explorer-sql-runtime-stats.browser-spec.mjs`, then it passes and leaves no saved row, report file, probe table or cached query.
 
+### Review Findings
+
+Code review 2026-11-28 (first review, full story; four layers): 1 high, 7 medium, 14 low entries from 41 raw findings; every patch applied and verified on `ocupilot-ci`.
+
+- [x] [Review][Patch] (high) Generate's copy-out script dropped `root`, so run as given it wrote the report into the database directory (AD-59) [src/OcuPilot/Port/SqlPort.cls ReportSnippet]: now `NormalizeFilename(path, root)` as the export script does.
+- [x] [Review][Patch] (med) Generate ignored a custom resource on the classic generate dialog (ruling 6, AD-44) [src/OcuPilot/Screen/Tool/ExplorerSqlReportGenerate.cls CLASSICPAGES]: the dialog is declared, and `MappingDescriptor.CLASSICROSTER` lists it.
+- [x] [Review][Patch] (med) A zero-led case number passed the check: measured, `007` found the case's rows through the port's read while the vendor wrote an empty 50-byte report answered as success [src/OcuPilot/Port/SqlPort.cls WRCPATTERN]: a leading zero is now refused.
+- [x] [Review][Patch] (med) The accepted case-number edges, 1 and 9 digits, had no test [src/OcuPilot/Test/SqlReportRead.cls].
+- [x] [Review][Patch] (med) The browser cap's production branch (the read's too-large flag) was untested and its value unpinned [src/OcuPilot/Port/SqlPort.cls ReportGenerate, src/OcuPilot/Port/AtelierPort.cls ReadText]: the read takes the port's cap, and the value and sentence are pinned.
+- [x] [Review][Patch] (med) The ruled 404 sentence was not asserted, and an unused `EXPLORER.SQLREPORT.NOTFOUND` code claimed to be the 404's [src/OcuPilot/Api/AtelierError.cls]: the code is removed and the reason asserted.
+- [x] [Review][Patch] (med) The list note's role names had no test against the instance [src/OcuPilot/Test/SqlReportRead.cls]: the note is checked against `%SecurityPolicy` read from the instance.
+- [x] [Review][Patch] (med) AC6's cached-query read-back was missing from the browser spec, and a browser report's temp-file deletion on success was unasserted [ui/browser/system-explorer-sql-reports.browser-spec.mjs, src/OcuPilot/Test/SqlReportWrite.cls].
+- [x] [Review][Patch] (low) `Saved` (12-hour UTC text) was offered as a sort that misorders across noon; removed from the sort fields [src/OcuPilot/Screen/Descriptor/ExplorerSqlReports.cls].
+- [x] [Review][Patch] (low) The delimited-identifiers flag was drawn as text; now `status` as sibling flags are.
+- [x] [Review][Patch] (low) The case read with no case number skipped the statement's length bound [src/OcuPilot/Port/SqlPort.cls ReportsServe].
+- [x] [Review][Patch] (low) The error-status test could pass with no row left; the fixture now records the rows the call left [src/OcuPilot/Test/SqlTuningPortFixture.cls]. The second leg's doc no longer claims a negative number reaches the vendor.
+- [x] [Review][Patch] (low) A vacuous assertion (`ReportStatement(ns, 0)`), a "no file left" doc claim and two in-file mutation notes that disagreed with the recorded mutations are corrected.
+- [x] [Review][Patch] (low) The ObjectScript after hooks did not read the probe table back absent; both now do.
+- [x] [Review][Patch] (low) DW-2909: the list's Status fallback branch now has a test (an `INSERT` saved through the vendor); resolved in the ledger.
+- [x] [Review][Defer] (low) A failed save's clean-up when the after-read or a clean-up delete fails [src/OcuPilot/Port/SqlPort.cls ReportWrite]: DW-2914, wontfix-theoretical.
+- [x] [Review][Defer] (low) The clean-up after a vendor call that raises has no test: DW-2915, wontfix-theoretical.
+- [x] [Review][Defer] (low) A `%Development:USE` holder without SQL SELECT on the vendor's table sees the list but every write is 403 (U-174 checked prepares): DW-2916, by-design.
+- [x] [Review][Defer] (low) The probe's saves leave runtime-statistics and statement-index rows; no test counts them unfiltered, and removing them needs a namespace-wide purge: DW-2917, wontfix-accepted.
+- [x] [Review][Defer] (low) Several in-file mutation comments were never applied: DW-2918, wontfix-accepted.
+
+Rejected:
+
+- Concurrent saves under one case by one user: low; a fix adds a lock, and the earlier triage closed it.
+- More than 100,000 visible rows for one case: low; not reachable in use.
+- A copy over an existing file failing part-way: low; a disk fault, and the fix adds staging.
+- `WriteAllToFile` renaming its file (two layers): false; Task 0 (d) measured the name unchanged.
+- The save dialog latching closed after Escape during a send: maybe-false and low; the same latch is in nine sibling dialogs.
+- The descriptor's doc calling `save` and `generate` page actions while it lists them as row actions: false; page actions register under row-action ids by design.
+- "No caller text reaches a path": low; `root` and `path` reach one only through `PathPort` (AD-21).
+- The note leaving out that `%Development:USE` alone sees no one else's rows: low; the note is accurate, and a new sentence is an escalation.
+- The browser spec depending on its account's roles: maybe-false and low.
+
 ## Spec Change Log
 
 - 2026-11-25, orchestrator rulings at the plan gate (veto U-167), authoritative over the Design Notes records and Tasks where they differ. Neither A nor B is an `owner_only` match (epics.md asks only that the reports round-trip); both are veto.
@@ -414,6 +451,16 @@ Grep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for ea
 - AC5: the write skips the `OCUPILOTCODE` check -> `SqlReportImport`'s own-code leg red, with the seam counting a call.
 - AC6: the page drops Save query's post -> after rebuild and redeploy, the browser spec red.
   - mutation (client): `SqlReportsPage.onSave` sends nothing (`sent` is false) -> after `npm run build` and the copy into `ocupilot-ci`, `system-explorer-sql-reports.browser-spec.mjs` AC1 red (the dialog never closes, `TimeoutError` at `dialogClosed`, 64 s); reverted, rebuilt and redeployed, 4/4 green. The new spec then the runtime statistics spec, and the runtime statistics spec then the new spec, each 4/4 green and each leaving no saved row, probe table or cached query.
+- Code review, 2026-11-28 (each applied on `ocupilot-ci`, observed red, reverted, tree byte-identical, source reloaded):
+  - mutation: `SqlPort.WRCPATTERN` back to `^[0-9]{1,9}$` -> `SqlReportRead.TestEveryValueShapeIsRefusedBeforeAnyCall` red on every `007` and `01` leg.
+  - mutation: `SqlPort.ReportsServe` skips the statement bound on the case read with no case number -> the same test red on that leg.
+  - mutation: `SqlPort.ReportRow` answers its 404 with another reason -> `SqlReportRead.TestTheCaseAndTheSavedQueryReadTheInstancesRows` red on the ruled-sentence leg.
+  - mutation: `SqlPort.ReportSnippet` drops `root` from `NormalizeFilename` -> `SqlReportRead.TestTheCopyOutScriptsAreTheirVendorCall` red.
+  - mutation: `AtelierPort.CATALOGSQLREPORTSQUERY` answers `Planned` for every row -> `SqlReportRead.TestARowWithNoPlanShowsTheInstancesOwnStatus` red.
+  - mutation: the descriptor's note drops `%Developer` -> `SqlReportRead.TestTheListNoteNamesTheRolesTheInstanceAdmits` red.
+  - mutation (recorded, re-run): `SqlPort.ReportGenerate`'s cap check (now `If tTooLarge`, the read taking `MAXREPORTCHARACTERS`) replaced by `If 0` -> `SqlReportWrite.TestAReportLongerThanTheCapIsRefusedForTheBrowserAndNothingIsLeft` red on the 422 and no-lines assertions.
+  - mutation (recorded, re-run): `SqlPort.ReportWrite` skips its clean-up of new rows -> `SqlReportWrite.TestASaveThatEndsInAnErrorStatusLeavesNoRowAndTheErrorReachesTheCaller` red on both legs, while the compile leg's new rows-left assertion stays green.
+  - mutation: `ExplorerSqlReportGenerate.CLASSICPAGES` drops the generate dialog -> `MappingDescriptor.TestTheClassicPagesRosterIsTheDeclaringTools` red.
 
 ### Task 0 measurements
 
