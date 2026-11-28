@@ -590,6 +590,9 @@ export const CONSEQUENCE_INTEROPWORKFLOWMEMBERREMOVE = 'INTEROP.WORKFLOW.MEMBERR
 export const CONSEQUENCE_INTEROPWORKFLOWTASKASSIGN = 'INTEROP.WORKFLOW.TASKASSIGN';
 export const CONSEQUENCE_INTEROPWORKFLOWTASKUNASSIGN = 'INTEROP.WORKFLOW.TASKUNASSIGN';
 export const CONSEQUENCE_INTEROPWORKFLOWTASKCANCEL = 'INTEROP.WORKFLOW.TASKCANCEL';
+/** Story 24.18 Batch 1: an HL7 schema's deletion and its import. */
+export const CONSEQUENCE_INTEROPHL7DELETE = 'INTEROP.HL7.DELETE';
+export const CONSEQUENCE_INTEROPHL7IMPORT = 'INTEROP.HL7.IMPORT';
 /** Story 24.16: a purge of management data, and one whose bitmap cleanup is on. */
 export const CONSEQUENCE_INTEROPPURGERUN = 'INTEROP.PURGE.RUN';
 export const CONSEQUENCE_INTEROPPURGEBITMAP = 'INTEROP.PURGE.BITMAP';
@@ -878,6 +881,9 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_INTEROPWORKFLOWTASKASSIGN) return STRINGS.interopWorkflowTaskAssignConsequence;
   if (code === CONSEQUENCE_INTEROPWORKFLOWTASKUNASSIGN) return STRINGS.interopWorkflowTaskUnassignConsequence;
   if (code === CONSEQUENCE_INTEROPWORKFLOWTASKCANCEL) return STRINGS.interopWorkflowTaskCancelConsequence;
+  // Story 24.18 Batch 1: an HL7 schema's deletion and its import, each published once.
+  if (code === CONSEQUENCE_INTEROPHL7DELETE) return STRINGS.interopHl7DeleteConsequence;
+  if (code === CONSEQUENCE_INTEROPHL7IMPORT) return STRINGS.interopHl7ImportConsequence;
   // Story 24.16: a purge's sentence, the one its own dialog shows, and the bitmap cleanup's.
   if (code === CONSEQUENCE_INTEROPPURGERUN) return STRINGS.interopPurgeRunConsequence;
   if (code === CONSEQUENCE_INTEROPPURGEBITMAP) return STRINGS.interopPurgeBitmapConsequence;

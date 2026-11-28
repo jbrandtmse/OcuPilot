@@ -397,6 +397,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     assign: STRINGS.webAppRoleAssign,
     cancel: STRINGS.backgroundTaskCancelAction,
   },
+  // Story 24.18 Batch 1: HL7 schemas' New HL7 schema opens the dialog that adds a custom schema, its Delete removes one and its Export writes the selected one.
+  'OcuPilot.Screen.Descriptor.InteropHl7SchemaList': { add: STRINGS.interopHl7SchemaAddAction, delete: STRINGS.actionDelete, export: STRINGS.taskExportAction },
   // Story 24.16: Purge management data's Purge, which opens the dialog that takes the days, and Purge data settings' Set value.
   'OcuPilot.Screen.Descriptor.InteropPurgeList': { purge: STRINGS.auditDatabasePurgeConfirm },
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': { set: STRINGS.interopItemSettingSetAction },

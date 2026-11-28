@@ -307,6 +307,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 24.17 Batch 4: Workflow tasks, the list with its Assign task dialog. Workflow worklist is read-only and takes the shared list page.
   'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': () =>
     import('../areas/interoperability/interop-workflow-task-list.page').then((m) => m.InteropWorkflowTaskListPage),
+  // Story 24.18 Batch 1: HL7 schemas, the list with its New HL7 schema dialog and its Export and Import dialogs.
+  'OcuPilot.Screen.Descriptor.InteropHl7SchemaList': () => import('../areas/interoperability/interop-hl7-schema-list.page').then((m) => m.InteropHl7SchemaListPage),
   // Story 24.17 Batch 5: System monitor, the vendor's meters in groups with three tables drawn from its drill-downs' own reads. The three drill-downs are the shared list page.
   'OcuPilot.Screen.Descriptor.InteropSystemMonitor': () =>
     import('../areas/interoperability/interop-system-monitor.page').then((m) => m.InteropSystemMonitorPage),

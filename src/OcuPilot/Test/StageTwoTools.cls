@@ -260,6 +260,7 @@ XData Elsewhere
 <screen name="InteropSystemMonitorProcesses"/>
 <screen name="InteropSystemMonitorQueues"/>
 <screen name="InteropSystemMonitorTasks"/>
+<screen name="InteropHl7SchemaList"/>
 <screen name="InteropSuspendedMessageList"/>
 <screen name="InteropItemClassTab"/>
 <screen name="InteropItemJobTab"/>

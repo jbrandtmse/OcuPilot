@@ -285,6 +285,7 @@ XData Coverage
 <screen name="InteropSystemMonitorProcesses" class="OcuPilot.Test.InteropSystemMonitorRead" method="TestTheFourScreensAreDeclaredAsThePlanPlacesThem" corpus="the four system monitor declarations are asserted together in one method"/>
 <screen name="InteropSystemMonitorQueues" class="OcuPilot.Test.InteropSystemMonitorRead" method="TestTheFourScreensAreDeclaredAsThePlanPlacesThem" corpus="the four system monitor declarations are asserted together in one method"/>
 <screen name="InteropSystemMonitorTasks" class="OcuPilot.Test.InteropSystemMonitorRead" method="TestTheFourScreensAreDeclaredAsThePlanPlacesThem" corpus="the four system monitor declarations are asserted together in one method"/>
+<screen name="InteropHl7SchemaList" class="OcuPilot.Test.InteropHl7SchemaList" method="TestTheDeclarationsRegister"/>
 <screen name="InteropPurgeList" class="OcuPilot.Test.InteropPurgeControl" method="TestTheDeclarationRegisters"/>
 <screen name="InteropPurgeSettingList" class="OcuPilot.Test.InteropPurgeSettingControl" method="TestTheDeclarationRegisters"/>
 <screen name="InteropArchiveList" class="OcuPilot.Test.InteropArchiveControl" method="TestTheRunIsDeclaredAsTheRowActionOfTheArchiveManager"/>
@@ -673,6 +674,10 @@ XData Coverage
 <tool name="interop.lookuptables.delete" class="OcuPilot.Test.InteropLookupControl" method="TestTheAgentsDeleteConfirmsOverHttp"/>
 <tool name="interop.lookuptables.export" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsExportConfirmsOverHttp"/>
 <tool name="interop.lookuptables.import" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsImportConfirmsOverHttp"/>
+<tool name="interop.hl7schemas.add" class="OcuPilot.Test.InteropHl7SchemaControl" method="TestAddFromBothCallersReadsBackAsSent"/>
+<tool name="interop.hl7schemas.delete" class="OcuPilot.Test.InteropHl7SchemaControl" method="TestDeleteFromBothCallersAndAStandardSchemaIsRefused"/>
+<tool name="interop.hl7schemas.export" class="OcuPilot.Test.InteropHl7SchemaTransfer" method="TestTheServerFileRoundTripThroughTheAgentRestoresTheSchema"/>
+<tool name="interop.hl7schemas.import" class="OcuPilot.Test.InteropHl7SchemaTransfer" method="TestTheServerFileRoundTripThroughTheAgentRestoresTheSchema" corpus="the server file round trip drives the agent's export and then its import through mint and confirm in one method"/>
 <tool name="interop.itemtest.send" class="OcuPilot.Test.InteropHostTest" method="TestTheAgentsSendConfirmsOverHttp"/>
 <tool name="interop.transforms.test" class="OcuPilot.Test.InteropTransformTest" method="TestTheAgentsRunConfirmsOverHttp"/>
 <tool name="interop.ruleeditor.save" class="OcuPilot.Test.InteropEditorSave" method="TestEachEditorSaveIsMintedAndConfirmed" corpus="one loop pins all three Story 20.16 editor saves"/>

@@ -159,6 +159,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList',
   // Story 24.17 Batch 4: Workflow tasks, whose Cancel task types the task's ID and whose Assign its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList',
+  // Story 24.18 Batch 1: HL7 schemas, whose Delete types the schema's name and whose New HL7 schema, Export and Import its own page's dialogs send.
+  'OcuPilot.Screen.Descriptor.InteropHl7SchemaList',
   // Story 24.16: Purge management data, whose Purge its own page's dialog sends, and Purge data settings, whose Set value the settings page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropPurgeList',
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList',
@@ -775,6 +777,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList': ['edit'],
   // Workflow tasks' page registers Assign itself, whose dialog sends the user and the priority (Story 24.17 Batch 4).
   'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': ['assign'],
+  // HL7 schemas' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer actions (Story 24.18 Batch 1).
+  'OcuPilot.Screen.Descriptor.InteropHl7SchemaList': ['export', 'export-browser', 'import', 'import-local'],
   // Purge management data's page registers Purge itself, whose dialog takes the days, and Purge data settings' page registers Set value itself (Story 24.16).
   'OcuPilot.Screen.Descriptor.InteropPurgeList': ['purge'],
   'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': ['set'],
@@ -1004,6 +1008,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList': { remove: STRINGS.interopWorkflowMemberRemoveConsequence },
   // Story 24.17 Batch 4: a workflow task's Cancel task takes it off every worklist and returns it, canceled, to the business process that sent it.
   'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': { cancel: STRINGS.interopWorkflowTaskCancelConsequence },
+  // Story 24.18 Batch 1: an HL7 schema's Delete removes everything it defines, and cannot be restored from OcuPilot.
+  'OcuPilot.Screen.Descriptor.InteropHl7SchemaList': { delete: STRINGS.interopHl7DeleteConsequence },
   // Story 20.23: an abort never delivers the messages it takes: all of a queue's, one waiting message, or the message a job keeps retrying.
   [INTEROP_QUEUE_LIST]: { abort: STRINGS.interopQueueAbortConsequence },
   [INTEROP_QUEUE_MESSAGE_LIST]: { abort: STRINGS.interopMessageAbortConsequence },
@@ -1069,6 +1075,10 @@ const SCOPED_TARGETS: Readonly<
       { verb: STRINGS.errorDeleteDateVerb, consequence: STRINGS.errorDeleteDateConsequence },
       { verb: STRINGS.errorDeleteOneVerb, consequence: STRINGS.errorDeleteOneConsequence },
     ],
+  },
+  // Story 24.18 Batch 1: an HL7 schema's name has one part, so its Delete titles the dialog "Delete HL7 schema <name>": the published title less its placeholder is the verb.
+  'OcuPilot.Screen.Descriptor.InteropHl7SchemaList': {
+    delete: [{ verb: STRINGS.interopHl7DeleteTitle.replace(' <schema>', ''), consequence: STRINGS.interopHl7DeleteConsequence }],
   },
 };
 
@@ -1140,6 +1150,8 @@ const TYPED_NAME_ROWS: Readonly<
   'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 24.17 Batch 4: a workflow task is keyed by its ID, which its Cancel task types.
   'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': { name: 'TaskId', field: '', equals: '', advisory: '' },
+  // Story 24.18 Batch 1: an HL7 schema is keyed by its name, the row's `Category`, which its Delete types.
+  'OcuPilot.Screen.Descriptor.InteropHl7SchemaList': { name: 'Category', field: '', equals: '', advisory: '' },
   // Story 20.23: an abort types the queue's name, the message's id or the job's process id, which each list's name column shows.
   [INTEROP_QUEUE_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   [INTEROP_QUEUE_MESSAGE_LIST]: { name: 'MessageId', field: '', equals: '', advisory: '' },

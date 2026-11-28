@@ -161,7 +161,7 @@ and [issue #2](https://github.com/intersystems-community/sysadmin-api-specificat
   themselves. Only an OcuPilot administrator can change the kill switch, the holds, the provider
   connection settings and the governance policy, and each user's conversations, proposals and
   agent records stay readable only by that user or an administrator, even from code run directly
-  in IRIS. One hundred and seven agent actions ship switched off - promoting classes and routines to another
+  in IRIS. One hundred and nine agent actions ship switched off - promoting classes and routines to another
   namespace, deleting an analytics folder item, deleting, importing or finding and replacing in a
   global, changing the system-wide security settings, deleting a mobile phone provider, importing
   resources, installing, deleting or importing a locale and loading a locale table, deleting an
@@ -181,7 +181,7 @@ and [issue #2](https://github.com/intersystems-community/sysadmin-api-specificat
   purging the audit database, purging a namespace's SQL runtime statistics, purging a namespace's SQL index analysis, removing a saved SQL troubleshooting report query, the eight disk operations,
   removing a production item, changing a production item's class, removing a business partner,
   removing a default setting, a credential, a schedule spec, a workflow user or a workflow role, canceling a workflow task, purging interoperability management data, the business rule log or the business process log, resubmitting, editing and resubmitting or deleting a suspended message, archiving interoperability messages into another namespace, building an analytics cube, aborting an Interoperability job, queue or queued message, resending
-  messages, editing and resending a message, removing a lookup entry, deleting or importing a lookup table, deleting a managed file transfer connection or
+  messages, editing and resending a message, removing a lookup entry, deleting or importing a lookup table, importing or deleting a custom HL7 schema, deleting a managed file transfer connection or
   revoking its token, replacing an RSA wallet secret, deleting a superserver, and deleting a %-class
   access entry, a Doc DB application, a REST service or a privileged routine application - and an
   administrator turns them on under **Agent co-pilot → Governance policy**. Running unit tests,

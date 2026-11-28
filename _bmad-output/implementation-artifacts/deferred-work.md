@@ -14903,3 +14903,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-21 (21.29 gate1 sweep) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: shard 15/20 run 706 red at +17 (AssertEquals the same text, but for the instance's collation warning) on 7eb18ccff, ocupilot-ci; unchanged rerun run 952 green 6/6
 - 2026-11-28T07:01:49Z status=routed owner=burndown by=runner note=flake: first seen in the 21.29 full sweep; 21.28's test; priority at burndown
+
+### DW-2910: Two HL7 schema adds at once whose names differ only in letter case each lock their own node, so both can pass TAKEN (inference)
+- source: spec-24-18-pex-record-maps-and-hl7-authoring.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.18 B1 review; PerformHl7Schema locks ^EnsHL7.Schema(pName) by exact name
+- 2026-11-27T03:55:14Z status=routed owner=24-18-pex-record-maps-and-hl7-authoring by=cr note=fix in a later 24.18 batch touching the add, or wontfix
+
+### DW-2911: HL7 schema tests count audit rows exactly while AuditNow rounds to the whole second, so the counts can depend on test order
+- source: spec-24-18-pex-record-maps-and-hl7-authoring.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.18 B1 review; runs 1075 and 1077 red this way before the fixes
+- 2026-11-27T03:55:14Z status=routed owner=24-18-pex-record-maps-and-hl7-authoring by=cr note=reopen as flake if a CI leg reddens on an HL7 audit count
+
+### DW-2912: Hl7BaseHeld, Hl7Installed and ImportShape's listing block have no Hl7Here fault hook
+- source: spec-24-18-pex-record-maps-and-hl7-authoring.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.18 B1 review; InteropPort HL7 helpers
+- 2026-11-27T03:55:14Z status=routed owner=24-18-pex-record-maps-and-hl7-authoring by=cr note=add with Batch 2's element editors
+
+### DW-2913: No principal runs a real HL7 schema import write; the Gate test's admitted principal stops at IMPORTSHAPE
+- source: spec-24-18-pex-record-maps-and-hl7-authoring.md | severity: low | fix-risk: low | footprint: in
+- evidence: 24.18 B1 implement and review; InteropHl7SchemaGate
+- 2026-11-27T03:55:15Z status=routed owner=24-18-pex-record-maps-and-hl7-authoring by=cr note=the lookup gate pins the server-file pairs
+
+### DW-2920: flake (local): two timing tests in test:tools failed once each under host load: shell-scripts ci-resource-sample.sh sampler (5149 ms) and ci-flake-waits waitForSlotFree deadline (3038 ms)
+- source: cycle-log-epic-21 (21.29 post-merge) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: 21.29 post-merge test:tools runs at 07:09Z and 07:12Z, each 1 fail of 2430 in a different timing test, load average 7 with fseventsd at 100% CPU; both files unchanged by the merge and green on isolated reruns
+- 2026-11-28T07:15:41Z status=wontfix-accepted owner=21-29-troubleshooting-reports by=runner note=reopen_if=either test fails in a CI gates leg or on an idle host

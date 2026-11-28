@@ -246,6 +246,21 @@ const SENTENCES = [
   ['REASONSTARTUPREADONLY', 'interopStartupRefusalReadOnly'],
   ['REASONAUTOSTART', 'interopAutoStartConsequence'],
   ['REASONSHUTDOWNGROUP', 'interopShutdownGroupConsequence'],
+  // Story 24.18 Batch 1: the HL7 schemas' refusals and two consequences.
+  ['REASONHL7SOURCECONTROL', 'interopHl7RefusalSourceControl'],
+  ['REASONHL7NAME', 'interopHl7RefusalName'],
+  ['REASONHL7TAKEN', 'interopHl7RefusalTaken'],
+  ['REASONHL7BASE', 'interopHl7RefusalBase'],
+  ['REASONHL7DESCRIPTION', 'interopWorkflowRoleRefusalDescription'],
+  ['REASONHL7STANDARD', 'interopHl7RefusalStandard'],
+  ['REASONHL7IMPORTSHAPE', 'interopHl7RefusalImportShape'],
+  ['REASONHL7IMPORTSTANDARD', 'interopHl7RefusalImportStandard'],
+  ['REASONHL7IMPORTCHANGED', 'interopHl7RefusalImportChanged'],
+  ['REASONHL7CASE', 'interopHl7RefusalCase'],
+  ['REASONHL7TOOLARGE', 'interopHl7RefusalTooLarge'],
+  ['REASONHL7LOCKED', 'interopHl7RefusalLocked'],
+  ['REASONHL7DELETE', 'interopHl7DeleteConsequence'],
+  ['REASONHL7IMPORT', 'interopHl7ImportConsequence'],
 ];
 
 /** The value `key` holds in `strings.ts`, which may sit on the line after its key. */
@@ -416,6 +431,7 @@ test('the README states the count of the agent actions that ship switched off an
     readme.includes('removing a default setting, a credential, a schedule spec, a workflow user or a workflow role, canceling a workflow task, purging interoperability management data, the business rule log or the business process log, resubmitting, editing and resubmitting or deleting a suspended message, archiving interoperability messages into another namespace, building'),
     'the off list names the purge, the suspended message writes and the archive run'
   );
+  assert.ok(readme.includes('deleting or importing a lookup table, importing or deleting a custom HL7 schema,'), 'the off list names the HL7 schema import and delete (Story 24.18 Batch 1)');
   assert.ok(
     readme.includes('add, edit and remove schedule specs; keep the purge settings and purge old management data; resubmit, edit and resubmit, discard or delete suspended messages, up to 100 at a time; export up to 100 messages to a file in your browser\'s downloads; keep the archive settings and archive old messages into another interoperability namespace; list managed alerts and each alert\'s history, and assign, unassign, close or reopen an alert, move its escalation level one step or set its next action time, each with a reason the alert\'s history keeps; list the business rule log and the business process log, and purge each by age; add, edit and remove workflow users and workflow roles, and add or remove a role\'s members; list workflow tasks and each user\'s worklist, and assign a task to a user or to no one, change its priority or cancel it; watch the system monitor, which shows the productions running in every namespace with their message counts, jobs, queues, errors and alerts beside the instance\'s own status, licensing and upcoming tasks; and add, edit'),
     'the Interoperability paragraph names what a person can do with each'

@@ -4,7 +4,8 @@
 /// name the vendor's export cannot address exactly (<method>OcuPilot.Port.InteropPort.LookupAddressable</method>), with the 409
 /// <code>INTEROP.LOOKUP.EXPORTNAME</code> the write would answer; then the port's own refusal of the file
 /// (<method>OcuPilot.Port.InteropPort.CheckExport</method>), answered unchanged, so the agent reads the
-/// <code>PATH.*</code> or <code>EXPLORER.EXPORT.DIRECTORY</code> code on its field. It is
+/// <code>PATH.*</code> or <code>EXPLORER.EXPORT.DIRECTORY</code> code on its field. The HL7 schema export (Story 24.18) declares this mint too: its schema names are shaped by the port, so
+/// the addressability test is the lookup tables' alone, and the file check is asked of the endpoint the call names. It is
 /// <class>OcuPilot.Screen.Tool.ExplorerExportMint</class>'s order over the lookup port; that mint extends the Explorer's own mint, whose
 /// first step asks the document port for the set the tool names.</p>
 Class OcuPilot.Screen.Tool.InteropLookupTableExportMint Extends OcuPilot.Kernel.Proposal.Mint
@@ -27,13 +28,13 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Quit
         }
         Set tPort = $ClassMethod(pToolClass, "PortClass")
-        If (pIdValue '= "") && '$ClassMethod(tPort, "LookupAddressable", pIdValue) {
+        If (pIdValue '= "") && (pEndpoint '= $Parameter(tPort, "ENDPOINTHL7SCHEMAS")) && '$ClassMethod(tPort, "LookupAddressable", pIdValue) {
             Set pHttpStatus = 409
             Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#CONFLICT, ..#EXPORTNAMECODE, $ClassMethod(tPort, "ReasonFor", ..#EXPORTNAMECODE))
             Set tSC = $$$ERROR($$$GeneralError, ..#EXPORTNAMECODE)
             Quit
         }
-        Set tSC = $ClassMethod(tPort, "CheckExport", pArgs.%Get($Parameter(tPort, "ROOTKEY")), pArgs.%Get($Parameter(tPort, "PATHKEY")), .pHttpStatus, .pFault)
+        Set tSC = $ClassMethod(tPort, "CheckExport", pArgs.%Get($Parameter(tPort, "ROOTKEY")), pArgs.%Get($Parameter(tPort, "PATHKEY")), .pHttpStatus, .pFault, pEndpoint)
         If $$$ISERR(tSC) Quit
         Set pHttpStatus = 0
         Set pFault = ""

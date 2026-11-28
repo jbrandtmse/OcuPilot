@@ -2852,6 +2852,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       // Story 24.15: System default settings and Compare default settings own %Ens_SystemDefaultConfig:READ.
       'OcuPilot.Screen.Descriptor.InteropDefaultSettingDiff',
       'OcuPilot.Screen.Descriptor.InteropDefaultSettingList',
+      // Story 24.18 Batch 1: HL7 schemas own %Ens_EDISchema:READ.
+      'OcuPilot.Screen.Descriptor.InteropHl7SchemaList',
       'OcuPilot.Screen.Descriptor.InteropItemClassTab',
       'OcuPilot.Screen.Descriptor.InteropItemJobTab',
       'OcuPilot.Screen.Descriptor.InteropItemList',

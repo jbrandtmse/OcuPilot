@@ -632,6 +632,64 @@ Parameter WORKFLOWTASKCANCEL = "INTEROP.WORKFLOW.TASKCANCEL";
 
 Parameter REASONWORKFLOWTASKCANCEL = "Canceling this task takes it off every worklist and returns it, canceled, to the business process that sent it. It cannot be undone.";
 
+/// <p>The HL7 schemas' refusals, violations and consequences (Story 24.18 Batch 1). <code>NAME</code>, <code>BASE</code> and <code>DESCRIPTION</code> are 422 on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug; the others are 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug.</p>
+Parameter HL7SOURCECONTROL = "INTEROP.HL7.SOURCECONTROL";
+
+Parameter REASONHL7SOURCECONTROL = "This namespace uses source control, so change HL7 schemas in the classic HL7 Schema Structures page.";
+
+Parameter HL7NAME = "INTEROP.HL7.NAME";
+
+Parameter REASONHL7NAME = "An HL7 schema name is 1 to 64 letters, digits, periods, underscores and hyphens, and begins with a letter or digit.";
+
+Parameter HL7TAKEN = "INTEROP.HL7.TAKEN";
+
+Parameter REASONHL7TAKEN = "This namespace already has an HL7 schema with that name, in some letter case.";
+
+Parameter HL7BASE = "INTEROP.HL7.BASE";
+
+Parameter REASONHL7BASE = "Choose a base schema this namespace holds, or none.";
+
+Parameter HL7DESCRIPTION = "INTEROP.HL7.DESCRIPTION";
+
+Parameter REASONHL7DESCRIPTION = "A description is at most 2,000 characters.";
+
+Parameter HL7STANDARD = "INTEROP.HL7.STANDARD";
+
+Parameter REASONHL7STANDARD = "This is a standard HL7 schema, which the instance provides, so it cannot be changed or deleted.";
+
+Parameter HL7IMPORTSHAPE = "INTEROP.HL7.IMPORTSHAPE";
+
+Parameter REASONHL7IMPORTSHAPE = "An import file must hold exactly one HL7 schema and nothing else, in the form the Export action writes.";
+
+Parameter HL7IMPORTSTANDARD = "INTEROP.HL7.IMPORTSTANDARD";
+
+Parameter REASONHL7IMPORTSTANDARD = "This file holds a standard HL7 schema, which the instance provides, so it is not imported.";
+
+Parameter HL7IMPORTCHANGED = "INTEROP.HL7.IMPORTCHANGED";
+
+Parameter REASONHL7IMPORTCHANGED = "The file or the schema changed after the import was reviewed, so nothing was imported. Review the import again.";
+
+Parameter HL7CASE = "INTEROP.HL7.CASE";
+
+Parameter REASONHL7CASE = "An HL7 schema whose name differs from this one only in letter case already exists. Use its spelling, or choose another name.";
+
+Parameter HL7TOOLARGE = "INTEROP.HL7.TOOLARGE";
+
+Parameter REASONHL7TOOLARGE = "An HL7 schema file holds at most 3,000,000 characters, and this one holds more.";
+
+Parameter HL7LOCKED = "INTEROP.HL7.LOCKED";
+
+Parameter REASONHL7LOCKED = "Someone else is changing this HL7 schema right now, so nothing was written. Try again in a moment.";
+
+Parameter HL7DELETE = "INTEROP.HL7.DELETE";
+
+Parameter REASONHL7DELETE = "Deleting this HL7 schema removes everything it defines. Schemas based on it, and items and rules that name it, can no longer find it. It cannot be restored from OcuPilot.";
+
+Parameter HL7IMPORT = "INTEROP.HL7.IMPORT";
+
+Parameter REASONHL7IMPORT = "Importing replaces this namespace's HL7 schema of the same name with the file's, and anything the file does not define is removed.";
+
 /// <p>The purge's refusals and consequences (Story 24.16). <code>DAYS</code> is 422 on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug and
 /// <code>RUNNING</code> is 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug.</p>
 Parameter PURGEDAYS = "INTEROP.PURGE.DAYS";
@@ -971,13 +1029,13 @@ Parameter OUTCOMENOTEXPORTED = "not exported";
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..ScheduleCodes() _ ..WorkflowCodes() _ ..PurgeCodes() _ ..ArchiveCodes() _ ..AlertCodes() _ ..SuspendedCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..ExportCodes() _ ..StartupCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..ScheduleCodes() _ ..WorkflowCodes() _ ..PurgeCodes() _ ..ArchiveCodes() _ ..AlertCodes() _ ..SuspendedCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..ExportCodes() _ ..StartupCodes() _ ..Hl7Codes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP, ..#ARCHIVERUN, ..#SUSPENDEDRESUBMIT, ..#SUSPENDEDEDIT, ..#SUSPENDEDDISCARD, ..#SUSPENDEDDELETE, ..#MESSAGEEXPORT, ..#ALERTUPDATE, ..#RULELOGPURGE, ..#PROCESSLOGPURGE, ..#WORKFLOWUSERREMOVE, ..#WORKFLOWUSERINACTIVE, ..#WORKFLOWROLEREMOVE, ..#WORKFLOWMEMBERADD, ..#WORKFLOWMEMBERREMOVE, ..#WORKFLOWTASKASSIGN, ..#WORKFLOWTASKUNASSIGN, ..#WORKFLOWTASKCANCEL)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP, ..#ARCHIVERUN, ..#SUSPENDEDRESUBMIT, ..#SUSPENDEDEDIT, ..#SUSPENDEDDISCARD, ..#SUSPENDEDDELETE, ..#MESSAGEEXPORT, ..#ALERTUPDATE, ..#RULELOGPURGE, ..#PROCESSLOGPURGE, ..#WORKFLOWUSERREMOVE, ..#WORKFLOWUSERINACTIVE, ..#WORKFLOWROLEREMOVE, ..#WORKFLOWMEMBERADD, ..#WORKFLOWMEMBERREMOVE, ..#WORKFLOWTASKASSIGN, ..#WORKFLOWTASKUNASSIGN, ..#WORKFLOWTASKCANCEL, ..#HL7DELETE, ..#HL7IMPORT)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -1106,6 +1164,20 @@ ClassMethod WorkflowCodes() As %List
 ClassMethod WorkflowPreconditionCodes() As %List
 {
     Quit $ListBuild(..#WORKFLOWUSERTAKEN, ..#WORKFLOWSOURCECONTROL)
+}
+
+/// <p>The HL7 schema codes (Story 24.18 Batch 1), as a <class>%List</class>: the refusals and the three violations a create judges. The two consequence codes are
+/// <method>ConsequenceCodes</method>'s.</p>
+ClassMethod Hl7Codes() As %List
+{
+    Quit $ListBuild(..#HL7SOURCECONTROL, ..#HL7NAME, ..#HL7TAKEN, ..#HL7BASE, ..#HL7DESCRIPTION, ..#HL7STANDARD, ..#HL7IMPORTSHAPE, ..#HL7IMPORTSTANDARD, ..#HL7IMPORTCHANGED, ..#HL7CASE, ..#HL7TOOLARGE, ..#HL7LOCKED)
+}
+
+/// <p>The refusals an HL7 schema tool's fresh read answers when the action does not fit the namespace or the schema, as a <class>%List</class>; the violations, which the
+/// write alone judges, are not among them.</p>
+ClassMethod Hl7PreconditionCodes() As %List
+{
+    Quit $ListBuild(..#HL7SOURCECONTROL, ..#HL7TAKEN, ..#HL7STANDARD, ..#HL7IMPORTSHAPE, ..#HL7IMPORTSTANDARD, ..#HL7CASE, ..#HL7TOOLARGE)
 }
 
 /// <p>The purge codes (Story 24.16), as a <class>%List</class>: the refusal of days that are not a whole number from 0 to 99999 and of a purge
@@ -1371,6 +1443,20 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#WORKFLOWTASKASSIGN Quit ..#REASONWORKFLOWTASKASSIGN
     If pCode = ..#WORKFLOWTASKUNASSIGN Quit ..#REASONWORKFLOWTASKUNASSIGN
     If pCode = ..#WORKFLOWTASKCANCEL Quit ..#REASONWORKFLOWTASKCANCEL
+    If pCode = ..#HL7SOURCECONTROL Quit ..#REASONHL7SOURCECONTROL
+    If pCode = ..#HL7NAME Quit ..#REASONHL7NAME
+    If pCode = ..#HL7TAKEN Quit ..#REASONHL7TAKEN
+    If pCode = ..#HL7BASE Quit ..#REASONHL7BASE
+    If pCode = ..#HL7DESCRIPTION Quit ..#REASONHL7DESCRIPTION
+    If pCode = ..#HL7STANDARD Quit ..#REASONHL7STANDARD
+    If pCode = ..#HL7IMPORTSHAPE Quit ..#REASONHL7IMPORTSHAPE
+    If pCode = ..#HL7IMPORTSTANDARD Quit ..#REASONHL7IMPORTSTANDARD
+    If pCode = ..#HL7IMPORTCHANGED Quit ..#REASONHL7IMPORTCHANGED
+    If pCode = ..#HL7CASE Quit ..#REASONHL7CASE
+    If pCode = ..#HL7TOOLARGE Quit ..#REASONHL7TOOLARGE
+    If pCode = ..#HL7LOCKED Quit ..#REASONHL7LOCKED
+    If pCode = ..#HL7DELETE Quit ..#REASONHL7DELETE
+    If pCode = ..#HL7IMPORT Quit ..#REASONHL7IMPORT
     If pCode = ..#PURGEDAYS Quit ..#REASONPURGEDAYS
     If pCode = ..#PURGERUNNING Quit ..#REASONPURGERUNNING
     If pCode = ..#PURGERUN Quit ..#REASONPURGERUN

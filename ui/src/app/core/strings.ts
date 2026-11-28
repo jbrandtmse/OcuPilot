@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:686 */
+  /** EXPERIENCE.md:687 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -10177,6 +10177,67 @@ export const STRINGS = {
   interopSystemMonitorQueuesPrompt2: 'Is one queue holding far more messages than the others?',
   /** EXPERIENCE.md:642 */
   interopSystemMonitorQueuesPrompt3: 'Which namespace\'s queues hold the most messages?',
+  // Story 24.18 Batch 1: the HL7 schemas screen, its New, Export, Import and Delete wording, the two consequences, the status lines, the empty state and the prompts.
+  /** EXPERIENCE.md:644 */
+  interopHl7SchemasLabel: 'HL7 schemas',
+  /** EXPERIENCE.md:644 */
+  interopHl7SchemaAddAction: 'New HL7 schema',
+  /** EXPERIENCE.md:644 */
+  interopHl7ColumnBase: 'Base schema',
+  /** EXPERIENCE.md:644 */
+  interopHl7ColumnStandard: 'Standard',
+  /** EXPERIENCE.md:644 */
+  interopHl7ImportTitle: 'Import an HL7 schema',
+  /** EXPERIENCE.md:644 */
+  interopHl7ExportTitle: 'Export HL7 schema <schema>',
+  /** EXPERIENCE.md:644 */
+  interopHl7DeleteTitle: 'Delete HL7 schema <schema>',
+  /** EXPERIENCE.md:644 */
+  interopHl7Help: 'A custom HL7 schema adds its own message types, structures and code tables to the schema it is based on.',
+  /** EXPERIENCE.md:644 */
+  interopHl7DeleteConsequence:
+    'Deleting this HL7 schema removes everything it defines. Schemas based on it, and items and rules that name it, can no longer find it. It cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:644 */
+  interopHl7ImportConsequence: 'Importing replaces this namespace\'s HL7 schema of the same name with the file\'s, and anything the file does not define is removed.',
+  /** EXPERIENCE.md:644 */
+  interopHl7ExportDone: 'Exported HL7 schema <schema> to <path>.',
+  /** EXPERIENCE.md:644 */
+  interopHl7ExportSaved: 'Saved HL7 schema <schema> as <file>.',
+  /** EXPERIENCE.md:644 */
+  interopHl7ImportDone: 'Imported the HL7 schema in <file>.',
+  /** EXPERIENCE.md:644 */
+  interopHl7SchemasEmpty: 'This namespace has no HL7 schemas.',
+  /** EXPERIENCE.md:644 */
+  interopHl7SchemasEmptyAgent: 'create a custom HL7 schema',
+  /** EXPERIENCE.md:644 */
+  interopHl7SchemasPrompt1: 'Which HL7 schemas here are custom, and what is each based on?',
+  /** EXPERIENCE.md:644 */
+  interopHl7SchemasPrompt2: 'Which custom HL7 schema changed most recently?',
+  /** EXPERIENCE.md:644 */
+  interopHl7SchemasPrompt3: 'Create a custom HL7 schema based on 2.5.1.',
+  // Story 24.18 Batch 1: the HL7 schemas' refusals, which the server answers; "A description is at most 2,000 characters." reuses `interopWorkflowRoleRefusalDescription`.
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalSourceControl: 'This namespace uses source control, so change HL7 schemas in the classic HL7 Schema Structures page.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalName: 'An HL7 schema name is 1 to 64 letters, digits, periods, underscores and hyphens, and begins with a letter or digit.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalTaken: 'This namespace already has an HL7 schema with that name, in some letter case.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalBase: 'Choose a base schema this namespace holds, or none.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalStandard: 'This is a standard HL7 schema, which the instance provides, so it cannot be changed or deleted.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalImportShape: 'An import file must hold exactly one HL7 schema and nothing else, in the form the Export action writes.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalImportStandard: 'This file holds a standard HL7 schema, which the instance provides, so it is not imported.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalImportChanged: 'The file or the schema changed after the import was reviewed, so nothing was imported. Review the import again.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalCase: 'An HL7 schema whose name differs from this one only in letter case already exists. Use its spelling, or choose another name.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalTooLarge: 'An HL7 schema file holds at most 3,000,000 characters, and this one holds more.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalLocked: 'Someone else is changing this HL7 schema right now, so nothing was written. Try again in a moment.',
 } as const;
 
 /**
