@@ -14898,3 +14898,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-29-troubleshooting-reports.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: SqlReportWrite case-swap, StateDiff by two, Holds every kind, first row only and reason-message comments, and two browser-spec comments; each AC's pinning mutation is recorded and observed in the spec
 - 2026-11-28T03:50:37Z status=wontfix-accepted owner=21-29-troubleshooting-reports by=cr note=reopen_if=a mutation named in a 21.29 test comment is applied and the test stays green
+
+### DW-2919: flake: SqlAlternatePlansRoutes.TestTheRouteAndTheAgentReadAnswerTheSamePlansAndNothingRuns: plan 2's text from the route and the agent read differed beyond the collation warning
+- source: cycle-log-epic-21 (21.29 gate1 sweep) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: shard 15/20 run 706 red at +17 (AssertEquals the same text, but for the instance's collation warning) on 7eb18ccff, ocupilot-ci; unchanged rerun run 952 green 6/6
+- 2026-11-28T07:01:49Z status=routed owner=burndown by=runner note=flake: first seen in the 21.29 full sweep; 21.28's test; priority at burndown

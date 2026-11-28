@@ -1253,3 +1253,8 @@
 2026-11-28T03:54:56Z	Story 21.29	protocol_violation	stage=code-review depth=1 agent=21-29-cr-1 violation=16_ci-runner_calls_in_one_message consequence=evidence_void;runner_reported_0_overlaps detected_by=self_report outcome=every_class_re-run_singly;only_single_runs_reported
 2026-11-28T03:54:56Z	Story 21.29	ledger_adjudicated	owned=1 resolved=1(DW-2909_by_cr_test_TestARowWithNoPlanShowsTheInstancesOwnStatus) reowned=0 terminal=0 new_terminal_by_cr=DW-2914..DW-2918
 2026-11-28T03:57:02Z	Story 21.29	review_patches_committed	sha=7eb18ccff files=13 local_only=true
+2026-11-28T03:57:13Z	Story 21.29	gate_step	step=fresh_check+full_sweep+smoke head=79871d496 started=2026-11-28T03:57:13Z dir=e21-kit/21-29/gate1 classes=18 specs=2
+2026-11-28T04:03:44Z	Story 21.29	fresh_check	env=recipe(ci-throwaway_rebuild) tests=18_classes+2_specs result=pass order=forward,reverse head=7eb18ccff specs_forward=8/8
+2026-11-28T07:01:49Z	Story 21.29	ci_red_classified	run=local_sweep_run706 workflow=local_sweep class=flake test=SqlAlternatePlansRoutes.TestTheRouteAndTheAgentReadAnswerTheSamePlansAndNothingRuns ledger=DW-2919 rerun=run952_green
+2026-11-28T07:01:49Z	Story 21.29	gate_step	step=full_sweep+smoke head=7eb18ccff sweep=19/20+shard15_flake_rerun_green(run952) smoke=50/50 result=pass
+2026-11-28T07:01:49Z	Story 21.29	smoke_complete	method=api(smoke.sh)+browser(fresh_specs) result=pass iterations=1 defects_caught=0 evidence=e21-kit/21-29/gate1
