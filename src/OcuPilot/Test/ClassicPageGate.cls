@@ -440,6 +440,55 @@ Method TestAnAssignedPageGatesTheSqlConsole()
     }
 }
 
+/// <p>Story 21.28: with the probe resource assigned to the classic Alternate Show Plans page alone, the principal lacking it is refused 403
+/// <code>AUTH.NOPRIVILEGE</code> naming <code>OcuProbe1814Page:USE</code> on the plan route's alternates body and on the agent's
+/// <code>explorer.sqlalternateplans.read</code>; the one holding it passes both gates. The same principal's <code>stats</code> and <code>advise</code>
+/// bodies are not refused for the page, which Stories 21.26 and 21.27 left as they were.</p>
+/// <p>Mutation (Rule 19): drop <method>OcuPilot.Area.Explorer.SqlConsole.GateAlternates</method> from <method>OcuPilot.Area.Explorer.SqlConsole.Read</method> --
+/// the lacking principal's alternates post is answered and its leg goes red; <method>OcuPilot.Screen.Tool.ExplorerSqlAlternatePlansRead.PrivilegePairs</method>
+/// answers the screen's pairs alone -- the lacking principal's dispatch is not refused and its leg goes red.</p>
+Method TestAnAssignedPageGatesAlternatePlans()
+{
+    Set tPage = "%CSP.UI.Portal.SQL.QButtons.ShowPlanAlt"
+    Set tPath = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/explorer/sql/plan?ns=" _ $NAMESPACE
+    Set tTool = "explorer.sqlalternateplans.read"
+    Kill tOne
+    Set tOne(tPage) = ""
+    If '$Data(..PreparedPages(tPage)) Set ..PreparedPages(tPage) = ##class(%CSP.Portal.Utils).%GetCustomResource($ZConvert(tPage, "O", "URL"))
+    Do $$$AssertStatusOK(..RestorePages(), tPage _ ": every page reads its recorded resource first")
+    Do $$$AssertStatusOK(..Assign(.tOne), "the probe resource is assigned to " _ tPage _ " alone")
+    Set tRefused = "403 AUTH.NOPRIVILEGE " _ ..#RESOURCE _ ":USE"
+    For tKey = "alternates", "stats", "advise" {
+        Set tBody = {"statement": "SELECT 1 AS One"}
+        Do tBody.%Set(tKey, 1, "boolean")
+        For tUser = ..#LACKINGUSER, ..#HOLDINGUSER {
+            Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tPath, tUser, ..PreparedPassword, .tStatus, .tText, .tHeaders, tBody.%ToJSON(), "application/json")
+            Set tAnswer = ""
+            Try { Set tAnswer = ##class(%DynamicObject).%FromJSON($Get(tText)) } Catch {}
+            Set tSaid = $Get(tStatus) _ " " _ $Select($IsObject(tAnswer) && (tAnswer.%GetTypeOf("code") = "string"): tAnswer.code _ " " _ $Select(tAnswer.%GetTypeOf("detail") = "object": tAnswer.detail.%Get("failedPair"), 1: ""), 1: "")
+            Set tSaid = $ZStrip(tSaid, "<>W")
+            If (tKey = "alternates") && (tUser = ..#LACKINGUSER) {
+                Do $$$AssertEquals(tSaid, tRefused, tUser _ ": the alternates post is refused naming the page's resource")
+            } Else {
+                Do $$$AssertTrue(tSaid '[ "AUTH.NOPRIVILEGE", tUser _ ": the " _ tKey _ " post passes the page's gate (" _ tSaid _ ")")
+            }
+        }
+    }
+    For tUser = ..#LACKINGUSER, ..#HOLDINGUSER {
+        Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(tUser, "running", .tTurnKey)
+        Do $$$AssertStatusOK(tSC, tUser _ ": a running turn is seeded")
+        Set tRun = ##class(OcuPilot.Test.MappingWriteGate).RunAs(tUser, [{"kind": "dispatch", "turnKey": (tTurnKey), "tool": (tTool), "input": {"statement": "SELECT 1 AS One"}}])
+        Set tLeg = ##class(OcuPilot.Test.NamespaceWriteGate).Leg(tRun, 1)
+        Set tSaid = $Select($IsObject(tLeg): tLeg.%Get("http") _ " " _ tLeg.%Get("code") _ " " _ tLeg.%Get("failedPair"), 1: "absent")
+        If tUser = ..#LACKINGUSER {
+            Do $$$AssertEquals($ZStrip(tSaid, "<>W"), tRefused, tUser _ ": the agent read is refused naming the page's resource")
+        } Else {
+            Do $$$AssertTrue($IsObject(tLeg) && (tLeg.%Get("failedPair") = "") && (tLeg.%Get("code") '= "AUTH.NOPRIVILEGE"), tUser _ ": the agent read passes the pair gate (" _ tSaid _ ")")
+        }
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurnKey), tUser _ ": this class removes the ledger rows its call wrote")
+    }
+}
+
 /// <p>Story 19.15 AC10: with the probe resource assigned to the classic SQL page, the principal lacking
 /// it is refused 403 <code>AUTH.NOPRIVILEGE</code> naming <code>OcuProbe1814Page:USE</code> on SQL
 /// query's background start, poll and cancel, and a run reserved and spawned for it past the route

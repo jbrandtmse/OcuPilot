@@ -822,6 +822,34 @@ test("Story 21.27: SQL query's advice-cut note names the advice's own two caps, 
   assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${sentence}"`), "the note is published in EXPERIENCE.md's Fixed strings");
 });
 
+test("Story 21.28: SQL query's cut note and its comparison count name the instance's own caps, and the note is published in Fixed strings", () => {
+  // Mutation (Rule 19): change ALTMAXPLANS in SqlPort.cls to 101, or MAX_COMPARED_PLANS in sql-query.store.ts to 6 -> this goes red naming the sentence or the count.
+  const port = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'SqlPort.cls'), 'utf8');
+  const plans = /Parameter ALTMAXPLANS As INTEGER = (\d+);/.exec(port);
+  const compare = /Parameter ALTMAXCOMPARE As INTEGER = (\d+);/.exec(port);
+  assert.notEqual(plans, null, 'SqlPort.cls declares ALTMAXPLANS');
+  assert.notEqual(compare, null, 'SqlPort.cls declares ALTMAXCOMPARE');
+  const sentence = `Only the first ${plans[1]} possible plans are listed.`;
+  assert.equal(stringValue('sqlAlternatePlansTruncated'), sentence, 'the note states the cap the instance applies');
+  assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${sentence}"`), "the note is published in EXPERIENCE.md's Fixed strings");
+  const store = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'areas', 'system-explorer', 'sql-query.store.ts'), 'utf8');
+  const client = /export const MAX_COMPARED_PLANS = (\d+);/.exec(store);
+  assert.notEqual(client, null, 'the store declares MAX_COMPARED_PLANS');
+  assert.equal(client[1], compare[1], 'the client takes as many checks as the instance takes plans to compare');
+  assert.equal(stringValue('sqlAlternateHint'), 'Check up to five plans to compare.', 'the hint names the count the instance takes');
+  assert.equal(compare[1], '5', 'the hint and the refusal say five');
+});
+
+test("Story 21.28: Compare plans' note is the ruled sentence on the page and in Fixed strings, and the agent read carries none", () => {
+  // Mutation (Rule 19): change one word of sqlAlternateCompareNote in strings.ts -> this goes red naming the sentence.
+  const sentence =
+    'Compare plans runs the statement once for each plan, without its values, so a filtered query can show zero rows. Comparing can take longer than the page waits; what each run recorded stays on Runtime statistics.';
+  assert.equal(stringValue('sqlAlternateCompareNote'), sentence, 'the page shows the ruled note');
+  assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${sentence}"`), "the note is published in EXPERIENCE.md's Fixed strings");
+  const tool = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'ExplorerSqlAlternatePlansRead.cls'), 'utf8');
+  assert.ok(!tool.includes('Compare plans runs'), 'the agent read lists and shows plans and carries no compare note');
+});
+
 /** Story 24.1's port, which declares the refusals of a Code metrics or Document hashes argument. */
 const DEVTOOL_PORT = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'DevToolPort.cls');
 

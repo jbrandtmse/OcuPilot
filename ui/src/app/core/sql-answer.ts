@@ -49,6 +49,25 @@ export interface SqlAdvice {
   readonly truncated: boolean;
 }
 
+/** One possible plan of a statement (Story 21.28), the cost, map type and starting map as the instance printed them. */
+export interface SqlAlternatePlan {
+  readonly id: number;
+  readonly cost: string;
+  readonly mapType: string;
+  readonly startingMap: string;
+}
+
+/** One compared plan (Story 21.28): the statistics its run recorded, as the instance printed them, blank for a run that recorded none. */
+export interface SqlComparedPlan {
+  readonly id: number;
+  readonly cost: string;
+  readonly startingMap: string;
+  readonly globalReferences: string;
+  readonly commands: string;
+  readonly totalTime: string;
+  readonly rows: string;
+}
+
 /** What the instance last answered, as the page draws it. */
 export type SqlAnswer =
   | { readonly outcome: 'rows'; readonly kind: string; readonly result: SqlRows }
@@ -57,7 +76,14 @@ export type SqlAnswer =
   | { readonly outcome: 'stopped'; readonly kind: string; readonly seconds: number }
   | { readonly outcome: 'parameters'; readonly count: number }
   | { readonly outcome: 'plan'; readonly plan: string; readonly truncated: boolean; readonly advice?: SqlAdvice }
+  | { readonly outcome: 'plans'; readonly kind: string; readonly plans: readonly SqlAlternatePlan[]; readonly truncated: boolean }
+  | { readonly outcome: 'compared'; readonly kind: string; readonly plans: readonly SqlComparedPlan[] }
   | { readonly outcome: 'noplan' };
+
+/** The objects of a list in an answer, in the order sent; a member that is not an object is dropped. */
+function recordsOf(value: unknown): readonly Readonly<Record<string, unknown>>[] {
+  return Array.isArray(value) ? value.filter((entry): entry is Readonly<Record<string, unknown>> => entry !== null && typeof entry === 'object') : [];
+}
 
 /** The advice of a plan answer, or `undefined` when it carries none. */
 function adviceOf(record: Readonly<Record<string, unknown>>): SqlAdvice | undefined {
@@ -124,6 +150,32 @@ export function answerOf(body: unknown): SqlAnswer | null {
         ...(advice === undefined ? {} : { advice }),
       };
     }
+    case 'plans':
+      return {
+        outcome: 'plans',
+        kind,
+        plans: recordsOf(record['plans']).map((entry) => ({
+          id: typeof entry['Plan'] === 'number' ? entry['Plan'] : 0,
+          cost: text(entry['Cost']),
+          mapType: text(entry['MapType']),
+          startingMap: text(entry['StartingMap']),
+        })),
+        truncated: record['truncated'] === true,
+      };
+    case 'compared':
+      return {
+        outcome: 'compared',
+        kind,
+        plans: recordsOf(record['plans']).map((entry) => ({
+          id: typeof entry['Plan'] === 'number' ? entry['Plan'] : 0,
+          cost: text(entry['Cost']),
+          startingMap: text(entry['StartingMap']),
+          globalReferences: text(entry['GlobalReferences']),
+          commands: text(entry['Commands']),
+          totalTime: text(entry['TotalTime']),
+          rows: text(entry['Rows']),
+        })),
+      };
     case 'noplan':
       return { outcome: 'noplan' };
     default:
@@ -158,7 +210,10 @@ export function statusLineFor(answer: SqlAnswer | null): string {
       return fill(pickCount(answer.count, STRINGS.explorerSqlTakesValuesOne, STRINGS.explorerSqlTakesValues), { n: answer.count });
     case 'noplan':
       return STRINGS.explorerSqlNoPlan;
+    case 'plans':
+      return answer.plans.length === 0 ? STRINGS.explorerSqlNoPlan : '';
     case 'plan':
+    case 'compared':
       return '';
   }
 }

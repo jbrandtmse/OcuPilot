@@ -495,6 +495,10 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; Story 21.14: the locale validation read is gated as Locale definitions is; the port checks the same pairs again.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+        } ElseIf tTool.class = "OcuPilot.Screen.Tool.ExplorerSqlAlternatePlansRead" {
+            ; Story 21.28: the alternate plans read is gated as SQL query is, plus the custom resource assigned to the classic Alternate Show Plans page.
+            Set tExpected = ##class(OcuPilot.Screen.Gate).WithClassicPages(##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved), $Parameter("OcuPilot.Area.Explorer.SqlConsole", "ALTERNATESPAGE"))
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropEditorSource") {
             ; Story 20.16: an editor read is gated as its editor screen is, plus %Development:USE, which the port checks.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)

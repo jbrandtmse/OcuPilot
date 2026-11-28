@@ -23,6 +23,9 @@ Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.ExplorerSqlQuery";
 /// <p>The port that classifies, runs and explains a statement.</p>
 Parameter PORTCLASS = "OcuPilot.Port.SqlPort";
 
+/// <p>The classic page Alternate plans replaces, whose assigned custom resource a body asking for alternates also needs (Story 21.28).</p>
+Parameter ALTERNATESPAGE = "%CSP.UI.Portal.SQL.QButtons.ShowPlanAlt";
+
 /// <p>The outcomes the run route answers beside the port's own.</p>
 Parameter OUTCOMECONFIRM = "confirm";
 
@@ -78,17 +81,21 @@ ClassMethod HandleRun() As %Status
 /// asks for Plan with statistics, which the port runs for a query only and without the body's values. A body <code>advise</code> of
 /// <code>true</code> asks for the advice on the plan (Story 21.27), which the port reads for a query only and which runs nothing; it is not taken
 /// with <code>stats</code>. The self-protection check runs first for both.</p>
+/// <p>A body <code>alternates</code> of <code>true</code> asks for the statement's possible plans (Story 21.28): with <code>plan</code>, one plan's text;
+/// with <code>compare</code>, an array of plan numbers, each plan's run statistics. It is not taken with <code>stats</code> or <code>advise</code>, and
+/// <code>plan</code> and <code>compare</code> are not taken together or without it. The caller also holds the custom resource assigned to the classic
+/// page <parameter>ALTERNATESPAGE</parameter>, checked after the screen's gate and the body's shape (<method>GateAlternates</method>).</p>
 ClassMethod HandlePlan() As %Status
 {
     Set tSC = $$$OK
     Try {
-        Set tSC = ..Prepare(.tRefused, .tNamespace, .tText, .tValues, .tMaxRows, .tGuard, .tAnswer, .tStats, 1, .tAdvise)
+        Set tSC = ..Prepare(.tRefused, .tNamespace, .tText, .tValues, .tMaxRows, .tGuard, .tAnswer, .tStats, 1, .tAdvise, .tAlternates, .tPlanId, .tCompare)
         If tRefused Quit
         If $IsObject(tAnswer) {
             Set tSC = ##class(OcuPilot.Api.Response).JSON(tAnswer)
             Quit
         }
-        Set tPlanSC = $ClassMethod(..#PORTCLASS, "Plan", tNamespace, tText, .tAnswer, .tHttp, .tFault, tStats, tAdvise)
+        Set tPlanSC = $ClassMethod(..#PORTCLASS, "Plan", tNamespace, tText, .tAnswer, .tHttp, .tFault, tStats, tAdvise, tAlternates, tPlanId, tCompare)
         If $$$ISERR(tPlanSC) {
             Set tSC = ..RenderFault(tPlanSC, $Get(tHttp), $Get(tFault))
             Quit
@@ -105,12 +112,13 @@ ClassMethod HandlePlan() As %Status
 /// <var>pRefused</var> 1 means the envelope is written and the caller writes nothing else. Otherwise
 /// <var>pGuard</var> is the port's guard, and <var>pAnswer</var> is the <code>error</code> outcome when
 /// the instance would not prepare the statement, or <code>""</code>. <var>pStats</var> and <var>pAdvise</var> are the body's
-/// <code>stats</code> and <code>advise</code> flags, read only when <var>pAllowStats</var> is 1 (<method>Read</method>).</p>
-ClassMethod Prepare(Output pRefused As %Boolean, Output pNamespace As %String, Output pText As %String, Output pValues As %DynamicArray, Output pMaxRows As %Integer, Output pGuard As %DynamicObject, Output pAnswer As %DynamicObject, Output pStats As %Boolean, pAllowStats As %Boolean = 0, Output pAdvise As %Boolean) As %Status [ Private ]
+/// <code>stats</code> and <code>advise</code> flags, read only when <var>pAllowStats</var> is 1 (<method>Read</method>), which also answers the body's
+/// <code>alternates</code>, <code>plan</code> and <code>compare</code> as <var>pAlternates</var>, <var>pPlanId</var> and <var>pCompare</var>.</p>
+ClassMethod Prepare(Output pRefused As %Boolean, Output pNamespace As %String, Output pText As %String, Output pValues As %DynamicArray, Output pMaxRows As %Integer, Output pGuard As %DynamicObject, Output pAnswer As %DynamicObject, Output pStats As %Boolean, pAllowStats As %Boolean = 0, Output pAdvise As %Boolean, Output pAlternates As %Boolean, Output pPlanId As %String, Output pCompare As %DynamicArray) As %Status [ Private ]
 {
     Set pGuard = ""
     Set pAnswer = ""
-    Set tSC = ..Read(.pRefused, .pNamespace, .pText, .pValues, .pMaxRows, .pStats, pAllowStats, .pAdvise)
+    Set tSC = ..Read(.pRefused, .pNamespace, .pText, .pValues, .pMaxRows, .pStats, pAllowStats, .pAdvise, .pAlternates, .pPlanId, .pCompare)
     If pRefused Quit tSC
     Set pRefused = 1
     Set tCheckSC = ..Check(pNamespace, pText, .pGuard, .tHttp, .tFault)
@@ -128,12 +136,17 @@ ClassMethod Prepare(Output pRefused As %Boolean, Output pNamespace As %String, O
 /// otherwise <var>pNamespace</var> is the request's scope and <var>pText</var>, <var>pValues</var> and
 /// <var>pMaxRows</var> the body's statement, values and row cap, nothing yet prepared. The body's
 /// <code>stats</code> and <code>advise</code> keys are accepted only with <var>pAllowStats</var> 1, and answer <var>pStats</var> and
-/// <var>pAdvise</var>; on any other route they are stray keys.</p>
-ClassMethod Read(Output pRefused As %Boolean, Output pNamespace As %String, Output pText As %String, Output pValues As %DynamicArray, Output pMaxRows As %Integer, Output pStats As %Boolean, pAllowStats As %Boolean = 0, Output pAdvise As %Boolean) As %Status
+/// <var>pAdvise</var>; on any other route they are stray keys. The same holds for <code>alternates</code>, <code>plan</code> and <code>compare</code>, which answer
+/// <var>pAlternates</var>, <var>pPlanId</var> (<code>""</code> when absent) and <var>pCompare</var> (<code>""</code> when absent). A body that asks for alternates
+/// is refused 403 unless the caller holds the classic page's custom resource as well (<method>GateAlternates</method>).</p>
+ClassMethod Read(Output pRefused As %Boolean, Output pNamespace As %String, Output pText As %String, Output pValues As %DynamicArray, Output pMaxRows As %Integer, Output pStats As %Boolean, pAllowStats As %Boolean = 0, Output pAdvise As %Boolean, Output pAlternates As %Boolean, Output pPlanId As %String, Output pCompare As %DynamicArray) As %Status
 {
     Set pRefused = 1
     Set pStats = 0
     Set pAdvise = 0
+    Set pAlternates = 0
+    Set pPlanId = ""
+    Set pCompare = ""
     Set (pNamespace, pText) = ""
     Set pValues = []
     Set pMaxRows = ##class(OcuPilot.Port.SqlPort).#MAXROWS
@@ -141,7 +154,11 @@ ClassMethod Read(Output pRefused As %Boolean, Output pNamespace As %String, Outp
     If tGateRefused || $$$ISERR(tSC) Quit tSC
     Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
     If $$$ISERR(tReadSC) || '$IsObject(tBody) || 'tBody.%IsA("%Library.DynamicObject") Quit ..RenderInput()
-    If '..Body(tBody, .pText, .pValues, .pMaxRows, .pStats, pAllowStats, .pAdvise) Quit ..RenderInput()
+    If '..Body(tBody, .pText, .pValues, .pMaxRows, .pStats, pAllowStats, .pAdvise, .pAlternates, .pPlanId, .pCompare) Quit ..RenderInput()
+    If pAlternates {
+        Set tSC = ..GateAlternates(.tAlternatesRefused)
+        If tAlternatesRefused || $$$ISERR(tSC) Quit tSC
+    }
     If ##class(OcuPilot.Port.SqlPort).InputProblem(pText, pValues, pMaxRows) '= "" Quit ..RenderInput()
     Set pNamespace = ##class(OcuPilot.Kernel.Scope).Current()
     Set pRefused = 0
@@ -200,16 +217,23 @@ ClassMethod ErrorOutcome(pGuard As %DynamicObject) As %DynamicObject
 /// but the three, or the fourth and fifth, <code>stats</code> and <code>advise</code>, when <var>pAllowStats</var> is 1, or a value of
 /// the wrong shape, or both flags true. A missing <code>parameters</code> is no values, a missing <code>maxRows</code> the
 /// default, a missing <code>stats</code> or <code>advise</code> 0.</p>
-ClassMethod Body(pBody As %DynamicObject, Output pText As %String, Output pValues As %DynamicArray, Output pMaxRows As %Integer, Output pStats As %Boolean, pAllowStats As %Boolean = 0, Output pAdvise As %Boolean) As %Boolean [ Private ]
+/// <p>When <var>pAllowStats</var> is 1 the body may also carry <code>alternates</code> (a boolean), <code>plan</code> (a number) and <code>compare</code>
+/// (an array), answered as <var>pAlternates</var>, <var>pPlanId</var> (the number, <code>""</code> when absent) and <var>pCompare</var> (<code>""</code>
+/// when absent). <code>alternates</code> with <code>stats</code> or <code>advise</code>, <code>plan</code> with <code>compare</code>, and either without
+/// <code>alternates</code> set to true answer 0. Whether a plan number is whole and listed, and a compare's count, are the port's to refuse.</p>
+ClassMethod Body(pBody As %DynamicObject, Output pText As %String, Output pValues As %DynamicArray, Output pMaxRows As %Integer, Output pStats As %Boolean, pAllowStats As %Boolean = 0, Output pAdvise As %Boolean, Output pAlternates As %Boolean, Output pPlanId As %String, Output pCompare As %DynamicArray) As %Boolean [ Private ]
 {
     Set pText = ""
     Set pValues = []
     Set pMaxRows = ##class(OcuPilot.Port.SqlPort).#MAXROWS
     Set pStats = 0
     Set pAdvise = 0
+    Set pAlternates = 0
+    Set pPlanId = ""
+    Set pCompare = ""
     Set tPort = "OcuPilot.Port.SqlPort"
     Set tKeys = $ListBuild($Parameter(tPort, "STATEMENTKEY"), $Parameter(tPort, "PARAMETERSKEY"), $Parameter(tPort, "MAXROWSKEY"))
-    If pAllowStats Set tKeys = tKeys _ $ListBuild($Parameter(tPort, "STATSKEY"), $Parameter(tPort, "ADVISEKEY"))
+    If pAllowStats Set tKeys = tKeys _ $ListBuild($Parameter(tPort, "STATSKEY"), $Parameter(tPort, "ADVISEKEY"), $Parameter(tPort, "ALTERNATESKEY"), $Parameter(tPort, "PLANKEY"), $Parameter(tPort, "COMPAREKEY"))
     Set tStray = 0
     Set tIterator = pBody.%GetIterator()
     While tIterator.%GetNext(.tKey, .tValue) {
@@ -243,6 +267,27 @@ ClassMethod Body(pBody As %DynamicObject, Output pText As %String, Output pValue
         Quit 0
     }
     If pStats && pAdvise Quit 0
+    Set tType = pBody.%GetTypeOf($Parameter(tPort, "ALTERNATESKEY"))
+    If tType = "boolean" {
+        Set pAlternates = ''pBody.%Get($Parameter(tPort, "ALTERNATESKEY"))
+    } ElseIf tType '= "unassigned" {
+        Quit 0
+    }
+    Set tType = pBody.%GetTypeOf($Parameter(tPort, "PLANKEY"))
+    If tType = "number" {
+        Set pPlanId = pBody.%Get($Parameter(tPort, "PLANKEY"))
+    } ElseIf tType '= "unassigned" {
+        Quit 0
+    }
+    Set tType = pBody.%GetTypeOf($Parameter(tPort, "COMPAREKEY"))
+    If tType = "array" {
+        Set pCompare = pBody.%Get($Parameter(tPort, "COMPAREKEY"))
+    } ElseIf tType '= "unassigned" {
+        Quit 0
+    }
+    If pAlternates && (pStats || pAdvise) Quit 0
+    If '$IsObject(pCompare) && (pPlanId = "") Quit 1
+    If 'pAlternates || ($IsObject(pCompare) && (pPlanId '= "")) Quit 0
     Quit 1
 }
 
@@ -253,6 +298,19 @@ ClassMethod Gate(Output pRefused As %Boolean) As %Status
     Set pRefused = 0
     Set tFailedPair = ""
     If ##class(OcuPilot.Screen.Gate).Evaluate(..#DESCRIPTORCLASS, .tFailedPair) Quit $$$OK
+    Set pRefused = 1
+    Quit ##class(OcuPilot.Kernel.Denial).Envelope(tFailedPair)
+}
+
+/// <p>Refuse a caller who does not hold the screen's pairs and the custom resource assigned to
+/// <parameter>ALTERNATESPAGE</parameter> (AD-8, AD-44), which a body that asks for Alternate plans needs: <var>pRefused</var> 1 means the envelope is
+/// written. A requirement that could not be read is refused too.</p>
+ClassMethod GateAlternates(Output pRefused As %Boolean) As %Status
+{
+    Set pRefused = 0
+    Set tFailedPair = ""
+    Set tPairs = ##class(OcuPilot.Screen.Gate).WithClassicPages(##class(OcuPilot.Screen.Gate).RequiredPairs(..#DESCRIPTORCLASS, .tResolved), ..#ALTERNATESPAGE)
+    If tResolved && ##class(OcuPilot.Screen.Gate).EvaluateRequired(tPairs, .tFailedPair) Quit $$$OK
     Set pRefused = 1
     Quit ##class(OcuPilot.Kernel.Denial).Envelope(tFailedPair)
 }

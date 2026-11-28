@@ -124,7 +124,7 @@ Method TestEveryNamedToolResolvesAsItsKind()
 /// still offered by the SQL query screen alone.</p>
 /// <p>Mutation (Rule 19): <code>OcuPilot.Kernel.Agent.Workflow</code>'s <code>slowquery</code> loses its <code>explorer.sqlstatements.read</code> step -> the
 /// read assertion goes red; the step gains a write -> the write assertion goes red; Story 21.26: the step that names the two runtime statistics reads is
-/// removed -> the runtime statistics assertion goes red; Story 21.27: the step that names the index analysis read loses it, or loses the advice read -> the index analysis assertion goes red.</p>
+/// removed -> the runtime statistics assertion goes red; Story 21.27: the step that names the index analysis read loses it, or loses the advice read -> the index analysis assertion goes red; Story 21.28: the step that names the alternate plans read is removed or reworded -> the alternate plans assertion goes red.</p>
 Method TestTheSlowQueryWorkflowReadsTheStatementIndexAndWritesNothing()
 {
     Set tEntry = $ClassMethod(..#WORKFLOW, "Lookup", "slowquery", .tFound)
@@ -157,6 +157,13 @@ Method TestTheSlowQueryWorkflowReadsTheStatementIndexAndWritesNothing()
         If (tStep.%Get("say") [ "Read the namespace's index analysis for table scans, temporary indices and missing join or outlier indices") && (tStep.%Get("say") [ "when no analysis is recorded, say so and that a person can gather statements and run a report on SQL index analyzer.") && (tStep.%GetTypeOf("reads") = "array") && (tStep.%Get("reads").%ToJSON() [ """explorer.sqlindexanalysis.read""") && (tStep.%Get("reads").%ToJSON() [ """explorer.sqladvice.read""") Set tAnalysisSteps = tAnalysisSteps + 1
     }
     Do $$$AssertEquals(tAnalysisSteps, 1, "exactly one step names the index analysis read and the advice read, with the ruled wording")
+    ; Story 21.28: one step reads the alternate plans and suggests the person compare, with the ruled wording; the agent has no compare to name.
+    Set tAlternateSteps = 0
+    Set tSteps = tEntry.%Get("steps").%GetIterator()
+    While tSteps.%GetNext(.tStepIndex, .tStep) {
+        If (tStep.%Get("say") = "Read the alternate plans for the slowest query and, when another plan costs less than the one the optimizer chose, suggest the person compare the two from SQL query; a comparison runs the query once for each plan without its values.") && (tStep.%GetTypeOf("reads") = "array") && (tStep.%Get("reads").%ToJSON() = "[""explorer.sqlalternateplans.read""]") && (tStep.%GetTypeOf("writes") = "unassigned") Set tAlternateSteps = tAlternateSteps + 1
+    }
+    Do $$$AssertEquals(tAlternateSteps, 1, "exactly one step reads the alternate plans, with the ruled wording and no write")
     Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
     Set tOffering = ""
     For tI = 1:1:$ListLength(tList) {

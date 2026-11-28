@@ -8082,6 +8082,11 @@ app-log-hub-page {
   width: 6rem;
 }
 
+// The console's buttons wrap onto a second line rather than run past the column at narrow widths.
+.ocu-sql-query-form .ocu-criteria-controls {
+  flex-wrap: wrap;
+}
+
 .ocu-sql-query-message,
 .ocu-sql-query-plan {
   max-height: 40vh;

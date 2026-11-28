@@ -14679,6 +14679,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-28-alternate-show-plans.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Story 21.28 honours a custom resource on QButtons.ShowPlanAlt (orchestrator ruling U-166); 21.26's Plan with statistics and 21.27's Advise do not check their pages' custom resources (21.28 Task 0 measurement to be appended)
 - 2026-11-25T20:32:14Z status=routed owner=burndown by=runner note=orchestrator ruling 2026-11-25 (21.28 plan gate)
+- 2026-11-26T14:37:06Z status=routed owner=burndown by=runner note=21.28 Task 0 measurement: Plan with statistics (21.26) and Advise (21.27) do not honour a custom resource on their classic pages; the 21.26/21.27 lists and writes do
 
 ### DW-2882: The SQL query screen does not show that the advice list was cut at its cap
 - source: spec-21-27-the-index-analyzer-and-its-advice.md | severity: low | fix-risk: low | footprint: in-story
@@ -14812,6 +14813,43 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AD-51's Story 21.26 and 21.27 cases describe the STATS and ANALYSIS fresh reads without the checks-on prerequisite, which now refuses a gated principal without SELECT the purge, gather, run and purge-analysis writes; the rule lives only in the 21.27 spec's Security note.
 - 2026-11-26T09:11:34Z status=escalated owner=burndown by=cr note=lead Rule 20: amend AD-51 (veto window) or decline
 - 2026-11-26T09:14:23Z status=resolved-by:21-27-the-index-analyzer-and-its-advice owner=21-27-the-index-analyzer-and-its-advice by=runner note=AD-51 Story 21.27 case amended in place (runner's own line, U-174/U-175): checks on, -99 answers 403 naming the port's tables
+
+### DW-2899: The spine's AD-21 console clause says OcuPilot concatenates nothing into the console's statement, while Compare plans inserts %NOPARALLEL into it, and AD-44 has no line for Alternate plans' ShowPlanAlt custom resource
+- source: spec-21-28-alternate-show-plans.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: SqlPort.Compared runs SqlAlternateScan.NoParallel's rewrite of the statement's own text (ruled U-178 and round 2, AD-7's 21.28 line); AD-21 :657 still reads 'concatenates nothing into it'; GateAlternates and the tool's PrivilegePairs union ShowPlanAlt's resource with no AD-44 line.
+- 2026-11-26T20:12:23Z status=escalated owner=burndown by=cr note=spine wording only; amending AD-21 and AD-44 is the runner's or owner's (Rule 20), code is as ruled
+- 2026-11-26T20:15:04Z status=resolved-by:21-28-alternate-show-plans owner=21-28-alternate-show-plans by=runner note=AD-21 and AD-44 Story 21.28 lines added (add-only, the rulings U-166/U-178 as built)
+
+### DW-2900: The slowquery step asks the agent to compare a plan cheaper than the optimizer's choice, but neither the list nor the agent read says which plan the optimizer chose
+- source: spec-21-28-alternate-show-plans.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Workflow.cls slowquery step (ruled verbatim) and ExplorerSqlAlternatePlansRead.ResultSchema carry no chosen-plan marker; Task 0 (d) measured plan 1 equal to the Explain plan on seven statements only.
+- 2026-11-26T20:12:26Z status=wontfix-accepted owner=21-28-alternate-show-plans by=cr note=reopen_if=a slowquery turn treats a plan other than the one Explain plan shows as the optimizer's choice
+
+### DW-2901: After Show plan, SQL query's plan pane does not say which possible plan's text it shows
+- source: spec-21-28-alternate-show-plans.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: sql-answer.ts answerOf drops the port's alternate member for the plan outcome; the pane shows the text under the generic plan heading and no list row is marked; naming it needs a ruled string or a row marker.
+- 2026-11-26T20:12:30Z status=wontfix-accepted owner=21-28-alternate-show-plans by=cr note=reopen_if=a person reports they could not tell which plan's text the pane showed after Show plan on a second row
+
+### DW-2905: AD-7's Story 21.28 line says Compare refuses a statement whose conditions are fewer than its tables minus one, while the code, as U-180 ruled, refuses one whose connected joins are
+- source: spec-21-28-alternate-show-plans.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md :258 states the condition count; SqlAlternateScan.Count answers pCross from joins through Union and SqlPort.Alternates refuses on it (Rework 1, U-180). The code refuses every statement the line names and more.
+- 2026-11-26T21:04:30Z status=escalated owner=burndown by=cr note=spine wording only; amending AD-7 is the runner's or owner's (Rule 20), code is as ruled
+- 2026-11-26T21:06:54Z status=resolved-by:21-28-alternate-show-plans owner=21-28-alternate-show-plans by=runner note=AD-7 Story 21.28 line amended in place (runner's own line, U-180 as built): join conditions must connect all tables; unsure refused
+
+### DW-2906: Compare plans' join scan counts tables and joins over the whole text, not per query block, so some subquery shapes pass with outer tables unjoined and some joinless-safe shapes (UNION, a derived table, an uncorrelated IN subquery) are refused
+- source: spec-21-28-alternate-show-plans.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: False pass: SELECT (SELECT MAX(c.y) FROM u c WHERE c.x = a.x AND c.z = b.z) FROM t a, t b, or WHERE a.y = 1 OR EXISTS (... c.x = a.x AND c.x = b.x), counts 3 tables and 2 joins. False refusal: SELECT s.x FROM (SELECT x FROM u WHERE y = 1) s and WHERE a.x IN (SELECT y FROM u) count 2 tables and 0 joins (inference: neither is a cross product; not timed).
+- 2026-11-26T21:04:35Z status=escalated owner=burndown by=cr note=needs a per-block scope model with alias declarations; which subquery shapes Compare takes is a product call
+
+### DW-2907: Compare plans refuses a join written with a schema-qualified column (Sample.Person.Company = Sample.Company.ID), a delimited identifier or a non-ASCII name, since the join scan reads only alias.column
+- source: spec-21-28-alternate-show-plans.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: SqlAlternateScan.IsColumn takes exactly two plain parts; TestOnlyAComparisonOfTwoTablesIsAJoin pins 's.a.x = b.x' as refused. Rewriting the statement with aliases compares it.
+- 2026-11-26T21:04:41Z status=wontfix-accepted owner=21-28-alternate-show-plans by=cr note=refuse-when-unsure as ruled (U-180); reopen_if=a person reports Compare refusing an aliased-free schema.table.column join
+
+### DW-2908: Compare plans' join scan counts a USING list apart from the comparison joins, so a pair joined by USING and again by a comparison counts twice
+- source: spec-21-28-alternate-show-plans.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: SELECT 1 FROM a JOIN b USING (x) JOIN c ON c.z = 5 WHERE a.y = b.y counts 3 tables and 2 joins with c unjoined: Walk adds a USING list's join without Union, which has no qualifier for it.
+- 2026-11-26T21:04:46Z status=wontfix-accepted owner=21-28-alternate-show-plans by=cr note=reopen_if=a compare of a statement joining one pair by USING and by a comparison outlasts the gateway
 
 ### DW-2902: System monitor's Upcoming tasks drill-down sorts ScheduledFor as text, so a list crossing midnight is misordered
 - source: spec-24-17-managed-alerts-logs-the-system-monitor-and-workflow-6.md | severity: low | fix-risk: low | footprint: in

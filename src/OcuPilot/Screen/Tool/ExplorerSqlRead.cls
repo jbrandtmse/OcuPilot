@@ -185,6 +185,100 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pConte
     Quit tSC
 }
 
+/// <p>The body of a read of one query's plan, which the plan reads' <method>View</method> each call (<class>OcuPilot.Screen.Tool.ExplorerSqlAdviceRead</class>,
+/// <class>OcuPilot.Screen.Tool.ExplorerSqlAlternatePlansRead</class>): the arguments against the calling tool's <method>InputSchema</method>, its
+/// <method>PrivilegePairs</method>, <method>OcuPilot.Port.SqlPort.InputProblem</method> and <method>OcuPilot.Area.Explorer.SqlConsole.Check</method>, in
+/// that order; then <method>OcuPilot.Port.SqlPort.Plan</method> with <var>pAdvise</var>, or with <var>pAlternates</var> and the arguments' <code>plan</code>,
+/// a statement the console types as a change being refused 422 <code>EXPLORER.SQL.CHANGES</code> first for alternates. <var>pResult</var> is
+/// <method>PlanResult</method>'s object, or the <code>error</code> outcome for a statement the instance did not prepare; every refusal is an error status
+/// with <var>pHttpStatus</var> and <var>pFault</var>, and a raise is the internal refusal naming <var>pWhat</var>.</p>
+ClassMethod PlanView(pArgs As %DynamicAbstractObject, pAdvise As %Boolean, pAlternates As %Boolean, pWhat As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Try {
+        Set tArgs = $Select($IsObject(pArgs): pArgs, pArgs = "": {}, 1: pArgs)
+        Set tValidSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(..InputSchema(), tArgs, .tProblem)
+        If $$$ISERR(tValidSC) {
+            Set tSC = ..ArgumentsRefusal(tProblem, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tFailedPair = ""
+        Set tPairs = ..PrivilegePairs(, .tResolved)
+        If 'tResolved || '##class(OcuPilot.Screen.Gate).EvaluateRequired(tPairs, .tFailedPair) {
+            Set pHttpStatus = ##class(OcuPilot.Kernel.Denial).#STATUS
+            Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Kernel.Denial).Slug(), ##class(OcuPilot.Kernel.Denial).Code(), ##class(OcuPilot.Kernel.Denial).Reason())
+            Do pFault.%Set("detail", ##class(OcuPilot.Kernel.Denial).Detail(tFailedPair))
+            Set tSC = $$$ERROR($$$GeneralError, ##class(OcuPilot.Kernel.Denial).Code())
+            Quit
+        }
+
+        Set tText = tArgs.%Get("statement")
+        Set tPlanId = $Select(pAlternates && (tArgs.%GetTypeOf("plan") = "number"): tArgs.%Get("plan"), 1: "")
+        Set tPort = ..#PORTCLASS
+        If $ClassMethod(tPort, "InputProblem", tText) '= "" {
+            Set tSC = $ClassMethod(tPort, "RefuseFor", "input", .pHttpStatus, .pFault)
+            Quit
+        }
+
+        Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+        Set tCheckSC = ##class(OcuPilot.Area.Explorer.SqlConsole).Check(tNamespace, tText, .tGuard, .pHttpStatus, .pFault)
+        If $$$ISERR(tCheckSC) {
+            Set tSC = tCheckSC
+            Quit
+        }
+        Set pHttpStatus = 0
+        Set pFault = ""
+        If tGuard.%GetTypeOf("error") = "object" {
+            Set tError = ##class(OcuPilot.Area.Explorer.SqlConsole).ErrorOutcome(tGuard)
+            Do tError.%Set("namespace", tNamespace, "string")
+            Set pResult = tError
+            Set pHttpStatus = 200
+            Quit
+        }
+        If pAlternates && $ClassMethod(tPort, "Mutating", tGuard.%Get("Kind")) {
+            Set tSC = $ClassMethod(tPort, "RefuseFor", "changes", .pHttpStatus, .pFault)
+            Quit
+        }
+
+        Set tPlanSC = $ClassMethod(tPort, "Plan", tNamespace, tText, .tAnswer, .pHttpStatus, .pFault, 0, pAdvise, pAlternates, tPlanId)
+        If $$$ISERR(tPlanSC) {
+            Set tSC = tPlanSC
+            Quit
+        }
+        Set pResult = ..PlanResult(tNamespace, tGuard, tAnswer)
+        Set pHttpStatus = 200
+        Set pFault = ""
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..InternalRefusal("the " _ pWhat _ " tool failed: " _ ex.Name, .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>A plan read's answer from the port's plan answer <var>pAnswer</var> and the classification <var>pGuard</var>: the namespace, kind, statement type
+/// and tables, then the plan answer's own members but a JSON null.</p>
+ClassMethod PlanResult(pNamespace As %String, pGuard As %DynamicObject, pAnswer As %DynamicObject) As %DynamicObject [ Private ]
+{
+    Set tResult = {}
+    Do tResult.%Set("namespace", pNamespace, "string")
+    Do tResult.%Set("kind", pGuard.%Get("Kind"), "string")
+    Do tResult.%Set("statementType", pGuard.%Get("StatementType"), "number")
+    Do tResult.%Set("tables", pGuard.%Get("Tables"))
+    Set tIterator = pAnswer.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue, .tType) {
+        If (tKey = "kind") || (tType = "null") Continue
+        If (tType = "object") || (tType = "array") {
+            Do tResult.%Set(tKey, tValue)
+        } Else {
+            Do tResult.%Set(tKey, tValue, tType)
+        }
+    }
+    Quit tResult
+}
+
 /// <p>The tool's answer from the port's run answer <var>pAnswer</var> and the classification
 /// <var>pGuard</var>: the namespace, kind, statement type and tables, then the run's own members but
 /// a JSON null, with the cells of each credential-named column masked.</p>
