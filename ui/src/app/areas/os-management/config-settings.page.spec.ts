@@ -23,9 +23,12 @@ import {
   DDL_MAPPING_ADD_ACTION,
   DDL_SYSTEM_MAPPING_LIST,
   DDL_USER_MAPPING_LIST,
+  INTEROP_ARCHIVE_SETTING_LIST,
+  INTEROP_PURGE_SETTING_LIST,
   ISQL_SETTING_LIST,
   MEMORY_SETTING_LIST,
   NLS_DEFAULT_LIST,
+  SQL_RUNTIME_STATS_SETTING_LIST,
   SQL_SETTING_LIST,
   SQL_SHELL_SETTING_LIST,
   STARTUP_SETTING_LIST,
@@ -334,6 +337,30 @@ describe('the settings page', () => {
     expect(startup.host.querySelector('[data-interop-setting-consequence]')?.textContent).not.toContain(STRINGS.systemSecuritySetConsequence);
   });
 
+  describe('Runtime statistics collection (Story 21.26)', () => {
+    const LEVEL_ROWS = [
+      row('CollectionLevel', { Value: 'Off', Kind: 'choice', Accepts: 'One of Off, Off with collection code, On for open and close, On for all modules.' }),
+      row('StopsAt', { Value: '', Kind: 'text', Accepts: 'Shown here and never changed here.', ReadOnly: true }),
+    ];
+
+    // Mutation (Rule 19): drop `SQL_RUNTIME_STATS_SETTING_LIST` from `SERVED_LISTS` -> the first assertion goes red.
+    it('serves Runtime statistics collection, and registers Set value on its own screen alone', () => {
+      const { actions } = mount([], SQL_RUNTIME_STATS_SETTING_LIST, LEVEL_ROWS);
+      expect(actions.has(SQL_RUNTIME_STATS_SETTING_LIST, CONFIG_SET_ACTION)).toBe(true);
+      expect(actions.has(SQL_SHELL_SETTING_LIST, CONFIG_SET_ACTION)).toBe(false);
+    });
+
+    // Mutation (Rule 19): drop the runtime statistics branch from `onOpen`'s statement -> the dialog states the Accepts line alone and this goes red.
+    it('states that a change applies to every namespace in the dialog, and states it on no other screen', async () => {
+      const { fixture, host, store, actions } = mount([], SQL_RUNTIME_STATS_SETTING_LIST, LEVEL_ROWS);
+      await open(fixture, store, actions, SQL_RUNTIME_STATS_SETTING_LIST, 'CollectionLevel');
+      expect(host.querySelector('[data-interop-setting-consequence]')?.textContent?.trim()).toBe(`${LEVEL_ROWS[0]['Accepts']} ${STRINGS.sqlRuntimeStatsSetConsequence}`);
+      const shell = mount([], SQL_SHELL_SETTING_LIST);
+      await open(shell.fixture, shell.store, shell.actions, SQL_SHELL_SETTING_LIST, 'LineRecall');
+      expect(shell.host.querySelector('[data-interop-setting-consequence]')?.textContent).not.toContain(STRINGS.sqlRuntimeStatsSetConsequence);
+    });
+  });
+
   describe('Task Manager email (Story 21.19)', () => {
     const MAIL_ROWS = [
       row('Port', { Value: '', Kind: 'text', Accepts: 'Text of up to 5 characters.' }),
@@ -414,6 +441,63 @@ describe('the settings page', () => {
       await settle(fixture);
       expect(host.querySelector('[data-interop-setting-violation]')?.textContent?.trim()).toBe(reason);
       expect(events).toEqual([]);
+    });
+
+    const PASSWORD_UPDATED: JsonResult<unknown> = {
+      kind: 'ok',
+      status: 200,
+      body: { action: 'updated', target: { type: 'task-mail-setting', scope: 'instance', id: 'AuthUser' }, readBack: { verdict: 'written' } },
+    };
+
+    // Mutation (Rule 19): drop this page's `actions.register` of `password` -> the first assertion goes red.
+    it('registers Set mail password on its own screen alone, drawn with its ruled words', () => {
+      const { actions } = mount([], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      expect(actions.has(TASK_MAIL_SETTING_LIST, 'password')).toBe(true);
+      expect(actions.has(STARTUP_SETTING_LIST, 'password')).toBe(false);
+      expect(STRINGS.taskMailPasswordAction).toBe('Set mail password');
+    });
+
+    // Mutation (Rule 19): send `setkey` and `GoogleMapsKey` for this screen -> the sent-action assertion goes red; open the dialog with `secret` false -> the masked-field assertions go red.
+    it("opens the toolbar's dialog as an empty masked field titled Set mail password, whatever row is selected, and sends the password by the mail password's own action", async () => {
+      const { fixture, host, store, actions, calls, events } = mount([PASSWORD_UPDATED], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      store.setSelection(['Port']);
+      actions.run(TASK_MAIL_SETTING_LIST, 'password');
+      await settle(fixture);
+      expect(calls).toHaveLength(0);
+      expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe('Set mail password');
+      const field = host.querySelector('[data-interop-setting-secret]') as HTMLInputElement;
+      expect(field).not.toBeNull();
+      expect(field.type).toBe('password');
+      expect(field.value).toBe('');
+      expect(host.querySelector('[data-interop-setting-current]')).toBeNull();
+      expect(host.querySelector('[data-interop-setting-consequence]')).toBeNull();
+      expect(host.textContent?.split(STRINGS.interopSettingEmptyHint).length).toBe(2);
+      type(fixture, host, 'a-mail-secret');
+      confirm(host);
+      await settle(fixture);
+      expect(calls[0]).toEqual({
+        path: '/api/ocupilot/screens/tasks.mail/action',
+        method: 'POST',
+        body: JSON.stringify({ action: 'password', id: 'AuthUser', values: { AuthPassword: 'a-mail-secret' } }),
+      });
+      expect(events.map((event) => `${event.type}/${event.action}`)).toEqual(['task-mail-setting/updated']);
+      expect(host.querySelector('app-interop-item-setting-dialog')).toBeNull();
+    });
+
+    it('sends an empty value, which clears the password, and still sends a row\'s own Set value by Set value', async () => {
+      const cleared = mount([PASSWORD_UPDATED], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      cleared.actions.run(TASK_MAIL_SETTING_LIST, 'password');
+      await settle(cleared.fixture);
+      confirm(cleared.host);
+      await settle(cleared.fixture);
+      expect(JSON.parse(cleared.calls[0].body)).toEqual({ action: 'password', id: 'AuthUser', values: { AuthPassword: '' } });
+      const row = mount([MAIL_UPDATED], TASK_MAIL_SETTING_LIST, MAIL_ROWS);
+      await open(row.fixture, row.store, row.actions, TASK_MAIL_SETTING_LIST, 'Port');
+      expect(row.host.querySelector('[data-interop-setting-secret]')).toBeNull();
+      type(row.fixture, row.host, '587');
+      confirm(row.host);
+      await settle(row.fixture);
+      expect(JSON.parse(row.calls[0].body)).toEqual({ action: 'set', id: 'Port', values: { Value: '587' } });
     });
   });
 
@@ -686,5 +770,60 @@ describe('the settings page over the analytics General tab (Story 24.13)', () =>
     const flag = mount([UPDATED_SETTING], ANALYTICS_SETTING_LIST, unstored);
     await open(flag.fixture, flag.store, flag.actions, ANALYTICS_SETTING_LIST, 'Worklist');
     expect(flag.host.querySelector('[data-interop-setting-consequence]')?.textContent).not.toContain(STRINGS.analyticsSettingSaveConsequence);
+  });
+});
+
+describe('the settings page over Archive settings (Story 24.16 Batch 4)', () => {
+  const archiveRows = [
+    row('Archive to namespace', { Value: 'USER', Kind: 'choice', Accepts: 'One of USER.', Stored: true }),
+    row('Archive manager class name', { Value: 'Ens.Archive.Manager', Kind: 'text', Accepts: 'Shown here and never changed here.', ReadOnly: true, Stored: true }),
+    row('Number of days before archiving', { Value: '30', Kind: 'integer', Accepts: 'A whole number from 0 to 36500.', Stored: false }),
+  ];
+
+  // Mutation (Rule 19): drop `INTEROP_ARCHIVE_SETTING_LIST` from the page's served lists -> the first assertion goes red.
+  it('serves the list, offers no Set value on the archive class, and sends the days of the one it opens as text', async () => {
+    const { fixture, host, store, actions, calls } = mount(
+      [{ kind: 'ok', status: 200, body: { action: 'updated', target: { type: 'interop-archive-setting', scope: 'namespace', id: 'Number of days before archiving' }, readBack: { verdict: 'matches' } } }],
+      INTEROP_ARCHIVE_SETTING_LIST,
+      archiveRows
+    );
+    expect(actions.has(INTEROP_ARCHIVE_SETTING_LIST, CONFIG_SET_ACTION)).toBe(true);
+    store.setSelection(['Archive manager class name']);
+    expect(actions.reason(INTEROP_ARCHIVE_SETTING_LIST, CONFIG_SET_ACTION)).toBe(STRINGS.configRefusalReadOnly);
+    expect(actions.run(INTEROP_ARCHIVE_SETTING_LIST, CONFIG_SET_ACTION)).toBe(false);
+    await open(fixture, store, actions, INTEROP_ARCHIVE_SETTING_LIST, 'Number of days before archiving');
+    type(fixture, host, '90');
+    confirm(host);
+    await settle(fixture);
+    expect(JSON.parse(calls[0]?.body ?? '{}')).toEqual({ action: 'set', id: 'Number of days before archiving', values: { Value: '90' } });
+  });
+});
+
+describe('the settings page over Purge data settings (Story 24.16)', () => {
+  // Mutation (Rule 19): drop the purge settings clause from the page's `multiline` -> the text area assertion goes red.
+  it("draws a purge description as a text area that keeps its line breaks, and a purge switch as a checkbox", async () => {
+    const purgeRows = [
+      row('Include message bodies', { Value: '0', Kind: 'boolean', Accepts: '0 (off) or 1 (on).', Stored: false }),
+      row('Description', { Value: 'First line\nSecond line', Kind: 'text', Accepts: 'Text of up to 2000 characters.', Stored: true }),
+    ];
+    const updated: JsonResult<unknown> = {
+      kind: 'ok',
+      status: 200,
+      body: { action: 'updated', target: { type: 'interop-purge-setting', scope: 'namespace', id: 'Description' }, readBack: { verdict: 'matches' } },
+    };
+    const description = mount([updated], INTEROP_PURGE_SETTING_LIST, purgeRows);
+    await open(description.fixture, description.store, description.actions, INTEROP_PURGE_SETTING_LIST, 'Description');
+    const field = description.host.querySelector('textarea[data-interop-setting-value]') as HTMLTextAreaElement | null;
+    expect(field).not.toBeNull();
+    field!.value = 'First line\nSecond line, edited';
+    field!.dispatchEvent(new Event('input'));
+    description.fixture.detectChanges();
+    confirm(description.host);
+    await settle(description.fixture);
+    expect(JSON.parse(description.calls[0].body).values).toEqual({ Value: 'First line\nSecond line, edited' });
+    const flag = mount([], INTEROP_PURGE_SETTING_LIST, purgeRows);
+    await open(flag.fixture, flag.store, flag.actions, INTEROP_PURGE_SETTING_LIST, 'Include message bodies');
+    expect(flag.host.querySelector('textarea[data-interop-setting-value]')).toBeNull();
+    expect(flag.host.querySelector('[data-interop-setting-checkbox]')).not.toBeNull();
   });
 });

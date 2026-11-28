@@ -62,6 +62,7 @@ import {
   READ_SOURCE_PORTS,
   monitorEndpoints,
   configEndpoints,
+  portalResourceEndpoint,
 } from './screen-mirror.mjs';
 import { loadStrings } from './strings.mjs';
 import { CREDENTIAL_RE } from './field-lists.mjs';
@@ -240,7 +241,7 @@ test('every string key a table or banner declaration names is one the key check 
 //
 // Mutation (Rule 19): drop the note key from `declaredStringKeys` -> the key assertion goes red; change
 // one descriptor's `text` -> the equality goes red naming it.
-test('every read note\'s text is the string its key names, and the three SQL statements reads declare one', () => {
+test('every read note\'s text is the string its key names, and the four SQL statements reads declare one', () => {
   const strings = loadStrings();
   const noted = readSources().screens.filter((screen) => screen.declaration.read?.note);
   assert.deepEqual(
@@ -250,7 +251,15 @@ test('every read note\'s text is the string its key names, and the three SQL sta
       'OcuPilot.Screen.Descriptor.AgentScreenPermissions',
       // Story 18.21: ECP application servers' Connections tab states when its statuses were read.
       'OcuPilot.Screen.Descriptor.EcpAppServerTab',
+      // Story 21.27: SQL index analyzer states which statements its reports read.
+      'OcuPilot.Screen.Descriptor.ExplorerSqlIndexAnalysis',
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
+      // Story 21.29: SQL troubleshooting reports states who sees a saved query.
+      'OcuPilot.Screen.Descriptor.ExplorerSqlReports',
+      // Story 21.26: SQL runtime statistics states when a statistic is recorded.
+      'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStats',
+      // Story 21.6: the namespace's SQL statements list states the same statistics note.
+      'OcuPilot.Screen.Descriptor.ExplorerSqlStatementList',
       'OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
       // Story 20.30: the Trace tab states that the classic Visual Trace also shows the session's event, rule and I/O log entries.
@@ -261,12 +270,14 @@ test('every read note\'s text is the string its key names, and the three SQL sta
       'OcuPilot.Screen.Descriptor.InteropUsageVolumeTab',
       // Story 18.11: Prometheus metrics states that each read shortens an external scraper's intervals.
       'OcuPilot.Screen.Descriptor.MetricsList',
+      // Story 21.37: Page resources states that a page's custom resource decides who may open it, in the classic portal and in OcuPilot.
+      'OcuPilot.Screen.Descriptor.PageResourceList',
       // Story 23.4: the Services list states what an empty Allowed IP addresses list means.
       'OcuPilot.Screen.Descriptor.ServiceList',
       // Story 19.10: SQL activity states whose statement text it shows.
       'OcuPilot.Screen.Descriptor.SqlActivityList',
     ],
-    'the three SQL statements reads, the ECP Connections tab, Services, SQL activity, Prometheus metrics, the three Interoperability usage tabs and the message Trace tab declare a note'
+    'the four SQL statements reads, the ECP Connections tab, Services, Page resources, SQL activity, Prometheus metrics, the three Interoperability usage tabs and the message Trace tab declare a note'
   );
   for (const screen of noted) {
     const { key, text } = screen.declaration.read.note;
@@ -1061,6 +1072,8 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['system-explorer/sql-tables/cached-queries', 'system-explorer/sql-tables/document', 8, 0],
     ['interoperability/productions/items/classes', 'interoperability/productions/items/document', 8, 0],
     ['system-explorer/sql-tables/statements', 'system-explorer/sql-tables/document', 9, 0],
+    // Story 21.25: the table's Field statistics, the tenth tab of the SQL tables group.
+    ['system-explorer/sql-tables/field-statistics', 'system-explorer/sql-tables/document', 10, 0],
   ]);
   assert.ok(emitted.every((screen) => 'tab' in screen), 'every screen emits tab, null when it is no tab');
 });
@@ -1101,17 +1114,19 @@ test('multiSelectProblem returns every sentence OcuPilot.Test.MultiSelectCorpus 
   const declaring = sources.screens.filter((screen) => screen.declaration.multiSelect !== undefined);
   assert.deepEqual(
     declaring.map((screen) => screen.className).sort(),
-    ['OcuPilot.Screen.Descriptor.ExplorerClassList', 'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff', 'OcuPilot.Screen.Descriptor.ExplorerRoutineList', 'OcuPilot.Screen.Descriptor.InteropMessageList', 'OcuPilot.Screen.Descriptor.ProcessList'],
-    'Processes and, since Story 19.2, the Classes and Routines lists and, since Story 20.31, Messages and, since Story 24.9, Compare namespaces are the lists that declare a multi-select'
+    ['OcuPilot.Screen.Descriptor.ExplorerClassList', 'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff', 'OcuPilot.Screen.Descriptor.ExplorerRoutineList', 'OcuPilot.Screen.Descriptor.InteropMessageList', 'OcuPilot.Screen.Descriptor.InteropSuspendedMessageList', 'OcuPilot.Screen.Descriptor.ProcessList'],
+    'Processes and, since Story 19.2, the Classes and Routines lists and, since Story 20.31, Messages and, since Story 24.9, Compare namespaces and, since Story 24.16, Suspended messages are the lists that declare a multi-select'
   );
   for (const screen of declaring) assert.equal(multiSelectProblem(screen.declaration), null, `${screen.className}'s declaration passes`);
   const processes = declaring.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.ProcessList');
   assert.ok(declaredStringKeys(processes.declaration).includes('processBroadcastIneligible'), 'its ineligible reason is a key the string check resolves');
   const messages = declaring.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.InteropMessageList');
-  assert.deepEqual(messages.declaration.multiSelect, { action: 'resend', max: 100 }, 'Messages checks every row for resend, at most the port\'s cap (Story 20.31)');
+  assert.deepEqual(messages.declaration.multiSelect, { action: 'resend', max: 100, extraActions: ['export'] }, 'Messages checks every row for resend and export, at most the port\'s cap (Story 20.31, Story 24.16 Batch 3)');
   const compare = declaring.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff');
   assert.deepEqual(compare.declaration.multiSelect, { action: 'promote', eligible: 'Promotable', max: 100, ineligibleKey: 'explorerPromoteIneligible' }, 'Compare namespaces checks the promotable rows for promote, at most the port\'s cap (Story 24.9)');
-  for (const screen of declaring.filter((entry) => entry !== processes && entry !== messages && entry !== compare)) {
+  const suspended = declaring.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.InteropSuspendedMessageList');
+  assert.deepEqual(suspended.declaration.multiSelect, { action: 'resubmit', max: 100, extraActions: ['discard', 'delete'] }, 'Suspended messages checks every row for resubmit, discard and delete, at most the port\'s cap (Story 24.16)');
+  for (const screen of declaring.filter((entry) => entry !== processes && entry !== messages && entry !== compare && entry !== suspended)) {
     assert.deepEqual(screen.declaration.multiSelect, { action: 'compile', max: 100, extraActions: ['delete', 'export'] }, `${screen.className} checks every row for compile and, as its extra actions, delete and export (Story 19.13)`);
   }
 
@@ -1576,6 +1591,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.AnalyticsDashboardWidgetsTab',
       'OcuPilot.Screen.Descriptor.AnalyticsFolderItemDefinitionTab',
       'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
+      // Story 24.14 Batch 2: a PMML model's Test screen, whose one criterion is the model's id.
+      'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelTest',
       'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList',
       'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
@@ -1596,6 +1613,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.ExplorerSearch',
       'OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries',
       'OcuPilot.Screen.Descriptor.ExplorerSqlConstraints',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlFieldStatistics',
       'OcuPilot.Screen.Descriptor.ExplorerSqlFields',
       'OcuPilot.Screen.Descriptor.ExplorerSqlIndices',
       'OcuPilot.Screen.Descriptor.ExplorerSqlPartitionMappings',
@@ -1618,6 +1636,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.ExplorerUnitTestRun',
       'OcuPilot.Screen.Descriptor.ExplorerUnitTests',
       'OcuPilot.Screen.Descriptor.GlobalMappingList',
+      // Story 24.15: Compare default settings, whose one criterion is the other namespace.
+      'OcuPilot.Screen.Descriptor.InteropDefaultSettingDiff',
       'OcuPilot.Screen.Descriptor.InteropItemClassTab',
       'OcuPilot.Screen.Descriptor.InteropItemJobTab',
       'OcuPilot.Screen.Descriptor.InteropItemList',
@@ -1628,11 +1648,20 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.InteropItemStatusTab',
       'OcuPilot.Screen.Descriptor.InteropItemTestTab',
       'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
+      // Story 24.17 Batch 1: Alert history's alert criterion and Managed alerts' open criterion.
+      'OcuPilot.Screen.Descriptor.InteropManagedAlertHistory',
+      'OcuPilot.Screen.Descriptor.InteropManagedAlertList',
       'OcuPilot.Screen.Descriptor.InteropMessageContentsTab',
       'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab',
       'OcuPilot.Screen.Descriptor.InteropMessageList',
       'OcuPilot.Screen.Descriptor.InteropMessageTraceTab',
+      // Story 24.17 Batch 2: Business process log's completed criterion.
+      'OcuPilot.Screen.Descriptor.InteropProcessLogList',
       'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
+      // Story 24.17 Batch 2: Business rule log's errors criterion.
+      'OcuPilot.Screen.Descriptor.InteropRuleLogList',
+      // Story 24.17 Batch 3b: Role members' one criterion is the workflow role the route id names.
+      'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList',
       'OcuPilot.Screen.Descriptor.JournalFileDatabaseList',
       'OcuPilot.Screen.Descriptor.JournalFileDetails',
       'OcuPilot.Screen.Descriptor.JournalRecordList',
@@ -1650,6 +1679,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.SqlPrivilegeList',
       'OcuPilot.Screen.Descriptor.TaskDetails',
       'OcuPilot.Screen.Descriptor.TaskHistoryList',
+      'OcuPilot.Screen.Descriptor.TaskOutput',
       'OcuPilot.Screen.Descriptor.TaskRunList',
       'OcuPilot.Screen.Descriptor.TaskUpcomingList',
       'OcuPilot.Screen.Descriptor.WalletSecretList',
@@ -1848,6 +1878,17 @@ const CREDENTIAL_FLAG_FIELDS = new Set([
   'AnalyticsTermListEntryList.cls context.fields: Key',
   'UserList.cls read.fields: ChangePassword',
   'UserList.cls context.fields: ChangePassword',
+  // The system default settings list and its comparison (Story 24.15) carry the same `Secret` flag, set for a setting whose name matches the
+  // pattern, with an empty value on both sides; the flag holds no credential.
+  'InteropDefaultSettingList.cls read.fields: Secret',
+  'InteropDefaultSettingList.cls context.fields: Secret',
+  'InteropDefaultSettingDiff.cls read.fields: Secret',
+  'InteropDefaultSettingDiff.cls context.fields: Secret',
+  // The credentials list (Story 24.15) carries `Password`, `stored` or `not stored`: whether one is held, never a value; the password itself is the
+  // screen's one declared secret argument and is never read.
+  'InteropCredentialList.cls read.fields: Password',
+  'InteropCredentialList.cls table.columns: Password',
+  'InteropCredentialList.cls context.fields: Password',
 ]);
 
 test('AD-35: no production descriptor names a read, filter, sort, column or context field matching the credential pattern', () => {
@@ -2777,6 +2818,9 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.AnalyticsListingGroupList',
       'OcuPilot.Screen.Descriptor.AnalyticsListingGroupListingList',
       'OcuPilot.Screen.Descriptor.AnalyticsMdxQuery',
+      // Story 24.14 Batch 2: the PMML models list and its Test screen.
+      'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelList',
+      'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelTest',
       'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList',
       'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList',
       'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList',
@@ -2796,7 +2840,20 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList',
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm',
       'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
+      // Story 21.26: Runtime statistics collection owns %DB_IRISSYS:READ, the system database its setting lives in, beside System Explorer's %Development.
+      'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStatsSettings',
+      // Story 24.16 Batch 4: the three archive screens own %Ens_ArchiveManager:READ.
+      'OcuPilot.Screen.Descriptor.InteropArchiveErrorList',
+      'OcuPilot.Screen.Descriptor.InteropArchiveList',
+      'OcuPilot.Screen.Descriptor.InteropArchiveSettingList',
       'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList',
+      // Story 24.15: Credentials owns %Ens_Credentials:READ.
+      'OcuPilot.Screen.Descriptor.InteropCredentialList',
+      // Story 24.15: System default settings and Compare default settings own %Ens_SystemDefaultConfig:READ.
+      'OcuPilot.Screen.Descriptor.InteropDefaultSettingDiff',
+      'OcuPilot.Screen.Descriptor.InteropDefaultSettingList',
+      // Story 24.18 Batch 1: HL7 schemas own %Ens_EDISchema:READ.
+      'OcuPilot.Screen.Descriptor.InteropHl7SchemaList',
       'OcuPilot.Screen.Descriptor.InteropItemClassTab',
       'OcuPilot.Screen.Descriptor.InteropItemJobTab',
       'OcuPilot.Screen.Descriptor.InteropItemList',
@@ -2809,6 +2866,9 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.InteropJobList',
       'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
       'OcuPilot.Screen.Descriptor.InteropLookupTableList',
+      // Story 24.17 Batch 1: Alert history and Managed alerts own %Ens_Alerts:READ.
+      'OcuPilot.Screen.Descriptor.InteropManagedAlertHistory',
+      'OcuPilot.Screen.Descriptor.InteropManagedAlertList',
       'OcuPilot.Screen.Descriptor.InteropMessageContentsTab',
       'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab',
       'OcuPilot.Screen.Descriptor.InteropMessageList',
@@ -2816,15 +2876,36 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.InteropMonitorList',
       'OcuPilot.Screen.Descriptor.InteropProcessEditor',
       'OcuPilot.Screen.Descriptor.InteropProcessList',
+      // Story 24.17 Batch 2: Business process log owns %Ens_Jobs:READ.
+      'OcuPilot.Screen.Descriptor.InteropProcessLogList',
       'OcuPilot.Screen.Descriptor.InteropProductionDiagram',
       'OcuPilot.Screen.Descriptor.InteropProductionList',
+      // Story 24.16: Purge management data owns %Ens_Purge:USE and Purge data settings %Ens_PurgeSettings:WRITE.
+      'OcuPilot.Screen.Descriptor.InteropPurgeList',
+      'OcuPilot.Screen.Descriptor.InteropPurgeSettingList',
       'OcuPilot.Screen.Descriptor.InteropQueueList',
       'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
       'OcuPilot.Screen.Descriptor.InteropRuleEditor',
       'OcuPilot.Screen.Descriptor.InteropRuleList',
+      // Story 24.17 Batch 2: Business rule log owns %Ens_RuleLog:USE.
+      'OcuPilot.Screen.Descriptor.InteropRuleLogList',
+      // Story 24.15: Schedule specs own %Ens_ProductionConfig:READ.
+      'OcuPilot.Screen.Descriptor.InteropScheduleList',
       'OcuPilot.Screen.Descriptor.InteropSchemaViewer',
+      // Story 24.16 Batch 2: Suspended messages own %Ens_MessageHeader:USE.
+      'OcuPilot.Screen.Descriptor.InteropSuspendedMessageList',
+      // Story 24.17 Batch 5: System monitor and its three drill-downs own %Ens_Dashboard:USE and %DB_IRISSYS:READ.
+      'OcuPilot.Screen.Descriptor.InteropSystemMonitor',
+      'OcuPilot.Screen.Descriptor.InteropSystemMonitorProcesses',
+      'OcuPilot.Screen.Descriptor.InteropSystemMonitorQueues',
+      'OcuPilot.Screen.Descriptor.InteropSystemMonitorTasks',
       'OcuPilot.Screen.Descriptor.InteropTransformEditor',
       'OcuPilot.Screen.Descriptor.InteropTransformList',
+      // Story 24.17 Batch 3b: Role members and Workflow roles own %Ens_WorkflowConfig:READ.
+      'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList',
+      'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList',
+      // Story 24.17 Batch 3a: Workflow users own %Ens_WorkflowConfig:READ.
+      'OcuPilot.Screen.Descriptor.InteropWorkflowUserList',
       'OcuPilot.Screen.Descriptor.JournalSettings',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
       'OcuPilot.Screen.Descriptor.LanguageServerForm',
@@ -3192,7 +3273,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup', 'config', 'mirror', 'locale', 'global', 'phone', 'advisor']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics', 'devtool', 'backup', 'config', 'mirror', 'locale', 'global', 'phone', 'advisor', 'portalresource']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');
@@ -3233,6 +3314,8 @@ test('Story 19.1: the System Explorer reads through the atelier port, the eighth
     ExplorerSqlPartitionMappings: ['Catalog.PartitionMappings', 'table='],
     ExplorerSqlCachedQueries: ['Catalog.CachedQueries', 'table='],
     ExplorerSqlTableStatements: ['Catalog.TableStatements', 'table='],
+    // Story 21.25: a table's Field statistics tab.
+    ExplorerSqlFieldStatistics: ['Catalog.FieldStatistics', 'table='],
     ExplorerSqlView: ['Catalog.View', 'view='],
     ExplorerSqlViewFields: ['Catalog.ViewFields', 'view='],
     ExplorerSqlViewStatements: ['Catalog.ViewStatements', 'view='],
@@ -3586,6 +3669,8 @@ test('Story 20.11: the Analytics screens read through the analytics port, the fi
     ['AnalyticsUserIconList', 'UserIcons'],
     ['AnalyticsFolderItemDefinitionTab', 'FolderItemDefinition'],
     ['AnalyticsDashboardWidgetsTab', 'DashboardWidgets'],
+    ['AnalyticsPmmlModelList', 'PmmlModels'],
+    ['AnalyticsPmmlModelTest', 'PmmlModel'],
   ];
   for (const [name, endpoint] of expected) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
@@ -3623,5 +3708,46 @@ test('Story 21.19: the config source admits the Task Manager email endpoint the 
   assert.deepEqual(screen.declaration.ownPrivileges, [{ resource: '%Admin_Manage', permission: 'USE' }], "the port's own pair is its own, which keeps the other Tasks screens open to the area's two");
   const other = structuredClone(screen.declaration);
   other.read.source.endpoint = 'Mail';
-  assert.match(readProblem(other), /is not one of the config port's endpoints \(.*'TaskMail'\)/, 'an endpoint the port does not declare is refused');
+  assert.match(readProblem(other), /is not one of the config port's endpoints \(.*'TaskMail'.*\)/, 'an endpoint the port does not declare is refused');
+});
+
+// Story 21.36: Task output reads a log source keyed by its parent task, so a logsource read takes criteria only as its
+// parent's route id, which `criteriaProblem` and `OcuPilot.Screen.Registry.CriteriaProblem` both allow.
+//
+// Mutation (Rule 19): drop `SOURCE_LOGSOURCE` from the parent-only rule in `criteriaProblem` -> the first leg goes red.
+test('Story 21.36: Task output takes its parent task as a logsource criterion, and the same declaration without a parent is refused', () => {
+  const { screens } = readSources();
+  const screen = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskOutput');
+  assert.ok(screen !== undefined, 'Task output is declared');
+  assert.deepEqual(screen.declaration.read.source, { port: 'logsource', endpoint: 'taskoutput', type: 'LIST' });
+  assert.equal(readProblem(screen.declaration), null, "its read passes");
+  assert.equal(criteriaProblem(screen.declaration), null, "its criteria pass");
+  const orphan = structuredClone(screen.declaration);
+  orphan.parentScope = '';
+  assert.match(criteriaProblem(orphan), /^read\.criteria is declared on a 'logsource' source, and server criteria travel on the admin/, 'and without its parent it is refused');
+});
+
+// Story 21.37: Page resources reads the classic pages that hold a custom resource through the portalresource source, whose endpoint the
+// port's own ENDPOINT parameter declares, the mirror following that parameter rather than a list of its own; an endpoint or a request
+// type the port does not declare, and a member the port would have to issue per row, are refused.
+//
+// Mutation (Rule 19): drop `SOURCE_PORTALRESOURCE` from `READ_SOURCE_PORTS` -> the roster pin in the Background tasks test goes red and
+// this test's first read assertion goes red with it.
+test('Story 21.37: the portalresource source admits the endpoint the port declares, in the Permissions area at position 5', () => {
+  assert.equal(portalResourceEndpoint(), 'PortalResource', "the port declares 'PortalResource'");
+  const { screens } = readSources();
+  const screen = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.PageResourceList');
+  assert.ok(screen !== undefined, 'the Page resources screen is declared');
+  assert.deepEqual(screen.declaration.read.source, { port: 'portalresource', endpoint: 'PortalResource', type: 'LIST' });
+  assert.equal(readProblem(screen.declaration), null, 'its read passes');
+  assert.equal(`${screen.declaration.area}|${screen.declaration.sideBarPosition}|${screen.declaration.route}`, 'permissions|5|permissions/pageresources', 'it is the fifth Permissions entry');
+  const wrongEndpoint = structuredClone(screen.declaration);
+  wrongEndpoint.read.source.endpoint = 'Pages';
+  assert.match(readProblem(wrongEndpoint), /is not the portal resource port's endpoint \('PortalResource'\)/, 'an endpoint the port does not declare is refused');
+  const wrongType = structuredClone(screen.declaration);
+  wrongType.read.source.type = 'GET';
+  assert.match(readProblem(wrongType), /is declared on a portal resource source/, 'a request type other than LIST is refused');
+  const perRow = structuredClone(screen.declaration);
+  perRow.read.source.rowGet = { endpoint: 'PortalResource', type: 'GET' };
+  assert.match(readProblem(perRow), /read\.source\.rowGet is declared on a portal resource source, which answers its list whole/, 'a per-row call is refused');
 });

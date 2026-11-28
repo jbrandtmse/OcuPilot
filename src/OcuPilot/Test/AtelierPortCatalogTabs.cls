@@ -15,6 +15,12 @@ Class OcuPilot.Test.AtelierPortCatalogTabs Extends %UnitTest.TestCase
 
 Parameter PORT = "OcuPilot.Port.AtelierPort";
 
+/// <p>The text a statement or a call of the vendor's statement index procedure would carry, in upper case: <code>%SQL_Manager.StatementIndexAll</code>.</p>
+Parameter VENDORPROCEDURE = "SQL_MANAGER.STATEMENTINDEX";
+
+/// <p>The same procedure named as its class query, in upper case: <code>%SQL.Manager.Catalog:StatementIndexAll</code>.</p>
+Parameter VENDORCLASSQUERY = "SQL.MANAGER.CATALOG:STATEMENTINDEX";
+
 /// <p>The statement a SQL statements tab sends, written out here so that a column added to or
 /// renamed in the port's select list, and a grouping dropped from it, fails this class rather than
 /// passing through a body built from the port's own parameter.</p>
@@ -89,7 +95,7 @@ ClassMethod Body(pQueryParameter As %String, pValues As %List) As %String
 /// <p>The nine endpoints, each as <code>$ListBuild(endpoint, kind, key)</code>.</p>
 ClassMethod Endpoints() As %List
 {
-    Quit $ListBuild($ListBuild("Catalog.Partitions", "table", "table"), $ListBuild("Catalog.PartitionMappings", "table", "table"), $ListBuild("Catalog.CachedQueries", "table", "table"), $ListBuild("Catalog.TableStatements", "table", "table"), $ListBuild("Catalog.View", "view", "view"), $ListBuild("Catalog.ViewFields", "view", "view"), $ListBuild("Catalog.ViewStatements", "view", "view"), $ListBuild("Catalog.Procedure", "procedure", "procedure"), $ListBuild("Catalog.ProcedureStatements", "procedure", "procedure"))
+    Quit $ListBuild($ListBuild("Catalog.Partitions", "table", "table"), $ListBuild("Catalog.PartitionMappings", "table", "table"), $ListBuild("Catalog.CachedQueries", "table", "table"), $ListBuild("Catalog.TableStatements", "table", "table"), $ListBuild("Catalog.FieldStatistics", "table", "table"), $ListBuild("Catalog.View", "view", "view"), $ListBuild("Catalog.ViewFields", "view", "view"), $ListBuild("Catalog.ViewStatements", "view", "view"), $ListBuild("Catalog.Procedure", "procedure", "procedure"), $ListBuild("Catalog.ProcedureStatements", "procedure", "procedure"))
 }
 
 /// <p>AC8, AC5: each tab first sends its kind's resolve with the caller's name bound and
@@ -104,7 +110,7 @@ ClassMethod Endpoints() As %List
 Method TestEachTabResolvesAndBindsTheResolvedNames()
 {
     Set tKey = "OCUPROBE." _ "THING" _ $Char(1) _ "ONE"
-    Set tWanted = $ListBuild("CATALOGPARTITIONSQUERY", "CATALOGPARTITIONMAPPINGSQUERY", "CATALOGCACHEDQUERIESQUERY", "CATALOGSTATEMENTSQUERY", "CATALOGVIEWQUERY", "CATALOGVIEWFIELDSQUERY", "CATALOGSTATEMENTSQUERY", "CATALOGPROCEDUREQUERY", "CATALOGSTATEMENTSQUERY")
+    Set tWanted = $ListBuild("CATALOGPARTITIONSQUERY", "CATALOGPARTITIONMAPPINGSQUERY", "CATALOGCACHEDQUERIESQUERY", "CATALOGSTATEMENTSQUERY", "CATALOGFIELDSTATISTICSQUERY", "CATALOGVIEWQUERY", "CATALOGVIEWFIELDSQUERY", "CATALOGSTATEMENTSQUERY", "CATALOGPROCEDUREQUERY", "CATALOGSTATEMENTSQUERY")
     Set tEndpoints = ..Endpoints()
     For tI = 1:1:$ListLength(tEndpoints) {
         Set tCase = $List(tEndpoints, tI)
@@ -258,6 +264,7 @@ Method TestRowsCarryExactlyTheDeclaredFields()
         $ListBuild("Catalog.PartitionMappings", "table", "{""RULE"":""OcuProbe1914Rule"",""BUCKETS"":""1"",""ROWS"":""2"",""ESTIMATED_SIZE"":""62914"",""LOCATION"":""USER""}", "{""Rule"":""OcuProbe1914Rule"",""Buckets"":1,""Rows"":2,""EstimatedSize"":62914,""Location"":""USER""}"),
         $ListBuild("Catalog.CachedQueries", "table", "{""Routine"":""%sqlcq.USER.cls1"",""Query"":"" SELECT 1"",""CreateTime"":""2026-10-03 10:00:00"",""Source"":0,""QueryType"":8,""QueryTypeExt"":""%SQL.Statement Dynamic SQL"",""Cost"":""9"",""STATEMENT_OPTIONS"":""""}", "{""CachedQuery"":""%sqlcq.USER.cls1"",""Query"":"" SELECT 1"",""Created"":""2026-10-03 10:00:00"",""Source"":false,""QueryType"":""%SQL.Statement Dynamic SQL"",""Features"":""""}"),
         $ListBuild("Catalog.TableStatements", "table", "{""PLAN_STATE"":""Unfrozen"",""FROZEN_DIFF"":false,""EXECUTIONS"":3,""TOTAL_TIME"":0.5,""AVERAGE_TIME"":0.25,""STDDEV_TIME"":0,""ROW_COUNT"":4,""COMMANDS"":40,""FIRST_SEEN"":""2026-10-03"",""STATEMENT"":"" SELECT 1"",""LOCATION"":""%sqlcq.USER.cls1.1"",""USERNAME"":""OcuProbe1914Who"",""CLIENTNAME"":""OcuProbe1914Host"",""CLIENTIP"":""203.0.113.9"",""CLIENTAPP"":""OcuProbe1914App"",""CALLSTACK"":""OcuProbe1914Stack"",""PLAN"":""OcuProbe1914Plan"",""JSONPLAN"":""OcuProbe1914Json""}", "{""Statement"":"" SELECT 1"",""PlanState"":""Unfrozen"",""NewPlan"":false,""Executions"":3,""TotalTime"":0.5,""AverageTime"":0.25,""StdDevTime"":0,""RowCount"":4,""Commands"":40,""FirstSeen"":""2026-10-03"",""Location"":""%sqlcq.USER.cls1.1""}"),
+        $ListBuild("Catalog.FieldStatistics", "table", "{""FIELD_NAME"":""Code"",""COLLECTED_SELECTIVITY"":""1 (unique)"",""COLLECTED_OUTLIER_VALUE"":"""",""COLLECTED_OUTLIER_SELECTIVITY"":"""",""COLLECTED_AVG_FIELD_SIZE"":""4"",""FIXED_SELECTIVITY"":""2.5%"",""FIXED_OUTLIER_VALUE"":""x"",""FIXED_OUTLIER_SELECTIVITY"":""0.5%"",""FIXED_AVG_FIELD_SIZE"":""6"",""FIELD_NAME_INFO"":""never"",""COLLECTED_OUTLIER_INFO"":""never""}", "{""Field"":""Code"",""Selectivity"":""1 (unique)"",""OutlierValue"":"""",""OutlierSelectivity"":"""",""AverageFieldSize"":4,""FixedSelectivity"":""2.5%"",""FixedOutlierValue"":""x"",""FixedOutlierSelectivity"":""0.5%"",""FixedAverageFieldSize"":6,""Table"":""OcuProbe.Thing""}"),
         $ListBuild("Catalog.ViewFields", "view", "{""FIELD_NAME"":""Name"",""DATATYPE"":""%Library.String"",""COLLATION"":""SQLUPPER"",""MAXLEN"":""50"",""MAXVAL"":"""",""MINVAL"":"""",""BLOB"":""No"",""LENGTH"":50,""PRECISION"":50,""SCALE"":0}", "{""Field"":""Name"",""Type"":""%Library.String"",""Collation"":""SQLUPPER"",""MaxLength"":50,""MaxValue"":"""",""MinValue"":"""",""Stream"":false,""Length"":50,""Precision"":50,""Scale"":0}"),
         $ListBuild("Catalog.Procedure", "procedure", "{""CLASS_NAME"":""OcuProbe.Described"",""PROCEDURE_TYPE"":""function"",""METHOD_OR_QUERY_NAME"":""Stamp"",""DESCRIPTION"":""<p>OcuProbe <b>tagged</b> &amp; text</p>\r\n<p>Second.</p>"",""NUMBER_INPUT_PARAMS"":1,""NUMBER_INPUT_OUTPUT_PARAMS"":0,""NUMBER_OUTPUT_PARAMS"":0,""RETURN_VALUE"":""_isc_sp_ret_val INTEGER"",""PROCEDURE_INTERFACE"":""2"",""NUMBER_OF_COLUMNS"":0,""INPUT_PARAMETERS"":""pValue INTEGER"",""INPUT_OUTPUT_PARAMETERS"":"""",""OUTPUT_PARAMETERS"":"""",""RESULTSET_COLUMNS"":""""}", "{""Class"":""OcuProbe.Described"",""Type"":""function"",""Method"":""Stamp"",""Description"":""OcuProbe tagged & text Second."",""Inputs"":1,""InOuts"":0,""Outputs"":0,""Interface"":2,""Columns"":0,""InputParameters"":""pValue INTEGER"",""InOutParameters"":"""",""OutputParameters"":"""",""ResultColumns"":"""",""ReturnValue"":""_isc_sp_ret_val INTEGER""}"))
     For tI = 1:1:$ListLength(tCases) {
@@ -324,13 +331,24 @@ Method TestNoStatementReadSelectsAnIdentifyingColumn()
         Set tColumn = $Piece($Piece(tColumns, ",", tI), ":", 2)
         Do $$$AssertTrue(..#STATEMENTSQUERY [ (" AS " _ tColumn _ $Select(tColumn = "LOCATION": " FROM", 1: ",")), "the statements row map's " _ tColumn _ " is a column the statement selects")
     }
+    ; Story 21.6: the namespace-wide statement index read selects the same kind of columns, from the same tables.
+    Set tIndexQuery = $ZConvert($Parameter(..#PORT, "CATALOGSTATEMENTINDEXQUERY"), "U")
+    Do $$$AssertTrue(tIndexQuery [ "INFORMATION_SCHEMA.STATEMENTS", "the statement index read reads the information schema's statements")
+    For tColumn = "USERNAME", "USER_NAME", "CLIENTNAME", "CLIENTIP", "CLIENTAPP", "CALLSTACK", "S.PLAN", "JSONPLAN" {
+        Do $$$AssertTrue(tIndexQuery '[ tColumn, "the statement index read names no " _ tColumn)
+    }
+    Set tIndexColumns = $Parameter(..#PORT, "CATALOGSTATEMENTINDEXCOLUMNS")
+    For tI = 1:1:$Length(tIndexColumns, ",") {
+        Set tColumn = $Piece($Piece(tIndexColumns, ",", tI), ":", 2)
+        Do $$$AssertTrue(tIndexQuery [ (" AS " _ tColumn _ $Select(tColumn = "LOCATION": " FROM", 1: ",")), "the statement index row map's " _ tColumn _ " is a column the read selects")
+    }
     Set tNamed = ""
     Set tClass = ##class(%Dictionary.CompiledClass).%OpenId(..#PORT)
     Do $$$AssertTrue($IsObject(tClass), "the port is compiled")
     If '$IsObject(tClass) Quit
     For tI = 1:1:tClass.Parameters.Count() {
         Set tParameter = tClass.Parameters.GetAt(tI)
-        If $ZConvert(tParameter.Default, "U") [ "STATEMENTINDEX" Set tNamed = tNamed _ " " _ tParameter.Name
+        If ($ZConvert(tParameter.Default, "U") [ ..#VENDORPROCEDURE) || ($ZConvert(tParameter.Default, "U") [ ..#VENDORCLASSQUERY) Set tNamed = tNamed _ " " _ tParameter.Name
     }
     Set tDefinition = ##class(%Dictionary.ClassDefinition).%OpenId(..#PORT)
     Do $$$AssertTrue($IsObject(tDefinition), "the port's definition opens")
@@ -342,7 +360,7 @@ Method TestNoStatementReadSelectsAnIdentifyingColumn()
         While 'tMethod.Implementation.AtEnd {
             Set tCode = tCode _ $ZConvert(tMethod.Implementation.ReadLine(), "U") _ " "
         }
-        If tCode [ "STATEMENTINDEX" Set tNamed = tNamed _ " " _ tMethod.Name
+        If (tCode [ ..#VENDORPROCEDURE) || (tCode [ ..#VENDORCLASSQUERY) Set tNamed = tNamed _ " " _ tMethod.Name
     }
     Do $$$AssertEquals(tNamed, "", "no parameter or method of the port names the statement index procedure")
 }

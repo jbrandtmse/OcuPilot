@@ -9478,13 +9478,15 @@ So that no area has a remaining gap.
 
 [AMENDED 2026-11-16, owner answers U-70 and U-74, Rule 5] Those three return to Story 21.19 (U-70). The custom resource on a classic menu item is built with its AD-44 and AD-64 records (U-74).
 
+[AMENDED 2026-11-20, Story 21.21 implement, orchestrator ruling: split into a sibling, Rule 5] The custom resource on a classic menu item (a new screen, port and two write tools) moves to Story 21.37; owner answer U-74 carries to it. This story builds the rest.
+
 As a developer-administrator,
-I want a custom resource on a classic menu item and an Operate-only dismount,
+I want an Operate-only dismount,
 So that no area has a remaining gap.
 
 **Acceptance Criteria:**
 
-- **Given** a custom resource on a classic menu item and the Operate-only dismount
+- **Given** the Operate-only dismount
 - **When** each runs
 - **Then** it round-trips over its backing class in the area slice that already owns its neighbors.
 
@@ -9520,6 +9522,8 @@ So that no area has a remaining gap.
 ### Story 21.23: Test hygiene and contended client fixes
 
 [AMENDED 2026-11-15, Story 21.10 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.10; it carries that story's first criterion for the leaves named below, from the inventory in its plan.
+
+[AMENDED 2026-11-21, Story 21.23 plan, orchestrator ruling: split into a sibling, Rule 5] The shared Rules helpers (DW-2499), the source-control follow-up (DW-2405) and three entries that wait on wording (DW-2369, DW-2442, DW-2474) move to Story 21.38. This story builds the rest, the CI flakes first.
 
 As a developer-administrator,
 I want the routed test-hygiene and small client entries closed,
@@ -9779,6 +9783,88 @@ So that the Task Manager has no remaining gap.
 - **When** a person or the agent opens the output, or sets the mail password
 - **Then** the output reads bounded and tail-first only where the record allows it, and the password is a secret-only write that no read, card, audit row or log carries.
 
+### Story 21.37: Page resources
+
+[AMENDED 2026-11-20, Story 21.21 implement, orchestrator ruling: split into a sibling, Rule 5] Split from Story 21.21; it carries owner answer U-74's AD-10, AD-44 and AD-64 records for a custom resource on a classic menu item.
+
+As a developer-administrator,
+I want to assign, change and clear a classic page's custom resource,
+So that the Permissions area has no remaining gap.
+
+**Acceptance Criteria:**
+
+- **Given** a classic page and a resource the instance defines
+- **When** a person or the agent assigns, changes or clears the page's custom resource
+- **Then** it round-trips over the vendor's own call, a page an OcuPilot Home or Agent co-pilot screen declares is refused, and a lowering on a page an OcuPilot screen replaces is minted destructive.
+
+### Story 21.38: Shared Rules helpers, the source-control follow-up and escalated wording
+
+[AMENDED 2026-11-21, Story 21.23 plan, orchestrator ruling: split into a sibling, Rule 5] Split from Story 21.23; it takes DW-2499, DW-2405, DW-2369, DW-2442 and DW-2474. Its wording comes to the orchestrator as one batch at its plan, and DW-2474 waits until Epic 24's Story 24.14 is on feature.
+
+As a developer-administrator,
+I want the area screen-editor Rules helpers shared, the source-control follow-up shown, and the routed wording entries closed,
+So that no area has a remaining gap.
+
+**Acceptance Criteria:**
+
+- **Given** the five routed entries
+- **When** each is worked
+- **Then** it is fixed, or closed with its reason, without changing a product behavior its story ruled, and every new sentence is one the orchestrator ruled.
+
+### Story 21.39: CI health: the governance renderer stall and the journal reverse-read timeout
+
+[ADDED 2026-11-22, Story 21.38 CI, orchestrator ruling: fix-forward, Rule 27] Inserted after Story 21.38 because two CI-health flakes went red too often to wait for burn-down: DW-1822 in 2 of the last 5 runs across Epics 21 and 24, and DW-2517 in two consecutive runs after Story 23.10's fix. It takes DW-1822, DW-2517 and DW-2600, and DW-2821 if it recurs, and runs right after Story 21.38 merges, before Story 21.6.
+
+As the builder,
+I want the governance renderer stall and the journal reverse-read timeout fixed at their causes,
+So that a red CI run means a real defect again.
+
+**Acceptance Criteria:**
+
+- **Given** shard 1/5's spec order from run 44927449204 or 44986244257 on one throwaway
+- **When** the governance page stalls
+- **Then** its response and a CPU profile at the stall are captured, and the cause is fixed, with no deadline changed. [AMENDED 2026-11-22, orchestrator ruling] When a real reproduction finds no stall, the capture ships instead: an abandoned visit's paused frames and governance answer size reach the stall line and its CPU profile is uploaded by CI, with no timing or outcome changed, and DW-1822 and DW-2600 stay open until a red carries a profile.
+- **Given** a journal the size CI's throwaway holds
+- **When** the agent's journal tool reads in reverse order
+- **Then** the read's measured cost explains the timeout, the cause is fixed, and the ERROR #9509 signal failure that preceded it in run 44979425183 is explained.
+- **Given** a cause that a real reproduction attempt cannot find
+- **When** the plan or build reaches that point
+- **Then** the evidence goes to the orchestrator before any mitigation, and no retry stands in for a cause.
+
+### Story 21.40: The governance page's render cost
+
+[ADDED 2026-11-24, Story 21.31 CI, orchestrator ruling: burn-down first, Rule 27] Inserted after Story 21.39 because browser shard 1/5 failed its first attempt on three of Story 21.31's four code heads (9cb5ce5b9, 79ad64ee2, 592784b70) and on one of the 26 other runs before them. Each failure was the governance page's renderer going unresponsive at the 1280px light settle. It takes DW-1822 and runs right after Story 21.31 merges, before Story 21.26.
+
+As the builder,
+I want the governance page's render cost measured and bounded at its cause,
+So that the page settles on a slow runner as its key list grows.
+
+**Acceptance Criteria:**
+
+- **Given** `ocupilot-ci` and three trees (feature before Story 21.31 at 626172470, Story 21.31's merge, and that merge with the Baseline doubled in a scratch build that is never committed)
+- **When** /ocupilot/agent/governance renders at 1280px light, with the CPU throttled 4x by `Emulation.setCPUThrottlingRate` and without
+- **Then** the settle time, the main-thread long tasks (count and longest), the DOM node count and the JS heap are recorded for each tree, and the profile names the dominant cost: which component, and whether it grows per key or per group.
+- **Given** that measurement
+- **When** the fix is built
+- **Then** it is in the page (collapsed groups, virtualisation or less work per row), never in a spec's timeout or a retry, and a browser test bounds the settle under 4x throttle at the doubled key count.
+- **Given** a measurement that finds no cost growing with the key list
+- **When** the plan reaches that point
+- **Then** the evidence goes to the orchestrator before any mitigation.
+
+Dropped, formerly Story 21.41: Troubleshooting report import.
+
+[DROPPED 2026-11-28, owner answer U-184: A, do not build Import; the classic Import Report page remains for support engineers. Kept for the record; not a story.] [ADDED 2026-11-27, Story 21.29 Task 0, orchestrator ruling: split, Rule 5] Split from Story 21.29; it carries that story's import criterion (its AC5 and Batch 4). Measured on `ocupilot-ci` at 21.29's Task 0: every real import writes its `%sqlcq.<ns>.QButtons.WRC<case><n>` routines to IRISLOCALDATA, outside the target namespace's database, and a crafted report whose routine was renamed `%zz...` wrote into IRISSYS; the vendor checks nothing about a document's name. Whether to build it is the owner's call (parked).
+
+As a developer helping support diagnose a slow query,
+I want to import a troubleshooting report into a namespace,
+So that a report from another instance can be reproduced here.
+
+**Acceptance Criteria:**
+
+- **Given** a report Generate wrote for a probe
+- **When** a person imports it into a namespace on the screen (no agent path) and confirms
+- **Then** the probe class reads back compiled there, and a report holding an OcuPilot document, a file changed after review and a file that is not a report are refused before any vendor call.
+
 ---
 
 ## Epic 22: Stage 6 - the long tail, on demand
@@ -9795,7 +9881,7 @@ So that a future decision to build one is made against evidence rather than agai
 
 - **Given** the 56 excluded rows
 - **When** they are recorded
-- **Then** each carries its exclusion reason and its gate, grouped as the catalog groups them: license-gated sharding; license-gated mirroring; edition-gated HealthShare, Message Bank, Enterprise and ITK pages; deprecated shadowing and text analytics; Zen Reports, InterSystems Reports and cluster settings; low-usage device sub-pages and Windows-only pages; non-HL7 EDI schema authoring, DICOM, PubSub and adapter dialogs; full applications linked rather than rebuilt; and dead references, dead placeholders and cosmetic items.
+- **Then** each carries its exclusion reason and its gate, grouped as the catalog groups them: license-gated sharding; license-gated mirroring; edition-gated HealthShare, Message Bank, Enterprise and ITK pages; deprecated shadowing and text analytics; Zen Reports, InterSystems Reports and cluster settings; low-usage device sub-pages and Windows-only pages; non-HL7 EDI schema authoring, DICOM, PubSub and adapter dialogs; full applications linked rather than rebuilt; and dead references, dead placeholders and cosmetic items; and not planned.
 
 - **Given** a row whose gate is a license, an edition, a platform or a deprecation decision
 - **When** the register is read

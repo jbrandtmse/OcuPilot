@@ -13,6 +13,9 @@ XData Tools
 "analytics.settings.setkey": {"fieldList":"Process","fields":[
   {"path":"GoogleMapsKey","shape":"literal","templateType":"string","class":"secret","authored":true}
 ]},
+"interop.credentials.password": {"fieldList":"Process","fields":[
+  {"path":"Password","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
 "osmgmt.devices.create": {"fieldList":"Device.Standard","fields":[
   {"path":"Alias","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
@@ -884,6 +887,9 @@ XData Tools
   {"path":"PrivateKeyPassword","shape":"literal","templateType":"string","itemType":"","class":"secret"},
   {"path":"PrivateKeyFile","shape":"literal","templateType":"string","itemType":"","class":"secret"},
   {"path":"CertificateFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"tasks.mail.password": {"fieldList":"Process","fields":[
+  {"path":"AuthPassword","shape":"literal","templateType":"string","class":"secret","authored":true}
 ]},
 "tasks.schedule.create": {"fieldList":"Task.CRUD","fields":[
   {"path":"Name","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},

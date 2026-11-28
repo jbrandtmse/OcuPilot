@@ -11,7 +11,9 @@
 /// <code>%Admin_Manage:U</code> for the canned endpoint, <code>%Admin_Secure:U</code>,
 /// <code>%DB_IRISSYS:R</code> and at least three web applications for the real lists, plus
 /// <code>%Admin_Wallet:U</code>, an LDAP configuration and the demo fixture's X.509 credential and
-/// wallet collection, so the Security lists answer a row to hold their fields to. Reads only.</p>
+/// wallet collection, so the Security lists answer a row to hold their fields to. Reads only, except that
+/// the log source sweep creates one on-demand task that is never run and writes its output file in the
+/// manager directory; both are removed in <method>ClearFixtures</method>.</p>
 Class OcuPilot.Test.ScreenRead Extends %UnitTest.TestCase
 {
 
@@ -39,6 +41,73 @@ Method ClearFixtures()
     Do ##class(OcuPilot.Test.NamespaceInfoFixture).Reset()
     Do ##class(OcuPilot.Test.Read.Readless).ResetReadCount()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Do ..RemoveTaskOutput()
+}
+
+/// <p>The task output probe's task name and output file name.</p>
+Parameter OUTPUTTASKNAME = "OcuPilotProbeScreenReadTask";
+
+Parameter OUTPUTFILE = "ocupilotprobescreenread.txt";
+
+/// <p>The probe output file's path in the manager directory.</p>
+ClassMethod TaskOutputPath() As %String
+{
+    Quit ##class(%File).NormalizeFilename(..#OUTPUTFILE, ##class(%File).NormalizeDirectory($System.Util.ManagerDirectory()))
+}
+
+/// <p>Remove the probe task, found by name, and the probe file.</p>
+ClassMethod RemoveTaskOutput()
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT ID FROM %SYS.Task WHERE %EXACT(Name) = ?", ..#OUTPUTTASKNAME)
+        Set tIds = ""
+        While tRS.%Next() {
+            Set tIds = tIds _ $ListBuild(tRS.%Get("ID"))
+        }
+        For tI = 1:1:$ListLength(tIds) {
+            Do ##class(%SYS.Task).%DeleteId($List(tIds, tI))
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+    }
+    Do ##class(%File).Delete(..TaskOutputPath())
+}
+
+/// <p>Create an on-demand task that is never run, whose output file is the probe file in the manager
+/// directory, and write that file; <var>pTaskId</var> is the task's id.</p>
+ClassMethod ArmTaskOutput(Output pTaskId As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set pTaskId = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tTask = ##class(%SYS.Task).%New()
+        Set tTask.Name = ..#OUTPUTTASKNAME
+        Set tTask.Description = "OcuPilot's screen read probe: never run, created and deleted by its tests"
+        Set tTask.NameSpace = "%SYS"
+        Set tTask.TaskClass = "%SYS.Task.RunLegacyTask"
+        Set tTask.TimePeriod = 5
+        Set tTask.OpenOutputFile = 1
+        Set tTask.OutputDirectory = ##class(%File).NormalizeDirectory($System.Util.ManagerDirectory())
+        Set tTask.OutputFilename = ..#OUTPUTFILE
+        Set tDefinition = ##class(%SYS.Task.RunLegacyTask).%New()
+        Set tDefinition.ExecuteCode = "Quit"
+        Set tSC = tTask.AssignSettings(tDefinition)
+        Set tDefinition = ""
+        If $$$ISOK(tSC) Set tSC = tTask.%Save()
+        If $$$ISOK(tSC) Set pTaskId = tTask.%Id()
+        Set tTask = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISOK(tSC) Set tSC = ##class(OcuPilot.Test.LogSource).WriteFile(..TaskOutputPath(), "first line" _ $Char(10) _ "last line" _ $Char(10))
+    Quit tSC
 }
 
 /// <p>Arm a canned list of <var>pCount</var> rows: each carries the four declared fields plus one
@@ -400,11 +469,19 @@ Method TestEveryDeclaredLogSourceReadFieldIsAKeyOfTheLiveRow()
         Set tChecked = tChecked + 1
 
         Kill tCriteria
+        ; The task output read is keyed by a task id, which the test supplies from a task of its own.
+        If tClass = "OcuPilot.Screen.Descriptor.TaskOutput" {
+            Set tArmSC = ..ArmTaskOutput(.tTaskId)
+            Do $$$AssertStatusOK(tArmSC, tClass _ ": the probe task and its output file are created")
+            If $$$ISERR(tArmSC) Continue
+            Set tCriteria("taskId") = tTaskId
+        }
         Set tExecSC = ##class(OcuPilot.Screen.Read).Execute(tClass, 5, .tResult, .tHttp, .tFault, .tCriteria)
         Do $$$AssertStatusOK(tExecSC, tClass _ ": the declared read answers through the executor")
         If $$$ISERR(tExecSC) Continue
         Do $$$AssertEquals(tHttp, 200, tClass _ ": with 200")
         Do $$$AssertEquals(tResult.fields.%ToJSON(), tRead.%Get("fields").%ToJSON(), tClass _ ": the answer's fields are the declared ones")
+        If tClass = "OcuPilot.Screen.Descriptor.TaskOutput" Do $$$AssertEquals(tResult.rows.%Size(), 2, tClass _ ": the probe file's two lines")
         Do $$$AssertTrue(tResult.rows.%Size() <= 5, tClass _ ": and at most the cap's rows: " _ tResult.rows.%Size())
         If tResult.rows.%Size() = 0 Continue
         Set tRow = tResult.rows.%Get(0)
@@ -413,7 +490,7 @@ Method TestEveryDeclaredLogSourceReadFieldIsAKeyOfTheLiveRow()
             Do $$$AssertTrue(tRow.%GetTypeOf(tField) '= "unassigned", tClass _ ": declared read field '" _ tField _ "' is a key of the live row")
         }
     }
-    Do $$$AssertEquals(tChecked, 9, "all nine production logsource reads are checked, Story 16.8's six and Story 18.4's Integrity log included: " _ tChecked)
+    Do $$$AssertEquals(tChecked, 10, "all ten production logsource reads are checked, Story 16.8's six, Story 18.4's Integrity log and Story 21.36's Task output included: " _ tChecked)
 }
 
 /// <p>Story 16.9 -- every production <code>timeline</code> read answers through the executor on the

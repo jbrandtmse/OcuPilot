@@ -16,6 +16,8 @@ import { BOOLEAN_TYPE, InteropItemSettingDialog } from './interop-item-setting-d
     [defaultValue]="defaultValue()"
     [type]="type()"
     [location]="location()"
+    [currentShown]="currentShown()"
+    [consequenceShown]="consequenceShown()"
     [sending]="sending()"
     [refusal]="refusal()"
     [violation]="violation()"
@@ -29,6 +31,8 @@ class Host {
   readonly defaultValue = signal('0');
   readonly type = signal('%Library.Integer');
   readonly location = signal(false);
+  readonly currentShown = signal(true);
+  readonly consequenceShown = signal(true);
   readonly sending = signal(false);
   readonly refusal = signal('');
   readonly violation = signal('');
@@ -83,6 +87,24 @@ describe('the Set value dialog (Story 20.22)', () => {
     expect(text('[data-interop-setting-hint]')).toBe(STRINGS.interopSettingEmptyHint);
     set((state) => state.current.set(''));
     expect(text('[data-interop-setting-current]')).toBe(`Current value: ${STRINGS.tableEmptyValue}`);
+  });
+
+  // Mutation (Rule 19): draw the current-value line and the sentence whatever `currentShown` and `consequenceShown` hold -> this goes red.
+  it('leaves out the current-value line and the sentence above the field when told to, and keeps the field and its hint', () => {
+    set((state) => {
+      state.currentShown.set(false);
+      state.consequenceShown.set(false);
+    });
+    expect(host.querySelector('[data-interop-setting-current]')).toBeNull();
+    expect(host.querySelector('[data-interop-setting-consequence]')).toBeNull();
+    expect(field()).not.toBeNull();
+    expect(text('[data-interop-setting-hint]')).toBe(STRINGS.interopSettingEmptyHint);
+    set((state) => {
+      state.currentShown.set(true);
+      state.consequenceShown.set(true);
+    });
+    expect(text('[data-interop-setting-current]')).toBe('Current value: 7');
+    expect(text('[data-interop-setting-consequence]')).toBe(STRINGS.interopItemPendingConsequence);
   });
 
   // Mutation (Rule 19): make `submit` skip an empty value -> the empty leg goes red.

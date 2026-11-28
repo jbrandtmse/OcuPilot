@@ -970,6 +970,7 @@ Parameter NAVNOTINSTANCE = "NAV.NOTINSTANCE";
 /// <code>{"opened","refused"}</code> / <code>{"NAV.REFUSEDUNSAVED", null}</code>, or no
 /// <code>seq</code>. Rendered on the <parameter>VALIDATIONFAILED</parameter> slug, HTTP 422 -- the
 /// closed vocabulary is what keeps the client from ever authoring model-visible text.</p>
+/// <p>A <code>refused</code> outcome also admits <code>NAV.LOADFAILED</code>, declared by <class>OcuPilot.Api.NavError</class>.</p>
 Parameter TURNNAVIGATIONINVALID = "TURN.NAVIGATION.INVALID";
 
 /// <p>Written sentence for <parameter>TURNBADBODY</parameter>.</p>
@@ -1245,6 +1246,7 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If $Extract(pCode, 1, 7) = "BACKUP." Set tReason = ##class(OcuPilot.Api.BackupError).ReasonFor(pCode)
     If $Extract(pCode, 1, 12) = "SQLACTIVITY." Set tReason = ##class(OcuPilot.Api.SqlActivityError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "MONITOR." Set tReason = ##class(OcuPilot.Api.MonitorError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 15) = "LOG.TASKOUTPUT." Set tReason = ##class(OcuPilot.Api.TaskError).ReasonFor(pCode)
     If $Extract(pCode, 1, 7) = "CONFIG." Set tReason = ##class(OcuPilot.Api.ConfigError).ReasonFor(pCode)
     If $Extract(pCode, 1, 7) = "LOCALE." Set tReason = ##class(OcuPilot.Api.LocaleError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "ADVISOR." Set tReason = ##class(OcuPilot.Api.AdvisorError).ReasonFor(pCode)
@@ -1258,6 +1260,7 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If $Extract(pCode, 1, 10) = "ALLOWLIST." Set tReason = ##class(OcuPilot.Api.AllowListError).ReasonFor(pCode)
     If $Extract(pCode, 1, 11) = "WALLETRUNG." Set tReason = ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode)
     If $Extract(pCode, 1, 9) = "WORKFLOW." Set tReason = ##class(OcuPilot.Api.WorkflowError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 4) = "NAV." Set tReason = ##class(OcuPilot.Api.NavError).ReasonFor(pCode)
     If tReason '= "" Quit tReason
     Quit ..#REASONTOOLUNAVAILABLE
 }
@@ -1999,14 +2002,15 @@ ClassMethod IsValidCode(pCode As %String) As %Boolean
 /// client reason is exactly what keeps a stack trace off the wire.</p>
 /// @param pReason Generic reason string sent to the client (defaults to a fixed generic message)
 /// @param pException Optional exception object; its detail is logged, never sent to the client
-ClassMethod RenderInternal(pReason As %String = "An internal error occurred", pException As %Exception.AbstractException = "") As %Status
+/// @param pDetail Optional structured detail the caller's code owns (a closed proposal's state), sent as the envelope's detail
+ClassMethod RenderInternal(pReason As %String = "An internal error occurred", pException As %Exception.AbstractException = "", pDetail As %DynamicObject = "") As %Status
 {
     Set tSC = $$$OK
     Try {
         If $IsObject(pException) {
             Do ..LogError("router", "Internal error", {"detail": (pException.DisplayString())})
         }
-        Set tSC = ..Render(500, ..#SERVERERROR, pReason, ..#INTERNAL)
+        Set tSC = ..Render(500, ..#SERVERERROR, pReason, ..#INTERNAL, pDetail)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }

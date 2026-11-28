@@ -338,6 +338,11 @@ const KERNEL_REFUSALS = [
   // Story 21.5: a global that holds OcuPilot's own data or the instance's protected system data, which either caller is refused changing or
   // deleting, and which the Globals list and the node page draw on the action before a click for a global OcuPilot's own name begins.
   ['PROTECTEDGLOBAL', 'globalRefusalProtected'],
+  // Story 24.15: the credential an enabled agent definition reads its provider key from, whose remove and password change the agent is refused
+  // when proposed and a person is not.
+  ['PROVIDERCREDENTIAL', 'credentialRefusalProvider'],
+  // Story 21.25: a table of OcuPilot's own, whose index rebuild either caller is refused with this sentence before any write.
+  ['OCUPILOTTABLE', 'sqlTableRefusalOcuPilot'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -351,7 +356,28 @@ test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings
     assert.ok(experience.includes(`"${kernel[1]}"`), `${code}REASON is published in EXPERIENCE.md's Fixed strings table`);
     assert.equal(kernel[1], stringValue(key), `${code}REASON and ${key} are one published sentence`);
     assert.ok(prohibited.includes(`If pCode = ..#${code} Quit ..#${code}REASON`), `ReasonFor answers ${code} with its parameter`);
-    assert.ok(!kernel[1].toLowerCase().includes('agent'), `${code}REASON names no caller: ${kernel[1]}`);
+    assert.ok(namesNoCaller(kernel[1]), `${code}REASON names no caller: ${kernel[1]}`);
+  }
+});
+
+/**
+ * Whether a refusal sentence names no caller (AD-53): the whole phrase "agent definition" names a stored definition, never the caller that was
+ * refused, and any other "agent" names the caller.
+ */
+function namesNoCaller(sentence) {
+  return !sentence.toLowerCase().replace(/\bagent definitions?\b/g, '').includes('agent');
+}
+
+test('Story 24.15, AD-53: a refusal may name an agent definition, and any other mention of the agent still names a caller', () => {
+  // Mutation (Rule 19): widen the phrase `namesNoCaller` removes to the word "agent" -> the refused sentences go red.
+  assert.ok(namesNoCaller(stringValue('credentialRefusalProvider')), 'the provider credential refusal names the definition, not the caller');
+  for (const sentence of [
+    'The agent cannot remove this credential.',
+    'An enabled agent definition reads its key here, so the agent is refused.',
+    "The agent's definition reads its provider key from this credential.",
+    'A subagent definition reads its provider key from this credential.',
+  ]) {
+    assert.ok(!namesNoCaller(sentence), `still names a caller: ${sentence}`);
   }
 });
 
@@ -674,6 +700,8 @@ const ATELIER_REFUSALS = [
   ['DELETELOCKED', 'explorerDeleteLocked'],
   ['DELETEABSENT', 'explorerDeleteAbsent'],
   ['DELETEFAILED', 'explorerDeleteFailed'],
+  // Story 21.38: a source-control class's error on a person's answer.
+  ['REASONSOURCECONTROLANSWER', 'explorerSourceControlAnswerRefused'],
   // Story 19.6: SQL query's input, kind, password, read and value-count refusals.
   ['REASONSQLINPUT', 'explorerSqlInputReason'],
   ['REASONSQLSESSION', 'explorerSqlSessionReason'],
@@ -718,6 +746,66 @@ const ATELIER_REFUSALS = [
   ['REASONCOMMANDOWNCODE', 'explorerCommandOwnCodeReason'],
   ['REASONCLASSMETHODOWNCODE', 'explorerClassMethodOwnCodeReason'],
   ['REASONCLASSMETHODNOTFOUND', 'explorerClassMethodNotFoundReason'],
+  // Story 21.6: the statement writes' vendor and precondition refusals, and the sentences their cards and dialogs state.
+  ['REASONSTATEMENTVENDOR', 'sqlStatementRefusalVendor'],
+  ['REASONSTATEMENTALREADYFROZEN', 'sqlStatementRefusalAlreadyFrozen'],
+  ['REASONSTATEMENTPARALLEL', 'sqlStatementRefusalParallel'],
+  ['REASONSTATEMENTNOTFROZEN', 'sqlStatementRefusalNotFrozen'],
+  ['REASONSTATEMENTNOERROR', 'sqlStatementRefusalNoError'],
+  ['REASONSTATEMENTNOSTALE', 'sqlStatementRefusalNoStale'],
+  ['REASONSTATEMENTFREEZE', 'sqlStatementFreezeConsequence'],
+  ['REASONSTATEMENTUNFREEZE', 'sqlStatementUnfreezeConsequence'],
+  ['REASONSTATEMENTCLEARSTATISTICS', 'sqlStatementClearStatisticsConsequence'],
+  ['REASONSTATEMENTCLEARERROR', 'sqlStatementClearErrorConsequence'],
+  ['REASONSTATEMENTCLEAN', 'sqlStatementCleanConsequence'],
+  ['REASONCACHEDQUERYPURGE', 'sqlCachedQueryPurgeConsequence'],
+  ['REASONSTATEMENTNOTFOUND', 'sqlStatementNotFoundReason'],
+  ['REASONCACHEDQUERYNOTFOUND', 'sqlCachedQueryNotFoundReason'],
+  // Story 21.25: the table writes' vendor and data-map refusals, and the sentences the rebuilds' cards and dialogs state.
+  ['REASONTABLEVENDOR', 'sqlTableRefusalVendor'],
+  ['REASONTABLEDATAMAP', 'sqlTableRefusalDataMap'],
+  ['REASONTABLEREBUILD', 'sqlTableRebuildConsequence'],
+  ['REASONTABLEREBUILDALL', 'sqlTableRebuildAllConsequence'],
+  // Story 21.25: the statistics writes' refusal of a table with no fixed statistics and the sentences their cards and dialogs state.
+  ['REASONTABLENOFIXEDSTATS', 'sqlTableRefusalNoFixed'],
+  ['REASONTABLETUNE', 'sqlTableTuneConsequence'],
+  ['REASONTABLECLEARSTATISTICS', 'sqlTableClearStatisticsConsequence'],
+  ['REASONTABLETUNESCHEMA', 'sqlSchemaTuneConsequence'],
+  // Story 21.31: the fixed-statistics setters' shared consequence and the shape refusals of their values.
+  ['REASONTABLESET', 'sqlTableSetConsequence'],
+  ['REASONTABLEEXTENTSIZE', 'sqlTableExtentSizeShape'],
+  ['REASONTABLESELECTIVITY', 'sqlTableSelectivityShape'],
+  ['REASONTABLEWHOLENUMBER', 'sqlTableWholeNumberShape'],
+  ['REASONTABLEMAPSIZE', 'sqlTableMapSizeShape'],
+  ['REASONTABLESETUNAPPLIED', 'sqlTableRefusalSetAfterFix'],
+  // Story 21.26: the runtime statistics purge's refusals, the Plan with statistics refusal and the sentences the purge's and the setting's cards and dialogs state.
+  ['REASONRUNTIMESTATSNOROWS', 'sqlRuntimeStatsRefusalNoRows'],
+  ['REASONRUNTIMESTATSVENDOR', 'sqlRuntimeStatsRefusalVendor'],
+  ['REASONSQLPLANSTATS', 'sqlPlanStatisticsRefusal'],
+  ['REASONRUNTIMESTATSPURGE', 'sqlRuntimeStatsPurgeConsequence'],
+  ['REASONRUNTIMESTATSSET', 'sqlRuntimeStatsSetConsequence'],
+  // Story 21.27: the index analyzer's refusals, the Advise refusal and the sentences the three actions' cards and dialogs state.
+  ['REASONINDEXANALYSISNOROWS', 'sqlIndexAnalysisRefusalNoRows'],
+  ['REASONINDEXANALYSISNOSTATEMENTS', 'sqlIndexAnalysisRefusalNoStatements'],
+  ['REASONINDEXANALYSISREPORT', 'sqlIndexAnalysisRefusalReport'],
+  ['REASONINDEXANALYSISBUSY', 'sqlIndexAnalysisRefusalBusy'],
+  ['REASONINDEXANALYSISVENDOR', 'sqlIndexAnalysisRefusalVendor'],
+  ['REASONSQLADVICE', 'sqlAdviceRefusal'],
+  ['REASONINDEXANALYSISGATHER', 'sqlIndexAnalysisGatherConsequence'],
+  ['REASONINDEXANALYSISGATHERSYSTEM', 'sqlIndexAnalysisGatherSystemConsequence'],
+  ['REASONINDEXANALYSISRUN', 'sqlIndexAnalysisRunConsequence'],
+  ['REASONINDEXANALYSISPURGE', 'sqlIndexAnalysisPurgeConsequence'],
+  ['REASONSQLSELECTPRIVILEGE', 'sqlSelectPrivilegeRefusal'],
+  // Story 21.29: the troubleshooting reports' refusals and the three sentences the save, delete and generate cards and dialogs state.
+  ['REASONSQLREPORTVENDOR', 'sqlReportsRefusalVendor'],
+  ['REASONSQLREPORTGENERATEVENDOR', 'sqlReportsRefusalGenerateVendor'],
+  ['REASONSQLREPORTQUERYONLY', 'sqlReportsRefusalQueryOnly'],
+  ['REASONSQLREPORTWRC', 'sqlReportsRefusalWrc'],
+  ['REASONSQLREPORTNOROWS', 'sqlReportsRefusalNoRows'],
+  ['REASONSQLREPORTTOOLONG', 'sqlReportsRefusalTooLong'],
+  ['REASONSQLREPORTSAVE', 'sqlReportsSaveConsequence'],
+  ['REASONSQLREPORTDELETE', 'sqlReportsDeleteConsequence'],
+  ['REASONSQLREPORTGENERATE', 'sqlReportsGenerateConsequence'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {
@@ -730,6 +818,46 @@ test("Story 19.2: each of System Explorer's write refusals and delete reasons is
     assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
     assert.ok(!server[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${server[1]}`);
   }
+});
+
+test("Story 21.27: SQL query's advice-cut note names the advice's own two caps, and is published in Fixed strings", () => {
+  // Mutation (Rule 19): change MAXTABLES in SqlAdvice.cls to 21 -> this goes red naming the sentence.
+  const advice = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'SqlAdvice.cls'), 'utf8');
+  const findings = /Parameter MAXFINDINGS As INTEGER = (\d+);/.exec(advice);
+  const tables = /Parameter MAXTABLES As INTEGER = (\d+);/.exec(advice);
+  assert.notEqual(findings, null, 'SqlAdvice.cls declares MAXFINDINGS');
+  assert.notEqual(tables, null, 'SqlAdvice.cls declares MAXTABLES');
+  const sentence = `Only the first ${findings[1]} findings, from at most ${tables[1]} tables, are shown.`;
+  assert.equal(stringValue('sqlAdviceTruncated'), sentence, 'the note states the caps the instance applies');
+  assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${sentence}"`), "the note is published in EXPERIENCE.md's Fixed strings");
+});
+
+test("Story 21.28: SQL query's cut note and its comparison count name the instance's own caps, and the note is published in Fixed strings", () => {
+  // Mutation (Rule 19): change ALTMAXPLANS in SqlPort.cls to 101, or MAX_COMPARED_PLANS in sql-query.store.ts to 6 -> this goes red naming the sentence or the count.
+  const port = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'SqlPort.cls'), 'utf8');
+  const plans = /Parameter ALTMAXPLANS As INTEGER = (\d+);/.exec(port);
+  const compare = /Parameter ALTMAXCOMPARE As INTEGER = (\d+);/.exec(port);
+  assert.notEqual(plans, null, 'SqlPort.cls declares ALTMAXPLANS');
+  assert.notEqual(compare, null, 'SqlPort.cls declares ALTMAXCOMPARE');
+  const sentence = `Only the first ${plans[1]} possible plans are listed.`;
+  assert.equal(stringValue('sqlAlternatePlansTruncated'), sentence, 'the note states the cap the instance applies');
+  assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${sentence}"`), "the note is published in EXPERIENCE.md's Fixed strings");
+  const store = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'areas', 'system-explorer', 'sql-query.store.ts'), 'utf8');
+  const client = /export const MAX_COMPARED_PLANS = (\d+);/.exec(store);
+  assert.notEqual(client, null, 'the store declares MAX_COMPARED_PLANS');
+  assert.equal(client[1], compare[1], 'the client takes as many checks as the instance takes plans to compare');
+  assert.equal(stringValue('sqlAlternateHint'), 'Check up to five plans to compare.', 'the hint names the count the instance takes');
+  assert.equal(compare[1], '5', 'the hint and the refusal say five');
+});
+
+test("Story 21.28: Compare plans' note is the ruled sentence on the page and in Fixed strings, and the agent read carries none", () => {
+  // Mutation (Rule 19): change one word of sqlAlternateCompareNote in strings.ts -> this goes red naming the sentence.
+  const sentence =
+    'Compare plans runs the statement once for each plan, without its values, so a filtered query can show zero rows. Comparing can take longer than the page waits; what each run recorded stays on Runtime statistics.';
+  assert.equal(stringValue('sqlAlternateCompareNote'), sentence, 'the page shows the ruled note');
+  assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${sentence}"`), "the note is published in EXPERIENCE.md's Fixed strings");
+  const tool = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'ExplorerSqlAlternatePlansRead.cls'), 'utf8');
+  assert.ok(!tool.includes('Compare plans runs'), 'the agent read lists and shows plans and carries no compare note');
 });
 
 /** Story 24.1's port, which declares the refusals of a Code metrics or Document hashes argument. */

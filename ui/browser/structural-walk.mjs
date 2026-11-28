@@ -13,7 +13,9 @@
  * `SOURCE_VIEWER_IDS` names); one whose id cannot be found is named in
  * `SKIP` with its reason, and one in neither place fails the gate. The Transcripts list, which a
  * fresh instance leaves empty, gets one conversation seeded for the walk (`seedConversation`),
- * removed by its exact key when the walk ends.
+ * removed by its exact key when the walk ends; the Managed alerts list gets one probe alert
+ * (`seedManagedAlert`), removed by its id the same way, and the Workflow roles list one probe role
+ * (`seedWorkflowRole`), removed by its name.
  *
  * **It runs in baseline form.** `a11y-structural-invariants.browser-spec.mjs` compares what the walk
  * finds against `structural-baseline.json` by key and fails only on a key outside it; a baseline
@@ -37,12 +39,13 @@
  */
 
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
-import { WALKCALLDEADLINE, closeOrAbandon, isConnectionLoss, isProtocolTimeout, retryOnce, withDeadline } from './protocol-retry.mjs';
+import { WALKCALLDEADLINE, closeOrAbandon, isAbandoned, isConnectionLoss, isProtocolTimeout, retryOnce, withDeadline } from './protocol-retry.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { escapeOs, markerValue, runIris } from './turnprobe-spec.mjs';
 
@@ -151,6 +154,8 @@ export const SKIP = {
   // Story 24.14: a folder item's Definition and Widgets need a pivot or dashboard to open; analytics.browser-spec.mjs walks them in USER on its probe.
   'analytics/folder-items/document': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
   'analytics/folder-items/widgets': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
+  // Story 24.14 Batch 2: a PMML model's Test screen needs a model to open; analytics.browser-spec.mjs walks it in USER on its probe.
+  'analytics/pmml-models/test': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
   // Story 24.5: a fresh instance records no unit-test run, so the Unit tests list opens with no row to open;
   // unit-tests.browser-spec.mjs opens a run's methods list on the run it makes.
   'system-explorer/unit-tests/methods': 'a fresh instance records no unit-test run, so the Unit tests list opens with no row to open',
@@ -190,6 +195,61 @@ export function removeConversation(config, key) {
   assert.equal(markerValue(output, 'WALKUNSEED'), '1|0', `the seeded conversation ${key} is removed:\n${output}`);
 }
 
+/** The class that stores and removes the managed alert the walk seeds (Story 24.17 Batch 1's test fixture). */
+const ALERT_FIXTURE = 'OcuPilot.Test.InteropAlertFixture';
+
+/**
+ * Seed one open, unowned managed alert in HSCUSTOM, the namespace the walk browses, so the Managed
+ * alerts list has a row whose Alert history screen the walk can open. Answers the alert's id; throws
+ * when it cannot be stored.
+ */
+export function seedManagedAlert(config) {
+  const output = runIris(config.container, [
+    `Set id=##class(${ALERT_FIXTURE}).Probe("HSCUSTOM","",1,0,"walk probe alert")`,
+    'Write "OCU-WALKALERT-START:",id,":OCU-WALKALERT-END",!',
+  ]);
+  const id = String(markerValue(output, 'WALKALERT') ?? '0');
+  assert.ok(/^[1-9]\d*$/.test(id), `the walk seeds one managed alert in HSCUSTOM:\n${output}`);
+  return id;
+}
+
+/** Remove managed alert `id` from HSCUSTOM, and confirm it is gone. */
+export function removeManagedAlert(config, id) {
+  const output = runIris(config.container, [
+    `Write "OCU-WALKUNALERT-START:",##class(${ALERT_FIXTURE}).Delete("HSCUSTOM","${escapeOs(id)}"),":OCU-WALKUNALERT-END",!`,
+  ]);
+  assert.equal(markerValue(output, 'WALKUNALERT'), '1', `the seeded managed alert ${id} is removed:\n${output}`);
+}
+
+/** The class that stores and removes the workflow role the walk seeds (Story 24.17 Batch 3b's test fixture). */
+const WORKFLOW_FIXTURE = 'OcuPilot.Test.InteropWorkflowFixture';
+
+/** The workflow role the walk seeds, under the fixture's probe marker. */
+const WALK_WORKFLOW_ROLE = 'OcuP2417wWalk';
+
+/**
+ * Seed one workflow role in HSCUSTOM, the namespace the walk browses, so the Workflow roles list has a
+ * row whose Role members screen the walk can open. Answers the role's name; throws when it cannot be
+ * stored.
+ */
+export function seedWorkflowRole(config) {
+  const output = runIris(config.container, [
+    `Set sc=##class(${WORKFLOW_FIXTURE}).ProbeRole("${WALK_WORKFLOW_ROLE}","HSCUSTOM","walk probe role")`,
+    'Write "OCU-WALKROLE-START:",$System.Status.IsOK(sc),":OCU-WALKROLE-END",!',
+  ]);
+  assert.equal(markerValue(output, 'WALKROLE'), '1', `the walk seeds one workflow role in HSCUSTOM:\n${output}`);
+  return WALK_WORKFLOW_ROLE;
+}
+
+/** Remove workflow role `name` from HSCUSTOM, and confirm it is gone. */
+export function removeWorkflowRole(config, name) {
+  const output = runIris(config.container, [
+    `Set sc=##class(${WORKFLOW_FIXTURE}).VendorRoleDelete("HSCUSTOM","${escapeOs(name)}")`,
+    `Write "OCU-WALKUNROLE-START:",$System.Status.IsOK(sc),"|",##class(${WORKFLOW_FIXTURE}).RoleText("HSCUSTOM","${escapeOs(name)}"),":OCU-WALKUNROLE-END",!`,
+  ]);
+  assert.equal(markerValue(output, 'WALKUNROLE'), '1|<absent>', `the seeded workflow role ${name} is removed:\n${output}`);
+}
+
 /** How long a screen may take to settle before the walk records it as unsettled. */
 const SETTLE_TIMEOUT_MS = 20000;
 
@@ -199,12 +259,269 @@ const SLOWEST_VISITS = 5;
 /** A screen is settled once no `/api/ocupilot` request or shell script has been in flight for this long. */
 const QUIET_MS = 500;
 
+/** What `trackRequests` knows about each page it watches, for the report an abandoned call carries. */
+const trackers = new WeakMap();
+
+/** How many of a page's latest `/api/ocupilot` answers a stall report names. */
+const STALL_ANSWERS = 5;
+
+/** How long a stall report watches the renderer's task time. */
+const STALL_BUSY_WINDOW_MS = 2000;
+
+/** How long each probe of a stall report may take before it is reported as unanswered. */
+const STALL_PROBE_MS = 5000;
+
+/** How long a stall report waits for its one `Debugger.pause` to land. */
+const STALL_PAUSE_MS = 10_000;
+
+/** How many of the paused stack's top frames a stall report names. */
+const STALL_FRAMES = 5;
+
+/** The answer whose body length a stall report names. */
+const GOVERNANCE_ANSWER_PATH = '/api/ocupilot/agent/governance';
+
+/** The variable that names the folder an abandoned visit's CPU profile is saved in. */
+export const PROFILE_DIR_VARIABLE = 'OCUPILOT_WALK_PROFILE_DIR';
+
+/** The folder an abandoned visit's CPU profile is saved in: `PROFILE_DIR_VARIABLE`, or one under the OS temp directory. */
+export function profileDir() {
+  return process.env[PROFILE_DIR_VARIABLE] || join(tmpdir(), 'ocupilot-walk-profiles');
+}
+
+/** The visit profile each page is recording, for the stall report to save. */
+const captures = new WeakMap();
+
+/** Settle with `work`, or reject after `ms` with an error that names `what` and carries the `unanswered` marker. */
+function withinProbe(ms, work, what) {
+  let timer;
+  const limit = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(Object.assign(new Error(`no answer to ${what} within ${ms} ms`), { unanswered: true })), ms);
+  });
+  return Promise.race([work, limit]).finally(() => clearTimeout(timer));
+}
+
+/** One probe's failure as a phrase. */
+function reasonOf(error) {
+  return String(error?.message ?? error);
+}
+
+/**
+ * The renderer's state over `windowMs`, read from a fresh DevTools session of its own: `busy` when
+ * its task time grew by at least half the window, `idle` when it grew less, and `unresponsive` when
+ * the session does not answer within `probeMs`. A failed probe is named, never thrown.
+ */
+async function rendererState(page, windowMs, probeMs) {
+  let session = null;
+  try {
+    session = await withinProbe(probeMs, page.createCDPSession(), 'a new DevTools session');
+    await withinProbe(probeMs, session.send('Performance.enable'), 'Performance.enable');
+    const read = async () => {
+      const { metrics } = await withinProbe(probeMs, session.send('Performance.getMetrics'), 'Performance.getMetrics');
+      return metrics.find((metric) => metric.name === 'TaskDuration').value;
+    };
+    const first = await read();
+    await new Promise((resolve) => setTimeout(resolve, windowMs));
+    const grew = (await read()) - first;
+    const seconds = windowMs / 1000;
+    return `${grew >= seconds / 2 ? 'busy' : 'idle'} (task time grew ${grew.toFixed(2)} s over ${seconds} s)`;
+  } catch (error) {
+    return error?.unanswered === true ? `unresponsive (${reasonOf(error)})` : `unread (${reasonOf(error)})`;
+  } finally {
+    if (session !== null) await withinProbe(probeMs, session.detach(), 'detach').catch(() => {});
+  }
+}
+
+/** `url` as the last segment of its path, or `(no script)` for a frame that has none. */
+function scriptOf(url) {
+  const path = pathOf(url ?? '');
+  return path === '' ? '(no script)' : path.split('?')[0].split('/').pop() || path;
+}
+
+/**
+ * The renderer's main thread, from one `Debugger.pause`: how long the pause took to land and the top
+ * frames it stopped in, `not running JS` when no pause landed within `pauseMs` (the request is then
+ * cancelled, never left armed), or `unresponsive` when the session does not answer within `probeMs`.
+ * The pause goes through `visitSession`, the visit's DevTools session whose debugger was turned on
+ * before the stall, when it answers within `probeMs`, else through a new session, which turns its
+ * debugger on first and is detached after. `duringPause`, when given, runs while the thread is
+ * stopped. The thread is always resumed and the debugger turned off; a failed probe is named, never
+ * thrown.
+ */
+async function mainThreadState(page, pauseMs, probeMs, duringPause = null, visitSession = null) {
+  let session = null;
+  let borrowed = false;
+  let resolveLanded = null;
+  let paused = false;
+  try {
+    if (visitSession !== null) {
+      session = await withinProbe(probeMs, visitSession, "the visit's DevTools session").catch(() => null);
+      borrowed = session !== null;
+    }
+    if (session === null) session = await withinProbe(probeMs, page.createCDPSession(), 'a new DevTools session');
+    const landed = new Promise((resolve) => {
+      resolveLanded = resolve;
+    });
+    session.on('Debugger.paused', resolveLanded);
+    if (!borrowed) await withinProbe(probeMs, session.send('Debugger.enable'), 'Debugger.enable');
+    const asked = Date.now();
+    await withinProbe(probeMs, session.send('Debugger.pause'), 'Debugger.pause');
+    let timer;
+    const event = await Promise.race([
+      landed,
+      new Promise((resolve) => {
+        timer = setTimeout(() => resolve(null), pauseMs);
+      }),
+    ]).finally(() => clearTimeout(timer));
+    if (event === null) return `not running JS (no pause landed within ${pauseMs} ms)`;
+    paused = true;
+    const landedMs = Date.now() - asked;
+    if (duringPause !== null) await duringPause().catch(() => {});
+    const frames = (event.callFrames ?? []).slice(0, STALL_FRAMES).map((frame) => `${frame.functionName || '(anonymous)'} ${scriptOf(frame.url)}:${(frame.location?.lineNumber ?? 0) + 1}:${(frame.location?.columnNumber ?? 0) + 1}`);
+    return `paused after ${landedMs} ms in ${frames.length === 0 ? 'no frames' : frames.join(' < ')}`;
+  } catch (error) {
+    return error?.unanswered === true ? `unresponsive (${reasonOf(error)})` : `unread (${reasonOf(error)})`;
+  } finally {
+    if (session !== null) {
+      if (paused) await withinProbe(probeMs, session.send('Debugger.resume'), 'Debugger.resume').catch(() => {});
+      await withinProbe(probeMs, session.send('Debugger.disable'), 'Debugger.disable').catch(() => {});
+      if (borrowed) session.off?.('Debugger.paused', resolveLanded);
+      else await withinProbe(probeMs, session.detach(), 'detach').catch(() => {});
+    }
+  }
+}
+
+/**
+ * Record a CPU profile of the visit the page is making, on a DevTools session of its own, and turn
+ * that session's debugger on; `debuggable` answers the session once both are on, for a stall report's
+ * pause, since a renderer running JS does not answer `Debugger.enable` until it stops.
+ * `save(probeMs)` stops the profile and writes it under `profileDir()`, answering `profile: <file>`
+ * or `profile: not saved (<why>)`; `discard()` releases the session, once, saved or not. Recording
+ * never throws and is not waited for: a page that cannot open a session leaves a visit with nothing
+ * to save.
+ */
+function armVisitProfile(page, label) {
+  const armed = (async () => {
+    const session = await page.createCDPSession();
+    await session.send('Profiler.enable');
+    await session.send('Profiler.start');
+    return session;
+  })();
+  armed.catch(() => {});
+  const debuggable = armed.then(async (session) => {
+    await session.send('Debugger.enable');
+    return session;
+  });
+  debuggable.catch(() => {});
+  let released = false;
+  let saved = null;
+  const release = async (session, probeMs = STALL_PROBE_MS) => {
+    if (released) return;
+    released = true;
+    await withinProbe(probeMs, session.send('Profiler.disable'), 'Profiler.disable').catch(() => {});
+    await withinProbe(probeMs, session.detach(), 'detach').catch(() => {});
+  };
+  return {
+    debuggable,
+    save(probeMs = STALL_PROBE_MS) {
+      saved ??= (async () => {
+        try {
+          const session = await withinProbe(probeMs, armed, 'the profiler');
+          const { profile } = await withinProbe(probeMs, session.send('Profiler.stop'), 'Profiler.stop');
+          const folder = profileDir();
+          mkdirSync(folder, { recursive: true });
+          const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+          const file = join(folder, `${new Date().toISOString().replace(/[:.]/g, '-')}-${slug}.cpuprofile`);
+          writeFileSync(file, JSON.stringify(profile));
+          return `profile: ${file}`;
+        } catch (error) {
+          return `profile: not saved (${reasonOf(error)})`;
+        }
+      })();
+      return saved;
+    },
+    discard() {
+      armed.then((held) => release(held), () => {});
+    },
+  };
+}
+
+/**
+ * One `stall:` line for a page whose call was abandoned: whether the page crashed since its tracker
+ * began, its frame's URL and the document requests in flight, the `/api/ocupilot` requests still
+ * unanswered with how long each has waited, the renderer's state, the main thread's top frames from
+ * one bounded pause, the byte length of the last governance answer, the visit's saved CPU profile
+ * while a visit is being recorded, and the last `/api/ocupilot` answers with status and
+ * milliseconds. Each probe has its own bound and a failed one is named in the line; this never throws.
+ */
+export async function stallLine(page, { busyWindowMs = STALL_BUSY_WINDOW_MS, probeMs = STALL_PROBE_MS, pauseMs = STALL_PAUSE_MS } = {}) {
+  const probe = (read) => {
+    try {
+      return read();
+    } catch (error) {
+      return `unread (${reasonOf(error)})`;
+    }
+  };
+  const tracker = trackers.get(page);
+  const crashed = probe(() => (tracker === undefined ? 'not tracked' : tracker.crashed === null ? 'no' : `yes (${tracker.crashed})`));
+  const frame = probe(() => {
+    const documents = tracker === undefined ? [] : [...tracker.documents].map((request) => pathOf(request.url()));
+    return `${pathOf(page.url())}, document request in flight: ${documents.length === 0 ? 'none' : documents.join(', ')}`;
+  });
+  const unanswered = probe(() =>
+    tracker === undefined || tracker.pending.size === 0
+      ? 'none'
+      : [...tracker.pending].map(([request, at]) => `${pathOf(request.url())} for ${Date.now() - at} ms`).join('; ')
+  );
+  const answers = probe(() =>
+    tracker === undefined || tracker.answers.length === 0
+      ? 'none'
+      : tracker.answers.map((answer) => `${answer.status} ${answer.path} ${answer.ms} ms`).join('; ')
+  );
+  let renderer;
+  try {
+    renderer = await rendererState(page, busyWindowMs, probeMs);
+  } catch (error) {
+    renderer = `unread (${reasonOf(error)})`;
+  }
+  const visit = captures.get(page);
+  let saved = null;
+  let mainThread;
+  try {
+    mainThread = await mainThreadState(page, pauseMs, probeMs, visit === undefined ? null : async () => void (saved = await visit.save(probeMs)), visit?.debuggable ?? null);
+  } catch (error) {
+    mainThread = `unread (${reasonOf(error)})`;
+  }
+  if (visit !== undefined && saved === null) saved = await visit.save(probeMs);
+  let governance;
+  try {
+    governance = await governanceAnswer(tracker, probeMs);
+  } catch (error) {
+    governance = `unread (${reasonOf(error)})`;
+  }
+  return `stall: page crashed: ${crashed}; frame: ${frame}; /api/ocupilot unanswered: ${unanswered}; renderer: ${renderer}; main thread: ${mainThread}; governance answer: ${governance}; ${saved === null ? '' : `${saved}; `}last ${STALL_ANSWERS} /api/ocupilot answers: ${answers}`;
+}
+
+/** The last governance answer a tracker saw, as its status and body length, or why there is none to name. */
+async function governanceAnswer(tracker, probeMs) {
+  const held = tracker?.governance;
+  if (held === undefined) return 'none seen';
+  const bytes = await withinProbe(probeMs, held.bytes, 'the governance answer body');
+  return `${held.status}, ${bytes} bytes`;
+}
+
 /**
  * Await one page call the walk issues, abandoning it after `WALKCALLDEADLINE`. The rejection is a
- * protocol-timeout error naming `label`, so the pass's `retryOnce` runs the pass once more.
+ * protocol-timeout error naming `label`, so the pass's `retryOnce` runs the pass once more. When
+ * the call is abandoned and `page` is given, the error's message gains `stallLine(page)`; that is
+ * the only path that reads the page's state.
  */
-function bounded(label, call) {
-  return withDeadline(call, WALKCALLDEADLINE, label);
+async function bounded(label, call, page = null) {
+  try {
+    return await withDeadline(call, WALKCALLDEADLINE, label);
+  } catch (error) {
+    if (page !== null && error instanceof Error && isAbandoned(error)) error.message += `\n${await stallLine(page)}`;
+    throw error;
+  }
 }
 
 /** The label of a walk step: the pass the tracker is standing in, then the step. */
@@ -629,7 +946,8 @@ export async function detectScreen(page, { route, checks, viewport, theme, minim
       classMinimums: MIN_WIDTH_SOURCES.classes.map(({ className, px }) => ({ className, px })),
       tokenMinimums: minimums,
       overflowAllowances: OVERFLOW_ALLOWANCES.map(({ className, px }) => ({ className, px })),
-    })
+    }),
+    page
   );
   const entries = [];
   const contextFor = (invariant) => (invariant === 'contrast' ? theme : invariant === 'name' ? '' : String(viewport));
@@ -637,7 +955,7 @@ export async function detectScreen(page, { route, checks, viewport, theme, minim
     entries.push({ route, invariant: violation.invariant, context: contextFor(violation.invariant), element: violation.element, measured: violation.measured });
   }
   if (checks.includes('name') && found.fields.length > 0) {
-    const names = await bounded(`${pass}: field names ${route}`, fieldNames(page));
+    const names = await bounded(`${pass}: field names ${route}`, fieldNames(page), page);
     for (const field of found.fields) {
       // A field Chrome leaves out of the accessibility tree, or one it answers nothing for, has no
       // name a reader can reach: a failed lookup is reported, never read as a pass.
@@ -672,16 +990,39 @@ function isShellScript(page, request) {
 /**
  * Count `/api/ocupilot` requests, and the shell's own `.js` requests, in flight on `page`, and when
  * the count last moved. The scripts are counted so a screen is never judged settled before its code
- * has arrived.
+ * has arrived. It also keeps what `stallLine` reports for the page: whether the page crashed, the
+ * document requests in flight, the `/api/ocupilot` requests not yet answered, and the last answers.
  */
-function trackRequests(page) {
+export function trackRequests(page) {
   const state = { inflight: new Set(), last: Date.now() };
+  const watched = { crashed: null, documents: new Set(), answers: [], pending: new Map(), governance: undefined };
+  const started = watched.pending;
+  trackers.set(page, watched);
+  page.on('error', (error) => {
+    watched.crashed = reasonOf(error);
+  });
   page.on('request', (request) => {
+    if (request.isNavigationRequest()) watched.documents.add(request);
+    if (request.url().includes('/api/ocupilot')) started.set(request, Date.now());
     if (!request.url().includes('/api/ocupilot') && !isShellScript(page, request)) return;
     state.inflight.add(request);
     state.last = Date.now();
   });
+  page.on('response', (response) => {
+    const request = response.request();
+    if (!started.has(request)) return;
+    watched.answers.push({ path: pathOf(request.url()), status: response.status(), ms: Date.now() - started.get(request) });
+    if (pathOf(request.url()).split('?')[0] === GOVERNANCE_ANSWER_PATH) {
+      const bytes = Promise.resolve().then(async () => (await response.buffer()).length);
+      bytes.catch(() => {});
+      watched.governance = { status: response.status(), bytes };
+    }
+    started.delete(request);
+    if (watched.answers.length > STALL_ANSWERS) watched.answers.shift();
+  });
   const done = (request) => {
+    watched.documents.delete(request);
+    started.delete(request);
     if (state.inflight.delete(request)) state.last = Date.now();
   };
   page.on('requestfinished', done);
@@ -709,7 +1050,8 @@ export async function settle(page, requests, where = '') {
           if (document.fonts.status !== 'loaded') return `fonts ${document.fonts.status}`;
           const busy = document.querySelector('[aria-busy="true"]');
           return busy === null ? true : `busy element ${busy.tagName.toLowerCase()}${busy.id ? '#' + busy.id : ''}`;
-        })
+        }),
+        page
       );
       if (ready === true && requests.inflight.size === 0 && Date.now() - requests.last >= QUIET_MS) return { settled: true, ms: Date.now() - started, why: '' };
       pending = ready === true ? '' : String(ready);
@@ -739,18 +1081,29 @@ function pathOf(url) {
 export async function goInApp(page, requests, path, timeoutMs) {
   const pathname = path.split('?')[0];
   requests.last = Date.now();
-  await bounded(
-    stepLabel(requests, `navigate ${path}`),
-    page.evaluate((to) => {
-      window.history.pushState({}, '', to);
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    }, path)
-  );
-  await bounded(
-    stepLabel(requests, `await ${pathname}`),
-    page.waitForFunction((wanted) => window.location.pathname === wanted, { timeout: timeoutMs }, pathname)
-  );
-  return settle(page, requests, path);
+  // The visit's CPU profile is recorded beside it and kept only when a call of the visit is abandoned
+  // (`stallLine` saves it); the visit's own calls and outcome are the same with or without it.
+  const visit = armVisitProfile(page, `${requests?.pass ?? 'walk'} ${path}`);
+  captures.set(page, visit);
+  try {
+    await bounded(
+      stepLabel(requests, `navigate ${path}`),
+      page.evaluate((to) => {
+        window.history.pushState({}, '', to);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }, path),
+      page
+    );
+    await bounded(
+      stepLabel(requests, `await ${pathname}`),
+      page.waitForFunction((wanted) => window.location.pathname === wanted, { timeout: timeoutMs }, pathname),
+      page
+    );
+    return await settle(page, requests, path);
+  } finally {
+    if (captures.get(page) === visit) captures.delete(page);
+    visit.discard();
+  }
 }
 
 /** The id segment of the first rendered row link on the list the page stands on under `route`. */
@@ -765,7 +1118,8 @@ async function firstRowSegment(page, requests, route) {
         return segments[segments.length - 1];
       }
       return null;
-    }, `/ocupilot/${route}/`)
+    }, `/ocupilot/${route}/`),
+    page
   );
 }
 
@@ -773,11 +1127,12 @@ async function firstRowSegment(page, requests, route) {
 export async function toggleThemeThroughMenu(page, requests, timeoutMs) {
   const wasDark = await bounded(
     stepLabel(requests, 'read theme'),
-    page.evaluate((name) => document.documentElement.classList.contains(name), THEME_DARK_CLASS)
+    page.evaluate((name) => document.documentElement.classList.contains(name), THEME_DARK_CLASS),
+    page
   );
-  await bounded(stepLabel(requests, 'open account menu'), page.click('#ocu-account-trigger'));
+  await bounded(stepLabel(requests, 'open account menu'), page.click('#ocu-account-trigger'), page);
   await page.waitForSelector(THEME_ITEM, { visible: true, timeout: timeoutMs });
-  await bounded(stepLabel(requests, 'choose theme item'), page.click(THEME_ITEM));
+  await bounded(stepLabel(requests, 'choose theme item'), page.click(THEME_ITEM), page);
   await bounded(
     stepLabel(requests, 'await theme class'),
     page.waitForFunction(
@@ -785,12 +1140,14 @@ export async function toggleThemeThroughMenu(page, requests, timeoutMs) {
       { timeout: timeoutMs },
       THEME_DARK_CLASS,
       !wasDark
-    )
+    ),
+    page
   );
-  await bounded(stepLabel(requests, 'close account menu'), page.keyboard.press('Escape'));
+  await bounded(stepLabel(requests, 'close account menu'), page.keyboard.press('Escape'), page);
   await bounded(
     stepLabel(requests, 'await account panel closed'),
-    page.waitForFunction(() => document.querySelector('.ocu-account-panel') === null, { timeout: timeoutMs })
+    page.waitForFunction(() => document.querySelector('.ocu-account-panel') === null, { timeout: timeoutMs }),
+    page
   );
   await settle(page, requests);
 }
@@ -914,7 +1271,8 @@ export function passRetrier(report, entries, browser, relaunch = null) {
  * retried pass. When `relaunch` (answers a new browser) is given, the rerun
  * runs on a newly launched browser and the stalled one is closed, as `passRetrier` says; the walk
  * answers the browser it ended on, which the caller closes. All of it runs with one conversation
- * seeded (`seedConversation`) and removed on every exit path. Answers `{entries, report, browser}`;
+ * seeded (`seedConversation`), one managed alert seeded (`seedManagedAlert`) and one workflow role seeded (`seedWorkflowRole`), each removed on every
+ * exit path. Answers `{entries, report, browser}`;
  * `report` counts walked, skipped, not built, unresolved (an id-requiring screen neither walked nor
  * skipped), unsettled and unmeasurable, and `report.visits` holds each visit's `{visit, ms, settled,
  * why}`. When the walk throws after any pass was retried, the error
@@ -941,7 +1299,11 @@ export async function walk(browser, config, relaunch = null) {
   const withRetry = passRetrier(report, entries, browser, relaunch);
 
   const seeded = seedConversation(config);
+  let alert = '';
+  let role = '';
   try {
+    alert = seedManagedAlert(config);
+    role = seedWorkflowRole(config);
     await withRetry('1280px light then dark', async (found, held) => {
       const wide = await signedInAt(held, config, '/ocupilot/', VIEWPORTS.wide, reducedMotion);
       try {
@@ -952,7 +1314,7 @@ export async function walk(browser, config, relaunch = null) {
         await goInApp(wide.page, requests, `/ocupilot/${NAMESPACE_QUERY}`, config.navigationTimeoutMs);
         await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
       } finally {
-        await bounded('1280px light then dark: close context', wide.context.close());
+        await bounded('1280px light then dark: close context', wide.context.close(), wide.page);
       }
     });
 
@@ -962,11 +1324,19 @@ export async function walk(browser, config, relaunch = null) {
         const requests = trackRequests(narrow.page);
         found.push(...(await walkPass(narrow.page, requests, config, { viewport: VIEWPORTS.narrow.width, theme: 'light', checks: ['name', 'min-width', 'overflow'], minimums, report })));
       } finally {
-        await bounded('720px light: close context', narrow.context.close());
+        await bounded('720px light: close context', narrow.context.close(), narrow.page);
       }
     });
   } finally {
-    removeConversation(config, seeded);
+    try {
+      if (role !== '') removeWorkflowRole(config, role);
+    } finally {
+      try {
+        if (alert !== '') removeManagedAlert(config, alert);
+      } finally {
+        removeConversation(config, seeded);
+      }
+    }
   }
   return { entries: collapse(entries), report, browser: withRetry.held() };
 }
@@ -1030,3 +1400,5 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   }
   await writeBaseline();
 }
+
+export { firstRowSegment };

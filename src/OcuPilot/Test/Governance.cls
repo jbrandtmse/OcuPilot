@@ -29,8 +29,8 @@ Parameter TASKIMPORT = "tasks.schedule.import";
 Parameter ENABLEINTEROP = "osmgmt.namespaces.enableinterop";
 
 /// <p>Story 19.2's two document deletes, Story 19.13's two document imports, Story 19.6's SQL run, Story 19.8's data browser save and Story 19.17's document database
-/// drop, which the baseline disables.</p>
-Parameter EXPLORERDISABLED = "explorer.classes.delete,explorer.routines.delete,explorer.classes.import,explorer.routines.import,explorer.sqlquery.run,explorer.sqldata.save,explorer.docdb.delete,explorer.namespacediff.promote,explorer.unittests.run,explorer.command.run,explorer.classmethod.run";
+/// drop, which the baseline disables, and Story 21.25's two rebuilds, its clear of fixed statistics and its schema tune, and Story 21.26's runtime statistics purge and Story 21.27's index analysis purge.</p>
+Parameter EXPLORERDISABLED = "explorer.classes.delete,explorer.routines.delete,explorer.classes.import,explorer.routines.import,explorer.sqlquery.run,explorer.sqldata.save,explorer.docdb.delete,explorer.namespacediff.promote,explorer.unittests.run,explorer.command.run,explorer.classmethod.run,explorer.sqlstatements.clearstatistics,explorer.sqlstatements.clean,explorer.sqlindices.rebuild,explorer.sqltable.rebuildindices,explorer.sqltable.clearstatistics,explorer.sqlschematables.tune,explorer.sqltable.setextentsize,explorer.sqlindices.setmapsize,explorer.sqlfieldstatistics.setselectivity,explorer.sqlruntimestats.purge,explorer.sqlindexanalysis.purge,explorer.sqlreports.delete";
 
 /// <p>The remote database delete, which the baseline also disables (Story 18.16).</p>
 Parameter REMOTEDATABASEDELETE = "osmgmt.remotedatabases.delete";
@@ -50,8 +50,35 @@ Parameter INTEROPLOOKUPDISABLED = "interop.lookupentries.remove,interop.lookupta
 /// <p>The business partner remove (Story 20.26): the one partner write that ships disabled.</p>
 Parameter INTEROPPARTNERDISABLED = "interop.businesspartners.remove";
 
+/// <p>The system default setting remove (Story 24.15): the one default setting write that ships disabled.</p>
+Parameter INTEROPDEFAULTSETTINGDISABLED = "interop.defaultsettings.remove";
+
+/// <p>The credential remove (Story 24.15): the one credential write that ships disabled.</p>
+Parameter INTEROPCREDENTIALDISABLED = "interop.credentials.remove";
+
+/// <p>The schedule spec remove (Story 24.15): the one schedule spec write that ships disabled.</p>
+Parameter INTEROPSCHEDULEDISABLED = "interop.schedules.remove";
+
+/// <p>The management data purge (Story 24.16): the one purge write that ships disabled.</p>
+Parameter INTEROPPURGEDISABLED = "interop.purge.run";
+
 /// <p>Story 20.31's message resend and edit and resend, which ship disabled (AD-22): a delivered copy cannot be recalled.</p>
 Parameter INTEROPMESSAGEDISABLED = "interop.messages.resend,interop.messageheader.editresend";
+
+/// <p>Story 24.16's suspended message resubmit, edit and resubmit and delete, which ship disabled (AD-22); its discard keeps the message and its body and ships enabled.</p>
+Parameter INTEROPSUSPENDEDDISABLED = "interop.suspendedmessages.resubmit,interop.suspendedmessages.editresubmit,interop.suspendedmessages.delete";
+
+/// <p>The local archive run (Story 24.16 Batch 4): the one archive write that ships disabled.</p>
+Parameter INTEROPARCHIVEDISABLED = "interop.archive.run";
+
+/// <p>The business rule log and business process log purges (Story 24.17 Batch 2): the two writes that ship disabled.</p>
+Parameter INTEROPLOGPURGEDISABLED = "interop.processlog.purge,interop.rulelog.purge";
+
+/// <p>The workflow user remove (Story 24.17 Batch 3a), the workflow role remove (Batch 3b) and the workflow task cancel (Batch 4): the writes of their families that ship disabled.</p>
+Parameter INTEROPWORKFLOWDISABLED = "interop.workflowusers.remove,interop.workflowroles.remove,interop.workflowtasks.cancel";
+
+/// <p>The HL7 schema import and delete (Story 24.18 Batch 1): the two writes of their family that ship disabled.</p>
+Parameter INTEROPHL7DISABLED = "interop.hl7schemas.import,interop.hl7schemas.delete";
 
 /// <p>Story 20.34's cube build, which ships disabled (AD-22): it deletes a cube's facts and those of the cubes that depend on it. Its
 /// synchronize ships enabled.</p>
@@ -74,6 +101,9 @@ Parameter RESOURCEDISABLED = "permissions.resources.import";
 
 /// <p>Story 21.5's globals delete, node save and node delete, and Story 21.17's import, each listed false in the baseline.</p>
 Parameter GLOBALDISABLED = "explorer.globals.delete,explorer.globalnodes.save,explorer.globalnodes.delete,explorer.globals.import,explorer.globals.replace";
+
+/// <p>Story 21.38's two answers to a source-control question, each listed false in the baseline: a person's own answer asks no key.</p>
+Parameter SOURCECONTROLDISABLED = "explorer.classes.answer,explorer.routines.answer";
 
 /// <p>Story 24.2's term list delete and entry remove, which ship disabled (AD-22): each removes data the editor cannot restore. The
 /// other four term list writes ship enabled.</p>
@@ -221,7 +251,16 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If $ListFind($ListFromString(..#INTEROPRUNTIMEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPLOOKUPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPPARTNERDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPDEFAULTSETTINGDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPCREDENTIALDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPSCHEDULEDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPPURGEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPMESSAGEDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPSUSPENDEDDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPARCHIVEDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPLOGPURGEDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPWORKFLOWDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPHL7DISABLED), tKey) Set tExpected = "0|baseline"
         If tKey = ..#CUBEDISABLED Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#BACKUPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#TERMLISTDISABLED), tKey) Set tExpected = "0|baseline"
@@ -233,6 +272,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If $ListFind($ListFromString(..#LOCALEDISABLED), tKey) Set tExpected = "0|baseline"
         If tKey = ..#RESOURCEDISABLED Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#GLOBALDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#SOURCECONTROLDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#MFTDISABLED), tKey) Set tExpected = "0|baseline"
         If tKey = ..#SYSTEMSECURITYDISABLED Set tExpected = "0|baseline"
         If tKey = ..#PHONEPROVIDERDISABLED Set tExpected = "0|baseline"

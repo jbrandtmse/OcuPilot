@@ -40,8 +40,8 @@ Method TestTheThreeDeclarationsRegister()
         Do $$$AssertEquals(tDeclaration.route _ "|" _ tDeclaration.sideBarPosition _ "|" _ tDeclaration.archetype _ "|" _ tDeclaration.labelKey, $Piece(tRow, "|", 2) _ "|" _ $Piece(tRow, "|", 3) _ "|" _ $Piece(tRow, "|", 4) _ "|" _ $Piece(tRow, "|", 5), tClass _ ": route, position, archetype and label")
         Do $$$AssertEquals(tDeclaration.area _ "|" _ tDeclaration.built _ "|" _ tDeclaration.refreshes _ "|" _ tDeclaration.entityType _ "|" _ tDeclaration.scope _ "|" _ tDeclaration.id.kind _ "|" _ tDeclaration.parentScope, "interoperability|1|0|interop-message|namespace|single|" _ $Piece(tRow, "|", 8), tClass _ ": interoperability, built, never refreshing, one message header, namespace-scoped, a single id")
         Do $$$AssertEquals(tDeclaration.read.source.port _ "|" _ tDeclaration.read.source.endpoint _ "|" _ tDeclaration.read.source.type _ "|" _ tDeclaration.toolIdentifier _ "|" _ tDeclaration.classicPage, "interop|" _ $Piece(tRow, "|", 6) _ "|LIST|" _ $Piece(tRow, "|", 7) _ "|" _ ..#CLASSICPAGE, tClass _ ": an interop LIST on its endpoint, its tool and the classic viewer")
-        ; Story 20.31: the search resends its checked rows, and the Header tab resends and edits and resends the message it shows.
-        Do $$$AssertEquals(tDeclaration.rowActions.%Size() _ "|" _ tDeclaration.primaryAction.id _ "|" _ tDeclaration.commandAliases.%Size(), $Case($Piece(tRow, "|", 1), "InteropMessageList": "1||0", "InteropMessageHeaderTab": "2|resend|0", : "0||0"), tClass _ ": its actions and no command alias")
+        ; Story 20.31: the search resends its checked rows, and the Header tab resends and edits and resends the message it shows. Story 24.16 Batch 3: the search also exports them.
+        Do $$$AssertEquals(tDeclaration.rowActions.%Size() _ "|" _ tDeclaration.primaryAction.id _ "|" _ tDeclaration.commandAliases.%Size(), $Case($Piece(tRow, "|", 1), "InteropMessageList": "2||0", "InteropMessageHeaderTab": "2|resend|0", : "0||0"), tClass _ ": its actions and no command alias")
         Do $$$AssertEquals(tDeclaration.emptyStateKey, $Piece(tRow, "|", 11), tClass _ ": its empty sentence")
         ; The search also offers the resend and trace guided workflows after its three own prompts (Story 20.12).
         Set tPromptCount = $Select($Piece(tRow, "|", 1) = "InteropMessageList": 5, 1: 3)
@@ -198,7 +198,7 @@ Method TestThePortDeclaresEachScreensPairs()
         Do $$$AssertEquals(+$ClassMethod(..#PORT, "Serves", tEndpoint, "SENDTEST"), 0, tEndpoint _ " serves nothing else")
         Do $$$AssertEquals(##class(OcuPilot.Test.InteropHostDescriptor).PairText($ClassMethod(..#PORT, "Pairs", tEndpoint, "LIST")), $Piece(tRow, "|", 15), tEndpoint _ ": the port's pairs are the screen's")
     }
-    Do $$$AssertEquals($Parameter(..#PORT, "SEARCHENDPOINTS"), "Messages", "the Messages endpoint alone takes search criteria of its own")
+    Do $$$AssertEquals($Parameter(..#PORT, "SEARCHENDPOINTS"), "Messages,DefaultSettingsDiff,ManagedAlerts,RuleLog,ProcessLog", "the Messages, DefaultSettingsDiff, ManagedAlerts, RuleLog and ProcessLog endpoints alone take search criteria of their own")
 }
 
 /// <p>A Queue messages row's message id opens that message's Header tab: the list declares the <code>rowTarget</code> on

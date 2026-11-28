@@ -497,4 +497,47 @@ Method TestFourBrokenRulesYieldFourViolationsInDeclaredOrder()
     Do $$$AssertEquals(tBlank, 0, "and no violation is reported without a field")
 }
 
+/// <p><method>OcuPilot.Kernel.AgentRules.ViolationsSentence</method>: none is <code>""</code>, one is the field
+/// and the code's sentence, three are joined by one space in the order reported, and a third list element is
+/// not read.</p>
+/// <p>Mutation: join with <code>"; "</code> -- the three-violation leg goes red.</p>
+Method TestViolationsSentenceJoinsEachFieldAndSentenceInOrder()
+{
+    Set tProvider = ##class(OcuPilot.Api.Error).ReasonForViolation("AGENT.PROVIDER.UNKNOWN")
+    Set tTokens = ##class(OcuPilot.Api.Error).ReasonForViolation("AGENT.MAXTOKENS.RANGE")
+    Set tTemperature = ##class(OcuPilot.Api.Error).ReasonForViolation("AGENT.TEMPERATURE.RANGE")
+    Do $$$AssertTrue((tProvider '= "") && (tTokens '= "") && (tTemperature '= ""), "the three codes have published sentences")
+    Kill tNone
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.AgentRules).ViolationsSentence(.tNone), "", "no violations is the empty sentence")
+    Set tOne(1) = $ListBuild("provider", "AGENT.PROVIDER.UNKNOWN")
+    Set tOne = 1
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.AgentRules).ViolationsSentence(.tOne), "'provider': " _ tProvider, "one violation is its field and its sentence")
+    Set tThree(1) = $ListBuild("provider", "AGENT.PROVIDER.UNKNOWN")
+    Set tThree(2) = $ListBuild("maxTokens", "AGENT.MAXTOKENS.RANGE", "a sentence the producing rule supplied")
+    Set tThree(3) = $ListBuild("temperature", "AGENT.TEMPERATURE.RANGE")
+    Set tThree = 3
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.AgentRules).ViolationsSentence(.tThree), "'provider': " _ tProvider _ " 'maxTokens': " _ tTokens _ " 'temperature': " _ tTemperature, "three are joined by one space in order, each sentence the code's")
+}
+
+/// <p><method>OcuPilot.Kernel.Proposal.ScreenSaveRules.ReadTaken</method>: a failed read with HTTP 404 is free,
+/// any other failed read is its status, and a successful read is taken only when it answered an object.</p>
+/// <p>Mutation: treat a 404 as taken -- the 404 leg goes red.</p>
+Method TestReadTakenIsFreeOnA404AndAnErrorOtherwise()
+{
+    Set tError = $$$ERROR($$$GeneralError, "read failed")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.ScreenSaveRules).ReadTaken(tError, 404, "", .tTaken)
+    Do $$$AssertStatusOK(tSC, "a 404 answers OK")
+    Do $$$AssertEquals(tTaken, 0, "and the target is free")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.ScreenSaveRules).ReadTaken(tError, 500, "", .tTaken)
+    Do $$$AssertStatusNotOK(tSC, "any other failed read answers its status")
+    Do $$$AssertEquals(tTaken, 0, "and the target is not reported taken")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.ScreenSaveRules).ReadTaken($$$OK, 200, {"Name": "x"}, .tTaken)
+    Do $$$AssertStatusOK(tSC, "an object answers OK")
+    Do $$$AssertEquals(tTaken, 1, "and the target is taken")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.ScreenSaveRules).ReadTaken($$$OK, 200, [1], .tTaken)
+    Do $$$AssertEquals(tTaken, 0, "an array is not a record, so the target is free")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.ScreenSaveRules).ReadTaken($$$OK, 200, "", .tTaken)
+    Do $$$AssertEquals(tTaken, 0, "and so is an answer that is not an object")
+}
+
 }

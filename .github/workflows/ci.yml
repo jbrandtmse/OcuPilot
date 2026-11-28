@@ -70,7 +70,7 @@ jobs:
   gates:
     name: gates (node ${{ matrix.node }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     # One leg per band `ui/package.json` declares in `engines.node`, at that band's FLOOR -- the
     # oldest Node the project claims to support is the one least likely to run it. Run
     # 34773637146 is why this is a matrix rather than a single pin: `npm test` ran `node --test`
@@ -122,7 +122,7 @@ jobs:
       # the job's, so the hang fails here with that log kept and the next step still runs.
       - name: client suite
         working-directory: ui
-        timeout-minutes: 12
+        timeout-minutes: 18
         run: sh ../scripts/ci-resource-sample.sh -- npm test
       - name: client suite resources
         if: ${{ failure() || cancelled() }}
@@ -253,7 +253,7 @@ jobs:
     runs-on: ubuntu-24.04
     # At least 1.5 times the sum of the largest leg's estimate from ui/tools/ci-timings.json and 3
     # minutes of setup, a margin ui/tools/ci.test.mjs holds.
-    timeout-minutes: 62
+    timeout-minutes: 71
     strategy:
       fail-fast: false
       matrix:
@@ -295,6 +295,7 @@ jobs:
         env:
           OCUPILOT_BROWSER_ORIGIN: http://localhost:52780
           OCUPILOT_BROWSER_CONTAINER: ocupilot-browser-ci
+          OCUPILOT_WALK_PROFILE_DIR: ${{ runner.temp }}/walk-profiles
         run: npm run test:browser:shard -- --shard ${{ matrix.shard }}/5 --record ${{ runner.temp }}/ci-records/browser-shard-${{ matrix.shard }}.json
       - name: upload this leg's record
         if: ${{ !cancelled() }}
@@ -303,6 +304,18 @@ jobs:
           name: ci-record-browser-${{ matrix.shard }}
           path: ${{ runner.temp }}/ci-records/browser-shard-${{ matrix.shard }}.json
           if-no-files-found: error
+          overwrite: true
+      # Evidence only: the structural walk saves the CPU profile of a visit whose call it abandoned
+      # (ui/browser/structural-walk.mjs), and nothing else writes here, so a leg without a stall has no
+      # file to upload.
+      - name: upload the structural walk's CPU profiles
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: walk-profiles-browser-${{ matrix.shard }}
+          path: ${{ runner.temp }}/walk-profiles
+          if-no-files-found: ignore
+          retention-days: 3
           overwrite: true
       - name: capture the throwaway on failure
         if: ${{ failure() || cancelled() }}

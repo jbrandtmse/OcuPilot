@@ -139,34 +139,100 @@ function describeRunState(page) {
     .catch((error) => `(page unreadable: ${error.message})`);
 }
 
+/** The start route a run is posted to, as the page sends it. */
+const START_PATH = '/api/ocupilot/analytics/mdx/background';
+/** The cubes list's read, which fills the cube picker the page draws above the form. */
+const CUBES_READ_PATH = '/api/ocupilot/screens/analytics.cubes/read';
+
+/** Run's bounding box now and after two frames 100 ms later, as `{ before, after }` strings. */
+function runBoxAcrossFrames(page) {
+  return page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const box = () => {
+          const rect = document.querySelector('button[data-ocu-mdx="run"]')?.getBoundingClientRect();
+          return rect === undefined ? '(Run absent)' : [rect.x, rect.y, rect.width, rect.height].join(',');
+        };
+        const before = box();
+        setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(() => resolve({ before, after: box() }))), 100);
+      })
+  );
+}
+
+/** Wait until Run's box reads the same across two frames 100 ms apart, or fail naming the two boxes. */
+async function runBoxStable(page) {
+  const deadline = Date.now() + config.navigationTimeoutMs;
+  let seen = { before: '(not read)', after: '(not read)' };
+  while (Date.now() < deadline) {
+    seen = await runBoxAcrossFrames(page);
+    if (seen.before === seen.after && seen.before !== '(Run absent)') return;
+  }
+  throw new Error(`expected Run's box to hold still across two frames 100 ms apart; it read ${seen.before} then ${seen.after}; the page shows ${await describeRunState(page)}`);
+}
+
+/** The element at Run's center, as a phrase: its tag, id, data-ocu-mdx attribute and classes, or why none is there. */
+function describeElementAtRun(page) {
+  return page
+    .evaluate(() => {
+      const run = document.querySelector('button[data-ocu-mdx="run"]');
+      if (run === null) return '(Run absent)';
+      const rect = run.getBoundingClientRect();
+      const at = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+      if (at === null) return `(nothing at ${rect.x + rect.width / 2},${rect.y + rect.height / 2})`;
+      return `<${at.tagName.toLowerCase()} id="${at.id}" data-ocu-mdx="${at.getAttribute('data-ocu-mdx') ?? ''}" class="${at.className}"> at Run's center (Run itself: ${at === run})`;
+    })
+    .catch((error) => `(page unreadable: ${error.message})`);
+}
+
 /**
  * Press Run with a real pointer, once the page can start a run: Run's `aria-disabled` reads `false` (the statement field's store holds
- * a statement and no run is busy), the namespace switch reads the namespace the page's address names, and an API call has already
- * carried that namespace. The switch shows the address's namespace before the shell has resolved it, while a call carries `?ns=` only
- * once it has, so the finished call is the sign that the start will carry it too.
+ * a statement and no run is busy), the namespace switch reads the namespace the page's address names, an API call has already
+ * carried that namespace, and the cubes read has answered, with Run's box unchanged across two frames 100 ms apart. The switch shows
+ * the address's namespace before the shell has resolved it, while a call carries `?ns=` only once it has, so the finished call is the
+ * sign that the start will carry it too. The cube picker draws above the form when the cubes arrive and moves Run, so a click before
+ * that lands beside it. After the click the run has started once a start POST is sent or the page reads `aria-busy="true"`.
  */
 async function pressRun(page) {
   const namespace = new URL(page.url()).searchParams.get('ns');
   try {
     await page.waitForFunction(
-      (wanted) =>
+      (wanted, cubesPath) =>
         document.querySelector('button[data-ocu-mdx="run"]')?.getAttribute('aria-disabled') === 'false' &&
         (wanted === null ||
           (document.querySelector('#ocu-namespace-switch-value')?.textContent?.trim() === wanted &&
             performance
               .getEntriesByType('resource')
-              .some((entry) => new URL(entry.name).pathname.startsWith('/api/ocupilot/') && new URL(entry.name).searchParams.get('ns') === wanted))),
+              .some((entry) => new URL(entry.name).pathname.startsWith('/api/ocupilot/') && new URL(entry.name).searchParams.get('ns') === wanted))) &&
+        performance
+          .getEntriesByType('resource')
+          .some((entry) => new URL(entry.name).pathname === cubesPath && (wanted === null || new URL(entry.name).searchParams.get('ns') === wanted)),
       { timeout: config.navigationTimeoutMs },
-      namespace
+      namespace,
+      CUBES_READ_PATH
     );
   } catch (error) {
-    throw new Error(`expected Run to be ready (aria-disabled false, namespace ${namespace}); the page shows ${await describeRunState(page)} (underlying: ${error.message})`);
+    throw new Error(`expected Run to be ready (aria-disabled false, namespace ${namespace}, cubes read answered); the page shows ${await describeRunState(page)} (underlying: ${error.message})`);
   }
-  await page.click('button[data-ocu-mdx="run"]');
+  await runBoxStable(page);
+  let posted = false;
+  const onRequest = (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === START_PATH) posted = true;
+  };
+  page.on('request', onRequest);
+  try {
+    await page.click('button[data-ocu-mdx="run"]');
+    const deadline = Date.now() + config.navigationTimeoutMs;
+    while (!posted && Date.now() < deadline) {
+      if ((await page.$('section.ocu-mdx-query[aria-busy="true"]')) !== null) return;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    if (!posted) {
+      throw new Error(`expected the click on Run to start a run (a start POST or aria-busy true); the element at Run's center is ${await describeElementAtRun(page)}; the page shows ${await describeRunState(page)}`);
+    }
+  } finally {
+    page.off('request', onRequest);
+  }
 }
-
-/** The start route a run is posted to, as the page sends it. */
-const START_PATH = '/api/ocupilot/analytics/mdx/background';
 
 /**
  * Record every POST the page makes to the start route from now on: `{ ns, status }` each, `status` null until the answer lands. Attach

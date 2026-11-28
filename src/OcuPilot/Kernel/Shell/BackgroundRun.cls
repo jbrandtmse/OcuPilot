@@ -9,6 +9,7 @@
 /// <li><method>Admit</method> -- the start's checks. It answers a refusal or an immediate answer itself, or hands back the
 /// namespace and the request list the job is given.</li>
 /// <li><method>Work</method> -- the job's work after the shared checks, ending its own run.</li>
+/// <li><method>Child</method> -- the work of the child a supervising kind's <method>Work</method> spawns.</li>
 /// <li><method>CancelJob</method> -- what a cancel sends to the running job.</li>
 /// <li><method>Reply</method> -- the JSON answer of the start and the poll, through the API's writer.</li>
 /// <li><method>CodeFor</method> and <method>ReasonFor</method> -- the code and the written reason of the shared refusals.</li>
@@ -16,10 +17,11 @@
 /// <method>PortClass</method>, <method>MaxRunning</method>, <method>LimitsClass</method> and <method>Spawn</method>, which a
 /// fixture subclass overrides; production overrides none.</li>
 /// </ul>
-/// <p><b>The job</b> (<method>Run</method>) is the one process spawn site this class holds (AD-42). It is spawned from no escalated
+/// <p><b>The job</b> (<method>Run</method>) is spawned at this class's one spawn site (AD-42). It is spawned from no escalated
 /// frame and inherits the caller's <code>$USERNAME</code> and <code>$ROLES</code>; it takes the request as one <code>JOB</code>
 /// argument and stores none of it; it holds the run's lock for its life. <method>Spawn</method> hands the job the invoked
-/// class's name, so a fixture's seams apply in it.</p>
+/// class's name, so a fixture's seams apply in it. A kind whose job supervises a child spawns it with <method>SpawnChild</method>, the
+/// same site's second <code>JOB</code>.</p>
 /// <p><b>A run belongs to its owner and its kind.</b> Another user's run, another kind's run, an unknown id and a swept run each
 /// answer the same 404. The answer is kept in OcuPilot's protected state for the owner's poll alone until it is swept; nothing of
 /// the request, its rows or its vendor error is logged.</p>
@@ -254,6 +256,32 @@ ClassMethod Enter(pKey As %String, pUser As %String, pNamespace As %String, pReq
     Do $ClassMethod(pClass, "Run", pKey, pUser, pNamespace, pRequest, pClass)
 }
 
+/// <p>Spawn the child of a run that supervises one, from the run's own job, which is the child's direct parent: only a parent can end its child without escalating, so a kind
+/// that must end its work on a cancel runs the work in a child and keeps the supervision in the run's job. <var>pChild</var> is the child's process id when the <code>JOB</code> was accepted
+/// within <parameter>SPAWNTIMEOUT</parameter> seconds. Called only by <class>OcuPilot.Area.Analytics.PmmlTest</class>'s supervisor, so this is the one <code>JOB</code> besides
+/// <method>Spawn</method>'s. The child inherits the caller's <code>$USERNAME</code> and <code>$ROLES</code>, and the caller holds no escalated frame (AD-9). It takes the request as one
+/// argument, stores none of it, and runs <var>pClass</var>'s <method>Child</method>.</p>
+ClassMethod SpawnChild(pKey As %String, pUser As %String, pNamespace As %String, pRequest As %List, pClass As %String, Output pChild As %Integer) As %Boolean
+{
+    Set pChild = ""
+    Job ##class(OcuPilot.Kernel.Shell.BackgroundRun).EnterChild(pKey, pUser, pNamespace, pRequest, pClass):($Namespace):..#SPAWNTIMEOUT
+    If '$Test Quit 0
+    Set pChild = $ZChild
+    Quit 1
+}
+
+/// <p>The child's entry point, spawned by <method>SpawnChild</method> and never called directly: it runs <var>pClass</var>'s own <method>Child</method>.</p>
+ClassMethod EnterChild(pKey As %String, pUser As %String, pNamespace As %String, pRequest As %List, pClass As %String)
+{
+    Do $ClassMethod(pClass, "Child", pKey, pUser, pNamespace, pRequest, pClass)
+}
+
+/// <p>The child's work, for a kind whose <method>Work</method> supervises a child (<method>SpawnChild</method>). The base ends the run <code>failed</code>.</p>
+ClassMethod Child(pKey As %String, pUser As %String, pNamespace As %String, pRequest As %List, pClass As %String)
+{
+    Do ..Finish(pKey, $Parameter(..#STORECLASS, "STATEFAILED"), "")
+}
+
 /// <p>The job's body, run by <method>Enter</method>. <var>pClass</var> is the class whose seams apply.</p>
 /// <p>In this order: it refuses a <code>$USERNAME</code> that is not <var>pUser</var>, ending the run <code>failed</code>; it begins
 /// the run, or ends it <code>canceled</code> when the owner asked before it began; it repeats the screen's gate, the classic page's
@@ -309,6 +337,15 @@ ClassMethod FinishRefused(pKey As %String, pStatus As %Status, pFault) [ Private
         Quit
     }
     Do ..Finish(pKey, tFailed, ..Envelope(pFault).%ToJSON())
+}
+
+/// <p>Whether run <var>pKey</var>'s owner has asked it to stop, read fresh from the store; 0 when the store cannot answer. The stop hook the analytics kinds' runs ask while
+/// they wait on the vendor.</p>
+ClassMethod StopRequested(pKey As %String) As %Boolean
+{
+    Set tRequested = 0
+    Set tSC = $ClassMethod(..#STORECLASS, "GuardedCancelRequested", pKey, .tRequested)
+    Quit $$$ISOK(tSC) && tRequested
 }
 
 /// <p>Ask run <var>pId</var> of <var>pUser</var> to stop (<method>OcuPilot.Kernel.State.SqlRun.GuardedCancel</method>) and send the
@@ -389,6 +426,16 @@ ClassMethod Envelope(pFault As %DynamicObject) As %DynamicObject [ Private ]
 ClassMethod Render(pFault As %DynamicObject, pHttp As %Integer) As %Status [ Private ]
 {
     Quit ##class(OcuPilot.Api.Error).Render(+pHttp, pFault.%Get("error"), pFault.%Get("reason"), pFault.%Get("code"), pFault.%Get("detail"))
+}
+
+/// <p>Render the port's refusal <var>pFault</var> with the status <var>pHttp</var>, or the generic internal envelope for the failed status <var>pSC</var> when the port gave
+/// none.</p>
+ClassMethod RenderPortFault(pSC As %Status, pHttp As %Integer, pFault) As %Status [ Private ]
+{
+    If '$IsObject(pFault) || (pFault.%Get("code") = "") {
+        Quit ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(pSC))
+    }
+    Quit ..Render(pFault, $Select(+pHttp: +pHttp, 1: 500))
 }
 
 /// <p>Render the 404 <code>notfound</code> refusal; the id is not echoed back.</p>

@@ -120,6 +120,7 @@ XData Coverage
 <screen name="TaskHistoryList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="TaskOnDemandList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="TaskRunList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
+<screen name="TaskOutput" class="OcuPilot.Test.TaskOutputRead" method="TestTheDeclarationValidatesAndIsDeclaredAsTaskOutput"/>
 <screen name="TaskScheduleList" class="OcuPilot.Test.Descriptor" method="TestTheTaskScheduleListValidatesAndNamesItsClassicPageInItsOwnCase"/>
 <screen name="TaskUpcomingList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="RoleForm" class="OcuPilot.Test.RoleCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
@@ -184,6 +185,12 @@ XData Coverage
 <screen name="ExplorerSqlQuery" class="OcuPilot.Test.ExplorerDescriptor" method="TestSqlQueryKeysTheClassicSqlPage"/>
 <screen name="ExplorerSqlData" class="OcuPilot.Test.ExplorerDescriptor" method="TestDataBrowserKeysTheClassicOpenTablePage"/>
 <screen name="ExplorerSqlTableStatements" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTableTabsFormOneParentScopedGroup" corpus="the nine SQL table tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlFieldStatistics" class="OcuPilot.Test.SqlTableTune" method="TestTheFieldStatisticsTabAndTheAgentsReadAnswerTheDirectRows" corpus="the tab's declaration, its rows against a direct select and the agent's read"/>
+<screen name="ExplorerSqlStatementList" class="OcuPilot.Test.SqlStatementRead" method="TestTheScreenDeclaresItsShape"/>
+<screen name="ExplorerSqlRuntimeStats" class="OcuPilot.Test.SqlRuntimeStatsRead" method="TestTheScreensDeclareTheirShape" corpus="the list's declaration and the settings list's are asserted together in one method"/>
+<screen name="ExplorerSqlRuntimeStatsSettings" class="OcuPilot.Test.SqlRuntimeStatsRead" method="TestTheScreensDeclareTheirShape" corpus="the list's declaration and the settings list's are asserted together in one method"/>
+<screen name="ExplorerSqlIndexAnalysis" class="OcuPilot.Test.SqlIndexAnalysisRead" method="TestTheScreenAndTheToolsDeclareTheirShape" corpus="the list's declaration and the three tools' are asserted together in one method"/>
+<screen name="ExplorerSqlReports" class="OcuPilot.Test.SqlReportRead" method="TestTheScreenDeclaresItsShape" corpus="the list's declaration and the three tools' are asserted together in one method"/>
 <screen name="ExplorerSqlView" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlViewFields" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlViewStatements" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
@@ -226,6 +233,7 @@ XData Coverage
 <screen name="MftConnectionForm" class="OcuPilot.Test.MftConnectionDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
 <screen name="PhoneProviderList" class="OcuPilot.Test.PhoneProviderRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="the list, its editor and the three tools are asserted together in one test"/>
 <screen name="SecurityAdvisorList" class="OcuPilot.Test.AdvisorRead" method="TestTheScreenAndToolsDeclareTheirPagePairsActionsAndKeys" corpus="the list and its two tools are asserted together in one test"/>
+<screen name="PageResourceList" class="OcuPilot.Test.PageResourceRead" method="TestTheScreenDeclaresItsPagePairsAndRead"/>
 <screen name="PhoneProviderForm" class="OcuPilot.Test.PhoneProviderRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="the list, its editor and the three tools are asserted together in one test"/>
 <screen name="DocDbAppList" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheListIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="DocDbAppForm" class="OcuPilot.Test.DocDbAppDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
@@ -264,6 +272,30 @@ XData Coverage
 <screen name="InteropLookupTableList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
 <screen name="InteropLookupEntryList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
 <screen name="InteropBusinessPartnerList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
+<screen name="InteropDefaultSettingList" class="OcuPilot.Test.InteropDefaultSettingDiff" method="TestTheTwoDeclarationsRegister" corpus="one declaration test pins both Story 24.15 screens in one loop"/>
+<screen name="InteropDefaultSettingDiff" class="OcuPilot.Test.InteropDefaultSettingDiff" method="TestTheDiffListsEachDifferenceAndNotTheSameSetting"/>
+<screen name="InteropCredentialList" class="OcuPilot.Test.InteropCredentialControl" method="TestTheDeclarationRegisters"/>
+<screen name="InteropScheduleList" class="OcuPilot.Test.InteropScheduleControl" method="TestTheDeclarationRegisters"/>
+<screen name="InteropWorkflowUserList" class="OcuPilot.Test.InteropWorkflowUserList" method="TestTheDeclarationRegisters"/>
+<screen name="InteropWorkflowRoleList" class="OcuPilot.Test.InteropWorkflowRoleList" method="TestTheDeclarationsRegister"/>
+<screen name="InteropWorkflowMemberList" class="OcuPilot.Test.InteropWorkflowRoleList" method="TestTheDeclarationsRegister" corpus="the roles list's declaration and the members list's are asserted together in one method"/>
+<screen name="InteropWorkflowTaskList" class="OcuPilot.Test.InteropWorkflowTaskList" method="TestTheDeclarationsRegister"/>
+<screen name="InteropWorkflowWorklist" class="OcuPilot.Test.InteropWorkflowTaskList" method="TestTheDeclarationsRegister" corpus="the tasks list's declaration and the worklist's are asserted together in one method"/>
+<screen name="InteropSystemMonitor" class="OcuPilot.Test.InteropSystemMonitorRead" method="TestTheFourScreensAreDeclaredAsThePlanPlacesThem"/>
+<screen name="InteropSystemMonitorProcesses" class="OcuPilot.Test.InteropSystemMonitorRead" method="TestTheFourScreensAreDeclaredAsThePlanPlacesThem" corpus="the four system monitor declarations are asserted together in one method"/>
+<screen name="InteropSystemMonitorQueues" class="OcuPilot.Test.InteropSystemMonitorRead" method="TestTheFourScreensAreDeclaredAsThePlanPlacesThem" corpus="the four system monitor declarations are asserted together in one method"/>
+<screen name="InteropSystemMonitorTasks" class="OcuPilot.Test.InteropSystemMonitorRead" method="TestTheFourScreensAreDeclaredAsThePlanPlacesThem" corpus="the four system monitor declarations are asserted together in one method"/>
+<screen name="InteropHl7SchemaList" class="OcuPilot.Test.InteropHl7SchemaList" method="TestTheDeclarationsRegister"/>
+<screen name="InteropPurgeList" class="OcuPilot.Test.InteropPurgeControl" method="TestTheDeclarationRegisters"/>
+<screen name="InteropPurgeSettingList" class="OcuPilot.Test.InteropPurgeSettingControl" method="TestTheDeclarationRegisters"/>
+<screen name="InteropArchiveList" class="OcuPilot.Test.InteropArchiveControl" method="TestTheRunIsDeclaredAsTheRowActionOfTheArchiveManager"/>
+<screen name="InteropArchiveSettingList" class="OcuPilot.Test.InteropArchiveSettingControl" method="TestTheDeclarationsRegister"/>
+<screen name="InteropArchiveErrorList" class="OcuPilot.Test.InteropArchiveControl" method="TestTheErrorsScreenIsDeclaredReadOnly"/>
+<screen name="InteropManagedAlertList" class="OcuPilot.Test.InteropAlertUpdate" method="TestTheUpdateIsDeclaredAsTheRowActionOfTheManagedAlertsScreen"/>
+<screen name="InteropManagedAlertHistory" class="OcuPilot.Test.InteropAlertList" method="TestTheHistoryIsOneRowForEachUpdateNewestFirst"/>
+<screen name="InteropRuleLogList" class="OcuPilot.Test.InteropLogList" method="TestTheRuleLogScreenIsDeclaredAsThePlanPlacesIt"/>
+<screen name="InteropProcessLogList" class="OcuPilot.Test.InteropLogList" method="TestTheBusinessProcessLogScreenIsDeclaredAsThePlanPlacesIt"/>
+<screen name="InteropSuspendedMessageList" class="OcuPilot.Test.InteropSuspendedList" method="TestTheDeclarationRegisters"/>
 <screen name="InteropRuleEditor" class="OcuPilot.Test.InteropEditorDescriptor" method="TestTheThreeEditorScreensRegister" corpus="one declaration test pins all three Story 20.7 editor screens in one loop"/>
 <screen name="InteropProcessEditor" class="OcuPilot.Test.InteropEditorDescriptor" method="TestTheThreeEditorScreensRegister" corpus="one declaration test pins all three Story 20.7 editor screens in one loop"/>
 <screen name="InteropTransformEditor" class="OcuPilot.Test.InteropEditorDescriptor" method="TestTheThreeEditorScreensRegister" corpus="one declaration test pins all three Story 20.7 editor screens in one loop"/>
@@ -327,6 +359,8 @@ XData Coverage
 <tool name="analytics.usericons.add" class="OcuPilot.Test.AnalyticsSettingsEntryWrite" method="TestAnIconIsAddedChangedAndRemovedByBothCallers" corpus="one test adds, changes and removes a user-defined icon at both callers, so it covers the three icon writes"/>
 <tool name="analytics.usericons.set" class="OcuPilot.Test.AnalyticsSettingsEntryWrite" method="TestAnIconIsAddedChangedAndRemovedByBothCallers" corpus="one test adds, changes and removes a user-defined icon at both callers, so it covers the three icon writes"/>
 <tool name="analytics.usericons.remove" class="OcuPilot.Test.AnalyticsSettingsEntryWrite" method="TestAnIconIsAddedChangedAndRemovedByBothCallers" corpus="one test adds, changes and removes a user-defined icon at both callers, so it covers the three icon writes"/>
+<tool name="analytics.pmmlmodels.add" class="OcuPilot.Test.AnalyticsPmmlCreate" method="TestADefinitionIsCreatedByEachCallerAndReadsBack"/>
+<tool name="analytics.pmmlmodel.export" class="OcuPilot.Test.AnalyticsPmmlExport" method="TestAnExportIsMadeByEachCallerAndReadsBack"/>
 <screen name="StartupSettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="MemorySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
 <screen name="CompatibilitySettingList" class="OcuPilot.Test.ConfigSettingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the three Story 21.3 setting screens' declarations in a loop"/>
@@ -341,6 +375,7 @@ XData Coverage
 <screen name="TaskMailSettingList" class="OcuPilot.Test.TaskMailSettingRead" method="TestTheScreenAndToolDeclareTheirPagesPairsAndActions"/>
 <tool name="security.systemsecurity.set" class="OcuPilot.Test.SystemSecuritySettingWrite" method="TestASetChangesOnlyItsParameterOnBothCallersAndIsRestored"/>
 <tool name="tasks.mail.set" class="OcuPilot.Test.TaskMailSettingWrite" method="TestASetChangesOnlyItsSettingOnBothCallersAndIsRestored"/>
+<tool name="tasks.mail.password" class="OcuPilot.Test.TaskMailPasswordWrite" method="TestThePasswordIsSetByBothCallersAndSurfacesNowhere"/>
 <screen name="MirrorMonitor" class="OcuPilot.Test.MirrorRead" method="TestTheScreenDeclaresItsPagePairsAndSource"/>
 <screen name="DdlSystemMappingList" class="OcuPilot.Test.DdlMappingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the two Story 21.13 DDL mapping screens' declarations in a loop"/>
 <screen name="DdlUserMappingList" class="OcuPilot.Test.DdlMappingRead" method="TestTheScreensAndToolsDeclareTheirPagesPairsAndActions" corpus="one method asserts the two Story 21.13 DDL mapping screens' declarations in a loop"/>
@@ -382,6 +417,8 @@ XData Coverage
 <screen name="AnalyticsUserIconList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every Story 20.11, Story 24.11, Story 24.12 and Story 24.13 analytics screen in one loop"/>
 <screen name="AnalyticsFolderItemDefinitionTab" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every analytics screen in one loop, Story 24.14's two folder item tabs among them"/>
 <screen name="AnalyticsDashboardWidgetsTab" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every analytics screen in one loop, Story 24.14's two folder item tabs among them"/>
+<screen name="AnalyticsPmmlModelList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every analytics screen in one loop, Story 24.14 Batch 2's PMML models list and its Test screen among them"/>
+<screen name="AnalyticsPmmlModelTest" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins every analytics screen in one loop, Story 24.14 Batch 2's PMML models list and its Test screen among them"/>
 <screen name="AnalyticsArchitectLink" class="OcuPilot.Test.AnalyticsLinkDescriptor" method="TestTheLinkScreensRegister" corpus="one declaration test pins all three Story 20.32 link screens in one loop"/>
 <screen name="AnalyticsAnalyzerLink" class="OcuPilot.Test.AnalyticsLinkDescriptor" method="TestTheLinkScreensRegister" corpus="one declaration test pins all three Story 20.32 link screens in one loop"/>
 <screen name="AnalyticsUserPortalLink" class="OcuPilot.Test.AnalyticsLinkDescriptor" method="TestTheLinkScreensRegister" corpus="one declaration test pins all three Story 20.32 link screens in one loop"/>
@@ -396,6 +433,8 @@ XData Coverage
 <tool name="permissions.resources.delete" class="OcuPilot.Test.ResourceDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="permissions.resources.export" class="OcuPilot.Test.ResourceTransferWrite" method="TestAnExportIsImportedBackOnBothCallersAndAChangedFileIsRefused"/>
 <tool name="permissions.resources.import" class="OcuPilot.Test.ResourceTransferWrite" method="TestAnImportThatOpensAnOwnResourceIsRefusedOnBothCallers"/>
+<tool name="permissions.pageresources.assign" class="OcuPilot.Test.PageResourceWrite" method="TestTheAgentAssignsChangesAndClears"/>
+<tool name="permissions.pageresources.clear" class="OcuPilot.Test.PageResourceWrite" method="TestTheGateFollowsThePageResourceOnTheNextCall"/>
 <tool name="security.x509.import" class="OcuPilot.Test.X509Import" method="TestTheSchemaAdvertisesNoSecretAndNoPath"/>
 <tool name="security.x509.update" class="OcuPilot.Test.X509Update" method="TestTheEditIsAMergeWriteOverTheTwoLists"/>
 <tool name="security.x509.delete" class="OcuPilot.Test.X509Delete" method="TestTheDeleteIsAnActionWriteOverTheCertificate"/>
@@ -538,12 +577,38 @@ XData Coverage
 <tool name="explorer.classmethod.run" class="OcuPilot.Test.ConsoleGate" method="TestSwitchedOffRefusesBeforeTheHoldTheReadAndTheRun"/>
 <tool name="explorer.docdb.create" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsCreateConfirmsAndATakenNameIsRefused"/>
 <tool name="explorer.docdb.delete" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsDropIsGovernedThenConfirmed"/>
+<tool name="explorer.sqlstatements.freeze" class="OcuPilot.Test.SqlStatementWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the five statement writes are asserted together in one loop"/>
+<tool name="explorer.sqlstatements.unfreeze" class="OcuPilot.Test.SqlStatementWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the five statement writes are asserted together in one loop"/>
+<tool name="explorer.sqlstatements.clearstatistics" class="OcuPilot.Test.SqlStatementWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the five statement writes are asserted together in one loop"/>
+<tool name="explorer.sqlstatements.clearerror" class="OcuPilot.Test.SqlStatementWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the five statement writes are asserted together in one loop"/>
+<tool name="explorer.sqlstatements.clean" class="OcuPilot.Test.SqlStatementWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the five statement writes are asserted together in one loop"/>
+<tool name="explorer.sqlcachedqueries.purge" class="OcuPilot.Test.SqlCachedQueryPurge" method="TestThePurgeToolsDeclareTheirWritePath" corpus="the three cached-query purges are asserted together in one loop"/>
+<tool name="explorer.sqlcachedqueries.purgetable" class="OcuPilot.Test.SqlCachedQueryPurge" method="TestThePurgeToolsDeclareTheirWritePath" corpus="the three cached-query purges are asserted together in one loop"/>
+<tool name="explorer.sqlcachedqueries.purgenamespace" class="OcuPilot.Test.SqlCachedQueryPurge" method="TestThePurgeToolsDeclareTheirWritePath" corpus="the three cached-query purges are asserted together in one loop"/>
+<tool name="explorer.sqlindices.rebuild" class="OcuPilot.Test.SqlIndexRebuild" method="TestTheToolsDeclareTheirWritePath" corpus="the two rebuilds are asserted together in one loop"/>
+<tool name="explorer.sqltable.rebuildindices" class="OcuPilot.Test.SqlIndexRebuild" method="TestTheToolsDeclareTheirWritePath" corpus="the two rebuilds are asserted together in one loop"/>
+<tool name="explorer.sqltable.tune" class="OcuPilot.Test.SqlTableTune" method="TestTheToolsDeclareTheirWritePath" corpus="the three statistics writes are asserted together in one loop"/>
+<tool name="explorer.sqltable.clearstatistics" class="OcuPilot.Test.SqlTableTune" method="TestTheToolsDeclareTheirWritePath" corpus="the three statistics writes are asserted together in one loop"/>
+<tool name="explorer.sqlschematables.tune" class="OcuPilot.Test.SqlTableTune" method="TestTheToolsDeclareTheirWritePath" corpus="the three statistics writes are asserted together in one loop"/>
+<tool name="explorer.sqltable.setextentsize" class="OcuPilot.Test.SqlTableFixedStats" method="TestTheToolsDeclareTheirWritePath" corpus="the three setters are asserted together in one loop"/>
+<tool name="explorer.sqlindices.setmapsize" class="OcuPilot.Test.SqlTableFixedStats" method="TestTheToolsDeclareTheirWritePath" corpus="the three setters are asserted together in one loop"/>
+<tool name="explorer.sqlruntimestats.purge" class="OcuPilot.Test.SqlRuntimeStatsRead" method="TestTheScreensDeclareTheirShape" corpus="the purge and the collection set are asserted together in one method"/>
+<tool name="explorer.sqlruntimestatssettings.set" class="OcuPilot.Test.SqlRuntimeStatsRead" method="TestTheScreensDeclareTheirShape" corpus="the purge and the collection set are asserted together in one method"/>
+<tool name="explorer.sqlindexanalysis.gather" class="OcuPilot.Test.SqlIndexAnalysisRead" method="TestTheScreenAndTheToolsDeclareTheirShape" corpus="the gather, the run and the purge are asserted together in one method"/>
+<tool name="explorer.sqlindexanalysis.run" class="OcuPilot.Test.SqlIndexAnalysisRead" method="TestTheScreenAndTheToolsDeclareTheirShape" corpus="the gather, the run and the purge are asserted together in one method"/>
+<tool name="explorer.sqlindexanalysis.purge" class="OcuPilot.Test.SqlIndexAnalysisRead" method="TestTheScreenAndTheToolsDeclareTheirShape" corpus="the gather, the run and the purge are asserted together in one method"/>
+<tool name="explorer.sqlreports.save" class="OcuPilot.Test.SqlReportRead" method="TestTheScreenDeclaresItsShape" corpus="the save, the delete and the generate are asserted together in one method"/>
+<tool name="explorer.sqlreports.delete" class="OcuPilot.Test.SqlReportRead" method="TestTheScreenDeclaresItsShape" corpus="the save, the delete and the generate are asserted together in one method"/>
+<tool name="explorer.sqlreports.generate" class="OcuPilot.Test.SqlReportRead" method="TestTheScreenDeclaresItsShape" corpus="the save, the delete and the generate are asserted together in one method"/>
+<tool name="explorer.sqlfieldstatistics.setselectivity" class="OcuPilot.Test.SqlTableFixedStats" method="TestTheToolsDeclareTheirWritePath" corpus="the three setters are asserted together in one loop"/>
 <tool name="explorer.globals.delete" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
 <tool name="explorer.globalnodes.save" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
 <tool name="explorer.globalnodes.delete" class="OcuPilot.Test.GlobalWrite" method="TestTheToolsDeclareTheirWritePath" corpus="the three globals writes are asserted together in one loop"/>
 <tool name="explorer.globals.export" class="OcuPilot.Test.GlobalTransfer" method="TestTheToolsDeclareTheirWritePathAndTheImportKeyShipsOff" corpus="the two transfer tools are asserted together in one loop"/>
 <tool name="explorer.globals.import" class="OcuPilot.Test.GlobalTransfer" method="TestTheToolsDeclareTheirWritePathAndTheImportKeyShipsOff" corpus="the two transfer tools are asserted together in one loop"/>
 <tool name="explorer.globals.replace" class="OcuPilot.Test.GlobalReplace" method="TestTheAgentProposesAndAPersonConfirms"/>
+<tool name="explorer.classes.answer" class="OcuPilot.Test.SourceControlFollowUp" method="TestTheAnswerToolsArePersonOnlyAndShipDisabled" corpus="the two answer tools are asserted together in one loop"/>
+<tool name="explorer.routines.answer" class="OcuPilot.Test.SourceControlFollowUp" method="TestTheAnswerToolsArePersonOnlyAndShipDisabled" corpus="the two answer tools are asserted together in one loop"/>
 <tool name="explorer.namespacediff.promote" class="OcuPilot.Test.NamespacePromoteAgent" method="TestTheAgentPromotesThroughMintAndConfirmOnlyWithItsKeyEnabled"/>
 <tool name="interop.productions.start" class="OcuPilot.Test.InteropControl" method="TestTheAgentsStartConfirms"/>
 <tool name="interop.productions.stop" class="OcuPilot.Test.InteropControl" method="TestTheAgentsStopConfirms"/>
@@ -574,9 +639,45 @@ XData Coverage
 <tool name="interop.businesspartners.add" class="OcuPilot.Test.InteropPartnerControl" method="TestTheAgentsAddConfirmsOverHttp"/>
 <tool name="interop.businesspartners.update" class="OcuPilot.Test.InteropPartnerControl" method="TestTheAgentsUpdateConfirmsOverHttp"/>
 <tool name="interop.businesspartners.remove" class="OcuPilot.Test.InteropPartnerControl" method="TestTheAgentsRemoveConfirmsOverHttp"/>
+<tool name="interop.defaultsettings.add" class="OcuPilot.Test.InteropDefaultSettingControl" method="TestTheAgentsAddConfirmsOverHttp"/>
+<tool name="interop.defaultsettings.update" class="OcuPilot.Test.InteropDefaultSettingControl" method="TestTheAgentsUpdateConfirmsOverHttp"/>
+<tool name="interop.defaultsettings.remove" class="OcuPilot.Test.InteropDefaultSettingControl" method="TestTheAgentsRemoveConfirmsOverHttp"/>
+<tool name="interop.credentials.add" class="OcuPilot.Test.InteropCredentialControl" method="TestTheAgentsAddConfirmsOverHttp"/>
+<tool name="interop.credentials.update" class="OcuPilot.Test.InteropCredentialControl" method="TestTheAgentsUpdatePasswordAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update, the password and the remove in turn"/>
+<tool name="interop.credentials.password" class="OcuPilot.Test.InteropCredentialControl" method="TestTheAgentsUpdatePasswordAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update, the password and the remove in turn"/>
+<tool name="interop.credentials.remove" class="OcuPilot.Test.InteropCredentialControl" method="TestTheAgentsUpdatePasswordAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update, the password and the remove in turn"/>
+<tool name="interop.schedules.add" class="OcuPilot.Test.InteropScheduleControl" method="TestTheAgentsAddConfirmsOverHttp"/>
+<tool name="interop.schedules.update" class="OcuPilot.Test.InteropScheduleControl" method="TestTheAgentsUpdateAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update and the remove in turn"/>
+<tool name="interop.schedules.remove" class="OcuPilot.Test.InteropScheduleControl" method="TestTheAgentsUpdateAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update and the remove in turn"/>
+<tool name="interop.workflowusers.add" class="OcuPilot.Test.InteropWorkflowUserControl" method="TestTheAgentsAddConfirmsOverHttp"/>
+<tool name="interop.workflowusers.update" class="OcuPilot.Test.InteropWorkflowUserControl" method="TestTheAgentsUpdateAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update and the remove in turn"/>
+<tool name="interop.workflowusers.remove" class="OcuPilot.Test.InteropWorkflowUserControl" method="TestTheAgentsUpdateAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update and the remove in turn"/>
+<tool name="interop.workflowroles.add" class="OcuPilot.Test.InteropWorkflowRoleControl" method="TestTheAgentsAddConfirmsOverHttp"/>
+<tool name="interop.workflowroles.update" class="OcuPilot.Test.InteropWorkflowRoleControl" method="TestTheAgentsUpdateAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update and the remove in turn"/>
+<tool name="interop.workflowroles.remove" class="OcuPilot.Test.InteropWorkflowRoleControl" method="TestTheAgentsUpdateAndRemoveConfirmOverHttp" corpus="one test mints and confirms the update and the remove in turn"/>
+<tool name="interop.workflowmembers.add" class="OcuPilot.Test.InteropWorkflowMemberControl" method="TestTheAgentsAddConfirmsOverHttp"/>
+<tool name="interop.workflowmembers.remove" class="OcuPilot.Test.InteropWorkflowMemberControl" method="TestTheAgentsRemoveConfirmsOverHttp"/>
+<tool name="interop.workflowtasks.assign" class="OcuPilot.Test.InteropWorkflowTaskControl" method="TestTheAgentsAssignAndUnassignConfirmOverHttp"/>
+<tool name="interop.workflowtasks.cancel" class="OcuPilot.Test.InteropWorkflowTaskCancel" method="TestTheAgentsCancelIsRefusedWhileOffAndConfirmsOnceOn"/>
+<tool name="interop.purgesettings.set" class="OcuPilot.Test.InteropPurgeSettingControl" method="TestASettingSetFromEitherCallerReadsBackAsSent"/>
+<tool name="interop.purge.run" class="OcuPilot.Test.InteropPurgeControl" method="TestAPurgeFromEitherCallerDeletesTheOldRecordsAndKeepsTheCurrentOne"/>
+<tool name="interop.archivesettings.set" class="OcuPilot.Test.InteropArchiveSettingControl" method="TestASettingSetFromEitherCallerReadsBackAsSent"/>
+<tool name="interop.archive.run" class="OcuPilot.Test.InteropArchiveControl" method="TestARunFromEitherCallerMovesTheOldMessagesIntoTheTarget"/>
+<tool name="interop.managedalerts.update" class="OcuPilot.Test.InteropAlertUpdate" method="TestAnUpdateFromEitherCallerReadsBackAsSentWithOneHistoryRowEach"/>
+<tool name="interop.rulelog.purge" class="OcuPilot.Test.InteropLogPurgeControl" method="TestARuleLogPurgeFromEitherCallerDeletesTheOldEntriesAndTheirDebugRows"/>
+<tool name="interop.processlog.purge" class="OcuPilot.Test.InteropLogPurgeControl" method="TestABusinessProcessPurgeFromEitherCallerKeepsTheRunningOneAndTheCurrentOne"/>
+<tool name="interop.suspendedmessages.resubmit" class="OcuPilot.Test.InteropSuspendedResubmit" method="TestTheAgentsResubmitConfirmsOverHttp"/>
+<tool name="interop.suspendedmessages.editresubmit" class="OcuPilot.Test.InteropSuspendedResubmit" method="TestTheAgentsEditAndResubmitSavesACopyAndKeepsTheId"/>
+<tool name="interop.suspendedmessages.discard" class="OcuPilot.Test.InteropSuspendedRemove" method="TestTheAgentsDiscardConfirmsOverHttpAtItsShippedKey"/>
+<tool name="interop.suspendedmessages.delete" class="OcuPilot.Test.InteropSuspendedRemove" method="TestTheAgentsDeleteConfirmsOverHttpAndRemovesTheBodiesAndRows"/>
+<tool name="interop.messages.export" class="OcuPilot.Test.InteropMessageExport" method="TestTheAgentsExportConfirmsOverHttpAndKeepsNoBodyTextInItsState"/>
 <tool name="interop.lookuptables.delete" class="OcuPilot.Test.InteropLookupControl" method="TestTheAgentsDeleteConfirmsOverHttp"/>
 <tool name="interop.lookuptables.export" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsExportConfirmsOverHttp"/>
 <tool name="interop.lookuptables.import" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsImportConfirmsOverHttp"/>
+<tool name="interop.hl7schemas.add" class="OcuPilot.Test.InteropHl7SchemaControl" method="TestAddFromBothCallersReadsBackAsSent"/>
+<tool name="interop.hl7schemas.delete" class="OcuPilot.Test.InteropHl7SchemaControl" method="TestDeleteFromBothCallersAndAStandardSchemaIsRefused"/>
+<tool name="interop.hl7schemas.export" class="OcuPilot.Test.InteropHl7SchemaTransfer" method="TestTheServerFileRoundTripThroughTheAgentRestoresTheSchema"/>
+<tool name="interop.hl7schemas.import" class="OcuPilot.Test.InteropHl7SchemaTransfer" method="TestTheServerFileRoundTripThroughTheAgentRestoresTheSchema" corpus="the server file round trip drives the agent's export and then its import through mint and confirm in one method"/>
 <tool name="interop.itemtest.send" class="OcuPilot.Test.InteropHostTest" method="TestTheAgentsSendConfirmsOverHttp"/>
 <tool name="interop.transforms.test" class="OcuPilot.Test.InteropTransformTest" method="TestTheAgentsRunConfirmsOverHttp"/>
 <tool name="interop.ruleeditor.save" class="OcuPilot.Test.InteropEditorSave" method="TestEachEditorSaveIsMintedAndConfirmed" corpus="one loop pins all three Story 20.16 editor saves"/>

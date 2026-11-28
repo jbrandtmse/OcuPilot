@@ -42,14 +42,26 @@
 // - in the a11y spec, drop `browser = result.browser`, or close without `closeOrAbandon`; or have
 //   `walk` answer `browser` instead of `withRetry.held()` -> the a11y spec wiring case red.
 // - annotate every failing pass's error, retried or not -> the no-retry failure case red.
+// - `bounded` appending the stall line to any rejection, not only an abandoned call -> the
+//   not-abandoned case red; dropping the `page` argument from `settle`'s `bounded` -> the settle stall
+//   case red.
+// - the busy probe answering `idle` whatever the task time did -> the busy case red; the renderer probe
+//   letting its error escape instead of naming it -> the throwing-probe case red; dropping the
+//   `withinProbe` bound on the metrics read -> the unresponsive case runs to its own timeout.
+// - `trackRequests` without its `error` handler -> the crashed case red; without the answers it keeps ->
+//   the answers case red.
+// - drop the `page` argument from one `bounded(` call (the theme toggle's `close account menu`, say) -> that
+//   step's stall case red; drop `wide.page` from the `close context` call -> the context-close pin red.
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test, { afterEach, mock } from 'node:test';
 
 import { CLOSEDEADLINE, WALKCALLDEADLINE, isProtocolTimeout, retryOnce } from '../browser/protocol-retry.mjs';
 
-const { detectScreen, goInApp, passRetrier, reportLines, settle, toggleThemeThroughMenu } = await import(new URL('../browser/structural-walk.mjs', import.meta.url).href);
+const { detectScreen, firstRowSegment, goInApp, passRetrier, reportLines, settle, stallLine, toggleThemeThroughMenu, trackRequests } = await import(new URL('../browser/structural-walk.mjs', import.meta.url).href);
 
 /** A fake page whose `evaluate(fn)` runs `fn` against the stubbed `document` installed by the test. */
 function fakePage() {
@@ -156,6 +168,11 @@ async function endOfHungCall(call) {
     await flush();
     assert.equal(outcome, 'still waiting', 'the call is not abandoned before the deadline');
     mock.timers.tick(1);
+    // The stall report that follows the abandoned call has probes of its own, each on a timer.
+    for (let step = 0; step < 30 && outcome === 'still waiting'; step += 1) {
+      await flush();
+      mock.timers.tick(1000);
+    }
     await running;
     return outcome;
   } finally {
@@ -547,4 +564,337 @@ test('a reason the in-page check has since cleared is not the reason a later tim
   assert.equal(answer.settled, false);
   assert.equal(checks, 2, 'the check ran twice: busy, then ready');
   assert.equal(answer.why, 'requests kept arriving', 'the cleared busy element is not the reason');
+});
+
+// --- The stall line an abandoned call carries ------------------------------------------------------
+
+/** A fake page that records its listeners, so a test can emit the events `trackRequests` reads. */
+function eventPage({ url = 'http://localhost:52776/ocupilot/agent/governance?ns=HSCUSTOM', ...rest } = {}) {
+  const listeners = new Map();
+  return {
+    url: () => url,
+    on: (event, handler) => listeners.set(event, [...(listeners.get(event) ?? []), handler]),
+    emit: (event, ...args) => (listeners.get(event) ?? []).forEach((handler) => handler(...args)),
+    ...rest,
+  };
+}
+
+const apiRequest = (path, navigation = false) => ({ url: () => `http://localhost:52776${path}`, isNavigationRequest: () => navigation });
+
+/** A DevTools session whose `Performance.getMetrics` reports task time rising by `step` seconds per read. */
+function metricsSession(step) {
+  let taskDuration = 10;
+  return {
+    send: async (method) => {
+      if (method !== 'Performance.getMetrics') return {};
+      taskDuration += step;
+      return { metrics: [{ name: 'TaskDuration', value: taskDuration }] };
+    },
+    detach: async () => {},
+  };
+}
+
+const probeOptions = { busyWindowMs: 40, probeMs: 100 };
+
+test('the stall line names a crashed page, the frame, the document request in flight, the reads still unanswered and the last five answers with status and time', async () => {
+  const page = eventPage({ createCDPSession: async () => metricsSession(0) });
+  trackRequests(page);
+  const document = apiRequest('/ocupilot/agent/governance', true);
+  page.emit('request', document);
+  page.emit('error', new Error('Page crashed!'));
+  for (let index = 1; index <= 7; index += 1) {
+    const request = apiRequest(`/api/ocupilot/screens/read${index}`);
+    page.emit('request', request);
+    page.emit('response', { request: () => request, status: () => (index === 7 ? 503 : 200) });
+    page.emit('requestfinished', request);
+  }
+  page.emit('request', apiRequest('/api/ocupilot/agent/governance'));
+  const line = await stallLine(page, probeOptions);
+  assert.match(line, /^stall: page crashed: yes \(Page crashed!\); /, 'the crash is named with its message');
+  assert.match(line, /; \/api\/ocupilot unanswered: \/api\/ocupilot\/agent\/governance for \d+ ms; renderer: /, 'the one read still unanswered, and only it');
+  assert.match(line, /frame: \/ocupilot\/agent\/governance\?ns=HSCUSTOM, document request in flight: \/ocupilot\/agent\/governance;/, 'the frame and its document request');
+  const answers = line.slice(line.indexOf('answers: ') + 'answers: '.length).split('; ');
+  assert.equal(answers.length, 5, 'five answers');
+  assert.match(answers[0], /^200 \/api\/ocupilot\/screens\/read3 \d+ ms$/, 'the oldest of the last five');
+  assert.match(answers[4], /^503 \/api\/ocupilot\/screens\/read7 \d+ ms$/, 'and the newest, with its status');
+});
+
+test('the stall line says a page that did not crash did not, and an untracked page is not tracked', async () => {
+  const tracked = eventPage({ createCDPSession: async () => metricsSession(0) });
+  trackRequests(tracked);
+  assert.match(await stallLine(tracked, probeOptions), /page crashed: no; .*document request in flight: none; \/api\/ocupilot unanswered: none;.*answers: none$/);
+  assert.match(await stallLine({ createCDPSession: async () => metricsSession(0) }, probeOptions), /page crashed: not tracked; frame: unread \(/);
+});
+
+test('the stall line reads the renderer as busy when its task time grows, and idle when it does not', async () => {
+  assert.match(await stallLine({ createCDPSession: async () => metricsSession(1) }, probeOptions), /renderer: busy \(task time grew 1\.00 s over 0\.04 s\);/);
+  assert.match(await stallLine({ createCDPSession: async () => metricsSession(0) }, probeOptions), /renderer: idle \(task time grew 0\.00 s over 0\.04 s\);/);
+});
+
+test('the stall line reads the renderer as unresponsive when a fresh session never answers, whether opening it or reading it', { timeout: 10_000 }, async () => {
+  const opening = await stallLine({ createCDPSession: hang }, probeOptions);
+  assert.match(opening, /renderer: unresponsive \(no answer to a new DevTools session within 100 ms\);/);
+  const reading = await stallLine({ createCDPSession: async () => ({ send: (method) => (method === 'Performance.getMetrics' ? hang() : Promise.resolve({})), detach: hang }) }, probeOptions);
+  assert.match(reading, /renderer: unresponsive \(no answer to Performance\.getMetrics within 100 ms\);/);
+});
+
+test('a probe that throws is named in the line and does not stop the others', async () => {
+  const line = await stallLine(
+    {
+      url: () => {
+        throw new Error('frame gone');
+      },
+      createCDPSession: async () => {
+        throw new Error('target closed');
+      },
+    },
+    probeOptions
+  );
+  assert.match(line, /frame: unread \(frame gone\);/, 'the frame probe names its failure');
+  assert.match(line, /renderer: unread \(target closed\);/, 'so does the renderer probe');
+  assert.match(line, /page crashed: not tracked;/, 'the rest of the line is still there');
+});
+
+test('an abandoned call carries the stall line after its own message, and a call that failed another way does not', { timeout: 10_000 }, async () => {
+  const page = { evaluate: hang, createCDPSession: hang, url: () => 'http://localhost:52776/ocupilot/agent/governance?ns=HSCUSTOM' };
+  const error = await endOfHungCall(() => settle(page, quiet(), '/ocupilot/agent/governance'));
+  assert.ok(error instanceof Error && isProtocolTimeout(error), 'still a protocol timeout, so the pass retry runs');
+  assert.match(error.message, /1280px light: settle \/ocupilot\/agent\/governance timed out\..*\nstall: page crashed: not tracked; frame: \/ocupilot\/agent\/governance\?ns=HSCUSTOM, /s, 'the line follows the message');
+  assert.match(error.message, /renderer: unresponsive \(no answer to a new DevTools session within 5000 ms\);/, 'with the renderer unresponsive at the default bound');
+  await assert.rejects(settle({ evaluate: async () => Promise.reject(new Error('the page closed')), createCDPSession: hang }, quiet()), (failed) => failed.message === 'the page closed');
+});
+
+/** A page whose calls answer, except the ones `hangs` replaces, and whose renderer never answers a new session. */
+const stalledPage = (hangs = {}) => ({
+  evaluate: async () => false,
+  click: async () => {},
+  waitForSelector: async () => {},
+  waitForFunction: async () => true,
+  keyboard: { press: async () => {} },
+  url: () => 'http://localhost:52776/ocupilot/agent/governance?ns=HSCUSTOM',
+  createCDPSession: hang,
+  ...hangs,
+});
+
+/** A call that answers the first time it is made and hangs on the second. */
+const hangsOnSecondCall = () => {
+  let calls = 0;
+  return () => (++calls === 1 ? Promise.resolve(true) : hang());
+};
+
+const detectOptions = { route: 'tasks/schedule', checks: ['name'], viewport: 1280, theme: 'light', minimums: [] };
+
+const stallCases = [
+  ['goInApp, at its navigation', /1280px light: navigate \/ocupilot\/tasks\/schedule\?ns=USER timed out/, () => goInApp(stalledPage({ evaluate: hang }), quiet(), '/ocupilot/tasks/schedule?ns=USER', 30_000)],
+  ['goInApp, at its wait for the path', /1280px light: await \/ocupilot\/tasks\/schedule timed out/, () => goInApp(stalledPage({ waitForFunction: hang }), quiet(), '/ocupilot/tasks/schedule?ns=USER', 30_000)],
+  ['firstRowSegment', /1280px light: first row of tasks\/schedule timed out/, () => firstRowSegment(stalledPage({ evaluate: hang }), quiet(), 'tasks/schedule')],
+  ['the theme toggle, at its read of the theme', /1280px light: read theme timed out/, () => toggleThemeThroughMenu(stalledPage({ evaluate: hang }), quiet(), 30_000)],
+  ['the theme toggle, at its open of the account menu', /1280px light: open account menu timed out/, () => toggleThemeThroughMenu(stalledPage({ click: hang }), quiet(), 30_000)],
+  ['the theme toggle, at its choice of the theme item', /1280px light: choose theme item timed out/, () => toggleThemeThroughMenu(stalledPage({ click: hangsOnSecondCall() }), quiet(), 30_000)],
+  ['the theme toggle, at its wait for the class', /1280px light: await theme class timed out/, () => toggleThemeThroughMenu(stalledPage({ waitForFunction: hang }), quiet(), 30_000)],
+  ['the theme toggle, at its close of the menu', /1280px light: close account menu timed out/, () => toggleThemeThroughMenu(stalledPage({ keyboard: { press: hang } }), quiet(), 30_000)],
+  ['the theme toggle, at its wait for the closed panel', /1280px light: await account panel closed timed out/, () => toggleThemeThroughMenu(stalledPage({ waitForFunction: hangsOnSecondCall() }), quiet(), 30_000)],
+  ['detectScreen, at its evaluate', /1280px light: detect tasks\/schedule timed out/, () => detectScreen(stalledPage({ evaluate: hang }), detectOptions)],
+  [
+    'detectScreen, at its field-name lookup',
+    /1280px light: field names tasks\/schedule timed out/,
+    () => detectScreen(stalledPage({ evaluate: async () => ({ violations: [], fields: [{ index: 0, element: 'input' }], unmeasurable: 0 }) }), detectOptions),
+  ],
+];
+
+for (const [name, label, call] of stallCases) {
+  test(`${name}: an abandoned call carries the stall line`, { timeout: 10_000 }, async () => {
+    const error = await endOfHungCall(call);
+    assert.ok(error instanceof Error && isProtocolTimeout(error), 'a protocol timeout');
+    assert.match(error.message, label, 'naming the step');
+    assert.match(error.message, /\nstall: page crashed: not tracked; frame: \/ocupilot\/agent\/governance\?ns=HSCUSTOM, .*renderer: unresponsive \(/s, 'and the stall line, with the frame and the renderer');
+  });
+}
+
+test('both context closes of the walk go through the deadline with their page, so an abandoned close carries the stall line', () => {
+  const source = readFileSync(new URL('../browser/structural-walk.mjs', import.meta.url), 'utf8');
+  assert.match(source, /bounded\('1280px light then dark: close context', wide\.context\.close\(\), wide\.page\)/, 'the wide pass');
+  assert.match(source, /bounded\('720px light: close context', narrow\.context\.close\(\), narrow\.page\)/, 'the narrow pass');
+});
+
+// --- The evidence an abandoned visit keeps -----------------------------------------------------------
+
+const SPIN_FRAMES = [
+  { functionName: 'spin', url: 'http://localhost:52776/ocupilot/main-ABC.js', location: { lineNumber: 9, columnNumber: 4 } },
+  { functionName: '', url: '', location: { lineNumber: 0, columnNumber: 0 } },
+];
+const CPU_PROFILE = { nodes: [{ id: 1, callFrame: { functionName: '(root)' } }], samples: [1], timeDeltas: [1000] };
+
+/**
+ * A page that records every DevTools session it opens and every page call the walk makes on it
+ * (`page.calls`). A session answers `Performance.getMetrics`, `Profiler.stop` with `CPU_PROFILE`,
+ * and, unless `pauseLands` is false, `Debugger.pause` with a `Debugger.paused` event over
+ * `SPIN_FRAMES`; with `sendsHang` it opens, starts a profile, and then answers nothing; with
+ * `noSession` none opens.
+ */
+function evidencePage({ pauseLands = true, settleHangs = false, sendsHang = false, noSession = false } = {}) {
+  const page = eventPage({ evaluate: undefined });
+  const sessions = [];
+  const calls = [];
+  let evaluates = 0;
+  page.evaluate = async () => {
+    calls.push('evaluate');
+    return ++evaluates === 2 && settleHangs ? hang() : evaluates === 1 ? undefined : true;
+  };
+  page.waitForFunction = async () => {
+    calls.push('waitForFunction');
+    return true;
+  };
+  page.createCDPSession = async () => {
+    if (noSession) throw new Error('no DevTools session');
+    const handlers = new Map();
+    const sent = [];
+    sessions.push(sent);
+    let task = 0;
+    return {
+      on: (event, handler) => handlers.set(event, handler),
+      send: async (method) => {
+        sent.push(method);
+        if (sendsHang && method !== 'Profiler.enable' && method !== 'Profiler.start') return hang();
+        if (method === 'Performance.getMetrics') return { metrics: [{ name: 'TaskDuration', value: (task += 1) }] };
+        if (method === 'Profiler.stop') return { profile: CPU_PROFILE };
+        if (method === 'Debugger.pause' && pauseLands) setImmediate(() => handlers.get('Debugger.paused')?.({ callFrames: SPIN_FRAMES }));
+        return {};
+      },
+      detach: async () => {},
+    };
+  };
+  page.sessions = sessions;
+  page.calls = calls;
+  return page;
+}
+
+/** Emit the governance read answering with `bytes` bytes (or a body read that fails, `bytes` null) on `page`, then finish it. */
+function answerGovernance(page, bytes) {
+  const request = apiRequest('/api/ocupilot/agent/governance?ns=HSCUSTOM');
+  page.emit('request', request);
+  page.emit('response', { request: () => request, status: () => 200, buffer: async () => (bytes === null ? Promise.reject(new Error('body gone')) : Buffer.alloc(bytes)) });
+  page.emit('requestfinished', request);
+}
+
+/** Drive `goInApp` on `page` to the governance screen under the mock clock until its settle check is abandoned; answers what it rejected with. */
+async function abandonGovernanceVisit(page, requests) {
+  mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  let outcome = 'still waiting';
+  try {
+    const running = goInApp(page, requests, '/ocupilot/agent/governance?ns=HSCUSTOM', 30_000).then(
+      () => {
+        outcome = 'resolved';
+      },
+      (error) => {
+        outcome = error;
+      }
+    );
+    await flush();
+    mock.timers.tick(500);
+    await flush();
+    mock.timers.tick(WALKCALLDEADLINE);
+    for (let step = 0; step < 60 && outcome === 'still waiting'; step += 1) {
+      await flush();
+      mock.timers.tick(1000);
+    }
+    await running;
+  } finally {
+    mock.timers.reset();
+  }
+  return outcome;
+}
+
+/** Run `work` with the walk's profile folder pointing at a fresh temporary directory, and remove it after. */
+async function withProfileDir(work) {
+  const folder = mkdtempSync(join(tmpdir(), 'ocupilot-walk-test-'));
+  const before = process.env.OCUPILOT_WALK_PROFILE_DIR;
+  process.env.OCUPILOT_WALK_PROFILE_DIR = folder;
+  try {
+    return await work(folder);
+  } finally {
+    if (before === undefined) delete process.env.OCUPILOT_WALK_PROFILE_DIR;
+    else process.env.OCUPILOT_WALK_PROFILE_DIR = before;
+    rmSync(folder, { recursive: true, force: true });
+  }
+}
+
+/** Wait, on the real clock, until `check` holds or one second has gone by. */
+async function until(check) {
+  for (let step = 0; step < 100 && !check(); step += 1) await new Promise((resolve) => setTimeout(resolve, 10));
+}
+
+// Mutations (Rule 19):
+// - drop `visit.discard()` from `goInApp`'s `finally` -> the settled-visit case red: its profiler session is never disabled.
+// - drop the `writeFileSync` in `armVisitProfile`'s save -> the abandoned-visit case red: no profile file.
+// - drop the `governance` record from `trackRequests`, or the `main thread:` field from `stallLine` -> the abandoned-visit case red.
+// - pause through a new session instead of the visit's, or drop the arming `Debugger.enable` -> the abandoned-visit case red.
+test('an abandoned visit saves its CPU profile and its stall line names the paused frames and the governance answer length', { timeout: 20_000 }, async () => {
+  await withProfileDir(async (folder) => {
+    const page = evidencePage({ settleHangs: true });
+    const requests = trackRequests(page);
+    requests.pass = '1280px light';
+    answerGovernance(page, 39351);
+    const outcome = await abandonGovernanceVisit(page, requests);
+    assert.ok(outcome instanceof Error && isProtocolTimeout(outcome), 'still abandoned as a protocol timeout, so the pass retry runs');
+    assert.match(outcome.message, /main thread: paused after \d+ ms in spin main-ABC\.js:10:5 < \(anonymous\) \(no script\):1:1; /, 'how long the pause took to land, and the paused frames, top first');
+    assert.match(outcome.message, /; governance answer: 200, 39351 bytes; /, "the governance answer's byte length");
+    const files = readdirSync(folder);
+    assert.equal(files.length, 1, 'one profile is saved');
+    assert.match(files[0], /-1280px-light-ocupilot-agent-governance-ns-hscustom\.cpuprofile$/, 'named for the pass and the path');
+    assert.ok(outcome.message.includes(`profile: ${join(folder, files[0])}; last 5 /api/ocupilot answers: `), 'and the stall line names the file');
+    assert.deepEqual(JSON.parse(readFileSync(join(folder, files[0]), 'utf8')), CPU_PROFILE, 'holding what the profiler stopped with');
+    const debuggerSession = page.sessions.find((sent) => sent.includes('Debugger.pause'));
+    assert.equal(page.sessions.indexOf(debuggerSession), 0, "the pause goes through the visit's own session, opened before the stall");
+    assert.deepEqual(debuggerSession.filter((method) => method.startsWith('Debugger.')), ['Debugger.enable', 'Debugger.pause', 'Debugger.resume', 'Debugger.disable'], 'the paused thread is resumed and the debugger turned off');
+    await until(() => page.sessions[0]?.includes('Profiler.disable'));
+    assert.deepEqual(page.sessions[0].filter((method) => method.startsWith('Profiler.')), ['Profiler.enable', 'Profiler.start', 'Profiler.stop', 'Profiler.disable'], 'the saved profile releases its profiler');
+  });
+});
+
+// Mutations (Rule 19):
+// - drop the `withinProbe` around `Profiler.stop` in `armVisitProfile`'s save -> this case red: the stall report never returns.
+// - drop the `catch` around `governanceAnswer` in `stallLine` -> this case red: the rejection is the body error, not the timeout.
+test('an abandoned visit whose capture answers nothing, or fails, is still abandoned as a protocol timeout and names each failed probe', { timeout: 20_000 }, async () => {
+  await withProfileDir(async (folder) => {
+    const page = evidencePage({ settleHangs: true, sendsHang: true });
+    const requests = trackRequests(page);
+    requests.pass = '1280px light';
+    answerGovernance(page, null);
+    const outcome = await abandonGovernanceVisit(page, requests);
+    assert.ok(outcome instanceof Error && isProtocolTimeout(outcome), 'the rejection is the same protocol timeout, so the pass retry runs as before');
+    assert.match(outcome.message, /; main thread: unresponsive \(no answer to Debugger\.enable within 5000 ms\); /, 'the debugger that does not answer is named');
+    assert.match(outcome.message, /; governance answer: unread \(body gone\); /, 'the body read that failed is named');
+    assert.match(outcome.message, /; profile: not saved \(no answer to Profiler\.stop within 5000 ms\); last 5 /, 'the profile that could not be stopped is named');
+    assert.equal(readdirSync(folder).length, 0, 'and no profile file is written');
+  });
+});
+
+// Mutation (Rule 19): a `page.evaluate` added to `armVisitProfile`'s arming -> this case red on the page calls.
+test('a settled visit answers and calls the page as it does with no capture, saves no profile and releases its profiler', { timeout: 20_000 }, async () => {
+  await withProfileDir(async (folder) => {
+    const page = evidencePage();
+    const requests = trackRequests(page);
+    requests.pass = '1280px light';
+    const answer = await goInApp(page, requests, '/ocupilot/agent/governance?ns=HSCUSTOM', 30_000);
+    const bare = evidencePage({ noSession: true });
+    const bareRequests = trackRequests(bare);
+    bareRequests.pass = '1280px light';
+    const bareAnswer = await goInApp(bare, bareRequests, '/ocupilot/agent/governance?ns=HSCUSTOM', 30_000);
+    assert.equal(answer.settled, true, 'the visit settles as it did');
+    assert.deepEqual([answer.settled, answer.why, page.calls], [bareAnswer.settled, bareAnswer.why, bare.calls], 'the same answer and the same page calls as a visit whose capture cannot open');
+    await until(() => page.sessions[0]?.includes('Profiler.disable'));
+    assert.equal(readdirSync(folder).length, 0, 'no profile file is written');
+    assert.deepEqual(page.sessions[0].filter((method) => method.startsWith('Profiler.')), ['Profiler.enable', 'Profiler.start', 'Profiler.disable'], 'the profile is discarded, never stopped');
+  });
+});
+
+test('a pause that does not land says the main thread is not running JS, and is cancelled', { timeout: 10_000 }, async () => {
+  const page = evidencePage({ pauseLands: false });
+  trackRequests(page);
+  const line = await stallLine(page, { busyWindowMs: 10, probeMs: 100, pauseMs: 30 });
+  assert.match(line, /; main thread: not running JS \(no pause landed within 30 ms\); governance answer: none seen; last 5 /, 'named in the line, with no governance answer seen');
+  assert.doesNotMatch(line, /profile:/, 'and a page recording no visit names no profile');
+  const debuggerSession = page.sessions.find((sent) => sent.includes('Debugger.pause'));
+  assert.deepEqual(debuggerSession.filter((method) => method.startsWith('Debugger.')), ['Debugger.enable', 'Debugger.pause', 'Debugger.disable'], 'the pending pause is cancelled by turning the debugger off');
 });

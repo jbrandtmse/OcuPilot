@@ -294,11 +294,12 @@ describe('the detail page', () => {
       STRINGS.explorerSqlTabConstraints,
       STRINGS.explorerSqlTabCachedQueries,
       STRINGS.explorerSqlTabStatements,
+      STRINGS.explorerSqlTabFieldStatistics,
     ]);
     tabs(fixture)[5].click();
     await settle(fixture);
     expect(router.url).toBe(`/system-explorer/sql-tables/triggers/${id}?ns=USER`);
-    expect(tabs(fixture).map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'false', 'false', 'false', 'false', 'true', 'false', 'false', 'false']);
+    expect(tabs(fixture).map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'false', 'false', 'false', 'false', 'true', 'false', 'false', 'false', 'false']);
     tabs(fixture)[8].click();
     await settle(fixture);
     expect(router.url).toBe(`/system-explorer/sql-tables/statements/${id}?ns=USER`);

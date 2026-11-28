@@ -3,8 +3,9 @@
 /// OcuPilot's protected database and reached only through
 /// <class>OcuPilot.Kernel.State.Base</class>'s guarded methods. The statement and its values are
 /// never stored here.</p>
-/// <p><b>Two kinds share the table</b> (Story 20.33): <parameter>KINDSQL</parameter>, the SQL console's
-/// query, and <parameter>KINDMDX</parameter>, the MDX query tool's. A user has at most one live run of
+/// <p><b>Four kinds share the table</b> (Story 20.33, Story 24.14): <parameter>KINDSQL</parameter>, the SQL console's
+/// query, <parameter>KINDMDX</parameter>, the MDX query tool's, and two a run class names for itself, <code>pivot</code>, a saved pivot's run,
+/// and <code>pmml</code>, a PMML model's test. A user has at most one live run of
 /// each kind, the instance's cap counts the live runs of every kind together, and a lookup by id
 /// matches the kind it is asked for. A row stored before <property>Kind</property> existed reads as
 /// <parameter>KINDSQL</parameter>.</p>

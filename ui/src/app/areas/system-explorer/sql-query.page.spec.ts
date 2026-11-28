@@ -371,6 +371,388 @@ describe('SQL query', () => {
     expect(el(mounted.host, 'plan')).toBeNull();
   });
 
+  // Mutation (Rule 19): post the plan with statistics without `stats: true` -> the posted body assertion goes red.
+  it('plans with statistics: the statement and the stats flag posted to the plan route in scope, no values, and the plan shown in the plan pane', async () => {
+    const mounted = await mount();
+    expect(el(mounted.host, 'explain-stats').getAttribute('aria-disabled')).toBe('true');
+    expect(el(mounted.host, 'explain-stats').textContent?.trim()).toBe(STRINGS.explorerSqlPlanWithStatistics);
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: 'Stats:\n    Module: 1\n', truncated: false } };
+    await type(mounted, 'SELECT Name FROM OcuProbe2126.Stats');
+    expect(el(mounted.host, 'explain-stats').getAttribute('aria-disabled')).toBe('false');
+    el<HTMLButtonElement>(mounted.host, 'explain-stats').click();
+    await settle(mounted.fixture);
+    expect(mounted.posts).toEqual([{ path: SQL_PLAN_PATH, body: { statement: 'SELECT Name FROM OcuProbe2126.Stats', stats: true }, scope: 'USER' }]);
+    expect(el(mounted.host, 'plan').textContent).toBe('Stats:\n    Module: 1\n');
+    expect(dialog()).toBeNull();
+  });
+
+  // Mutation (Rule 19): `SqlQueryPage.hasStatisticsNote` answers false -> the note assertions go red; `planWithStatistics` skips recording its answer -> the first goes red.
+  it('shows the ruled note beside every Plan with statistics result and beside no other result', async () => {
+    const mounted = await mount();
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: 'Stats:\n    Module: 1\n', truncated: false } };
+    await type(mounted, 'SELECT Name FROM OcuProbe2126.Stats WHERE Num = 3');
+    expect(el(mounted.host, 'stats-note')).toBeNull();
+    el<HTMLButtonElement>(mounted.host, 'explain-stats').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'stats-note').textContent?.trim()).toBe('Plan with statistics runs the statement without its values, so a filtered query can show zero rows.');
+    expect(el(mounted.host, 'stats-note').textContent?.trim()).toBe(STRINGS.sqlPlanStatisticsNote);
+    mounted.answer = { ok: { outcome: 'stopped', kind: 'query', seconds: 50 } };
+    el<HTMLButtonElement>(mounted.host, 'explain-stats').click();
+    await settle(mounted.fixture);
+    expect(status(mounted.host)).toBe(STRINGS.explorerSqlStopped.replace('<s>', '50'));
+    expect(el(mounted.host, 'stats-note').textContent?.trim()).toBe(STRINGS.sqlPlanStatisticsNote);
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: '<plans><plan>Read master map</plan></plans>', truncated: false } };
+    el<HTMLButtonElement>(mounted.host, 'explain').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'plan').textContent).toBe('<plans><plan>Read master map</plan></plans>');
+    expect(el(mounted.host, 'stats-note')).toBeNull();
+  });
+
+  // Mutation (Rule 19): drop the refusal's `adopt` path in `post` -> no refusal is drawn and this goes red.
+  it('shows the refusal of a statement that is not a query as the envelope sent it, and draws no plan', async () => {
+    const mounted = await mount();
+    mounted.answer = { status: 422, code: 'EXPLORER.SQL.PLANSTATS', reason: STRINGS.sqlPlanStatisticsRefusal };
+    await type(mounted, 'UPDATE OcuProbe2126.Stats SET Num = 3');
+    el<HTMLButtonElement>(mounted.host, 'explain-stats').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'refusal').getAttribute('role')).toBe('alert');
+    expect(el(mounted.host, 'refusal').textContent?.trim()).toBe(STRINGS.sqlPlanStatisticsRefusal);
+    expect(el(mounted.host, 'plan')).toBeNull();
+  });
+
+  // Mutation (Rule 19): post the advice without `advise: true` -> the posted body assertion goes red.
+  it('advises: the statement and the advise flag posted to the plan route in scope, and one row for each finding under the plan', async () => {
+    const mounted = await mount();
+    expect(el(mounted.host, 'advise').getAttribute('aria-disabled')).toBe('true');
+    expect(el(mounted.host, 'advise').textContent?.trim()).toBe(STRINGS.sqlAdviceAction);
+    const detail = 'The plan reads every row of OcuProbe227.Scan and tests a condition on each one.';
+    const recommendation = 'Check whether an index on the condition\'s fields would let the plan skip this scan.';
+    mounted.answer = {
+      ok: {
+        outcome: 'plan',
+        kind: 'query',
+        plan: 'Read master map OcuProbe227.Scan.IDKEY, looping on ID.\n',
+        truncated: false,
+        advice: {
+          recognized: true,
+          tables: [],
+          truncated: false,
+          findings: [
+            { Kind: 'fullscan', Confidence: 'medium', Table: 'OcuProbe227.Scan', Fields: 'Name', Index: '', Detail: detail, Recommendation: recommendation, Excerpt: '' },
+            { Kind: 'missingindex', Confidence: 'high', Table: 'OcuProbe227.Scan', Fields: 'Name', Index: '', Detail: 'No index.', Recommendation: 'Consider one.', Excerpt: '' },
+          ],
+        },
+      },
+    };
+    await type(mounted, "SELECT ID FROM OcuProbe227.Scan WHERE Name = 'x'");
+    expect(el(mounted.host, 'advise').getAttribute('aria-disabled')).toBe('false');
+    expect(el(mounted.host, 'advice')).toBeNull();
+    el<HTMLButtonElement>(mounted.host, 'advise').click();
+    await settle(mounted.fixture);
+    expect(mounted.posts).toEqual([{ path: SQL_PLAN_PATH, body: { statement: "SELECT ID FROM OcuProbe227.Scan WHERE Name = 'x'", advise: true }, scope: 'USER' }]);
+    expect(el(mounted.host, 'plan').textContent).toBe('Read master map OcuProbe227.Scan.IDKEY, looping on ID.\n');
+    expect(el(mounted.host, 'advice-note').textContent?.trim()).toBe(STRINGS.sqlAdviceNote);
+    expect(el(mounted.host, 'advice-truncated')).toBeNull();
+    const rows = Array.from(mounted.host.querySelectorAll('[data-ocu-sql="finding"]')) as HTMLElement[];
+    expect(rows.map((row) => row.getAttribute('data-ocu-kind'))).toEqual(['fullscan', 'missingindex']);
+    const cells = Array.from(rows[0].querySelectorAll('td')).map((cell) => cell.textContent?.replace(/\s+/g, ' ').trim());
+    expect(cells).toEqual([`${STRINGS.sqlAdviceKindFullScan} ${detail}`, STRINGS.sqlAdviceConfidenceMedium, 'OcuProbe227.Scan', recommendation]);
+    expect(rows[1].querySelector('td')?.textContent).toContain(STRINGS.sqlAdviceKindMissingIndex);
+    expect(rows[1].querySelectorAll('td')[1].textContent?.trim()).toBe(STRINGS.taskPriorityHigh);
+    const headers = Array.from(mounted.host.querySelectorAll('[data-ocu-sql="findings"] th')).map((cell) => cell.textContent?.trim());
+    expect(headers).toEqual([STRINGS.sqlAdviceColumnFinding, STRINGS.sqlAdviceColumnConfidence, STRINGS.explorerSqlColumnTable, STRINGS.securityAdvisorColumnRecommendation]);
+    expect(el(mounted.host, 'stats-note')).toBeNull();
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: 'Read master map OcuProbe227.Scan.IDKEY, looping on ID.\n', truncated: false } };
+    el<HTMLButtonElement>(mounted.host, 'explain').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'advice')).toBeNull();
+  });
+
+  // Mutation (Rule 19): `adviceStatus` answers the empty sentence for an unrecognized plan -> the second assertion goes red.
+  it('says when a recognized plan holds nothing to advise on and when the plan is not recognized, each with the note', async () => {
+    const mounted = await mount();
+    await type(mounted, 'SELECT 1');
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: 'Read master map A.B.IDKEY.\n', truncated: false, advice: { recognized: true, tables: [], findings: [], truncated: false } } };
+    el<HTMLButtonElement>(mounted.host, 'advise').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'advice-status').textContent?.trim()).toBe(STRINGS.sqlAdviceEmpty);
+    expect(el(mounted.host, 'advice-note').textContent?.trim()).toBe(STRINGS.sqlAdviceNote);
+    expect(el(mounted.host, 'findings')).toBeNull();
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: 'Strange.\n', truncated: false, advice: { recognized: false, tables: [], findings: [], truncated: false } } };
+    el<HTMLButtonElement>(mounted.host, 'advise').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'advice-status').textContent?.trim()).toBe(STRINGS.sqlAdviceUnrecognized);
+    expect(el(mounted.host, 'advice-note').textContent?.trim()).toBe(STRINGS.sqlAdviceNote);
+  });
+
+  // Mutation (Rule 19): `adviceOf` drops `truncated` -> the cut note is never drawn and this goes red.
+  it('says when the instance cut the advice at its caps, and only then', async () => {
+    const mounted = await mount();
+    await type(mounted, 'SELECT 1');
+    const finding = { Kind: 'fullscan', Confidence: 'medium', Table: 'A.B', Fields: '', Index: '', Detail: 'd', Recommendation: 'r', Excerpt: '' };
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: 'Read master map A.B.IDKEY.\n', truncated: false, advice: { recognized: true, tables: [], findings: [finding], truncated: true } } };
+    el<HTMLButtonElement>(mounted.host, 'advise').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'advice-truncated').textContent?.trim()).toBe(STRINGS.sqlAdviceTruncated);
+    expect(mounted.host.querySelectorAll('[data-ocu-sql="finding"]').length).toBe(1);
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: 'Read master map A.B.IDKEY.\n', truncated: false, advice: { recognized: true, tables: [], findings: [finding], truncated: false } } };
+    el<HTMLButtonElement>(mounted.host, 'advise').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'advice-truncated')).toBeNull();
+  });
+
+  // Mutation (Rule 19): drop the refusal's `adopt` path in `post` -> no refusal is drawn and this goes red.
+  it('shows the refusal of advice on a statement that is not a query as the envelope sent it, and draws no findings', async () => {
+    const mounted = await mount();
+    mounted.answer = { status: 422, code: 'EXPLORER.SQL.ADVICE', reason: STRINGS.sqlAdviceRefusal };
+    await type(mounted, 'UPDATE OcuProbe227.Scan SET Name = 3');
+    el<HTMLButtonElement>(mounted.host, 'advise').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'refusal').getAttribute('role')).toBe('alert');
+    expect(el(mounted.host, 'refusal').textContent?.trim()).toBe(STRINGS.sqlAdviceRefusal);
+    expect(el(mounted.host, 'advice')).toBeNull();
+  });
+
+  const PROBE_QUERY = "SELECT A AS Probe228 FROM OcuProbe228.T WHERE B = 5 AND C = 'c5'";
+
+  function listed(count: number, truncated = false): Answer {
+    return {
+      ok: {
+        outcome: 'plans',
+        kind: 'query',
+        truncated,
+        plans: Array.from({ length: count }, (_, at) => ({ Plan: at + 1, Cost: `${(at + 1) * 100}.0`, MapType: at < 2 ? 'Multi Index' : 'master map', StartingMap: at < 2 ? 'OcuProbe228.T' : 'OcuProbe228.T.IDKEY' })),
+      },
+    };
+  }
+
+  function compared(ids: readonly number[]): Answer {
+    return {
+      ok: {
+        outcome: 'compared',
+        kind: 'query',
+        plans: ids.map((id) => ({ Plan: id, Cost: `${id * 100}.0`, StartingMap: 'OcuProbe228.T', GlobalReferences: '1,234', Commands: '5,678', TotalTime: '0.000049', Rows: '15' })),
+      },
+    };
+  }
+
+  async function check(mounted: Mounted, ...ids: number[]): Promise<void> {
+    for (const id of ids) {
+      (mounted.host.querySelector(`[data-ocu-sql="alternate"][data-ocu-plan="${id}"] [data-ocu-sql="alternate-check"]`) as HTMLInputElement).click();
+      await settle(mounted.fixture);
+    }
+  }
+
+  function planRows(host: HTMLElement, slot: string): string[][] {
+    return Array.from(host.querySelectorAll(`[data-ocu-sql="${slot}"]`)).map((row) => Array.from(row.querySelectorAll('td')).map((cell) => cell.textContent?.replace(/\s+/g, ' ').trim() ?? ''));
+  }
+
+  // Mutation (Rule 19): post the alternate plans without `alternates: true` -> the posted body assertion goes red.
+  it('lists the alternate plans: the statement and the alternates flag posted to the plan route in scope, one row each with its columns and no compare yet', async () => {
+    const mounted = await mount();
+    expect(el(mounted.host, 'alternate-plans').getAttribute('aria-disabled')).toBe('true');
+    expect(el(mounted.host, 'alternate-plans').textContent?.trim()).toBe(STRINGS.sqlAlternatePlansAction);
+    mounted.answer = listed(3);
+    await type(mounted, PROBE_QUERY);
+    expect(el(mounted.host, 'alternates')).toBeNull();
+    el<HTMLButtonElement>(mounted.host, 'alternate-plans').click();
+    await settle(mounted.fixture);
+    expect(mounted.posts).toEqual([{ path: SQL_PLAN_PATH, body: { statement: PROBE_QUERY, alternates: true }, scope: 'USER' }]);
+    const headers = Array.from(mounted.host.querySelectorAll('[data-ocu-sql="alternates-table"] th')).map((cell) => cell.textContent?.trim());
+    expect(headers).toEqual([STRINGS.sqlAlternateComparePlans, STRINGS.explorerSqlPlanHeading, STRINGS.sqlAlternateColumnCost, STRINGS.indexAnalysisColumnMapType, STRINGS.sqlAlternateColumnStartingMap, STRINGS.sqlAlternateShowPlan]);
+    expect(planRows(mounted.host, 'alternate').map((cells) => cells.slice(1, 5))).toEqual([
+      ['1', '100.0', 'Multi Index', 'OcuProbe228.T'],
+      ['2', '200.0', 'Multi Index', 'OcuProbe228.T'],
+      ['3', '300.0', 'master map', 'OcuProbe228.T.IDKEY'],
+    ]);
+    expect(el(mounted.host, 'alternates-hint').textContent?.trim()).toBe(STRINGS.sqlAlternateHint);
+    expect(el(mounted.host, 'alternates-truncated')).toBeNull();
+    expect(el(mounted.host, 'compare').getAttribute('aria-disabled')).toBe('true');
+    expect(el(mounted.host, 'compared')).toBeNull();
+    expect(el(mounted.host, 'compare-note')).toBeNull();
+    expect(dialog()).toBeNull();
+  });
+
+  // Mutation (Rule 19): `SqlQueryPage.alternatesTruncated` answers false -> the cut leg goes red; the template draws the cut line always -> the uncut legs go red.
+  it('says the list was cut at 100 plans when the instance cut it, and only then', async () => {
+    const mounted = await mount();
+    await type(mounted, PROBE_QUERY);
+    mounted.answer = listed(100);
+    el<HTMLButtonElement>(mounted.host, 'alternate-plans').click();
+    await settle(mounted.fixture);
+    expect(mounted.host.querySelectorAll('[data-ocu-sql="alternate"]').length).toBe(100);
+    expect(el(mounted.host, 'alternates-truncated')).toBeNull();
+    mounted.answer = listed(100, true);
+    el<HTMLButtonElement>(mounted.host, 'alternate-plans').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'alternates-truncated').textContent?.trim()).toBe('Only the first 100 possible plans are listed.');
+    expect(el(mounted.host, 'alternates-truncated').textContent?.trim()).toBe(STRINGS.sqlAlternatePlansTruncated);
+  });
+
+  // Mutation (Rule 19): `showAlternatePlan` posts without `plan` -> the posted body assertion goes red; it drops the list (`adopt` without `keepAlternates`) -> the list assertion goes red.
+  it('shows one plan: its number posted with the alternates flag, its text in the plan pane, and the possible plans still drawn', async () => {
+    const mounted = await mount();
+    await type(mounted, PROBE_QUERY);
+    mounted.answer = listed(3);
+    el<HTMLButtonElement>(mounted.host, 'alternate-plans').click();
+    await settle(mounted.fixture);
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', alternate: 2, plan: 'Cost: 200\nRead index map OcuProbe228.T.IdxC.\n', truncated: false } };
+    const buttons = Array.from(mounted.host.querySelectorAll('[data-ocu-sql="show-plan"]')) as HTMLButtonElement[];
+    expect(buttons.map((button) => button.textContent?.trim())).toEqual([STRINGS.sqlAlternateShowPlan, STRINGS.sqlAlternateShowPlan, STRINGS.sqlAlternateShowPlan]);
+    buttons[1].click();
+    await settle(mounted.fixture);
+    expect(mounted.posts.at(-1)).toEqual({ path: SQL_PLAN_PATH, body: { statement: PROBE_QUERY, alternates: true, plan: 2 }, scope: 'USER' });
+    expect(el(mounted.host, 'plan').textContent).toBe('Cost: 200\nRead index map OcuProbe228.T.IdxC.\n');
+    expect(mounted.host.querySelectorAll('[data-ocu-sql="alternate"]').length).toBe(3);
+    expect(el(mounted.host, 'compare-note')).toBeNull();
+  });
+
+  // Mutation (Rule 19): `comparePlans` posts the statement's values or drops `compare` -> the posted body assertion goes red; the page drops Compare plans' post -> the post count goes red.
+  it('compares the checked plans: their numbers alone posted, never values, and the compared plans shown under the list', async () => {
+    const mounted = await mount();
+    await type(mounted, PROBE_QUERY);
+    mounted.answer = listed(3);
+    el<HTMLButtonElement>(mounted.host, 'alternate-plans').click();
+    await settle(mounted.fixture);
+    el<HTMLButtonElement>(mounted.host, 'compare').click();
+    await settle(mounted.fixture);
+    expect(mounted.posts.length).toBe(1);
+    await check(mounted, 3, 1);
+    expect(el(mounted.host, 'compare').getAttribute('aria-disabled')).toBe('false');
+    mounted.answer = compared([1, 3]);
+    el<HTMLButtonElement>(mounted.host, 'compare').click();
+    await settle(mounted.fixture);
+    expect(mounted.posts.length).toBe(2);
+    expect(mounted.posts[1]).toEqual({ path: SQL_PLAN_PATH, body: { statement: PROBE_QUERY, alternates: true, compare: [1, 3] }, scope: 'USER' });
+    const headers = Array.from(mounted.host.querySelectorAll('[data-ocu-sql="compared-table"] th')).map((cell) => cell.textContent?.trim());
+    expect(headers).toEqual([
+      STRINGS.explorerSqlPlanHeading,
+      STRINGS.sqlAlternateColumnCost,
+      STRINGS.sqlAlternateColumnStartingMap,
+      STRINGS.processDetailsGlobalReferences,
+      STRINGS.processColumnCommands,
+      STRINGS.explorerSqlColumnTotalTime,
+      STRINGS.explorerSqlColumnRows,
+    ]);
+    expect(planRows(mounted.host, 'compared-row')).toEqual([
+      ['1', '100.0', 'OcuProbe228.T', '1,234', '5,678', '0.000049', '15'],
+      ['3', '300.0', 'OcuProbe228.T', '1,234', '5,678', '0.000049', '15'],
+    ]);
+    expect(mounted.host.querySelectorAll('[data-ocu-sql="alternate"]').length).toBe(3);
+    expect(dialog()).toBeNull();
+  });
+
+  // Mutation (Rule 19): the store drops the note (`comparedAnswer` answers false) -> the first assertion goes red; `hasCompareNote` answers true always -> the last goes red.
+  it('shows the ruled note beside every compared result and beside no other result', async () => {
+    const mounted = await mount();
+    await type(mounted, PROBE_QUERY);
+    mounted.answer = listed(3);
+    el<HTMLButtonElement>(mounted.host, 'alternate-plans').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'compare-note')).toBeNull();
+    await check(mounted, 1, 2);
+    mounted.answer = compared([1, 2]);
+    el<HTMLButtonElement>(mounted.host, 'compare').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'compare-note').textContent?.trim()).toBe(STRINGS.sqlAlternateCompareNote);
+    expect(el(mounted.host, 'compare-note').textContent?.trim()).toBe(
+      'Compare plans runs the statement once for each plan, without its values, so a filtered query can show zero rows. Comparing can take longer than the page waits; what each run recorded stays on Runtime statistics.',
+    );
+    mounted.answer = compared([2]);
+    await check(mounted, 1);
+    el<HTMLButtonElement>(mounted.host, 'compare').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'compare-note').textContent?.trim()).toBe(STRINGS.sqlAlternateCompareNote);
+    mounted.answer = { ok: { outcome: 'stopped', kind: 'query', seconds: 50 } };
+    el<HTMLButtonElement>(mounted.host, 'compare').click();
+    await settle(mounted.fixture);
+    expect(status(mounted.host)).toBe(STRINGS.explorerSqlStopped.replace('<s>', '50'));
+    expect(el(mounted.host, 'compare-note')).toBeNull();
+    expect(el(mounted.host, 'compared')).toBeNull();
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', alternate: 1, plan: 'Cost: 100\n', truncated: false } };
+    el<HTMLButtonElement>(mounted.host, 'show-plan').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'compare-note')).toBeNull();
+  });
+
+  // Mutation (Rule 19): `toggleChecked` takes a sixth check -> the sixth leg goes red; `compareBlocked` ignores the count -> the empty and sixth legs post and go red.
+  it('takes one to five checks for a comparison and never posts a count the instance would refuse', async () => {
+    const mounted = await mount();
+    await type(mounted, PROBE_QUERY);
+    mounted.answer = listed(7);
+    el<HTMLButtonElement>(mounted.host, 'alternate-plans').click();
+    await settle(mounted.fixture);
+    await check(mounted, 1, 2, 3, 4, 5);
+    const boxes = () => Array.from(mounted.host.querySelectorAll('[data-ocu-sql="alternate-check"]')) as HTMLInputElement[];
+    expect(boxes().filter((box) => box.checked).length).toBe(5);
+    expect(boxes().filter((box) => !box.checked).every((box) => box.disabled)).toBe(true);
+    expect(el(mounted.host, 'compare').getAttribute('aria-disabled')).toBe('false');
+    await check(mounted, 3);
+    expect(boxes().filter((box) => box.checked).length).toBe(4);
+    expect(boxes().every((box) => !box.disabled)).toBe(true);
+    await check(mounted, 6, 7);
+    boxes()[6].dispatchEvent(new Event('change'));
+    await settle(mounted.fixture);
+    expect(boxes().filter((box) => box.checked).length).toBe(5);
+    expect(boxes()[6].checked).toBe(false);
+    mounted.answer = compared([1, 2, 4, 5, 6]);
+    el<HTMLButtonElement>(mounted.host, 'compare').click();
+    await settle(mounted.fixture);
+    expect(mounted.posts.at(-1)?.body).toEqual({ statement: PROBE_QUERY, alternates: true, compare: [1, 2, 4, 5, 6] });
+    for (const id of [1, 2, 4, 5, 6]) await check(mounted, id);
+    expect(el(mounted.host, 'compare').getAttribute('aria-disabled')).toBe('true');
+    const posted = mounted.posts.length;
+    el<HTMLButtonElement>(mounted.host, 'compare').click();
+    await settle(mounted.fixture);
+    expect(mounted.posts.length).toBe(posted);
+  });
+
+  // Mutation (Rule 19): `setText` keeps the list -> the first assertion goes red; `adopt` keeps it for any answer -> the Run leg goes red.
+  it('drops the possible plans with a new statement and with any answer that is not theirs', async () => {
+    const mounted = await mount();
+    await type(mounted, PROBE_QUERY);
+    mounted.answer = listed(2);
+    el<HTMLButtonElement>(mounted.host, 'alternate-plans').click();
+    await settle(mounted.fixture);
+    await type(mounted, `${PROBE_QUERY} `);
+    expect(el(mounted.host, 'alternates')).toBeNull();
+    el<HTMLButtonElement>(mounted.host, 'alternate-plans').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'alternates')).not.toBeNull();
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: 'Read master map.\n', truncated: false } };
+    el<HTMLButtonElement>(mounted.host, 'explain').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'alternates')).toBeNull();
+    mounted.answer = listed(2);
+    el<HTMLButtonElement>(mounted.host, 'alternate-plans').click();
+    await settle(mounted.fixture);
+    mounted.answer = { ok: { outcome: 'rows', kind: 'query', columns: ['A'], rows: [['1']], truncated: false } };
+    await run(mounted);
+    expect(el(mounted.host, 'alternates')).toBeNull();
+  });
+
+  // Mutation (Rule 19): drop the refusal's `adopt` path in `post` -> no refusal is drawn and this goes red.
+  it("shows an alternate plans refusal as the instance sent it, and keeps the possible plans of an earlier list", async () => {
+    const mounted = await mount();
+    mounted.answer = { status: 422, code: 'EXPLORER.SQL.ALTBOUND', reason: 'Alternate plans take a statement with at most 4 tables and 4 conditions.' };
+    await type(mounted, 'SELECT 1');
+    el<HTMLButtonElement>(mounted.host, 'alternate-plans').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'refusal').getAttribute('role')).toBe('alert');
+    expect(el(mounted.host, 'refusal').textContent?.trim()).toBe('Alternate plans take a statement with at most 4 tables and 4 conditions.');
+    expect(el(mounted.host, 'alternates')).toBeNull();
+    mounted.answer = listed(2);
+    el<HTMLButtonElement>(mounted.host, 'alternate-plans').click();
+    await settle(mounted.fixture);
+    await check(mounted, 1);
+    mounted.answer = { status: 422, code: 'EXPLORER.SQL.ALTJOIN', reason: 'Compare plans takes a statement that joins each table by a condition.' };
+    el<HTMLButtonElement>(mounted.host, 'compare').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'refusal').textContent?.trim()).toBe('Compare plans takes a statement that joins each table by a condition.');
+    expect(mounted.host.querySelectorAll('[data-ocu-sql="alternate"]').length).toBe(2);
+    expect(el(mounted.host, 'compared')).toBeNull();
+  });
+
   it("shows a refusal as an alert: the envelope's sentence, a missing pair named, and a refused confirmed run's own", async () => {
     const mounted = await mount();
     mounted.answer = { status: 422, code: 'EXPLORER.SQL.SESSION', reason: STRINGS.explorerSqlSessionReason };

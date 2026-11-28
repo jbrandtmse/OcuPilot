@@ -94,6 +94,14 @@ Parameter SAVEREFUSED = "EXPLORER.SAVE.REFUSED";
 /// <p>The sentence <parameter>SAVEREFUSED</parameter> carries.</p>
 Parameter REASONSAVEREFUSED = "The instance refused this text, so nothing was saved.";
 
+/// <p>Envelope code: the namespace's source-control class reported an error for a person's answer to its question after
+/// a create or a delete (Story 21.38). Rendered on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug
+/// with 422; the class's text is logged at information severity and never sent.</p>
+Parameter SOURCECONTROLANSWER = "EXPLORER.SOURCECONTROL.ANSWER";
+
+/// <p>The sentence <parameter>SOURCECONTROLANSWER</parameter> carries.</p>
+Parameter REASONSOURCECONTROLANSWER = "The source-control class reported an error for this answer, so its step may not have finished.";
+
 /// <p>A deleted document's per-document reason when the vendor refused it for want of a privilege
 /// (#5838, #5883, #302) or a <code>&lt;PROTECT&gt;</code>.</p>
 Parameter DELETEACCESS = "This account cannot change the database that holds this document.";
@@ -329,6 +337,393 @@ Parameter REASONCLASSMETHODOWNCODE = "OcuPilot does not call its own class metho
 Parameter CLASSMETHODNOTFOUND = "EXPLORER.CLASSMETHOD.NOTFOUND";
 
 Parameter REASONCLASSMETHODNOTFOUND = "No compiled class method of that name is in this namespace.";
+
+/// <p>Envelope code: the instance answered an error status for a statement write -- a freeze, an unfreeze, a clear or a clean (Story 21.6). Rendered on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, the instance's message in <code>detail</code> alone and never logged
+/// (AD-39).</p>
+Parameter STATEMENTVENDOR = "SQL.STATEMENT.VENDOR";
+
+Parameter REASONSTATEMENTVENDOR = "The instance did not apply this change to the statement.";
+
+/// <p>Envelope codes: a statement write's precondition does not hold at the fresh read (Story 21.6). Each is the sentence a refused mint or screen
+/// action states.</p>
+Parameter STATEMENTALREADYFROZEN = "SQL.STATEMENT.ALREADYFROZEN";
+
+Parameter REASONSTATEMENTALREADYFROZEN = "This statement's plan is already frozen.";
+
+/// <p>A plan in the <code>Unfrozen/Parallel</code> state, for which the classic statement dialog disables its Freeze Plan button.</p>
+Parameter STATEMENTPARALLEL = "SQL.STATEMENT.PARALLEL";
+
+Parameter REASONSTATEMENTPARALLEL = "This statement's plan uses parallel processing and cannot be frozen.";
+
+Parameter STATEMENTNOTFROZEN = "SQL.STATEMENT.NOTFROZEN";
+
+Parameter REASONSTATEMENTNOTFROZEN = "This statement's plan is not frozen.";
+
+Parameter STATEMENTNOERROR = "SQL.STATEMENT.NOERROR";
+
+Parameter REASONSTATEMENTNOERROR = "This statement has no plan error.";
+
+Parameter STATEMENTNOSTALE = "SQL.STATEMENT.NOSTALE";
+
+Parameter REASONSTATEMENTNOSTALE = "This namespace's statement index holds no stale statements.";
+
+/// <p>The sentences the 404 <code>PORT.NOTFOUND</code> of an absent statement hash and of an absent cached-query class state (Story 21.6).</p>
+Parameter REASONSTATEMENTNOTFOUND = "This namespace holds no SQL statement with that hash.";
+
+Parameter REASONCACHEDQUERYNOTFOUND = "This namespace holds no cached query by that name.";
+
+/// <p>The consequence codes the proposal card and the dialog of each statement write and of the cached-query purges carry (Story 21.6).</p>
+Parameter STATEMENTFREEZE = "SQL.STATEMENT.FREEZE";
+
+Parameter REASONSTATEMENTFREEZE = "This statement keeps its current plan until it is unfrozen, even when its indices or table statistics change.";
+
+Parameter STATEMENTUNFREEZE = "SQL.STATEMENT.UNFREEZE";
+
+Parameter REASONSTATEMENTUNFREEZE = "This statement takes the plan the optimizer chooses the next time it is prepared.";
+
+Parameter STATEMENTCLEARSTATISTICS = "SQL.STATEMENT.CLEARSTATISTICS";
+
+Parameter REASONSTATEMENTCLEARSTATISTICS = "This statement's run statistics are removed, and counting starts again at its next run.";
+
+Parameter STATEMENTCLEARERROR = "SQL.STATEMENT.CLEARERROR";
+
+Parameter REASONSTATEMENTCLEARERROR = "The plan error is removed from the statement index. The plan itself is unchanged.";
+
+Parameter STATEMENTCLEAN = "SQL.STATEMENT.CLEAN";
+
+Parameter REASONSTATEMENTCLEAN = "Removes every statement in this namespace's index that no class or routine still holds. A statement whose plan is frozen stays.";
+
+Parameter CACHEDQUERYPURGE = "SQL.CACHEDQUERY.PURGE";
+
+Parameter REASONCACHEDQUERYPURGE = "The purged queries are prepared again the next time each one runs.";
+
+/// <p>Envelope code: the instance answered an error status for the purge of a namespace's runtime statistics (Story 21.26). Rendered on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, the instance's message in <code>detail</code> alone and never logged
+/// (AD-39).</p>
+Parameter RUNTIMESTATSVENDOR = "SQL.RUNTIMESTATS.VENDOR";
+
+Parameter REASONRUNTIMESTATSVENDOR = "The instance did not purge this namespace's runtime statistics.";
+
+/// <p>The precondition refusal of a purge of a namespace that holds no runtime statistics.</p>
+Parameter RUNTIMESTATSNOROWS = "SQL.RUNTIMESTATS.NOROWS";
+
+Parameter REASONRUNTIMESTATSNOROWS = "This namespace holds no runtime statistics.";
+
+/// <p>Envelope code: Plan with statistics sent a statement that is not a query (Story 21.26). Rendered on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422, before anything runs.</p>
+Parameter SQLPLANSTATS = "EXPLORER.SQL.PLANSTATS";
+
+Parameter REASONSQLPLANSTATS = "Plan with statistics runs the statement, so it takes a query only.";
+
+/// <p>The consequence codes the proposal card and the dialog of the runtime statistics purge and of a set of the collection setting carry.</p>
+Parameter RUNTIMESTATSPURGE = "SQL.RUNTIMESTATS.PURGE";
+
+Parameter REASONRUNTIMESTATSPURGE = "This namespace's runtime statistics are removed. New statistics are recorded only while collection is on.";
+
+Parameter RUNTIMESTATSSET = "SQL.RUNTIMESTATS.SET";
+
+Parameter REASONRUNTIMESTATSSET = "This applies to every namespace on the instance. A query prepared while collection was set to Off records nothing once collection is turned on, until its cached query is purged.";
+
+/// <p>Envelope code: the instance answered an error status for a gather, a report or a purge of the SQL index analyzer (Story 21.27). Rendered on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, the instance's message in <code>detail</code> alone and never logged
+/// (AD-39).</p>
+Parameter INDEXANALYSISVENDOR = "SQL.INDEXANALYSIS.VENDOR";
+
+Parameter REASONINDEXANALYSISVENDOR = "The instance did not complete this index analysis.";
+
+/// <p>Envelope code: another process holds the namespace's analysis lock, so a gather, a report or a purge is refused before anything is called. Rendered
+/// on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409.</p>
+Parameter INDEXANALYSISBUSY = "SQL.INDEXANALYSIS.BUSY";
+
+Parameter REASONINDEXANALYSISBUSY = "An index analysis is already running in this namespace.";
+
+/// <p>The precondition refusals: a purge of a namespace that holds no gathered statement and no report row, and a report run before the namespace's
+/// statements were gathered.</p>
+Parameter INDEXANALYSISNOROWS = "SQL.INDEXANALYSIS.NOROWS";
+
+Parameter REASONINDEXANALYSISNOROWS = "This namespace holds no index analysis.";
+
+Parameter INDEXANALYSISNOSTATEMENTS = "SQL.INDEXANALYSIS.NOSTATEMENTS";
+
+Parameter REASONINDEXANALYSISNOSTATEMENTS = "Gather this namespace's statements before running this report.";
+
+/// <p>Envelope code: a report outside the five the analyzer runs, 400 on the <parameter>OcuPilot.Api.Error.BADREQUEST</parameter> slug before any call,
+/// from either caller.</p>
+Parameter INDEXANALYSISREPORT = "SQL.INDEXANALYSIS.REPORT";
+
+Parameter REASONINDEXANALYSISREPORT = "Choose Index usage, Table scan, Temporary index, Missing join index or Outlier index.";
+
+/// <p>Envelope code: Advise sent a statement that is not a query (Story 21.27). Rendered on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422, before the plan is read.</p>
+Parameter SQLADVICE = "EXPLORER.SQL.ADVICE";
+
+Parameter REASONSQLADVICE = "Advice reads a query's plan, so it takes a query only.";
+
+/// <p>Envelope code: Compare plans sent a statement that is not a query (Story 21.28). Rendered on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422, before anything runs.</p>
+Parameter SQLALTCOMPARE = "EXPLORER.SQL.ALTCOMPARE";
+
+Parameter REASONSQLALTCOMPARE = "Compare plans runs the statement, so it takes a query only.";
+
+/// <p>Envelope code: a plan Show plan or Compare plans named is not one of the statement's possible plans. Rendered on the
+/// <parameter>OcuPilot.Api.Error.BADREQUEST</parameter> slug with 400, before anything runs.</p>
+Parameter SQLALTPLAN = "EXPLORER.SQL.ALTPLAN";
+
+Parameter REASONSQLALTPLAN = "Choose a plan from this statement's possible plans.";
+
+/// <p>Envelope code: Compare plans named no plan, more than five, a plan twice or something that is not a whole number. Rendered on the
+/// <parameter>OcuPilot.Api.Error.BADREQUEST</parameter> slug with 400, before anything runs.</p>
+Parameter SQLALTCOUNT = "EXPLORER.SQL.ALTCOUNT";
+
+Parameter REASONSQLALTCOUNT = "Choose from one to five possible plans to compare.";
+
+/// <p>Envelope code: a statement over the bound of Alternate plans. Rendered on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with
+/// 422, before anything reaches the instance. <code>%1</code> and <code>%2</code> are the most tables and conditions, which
+/// <method>AlternateBoundReason</method> fills in.</p>
+Parameter SQLALTBOUND = "EXPLORER.SQL.ALTBOUND";
+
+Parameter REASONSQLALTBOUND = "Alternate plans take a statement with at most %1 tables and %2 conditions.";
+
+/// <p>Envelope code: Compare plans sent a statement with a table that no join reaches. Rendered on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422, before anything runs.</p>
+Parameter SQLALTJOIN = "EXPLORER.SQL.ALTJOIN";
+
+Parameter REASONSQLALTJOIN = "Compare plans takes a statement that joins each table by a condition.";
+
+/// <p>Envelope code: a read OcuPilot makes through a system procedure was refused the caller for want of the SQL EXECUTE privilege on it. Rendered on the
+/// <parameter>OcuPilot.Api.Error.FORBIDDEN</parameter> slug with 403, naming the procedure in the sentence and in <code>detail</code>.
+/// <code>%1</code> is the procedure <method>ExecutePrivilegeReason</method> fills in.</p>
+Parameter SQLEXECUTEPRIVILEGE = "SQL.EXECUTE.PRIVILEGE";
+
+Parameter REASONSQLEXECUTEPRIVILEGE = "Reading this needs the SQL EXECUTE privilege on %1.";
+
+/// <p>Envelope code: a read OcuPilot makes of a fixed system table was refused the caller for want of the SQL SELECT privilege on it. Rendered on the
+/// <parameter>OcuPilot.Api.Error.FORBIDDEN</parameter> slug with 403, naming the table or tables the read uses in the sentence and in <code>detail</code>.
+/// <code>%1</code> is the table list <method>SelectPrivilegeReason</method> fills in.</p>
+Parameter SQLSELECTPRIVILEGE = "SQL.SELECT.PRIVILEGE";
+
+Parameter REASONSQLSELECTPRIVILEGE = "Reading this needs the SQL SELECT privilege on %1.";
+
+/// <p>The consequence codes the proposal card and the dialog of the analyzer's writes carry (Story 21.27). A gather states the first sentence, and the
+/// second too when it includes system classes and routines, which take longer than the page waits.</p>
+Parameter INDEXANALYSISGATHER = "SQL.INDEXANALYSIS.GATHER";
+
+Parameter REASONINDEXANALYSISGATHER = "A new gathering of this namespace's cached queries, class methods, class queries and routines replaces its gathered statements and every report's results, and rebuilds its class dependency data.";
+
+Parameter INDEXANALYSISGATHERSYSTEM = "SQL.INDEXANALYSIS.GATHERSYSTEM";
+
+Parameter REASONINDEXANALYSISGATHERSYSTEM = "A new gathering of this namespace's cached queries, class methods, class queries and routines replaces its gathered statements and every report's results, and rebuilds its class dependency data. Gathering system classes and routines can take longer than the page waits; the list shows the result when it finishes.";
+
+Parameter INDEXANALYSISRUN = "SQL.INDEXANALYSIS.RUN";
+
+Parameter REASONINDEXANALYSISRUN = "This report's earlier results in this namespace are replaced.";
+
+Parameter INDEXANALYSISPURGE = "SQL.INDEXANALYSIS.PURGE";
+
+Parameter REASONINDEXANALYSISPURGE = "This namespace's gathered statements and every report's results are removed. Gather statements again before running a report.";
+
+/// <p>Envelope code: the instance answered an error status for the save of a troubleshooting report query (Story 21.29). Rendered on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, the instance's message in <code>detail</code> alone and never logged (AD-39). A row the
+/// instance left behind is removed before the answer.</p>
+Parameter SQLREPORTVENDOR = "EXPLORER.SQLREPORT.VENDOR";
+
+Parameter REASONSQLREPORTVENDOR = "The instance did not save this query.";
+
+/// <p>Envelope code: the instance answered an error status for the write of a troubleshooting report (Story 21.29). Rendered on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, the instance's message in <code>detail</code> alone and never logged.</p>
+Parameter SQLREPORTGENERATEVENDOR = "EXPLORER.SQLREPORT.GENERATEVENDOR";
+
+Parameter REASONSQLREPORTGENERATEVENDOR = "The instance did not write this report.";
+
+/// <p>Envelope code: a statement that is not a query was offered to save (Story 21.29). Rendered on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422.</p>
+Parameter SQLREPORTQUERYONLY = "EXPLORER.SQLREPORT.QUERYONLY";
+
+Parameter REASONSQLREPORTQUERYONLY = "Saving a query runs it, so it takes a query only.";
+
+/// <p>Envelope code: a support case number that is not a whole number of up to 9 digits (Story 21.29). Rendered on the
+/// <parameter>OcuPilot.Api.Error.BADREQUEST</parameter> slug with 400.</p>
+Parameter SQLREPORTWRC = "EXPLORER.SQLREPORT.WRC";
+
+Parameter REASONSQLREPORTWRC = "A support case number is a whole number of up to 9 digits.";
+
+/// <p>Envelope code: no query is saved for the support case, so there is no report to generate (Story 21.29). Rendered on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409. Its sentence is also the reason of the 404 <code>PORT.NOTFOUND</code> a saved query
+/// the caller cannot see by its id answers.</p>
+Parameter SQLREPORTNOROWS = "EXPLORER.SQLREPORT.NOROWS";
+
+Parameter REASONSQLREPORTNOROWS = "No query is saved for this support case in this namespace.";
+
+/// <p>Envelope code: the generated report is longer than the screen can be answered (Story 21.29). Rendered on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422; the report is then a server file alone.</p>
+Parameter SQLREPORTTOOLONG = "EXPLORER.SQLREPORT.TOOLONG";
+
+Parameter REASONSQLREPORTTOOLONG = "This report is longer than 3,000,000 characters, so it can be generated to a server file only.";
+
+/// <p>Consequence codes (Story 21.29): what a save, a delete and a generate to a server file do, stated on the proposal card and the dialog. A
+/// generate to this browser writes no file and states none.</p>
+Parameter SQLREPORTSAVE = "EXPLORER.SQLREPORT.SAVE";
+
+Parameter REASONSQLREPORTSAVE = "Saving runs the statement once, without its values, to record its plan and statistics, then stores the statement, its plan, the definitions of the classes it reads and its compiled code under this support case.";
+
+Parameter SQLREPORTDELETE = "EXPLORER.SQLREPORT.DELETE";
+
+Parameter REASONSQLREPORTDELETE = "This saved query is removed from its support case's report. Save it again to restore it.";
+
+Parameter SQLREPORTGENERATE = "EXPLORER.SQLREPORT.GENERATE";
+
+Parameter REASONSQLREPORTGENERATE = "The report holds every query you can see that is saved for this support case in this namespace, with its plan, the definitions of the classes it reads and its compiled code. A file already at this name is replaced.";
+
+/// <p>Envelope code: the instance answered an error status for a table write -- an index rebuild (Story 21.25). Rendered on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, the instance's message in <code>detail</code> alone and never logged
+/// (AD-39).</p>
+Parameter TABLEVENDOR = "SQL.TABLE.VENDOR";
+
+Parameter REASONTABLEVENDOR = "The instance did not apply this change to the table.";
+
+/// <p>A rebuild of the table's data map, which holds the rows and has no index to rebuild (Story 21.25).</p>
+Parameter TABLEDATAMAP = "SQL.TABLE.DATAMAP";
+
+Parameter REASONTABLEDATAMAP = "This is the table's data map, which has no index to rebuild.";
+
+/// <p>The consequence codes the proposal card and the dialog of each table write carry (Story 21.25).</p>
+Parameter TABLEREBUILD = "SQL.TABLE.REBUILD";
+
+Parameter REASONTABLEREBUILD = "This index is emptied and built again from the table's rows. The table is locked against changes while it runs. Changes to the table wait meanwhile, and fail if the rebuild outlasts their lock timeout.";
+
+Parameter TABLEREBUILDALL = "SQL.TABLE.REBUILDALL";
+
+Parameter REASONTABLEREBUILDALL = "Every index of this table is emptied and built again from its rows. The table is locked against changes while it runs. Changes to the table wait meanwhile, and fail if the rebuild outlasts their lock timeout.";
+
+/// <p>The removal of fixed statistics from a table that has none (Story 21.25).</p>
+Parameter TABLENOFIXEDSTATS = "SQL.TABLE.NOFIXEDSTATS";
+
+Parameter REASONTABLENOFIXEDSTATS = "This table has no fixed statistics.";
+
+/// <p>The consequence codes of the statistics writes: the collection of a table's statistics, the removal of its fixed statistics and the collection
+/// of every table's in a schema (Story 21.25).</p>
+Parameter TABLETUNE = "SQL.TABLE.TUNE";
+
+Parameter REASONTABLETUNE = "The table's extent size and each field's selectivity are measured from its current rows. Some cached queries may be purged, including ones on other tables, so their plans may change.";
+
+Parameter TABLECLEARSTATISTICS = "SQL.TABLE.CLEARSTATISTICS";
+
+Parameter REASONTABLECLEARSTATISTICS = "The fixed statistics saved for this table are removed. The optimizer uses collected statistics, or none.";
+
+Parameter TABLETUNESCHEMA = "SQL.TABLE.TUNESCHEMA";
+
+Parameter REASONTABLETUNESCHEMA = "Every table in this schema is measured as Collect statistics measures one.";
+
+/// <p>The consequence codes of the three fixed-statistics setters, which share one sentence (Story 21.31).</p>
+Parameter TABLESETEXTENTSIZE = "SQL.TABLE.SETEXTENTSIZE";
+
+Parameter TABLESETSELECTIVITY = "SQL.TABLE.SETSELECTIVITY";
+
+Parameter TABLESETMAPSIZE = "SQL.TABLE.SETMAPSIZE";
+
+Parameter REASONTABLESET = "The optimizer uses this value in place of the collected one until the table's fixed statistics are cleared. If the table's statistics were collected, they are first saved as its fixed statistics.";
+
+/// <p>The shape refusals of the setters' values, each 400 <code>BAD_REQUEST</code> before any vendor call, from either caller (Story 21.31): an extent
+/// size, a selectivity (and an outlier selectivity), a whole number 0 or more (a field's average size), a whole number 1 or more (a map's size), and an
+/// outlier value.</p>
+Parameter TABLEEXTENTSIZE = "SQL.TABLE.EXTENTSIZE";
+
+Parameter REASONTABLEEXTENTSIZE = "Enter a whole number from 0 to 1,000,000,000,000.";
+
+Parameter TABLESELECTIVITY = "SQL.TABLE.SELECTIVITY";
+
+Parameter REASONTABLESELECTIVITY = "Enter 1, or a percentage over 0% and up to 99.999%.";
+
+Parameter TABLEWHOLENUMBER = "SQL.TABLE.WHOLENUMBER";
+
+Parameter REASONTABLEWHOLENUMBER = "Enter a whole number, 0 or more.";
+
+Parameter TABLEOUTLIERVALUE = "SQL.TABLE.OUTLIERVALUE";
+
+Parameter REASONTABLEOUTLIERVALUE = "Enter at most 128 characters.";
+
+Parameter TABLEMAPSIZE = "SQL.TABLE.MAPSIZE";
+
+Parameter REASONTABLEMAPSIZE = "Enter a whole number, 1 or more.";
+
+/// <p>The reason of a <code>SQL.TABLE.VENDOR</code> refusal of a setter after the table's collected statistics were saved as its fixed statistics.</p>
+Parameter REASONTABLESETUNAPPLIED = "The table's collected statistics were saved as its fixed statistics, but the new value was not set.";
+
+/// <p>The sentence <var>pCode</var>, one of the <code>SQL.*</code> codes above, carries, or <code>""</code> for any other code;
+/// <code>SQL.SELECT.PRIVILEGE</code>'s still holds its <code>%1</code>.</p>
+ClassMethod SqlReasonFor(pCode As %String) As %String
+{
+    If (pCode = ..#TABLESETEXTENTSIZE) || (pCode = ..#TABLESETSELECTIVITY) || (pCode = ..#TABLESETMAPSIZE) Quit ..#REASONTABLESET
+    If pCode = ..#TABLEEXTENTSIZE Quit ..#REASONTABLEEXTENTSIZE
+    If pCode = ..#TABLESELECTIVITY Quit ..#REASONTABLESELECTIVITY
+    If pCode = ..#TABLEWHOLENUMBER Quit ..#REASONTABLEWHOLENUMBER
+    If pCode = ..#TABLEOUTLIERVALUE Quit ..#REASONTABLEOUTLIERVALUE
+    If pCode = ..#TABLEMAPSIZE Quit ..#REASONTABLEMAPSIZE
+    If pCode = ..#TABLEVENDOR Quit ..#REASONTABLEVENDOR
+    If pCode = ..#TABLEDATAMAP Quit ..#REASONTABLEDATAMAP
+    If pCode = ..#TABLEREBUILD Quit ..#REASONTABLEREBUILD
+    If pCode = ..#TABLEREBUILDALL Quit ..#REASONTABLEREBUILDALL
+    If pCode = ..#TABLENOFIXEDSTATS Quit ..#REASONTABLENOFIXEDSTATS
+    If pCode = ..#TABLETUNE Quit ..#REASONTABLETUNE
+    If pCode = ..#TABLECLEARSTATISTICS Quit ..#REASONTABLECLEARSTATISTICS
+    If pCode = ..#TABLETUNESCHEMA Quit ..#REASONTABLETUNESCHEMA
+    If pCode = ..#STATEMENTVENDOR Quit ..#REASONSTATEMENTVENDOR
+    If pCode = ..#STATEMENTALREADYFROZEN Quit ..#REASONSTATEMENTALREADYFROZEN
+    If pCode = ..#STATEMENTPARALLEL Quit ..#REASONSTATEMENTPARALLEL
+    If pCode = ..#STATEMENTNOTFROZEN Quit ..#REASONSTATEMENTNOTFROZEN
+    If pCode = ..#STATEMENTNOERROR Quit ..#REASONSTATEMENTNOERROR
+    If pCode = ..#STATEMENTNOSTALE Quit ..#REASONSTATEMENTNOSTALE
+    If pCode = ..#STATEMENTFREEZE Quit ..#REASONSTATEMENTFREEZE
+    If pCode = ..#STATEMENTUNFREEZE Quit ..#REASONSTATEMENTUNFREEZE
+    If pCode = ..#STATEMENTCLEARSTATISTICS Quit ..#REASONSTATEMENTCLEARSTATISTICS
+    If pCode = ..#STATEMENTCLEARERROR Quit ..#REASONSTATEMENTCLEARERROR
+    If pCode = ..#STATEMENTCLEAN Quit ..#REASONSTATEMENTCLEAN
+    If pCode = ..#CACHEDQUERYPURGE Quit ..#REASONCACHEDQUERYPURGE
+    If pCode = ..#RUNTIMESTATSVENDOR Quit ..#REASONRUNTIMESTATSVENDOR
+    If pCode = ..#RUNTIMESTATSNOROWS Quit ..#REASONRUNTIMESTATSNOROWS
+    If pCode = ..#RUNTIMESTATSPURGE Quit ..#REASONRUNTIMESTATSPURGE
+    If pCode = ..#RUNTIMESTATSSET Quit ..#REASONRUNTIMESTATSSET
+    If pCode = ..#INDEXANALYSISVENDOR Quit ..#REASONINDEXANALYSISVENDOR
+    If pCode = ..#INDEXANALYSISBUSY Quit ..#REASONINDEXANALYSISBUSY
+    If pCode = ..#INDEXANALYSISNOROWS Quit ..#REASONINDEXANALYSISNOROWS
+    If pCode = ..#INDEXANALYSISNOSTATEMENTS Quit ..#REASONINDEXANALYSISNOSTATEMENTS
+    If pCode = ..#INDEXANALYSISREPORT Quit ..#REASONINDEXANALYSISREPORT
+    If pCode = ..#INDEXANALYSISGATHER Quit ..#REASONINDEXANALYSISGATHER
+    If pCode = ..#INDEXANALYSISGATHERSYSTEM Quit ..#REASONINDEXANALYSISGATHERSYSTEM
+    If pCode = ..#INDEXANALYSISRUN Quit ..#REASONINDEXANALYSISRUN
+    If pCode = ..#INDEXANALYSISPURGE Quit ..#REASONINDEXANALYSISPURGE
+    If pCode = ..#SQLSELECTPRIVILEGE Quit ..#REASONSQLSELECTPRIVILEGE
+    If pCode = ..#SQLREPORTVENDOR Quit ..#REASONSQLREPORTVENDOR
+    If pCode = ..#SQLREPORTGENERATEVENDOR Quit ..#REASONSQLREPORTGENERATEVENDOR
+    If pCode = ..#SQLREPORTQUERYONLY Quit ..#REASONSQLREPORTQUERYONLY
+    If pCode = ..#SQLREPORTWRC Quit ..#REASONSQLREPORTWRC
+    If pCode = ..#SQLREPORTNOROWS Quit ..#REASONSQLREPORTNOROWS
+    If pCode = ..#SQLREPORTTOOLONG Quit ..#REASONSQLREPORTTOOLONG
+    If pCode = ..#SQLREPORTSAVE Quit ..#REASONSQLREPORTSAVE
+    If pCode = ..#SQLREPORTDELETE Quit ..#REASONSQLREPORTDELETE
+    If pCode = ..#SQLREPORTGENERATE Quit ..#REASONSQLREPORTGENERATE
+    If pCode = ..#SQLEXECUTEPRIVILEGE Quit ..#REASONSQLEXECUTEPRIVILEGE
+    Quit ""
+}
+
+/// <p>The sentence of <parameter>SQLEXECUTEPRIVILEGE</parameter> naming <var>pProcedure</var>, the system procedure a read calls.</p>
+ClassMethod ExecutePrivilegeReason(pProcedure As %String) As %String
+{
+    Quit $Replace(..#REASONSQLEXECUTEPRIVILEGE, "%1", pProcedure)
+}
+
+/// <p>The sentence of <parameter>SQLALTBOUND</parameter> for the bound of <var>pTables</var> tables and <var>pConditions</var> conditions.</p>
+ClassMethod AlternateBoundReason(pTables As %Integer, pConditions As %Integer) As %String
+{
+    Quit $Replace($Replace(..#REASONSQLALTBOUND, "%1", pTables), "%2", pConditions)
+}
+
+/// <p>The sentence of <parameter>SQLSELECTPRIVILEGE</parameter> naming <var>pTables</var>, the table or tables a read needs the SQL SELECT privilege on.</p>
+ClassMethod SelectPrivilegeReason(pTables As %String) As %String
+{
+    Quit $Replace(..#REASONSQLSELECTPRIVILEGE, "%1", pTables)
+}
 
 /// <p>The sentence <var>pCode</var>, one of the seven <code>EXPLORER.UNITTEST.*</code> codes above or one of the five
 /// <code>EXPLORER.COMMAND.*</code> and <code>EXPLORER.CLASSMETHOD.*</code> codes, carries, or <code>""</code> for any other

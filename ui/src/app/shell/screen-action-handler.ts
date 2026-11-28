@@ -145,6 +145,33 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 20.26: Business partners, whose Remove types the partner's name and whose New business partner and Edit its own page's dialog
   // sends.
   'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList',
+  // Story 24.15: System default settings, whose Remove types the setting's name and whose New default setting and Edit its own page's dialog
+  // sends.
+  'OcuPilot.Screen.Descriptor.InteropDefaultSettingList',
+  // Story 24.15: Credentials, whose Remove types the credential's name and whose New credential, Edit and Set password its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropCredentialList',
+  // Story 24.15: Schedule specs, whose Remove types the schedule spec's name and whose New schedule spec and Edit its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropScheduleList',
+  // Story 24.17 Batch 3a: Workflow users, whose Remove types the workflow user's name and whose New workflow user and Edit its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowUserList',
+  // Story 24.17 Batch 3b: Workflow roles, whose Remove types the workflow role's name and whose New workflow role and Edit its own page's dialog sends, and Role members, whose Remove warns first and whose Add member its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList',
+  'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList',
+  // Story 24.17 Batch 4: Workflow tasks, whose Cancel task types the task's ID and whose Assign its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList',
+  // Story 24.18 Batch 1: HL7 schemas, whose Delete types the schema's name and whose New HL7 schema, Export and Import its own page's dialogs send.
+  'OcuPilot.Screen.Descriptor.InteropHl7SchemaList',
+  // Story 24.16: Purge management data, whose Purge its own page's dialog sends, and Purge data settings, whose Set value the settings page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropPurgeList',
+  'OcuPilot.Screen.Descriptor.InteropPurgeSettingList',
+  // Story 24.16 Batch 4: Archive manager, whose Run archive its own page's dialog sends, and Archive settings, whose Set value the settings page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropArchiveList',
+  'OcuPilot.Screen.Descriptor.InteropArchiveSettingList',
+  // Story 24.17 Batch 1: Managed alerts, whose Update alert its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropManagedAlertList',
+  // Story 24.17 Batch 2: Business rule log and Business process log, whose Purge their own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.InteropRuleLogList',
+  'OcuPilot.Screen.Descriptor.InteropProcessLogList',
   // Story 20.23: Queues, whose Abort all types the queue's name; Queue messages and an item's Queue tab, whose Abort types the
   // message id; and Jobs and an item's Jobs tab, whose Abort message types the job's process id and whose Suspend message and
   // Stop job warn first.
@@ -158,6 +185,21 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 21.2: Backup tasks, whose Run warns first, and Backup database list, whose Remove is sent at once.
   'OcuPilot.Screen.Descriptor.BackupTaskList',
   'OcuPilot.Screen.Descriptor.BackupDatabaseList',
+  // Story 21.6: the SQL statements list, whose four plan and statistics actions warn first, and a table's Cached queries tab, whose Purge warns first.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlStatementList',
+  'OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries',
+  // Story 21.26: SQL runtime statistics, whose Purge statistics warns first, and Runtime statistics collection, whose Set value its settings page's dialog sends.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStats',
+  'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStatsSettings',
+  // Story 21.27: SQL index analyzer, whose Purge analysis warns first and whose Gather statements and Run report send the choices their dialogs ask for.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlIndexAnalysis',
+  // Story 21.29: SQL troubleshooting reports, whose Delete types the saved query's ID and whose Save query and Generate report its own page's dialogs send.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlReports',
+  'OcuPilot.Screen.Descriptor.ExplorerSqlTable',
+  'OcuPilot.Screen.Descriptor.ExplorerSqlIndices',
+  'OcuPilot.Screen.Descriptor.ExplorerSqlSchema',
+  // Story 21.31: the Field statistics tab, whose Set selectivity warns first and collects the selectivity.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlFieldStatistics',
   // Story 24.2: the Term lists and the entries lists, whose Delete and Remove type the name or key, and whose Edit and Change dialogs send the rest.
   'OcuPilot.Screen.Descriptor.AnalyticsTermListList',
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
@@ -171,6 +213,10 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 24.12 Batch 3: the Groups and elements and the Documentation lists, whose removals type the name and whose Add and Change dialogs send the rest.
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList',
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList',
+  // Story 24.14 Batch 3: the PMML models, whose New PMML definition dialog sends the class and its text.
+  'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelList',
+  // Story 24.14 Batch 4: the PMML model Test screen, whose Export to cube its own page's dialog sends.
+  'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelTest',
   // Story 24.13 Batch 2: Analytics' General settings, whose Set value the settings page's dialog sends, and Worklists, whose Show and Hide are sent at once.
   'OcuPilot.Screen.Descriptor.AnalyticsSettingList',
   'OcuPilot.Screen.Descriptor.AnalyticsWorklistList',
@@ -209,6 +255,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // resend its own page runs.
   'OcuPilot.Screen.Descriptor.InteropMessageList',
   'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab',
+  // Story 24.16: Suspended messages, whose Resubmit, Discard and Delete act on the checked rows after a dry run, and whose Edit and resubmit its own page runs.
+  'OcuPilot.Screen.Descriptor.InteropSuspendedMessageList',
 ];
 
 /**
@@ -315,6 +363,66 @@ export const BACKUP_FREEZE = 'freeze';
 export const BACKUP_THAW = 'thaw';
 export const BACKUP_ADD_DATABASE = 'add';
 
+/**
+ * The SQL statements list and a table's Cached queries tab (Story 21.6). The list's Freeze plan, Unfreeze plan, Clear statistics and Clear plan
+ * error are row actions on the selected statement's hash, each warning first. Its Clean stale statements and the tab's two purges name no row:
+ * their pages register them and send them, with the handler, on the one target `SQL_TUNING_ALL_TARGET` (the namespace's whole index or
+ * every cached query) or, for the table's purge, on the table the route names.
+ */
+export const EXPLORER_SQL_STATEMENT_LIST = 'OcuPilot.Screen.Descriptor.ExplorerSqlStatementList';
+export const EXPLORER_SQL_CACHED_QUERIES = 'OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries';
+export const EXPLORER_SQL_RUNTIME_STATS = 'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStats';
+export const SQL_STATEMENT_CLEAN = 'clean';
+/** Story 21.26: SQL runtime statistics' Purge statistics, the page's own action on `SQL_TUNING_ALL_TARGET`. */
+export const SQL_RUNTIME_STATS_PURGE = 'purge';
+export const SQL_CACHED_QUERY_PURGE_TABLE = 'purge-table';
+export const SQL_CACHED_QUERY_PURGE_NAMESPACE = 'purge-namespace';
+export const SQL_TUNING_ALL_TARGET = '*';
+
+/**
+ * SQL index analyzer (Story 21.27): its three page actions, each on `SQL_TUNING_ALL_TARGET`. Purge analysis warns first. Gather statements and Run report
+ * are the page's own: its dialog asks for the choices they declare (`SkipSystem`, `SkipInserts`, and for the run `Report` and `SkipIdKeys`) and sends them
+ * through the handler's `sendFor`.
+ */
+export const EXPLORER_SQL_INDEX_ANALYSIS = 'OcuPilot.Screen.Descriptor.ExplorerSqlIndexAnalysis';
+export const SQL_INDEX_ANALYSIS_GATHER = 'gather';
+export const SQL_INDEX_ANALYSIS_RUN = 'run';
+export const SQL_INDEX_ANALYSIS_PURGE = 'purge';
+
+/**
+ * SQL troubleshooting reports (Story 21.29): Save query is the page's own primary action on `SQL_TUNING_ALL_TARGET`, and its dialog asks for the case number
+ * and the statement. Generate report acts on the support case of the selected row, to a server file (`generate`) or this browser (`generate-browser`). Delete is
+ * the handler's own row action, typing the saved query's ID.
+ */
+export const EXPLORER_SQL_REPORTS = 'OcuPilot.Screen.Descriptor.ExplorerSqlReports';
+export const SQL_REPORTS_SAVE = 'save';
+export const SQL_REPORTS_GENERATE = 'generate';
+export const SQL_REPORTS_GENERATE_BROWSER = 'generate-browser';
+
+/**
+ * A SQL table's Table info and Indices tabs (Story 21.25). The Indices tab's Rebuild index is a row action on the selected index's composite id,
+ * warning first. The Table info tab's Rebuild all indices names no row: its page registers it and sends it, with the handler, on the table the
+ * route names.
+ */
+export const EXPLORER_SQL_TABLE = 'OcuPilot.Screen.Descriptor.ExplorerSqlTable';
+export const EXPLORER_SQL_INDICES = 'OcuPilot.Screen.Descriptor.ExplorerSqlIndices';
+export const SQL_TABLE_REBUILD_INDICES = 'rebuild-indices';
+export const SQL_TABLE_TUNE = 'tune';
+export const SQL_TABLE_CLEAR_STATISTICS = 'clear-statistics';
+
+/** A SQL schema's Tables tab (Story 21.25): its Tune all tables is a page action on the schema the route names. */
+export const EXPLORER_SQL_SCHEMA = 'OcuPilot.Screen.Descriptor.ExplorerSqlSchema';
+export const SQL_SCHEMA_TUNE = 'tune';
+
+/**
+ * The fixed-statistics setters (Story 21.31). Set extent size is a page action on the table the route names; Set map size is a row action on the
+ * Indices tab and Set selectivity one on the Field statistics tab, each on the selected row's composite id, warning first with one declared value.
+ */
+export const SQL_TABLE_SET_EXTENT_SIZE = 'set-extent-size';
+export const SQL_INDEX_SET_MAP_SIZE = 'set-map-size';
+export const EXPLORER_SQL_FIELD_STATISTICS = 'OcuPilot.Screen.Descriptor.ExplorerSqlFieldStatistics';
+export const SQL_FIELD_SET_SELECTIVITY = 'set-selectivity';
+
 /** The one target the freeze and the thaw name: the instance's database writes. */
 export const BACKUP_WRITES_TARGET = 'SYSTEM';
 
@@ -331,6 +439,18 @@ export const SCREEN_PERMISSIONS = 'OcuPilot.Screen.Descriptor.AgentScreenPermiss
 export const SCREEN_PERMISSIONS_ADD = 'add-pair';
 export const SCREEN_PERMISSIONS_REMOVE = 'remove-pair';
 export const SCREEN_PERMISSIONS_RESET = 'reset';
+
+/**
+ * Page resources (Story 21.37): its page registers Assign resource, Change resource and Clear resource itself and sends each through
+ * `sendFor`, so the handler draws none of them. The route carries the row actions only, so the primary Assign sends `change` with the
+ * page the dialog was typed; both send the resource as the one value `Resource`. A change and a clear are reviewed through `dryRunFor`
+ * before they are sent.
+ */
+export const PAGE_RESOURCE_LIST = 'OcuPilot.Screen.Descriptor.PageResourceList';
+export const PAGE_RESOURCE_ASSIGN = 'assign';
+export const PAGE_RESOURCE_CHANGE = 'change';
+export const PAGE_RESOURCE_CLEAR = 'clear';
+export const PAGE_RESOURCE_VALUE = 'Resource';
 
 /**
  * ECP application servers' SSL/TLS authorizations tab (Story 18.21), whose Authorize and Reject each
@@ -450,6 +570,18 @@ export const INTEROP_MESSAGE_LIST = 'OcuPilot.Screen.Descriptor.InteropMessageLi
 export const INTEROP_MESSAGE_HEADER = 'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab';
 export const MESSAGE_RESEND = 'resend';
 export const MESSAGE_EDIT_RESEND = 'editresend';
+/** Story 24.16 Batch 3: Messages' Export over the checked rows, reviewed and sent by the list's own page and dialog (`interop-message-list.page.ts`), never the handler's. */
+export const MESSAGE_EXPORT = 'export';
+
+/**
+ * Suspended messages (Story 24.16): Resubmit, Discard and Delete act on the checked rows and Edit and resubmit on one, each after a dry run the person reviews.
+ * Edit and resubmit's form is run by its own page (`areas/interoperability/interop-suspended-message-list.page.ts`, over `message-edit-flow.ts`).
+ */
+export const INTEROP_SUSPENDED_LIST = 'OcuPilot.Screen.Descriptor.InteropSuspendedMessageList';
+export const SUSPENDED_RESUBMIT = 'resubmit';
+export const SUSPENDED_EDIT_RESUBMIT = 'editresubmit';
+export const SUSPENDED_DISCARD = 'discard';
+const SUSPENDED_DELETE = 'delete';
 
 /** Story 24.9: Compare namespaces, whose Promote is reviewed by a dry run and confirmed by typing the other namespace's name. */
 export const EXPLORER_NAMESPACE_DIFF = 'OcuPilot.Screen.Descriptor.ExplorerNamespaceDiff';
@@ -463,7 +595,7 @@ const REVIEWED_VALUE = 'Reviewed';
  * `dryRunFor` refuses any other, so no action is dry-run that its tool does not declare so.
  */
 const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
-  [INTEROP_MESSAGE_LIST]: [MESSAGE_RESEND],
+  [INTEROP_MESSAGE_LIST]: [MESSAGE_RESEND, MESSAGE_EXPORT],
   [INTEROP_MESSAGE_HEADER]: [MESSAGE_EDIT_RESEND],
   // Story 20.41: Production items' Change class lists the settings the new class does not take before it is confirmed.
   'OcuPilot.Screen.Descriptor.InteropItemList': ['changeclass'],
@@ -471,6 +603,21 @@ const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [EXPLORER_NAMESPACE_DIFF]: [NAMESPACE_PROMOTE],
   // Story 21.18: the Global nodes page's Replace counts the nodes and occurrences it would change before it is confirmed.
   'OcuPilot.Screen.Descriptor.ExplorerGlobalList': ['replace'],
+  // Story 21.37: Page resources' dialogs state the screens that follow the page, and what a change or a clear does to them, before it is saved.
+  [PAGE_RESOURCE_LIST]: [PAGE_RESOURCE_CHANGE, PAGE_RESOURCE_CLEAR],
+  // Story 24.16: Purge management data's Purge reads the three settings the purge will use before its dialog opens.
+  'OcuPilot.Screen.Descriptor.InteropPurgeList': ['purge'],
+  // Story 24.16 Batch 4: Archive manager's Run archive reads the target, the days, the class and the count before its dialog opens.
+  'OcuPilot.Screen.Descriptor.InteropArchiveList': ['archive'],
+  // Story 24.17 Batch 1: Managed alerts' Update alert reads the alert's owner, state and level and the owners it may be given to before its dialog opens.
+  'OcuPilot.Screen.Descriptor.InteropManagedAlertList': ['update'],
+  // Story 24.17 Batch 4: Workflow tasks' Assign reads the task's assignee and priority before its dialog opens. Cancel task has no review.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': ['assign'],
+  // Story 24.17 Batch 2: the two logs' Purge reads the log's record count before its dialog opens.
+  'OcuPilot.Screen.Descriptor.InteropRuleLogList': ['purge'],
+  'OcuPilot.Screen.Descriptor.InteropProcessLogList': ['purge'],
+  // Story 24.16: Suspended messages' four actions list what each message would do before the dialog opens, and Edit and resubmit answers its form.
+  [INTEROP_SUSPENDED_LIST]: [SUSPENDED_RESUBMIT, SUSPENDED_EDIT_RESUBMIT, SUSPENDED_DISCARD, SUSPENDED_DELETE],
 };
 
 /**
@@ -482,6 +629,7 @@ const CHECKED_SET_DIALOGS: Readonly<Record<string, Readonly<Record<string, 'broa
   [PROCESS_LIST]: { [BROADCAST]: 'broadcast' },
   [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: 'dry-run' },
   [EXPLORER_NAMESPACE_DIFF]: { [NAMESPACE_PROMOTE]: 'dry-run' },
+  [INTEROP_SUSPENDED_LIST]: { [SUSPENDED_RESUBMIT]: 'dry-run', [SUSPENDED_DISCARD]: 'dry-run', [SUSPENDED_DELETE]: 'dry-run' },
 };
 
 /** The two role actions, and the one value each sends (AD-56 (ii)). */
@@ -539,6 +687,21 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // registers Add database itself, whose dialog names the database (Story 21.2).
   [BACKUP_TASK_LIST]: [BACKUP_FREEZE, BACKUP_THAW],
   [BACKUP_DATABASE_LIST]: [BACKUP_ADD_DATABASE],
+  // The SQL statements list's page registers Clean stale statements itself, and the Cached queries tab's page its two purges, each on the target
+  // no row names (Story 21.6).
+  [EXPLORER_SQL_STATEMENT_LIST]: [SQL_STATEMENT_CLEAN],
+  [EXPLORER_SQL_CACHED_QUERIES]: [SQL_CACHED_QUERY_PURGE_TABLE, SQL_CACHED_QUERY_PURGE_NAMESPACE],
+  // SQL runtime statistics' page registers Purge statistics itself, on the namespace's whole store, and the Runtime statistics collection page Set value (Story 21.26).
+  [EXPLORER_SQL_RUNTIME_STATS]: [SQL_RUNTIME_STATS_PURGE],
+  'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStatsSettings': ['set'],
+  // SQL index analyzer's page registers its three actions itself, each on the namespace's whole analysis (Story 21.27).
+  [EXPLORER_SQL_INDEX_ANALYSIS]: [SQL_INDEX_ANALYSIS_GATHER, SQL_INDEX_ANALYSIS_RUN, SQL_INDEX_ANALYSIS_PURGE],
+  // SQL troubleshooting reports' page registers Save query and Generate report itself, whose dialogs name the case and the file; the report to this browser is sent from the Generate dialog (Story 21.29).
+  [EXPLORER_SQL_REPORTS]: [SQL_REPORTS_SAVE, SQL_REPORTS_GENERATE, SQL_REPORTS_GENERATE_BROWSER],
+  // The Table info tab's page registers Rebuild all indices, Collect statistics and Clear fixed statistics itself, on the table the route names, and
+  // the schema's Tables tab Tune all tables on the schema the route names (Story 21.25).
+  [EXPLORER_SQL_TABLE]: [SQL_TABLE_REBUILD_INDICES, SQL_TABLE_TUNE, SQL_TABLE_CLEAR_STATISTICS, SQL_TABLE_SET_EXTENT_SIZE],
+  [EXPLORER_SQL_SCHEMA]: [SQL_SCHEMA_TUNE],
   // The three settings screens' page registers Set value itself, whose dialog sends the value (Story 21.3).
   // Story 24.13 Batch 2: the General settings' Set value is the settings page's, and its key's own action is sent from the same dialog.
   'OcuPilot.Screen.Descriptor.AnalyticsSettingList': ['set', 'setkey'],
@@ -552,8 +715,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.IsqlSettingList': ['set'],
   // System-wide security's page registers Set value itself, whose dialog sends the value (Story 21.10).
   'OcuPilot.Screen.Descriptor.SystemSecuritySettingList': ['set'],
-  // Task Manager email's page registers Set value itself, whose dialog sends the value (Story 21.19).
-  'OcuPilot.Screen.Descriptor.TaskMailSettingList': ['set'],
+  // Task Manager email's page registers Set value itself, whose dialog sends the value (Story 21.19), and its toolbar's Set mail password, whose dialog sends the password (Story 21.36).
+  'OcuPilot.Screen.Descriptor.TaskMailSettingList': ['set', 'password'],
   // The two DDL mapping screens' page registers Set value itself, whose dialog sends the datatype (Story 21.13); the user list's New mapping is its primary action, which the page registers.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': ['set'],
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': ['set'],
@@ -602,12 +765,41 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropProductionList': ['autostart', 'shutdowngroup'],
   // Business partners' page registers Edit itself, whose dialog sends the thirteen fields (Story 20.26).
   'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': ['edit'],
+  // System default settings' page registers Edit itself, whose dialog sends the value, the description and the flag (Story 24.15).
+  'OcuPilot.Screen.Descriptor.InteropDefaultSettingList': ['edit'],
+  // Credentials' page registers Edit and Set password itself, whose dialogs send the user name and business partner and the password (Story 24.15).
+  'OcuPilot.Screen.Descriptor.InteropCredentialList': ['edit', 'password'],
+  // Schedule specs' page registers Edit itself, whose dialog sends the schedule, the description and the flag (Story 24.15).
+  'OcuPilot.Screen.Descriptor.InteropScheduleList': ['edit'],
+  // Workflow users' page registers Edit itself, whose dialog sends the full name and the flag (Story 24.17 Batch 3a).
+  'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': ['edit'],
+  // Workflow roles' page registers Edit itself, whose dialog sends the description and the capacity (Story 24.17 Batch 3b).
+  'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList': ['edit'],
+  // Workflow tasks' page registers Assign itself, whose dialog sends the user and the priority (Story 24.17 Batch 4).
+  'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': ['assign'],
+  // HL7 schemas' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer actions (Story 24.18 Batch 1).
+  'OcuPilot.Screen.Descriptor.InteropHl7SchemaList': ['export', 'export-browser', 'import', 'import-local'],
+  // Purge management data's page registers Purge itself, whose dialog takes the days, and Purge data settings' page registers Set value itself (Story 24.16).
+  'OcuPilot.Screen.Descriptor.InteropPurgeList': ['purge'],
+  'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': ['set'],
+  // Archive manager's page registers Run archive itself, whose dialog types the namespace, and Archive settings' page registers Set value itself (Story 24.16 Batch 4).
+  'OcuPilot.Screen.Descriptor.InteropArchiveList': ['archive'],
+  'OcuPilot.Screen.Descriptor.InteropArchiveSettingList': ['set'],
+  // Managed alerts' page registers Update alert itself, whose dialog takes the owner, state, level, next action time and reason (Story 24.17 Batch 1).
+  'OcuPilot.Screen.Descriptor.InteropManagedAlertList': ['update'],
+  // The two logs' page registers Purge itself, whose dialog types the namespace (Story 24.17 Batch 2).
+  'OcuPilot.Screen.Descriptor.InteropRuleLogList': ['purge'],
+  'OcuPilot.Screen.Descriptor.InteropProcessLogList': ['purge'],
+  // Suspended messages' page registers Edit and resubmit itself, whose form takes the fields and is reviewed before it is sent (Story 24.16).
+  [INTEROP_SUSPENDED_LIST]: [SUSPENDED_EDIT_RESUBMIT],
   // An item's Test tab's page registers Send test itself, whose dialog sends the request class and its fields (Story 20.6).
   'OcuPilot.Screen.Descriptor.InteropItemTestTab': ['test'],
   // Data transformations' page registers Test itself, whose dialog sends the pasted message (Story 20.27).
   'OcuPilot.Screen.Descriptor.InteropTransformList': ['test'],
   // A message's Header tab page registers Resend and Edit and resend itself, each reviewed before it is sent (Story 20.31).
   [INTEROP_MESSAGE_HEADER]: [MESSAGE_RESEND, MESSAGE_EDIT_RESEND],
+  // Messages' page registers Export itself, whose dialog reviews the checked rows and sends the separator and the character set (Story 24.16 Batch 3).
+  [INTEROP_MESSAGE_LIST]: [MESSAGE_EXPORT],
 };
 
 /**
@@ -681,7 +873,7 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
  * `DESTRUCTIVE` declaration. This is EXPERIENCE.md's `confirm-dialog` rule -- a delete carries the
  * typed-name field and a `button-destructive` -- applied to the verb that deletes.
  */
-const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE, 'remove', 'abort', MESSAGE_RESEND, MESSAGE_EDIT_RESEND, 'build'];
+const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE, 'remove', 'abort', MESSAGE_RESEND, MESSAGE_EDIT_RESEND, 'build', SUSPENDED_RESUBMIT, SUSPENDED_EDIT_RESUBMIT];
 
 /**
  * The actions that are destructive on one screen only, keyed by descriptor: Install makes another locale the instance's current one, and the word
@@ -695,6 +887,8 @@ const DESTRUCTIVE_ON: Readonly<Record<string, readonly string[]>> = {
   [LOCALE_PROPERTY_LIST]: [LOCALE_LOAD_TABLE],
   // Story 24.12 Batch 3: Remove group removes a group with every element in it, which cannot be restored from OcuPilot.
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': ['remove-group'],
+  // Story 24.17 Batch 4: Cancel task returns the task, canceled, to the business process that sent it, which cannot be undone, so it types the task's ID.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': ['cancel'],
 };
 
 /**
@@ -800,6 +994,22 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': { remove: STRINGS.interopLookupRemoveConsequence },
   // Story 20.26: a business partner's Remove deletes its description and both contacts.
   'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': { remove: STRINGS.interopPartnerRemoveConsequence },
+  // Story 24.15: a system default setting's Remove makes the items that took its value use their own setting or the class default again.
+  'OcuPilot.Screen.Descriptor.InteropDefaultSettingList': { remove: STRINGS.interopDefaultSettingRemoveConsequence },
+  // Story 24.15: a credential's Remove makes anything that names it unable to use it.
+  'OcuPilot.Screen.Descriptor.InteropCredentialList': { remove: STRINGS.x509DeleteConsequence },
+  // Story 24.15: a schedule spec's Remove leaves the items that name it running until the production is next updated.
+  'OcuPilot.Screen.Descriptor.InteropScheduleList': { remove: STRINGS.interopScheduleRemoveConsequence },
+  // Story 24.17 Batch 3a: a workflow user's Remove takes them out of every workflow role, deletes their worklist and leaves their tasks unassigned.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': { remove: STRINGS.interopWorkflowUserRemoveConsequence },
+  // Story 24.17 Batch 3b: a workflow role's Remove removes each of its members from it and leaves the tasks sent through it as they are. A member's Remove
+  // opens the warning dialog instead (`WARNING_CONSEQUENCES`); this entry is what registers it, since a destructive verb with no published sentence is not drawn.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList': { remove: STRINGS.interopWorkflowRoleRemoveConsequence },
+  'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList': { remove: STRINGS.interopWorkflowMemberRemoveConsequence },
+  // Story 24.17 Batch 4: a workflow task's Cancel task takes it off every worklist and returns it, canceled, to the business process that sent it.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': { cancel: STRINGS.interopWorkflowTaskCancelConsequence },
+  // Story 24.18 Batch 1: an HL7 schema's Delete removes everything it defines, and cannot be restored from OcuPilot.
+  'OcuPilot.Screen.Descriptor.InteropHl7SchemaList': { delete: STRINGS.interopHl7DeleteConsequence },
   // Story 20.23: an abort never delivers the messages it takes: all of a queue's, one waiting message, or the message a job keeps retrying.
   [INTEROP_QUEUE_LIST]: { abort: STRINGS.interopQueueAbortConsequence },
   [INTEROP_QUEUE_MESSAGE_LIST]: { abort: STRINGS.interopMessageAbortConsequence },
@@ -833,10 +1043,19 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   // Story 24.10: a deleted folder item goes for every user, and dashboards that show it can no longer display it.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { delete: STRINGS.analyticsFolderItemDeleteConsequence },
   // Story 20.31: a resend delivers a copy that cannot be recalled, and so does an edit and resend.
-  [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence },
+  [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence, [MESSAGE_EXPORT]: STRINGS.interopMessageExportConsequence },
   [INTEROP_MESSAGE_HEADER]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence, [MESSAGE_EDIT_RESEND]: STRINGS.interopMessageEditResendConsequence },
+  // Story 24.16: a resubmit cannot be recalled, a discard keeps the message and its body, and a delete removes them.
+  [INTEROP_SUSPENDED_LIST]: {
+    [SUSPENDED_RESUBMIT]: STRINGS.interopSuspendedResubmitConsequence,
+    [SUSPENDED_EDIT_RESUBMIT]: STRINGS.interopSuspendedEditConsequence,
+    [SUSPENDED_DISCARD]: STRINGS.interopSuspendedDiscardConsequence,
+    [SUSPENDED_DELETE]: STRINGS.interopSuspendedDeleteConsequence,
+  },
   // Story 24.9: a promote writes each document over the other namespace's copy, and nothing is undone.
   [EXPLORER_NAMESPACE_DIFF]: { [NAMESPACE_PROMOTE]: STRINGS.explorerPromoteConsequence },
+  // Story 21.29: a deleted saved query leaves its support case's report; saving it again restores it.
+  [EXPLORER_SQL_REPORTS]: { delete: STRINGS.sqlReportsDeleteConsequence },
 };
 
 /**
@@ -856,6 +1075,10 @@ const SCOPED_TARGETS: Readonly<
       { verb: STRINGS.errorDeleteDateVerb, consequence: STRINGS.errorDeleteDateConsequence },
       { verb: STRINGS.errorDeleteOneVerb, consequence: STRINGS.errorDeleteOneConsequence },
     ],
+  },
+  // Story 24.18 Batch 1: an HL7 schema's name has one part, so its Delete titles the dialog "Delete HL7 schema <name>": the published title less its placeholder is the verb.
+  'OcuPilot.Screen.Descriptor.InteropHl7SchemaList': {
+    delete: [{ verb: STRINGS.interopHl7DeleteTitle.replace(' <schema>', ''), consequence: STRINGS.interopHl7DeleteConsequence }],
   },
 };
 
@@ -914,6 +1137,21 @@ const TYPED_NAME_ROWS: Readonly<
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': { name: 'Key', field: '', equals: '', advisory: '' },
   // Story 20.26: a business partner is keyed by its name, which its Remove types.
   'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.15: a system default setting is keyed by `[Production, Item, HostClass, Setting]`, whose separator no one can type, so its Remove
+  // types the setting's name and sends the row key.
+  'OcuPilot.Screen.Descriptor.InteropDefaultSettingList': { name: 'Setting', field: '', equals: '', advisory: '' },
+  // Story 24.15: a credential is keyed by its name, which its Remove types.
+  'OcuPilot.Screen.Descriptor.InteropCredentialList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.15: a schedule spec is keyed by its name, which its Remove types.
+  'OcuPilot.Screen.Descriptor.InteropScheduleList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.17 Batch 3a: a workflow user is keyed by its name, which its Remove types.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.17 Batch 3b: a workflow role is keyed by its name, which its Remove types. A member's Remove types none.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList': { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 24.17 Batch 4: a workflow task is keyed by its ID, which its Cancel task types.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': { name: 'TaskId', field: '', equals: '', advisory: '' },
+  // Story 24.18 Batch 1: an HL7 schema is keyed by its name, the row's `Category`, which its Delete types.
+  'OcuPilot.Screen.Descriptor.InteropHl7SchemaList': { name: 'Category', field: '', equals: '', advisory: '' },
   // Story 20.23: an abort types the queue's name, the message's id or the job's process id, which each list's name column shows.
   [INTEROP_QUEUE_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   [INTEROP_QUEUE_MESSAGE_LIST]: { name: 'MessageId', field: '', equals: '', advisory: '' },
@@ -992,6 +1230,37 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   [ECP_SSL_CONNECTION_TAB]: { authorize: STRINGS.ecpSslAuthorizeConsequence, reject: STRINGS.ecpSslRejectConsequence },
   // Story 21.2: a run starts in the background, and a freeze stops database writes until a thaw or its limit.
   [BACKUP_TASK_LIST]: { run: STRINGS.backupRunNote, [BACKUP_FREEZE]: STRINGS.backupFreezeConsequence },
+  // Story 21.6: each statement write and each purge states what the instance does; none removes data that cannot be rebuilt, so each warns.
+  [EXPLORER_SQL_STATEMENT_LIST]: {
+    freeze: STRINGS.sqlStatementFreezeConsequence,
+    unfreeze: STRINGS.sqlStatementUnfreezeConsequence,
+    'clear-statistics': STRINGS.sqlStatementClearStatisticsConsequence,
+    'clear-error': STRINGS.sqlStatementClearErrorConsequence,
+    [SQL_STATEMENT_CLEAN]: STRINGS.sqlStatementCleanConsequence,
+  },
+  [EXPLORER_SQL_CACHED_QUERIES]: {
+    purge: STRINGS.sqlCachedQueryPurgeConsequence,
+    [SQL_CACHED_QUERY_PURGE_TABLE]: STRINGS.sqlCachedQueryPurgeConsequence,
+    [SQL_CACHED_QUERY_PURGE_NAMESPACE]: STRINGS.sqlCachedQueryPurgeConsequence,
+  },
+  // Story 21.26: a purge removes the namespace's collected statistics, so it warns first.
+  [EXPLORER_SQL_RUNTIME_STATS]: { [SQL_RUNTIME_STATS_PURGE]: STRINGS.sqlRuntimeStatsPurgeConsequence },
+  // Story 24.17 Batch 3b: a member's Remove deletes their worklist for the role and leaves each task they hold through it unassigned, and adding them again restores the membership but not those tasks, so it warns first.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList': { remove: STRINGS.interopWorkflowMemberRemoveConsequence },
+  // Story 21.27: a purge removes the namespace's gathered statements and every report's results, so it warns first.
+  [EXPLORER_SQL_INDEX_ANALYSIS]: { [SQL_INDEX_ANALYSIS_PURGE]: STRINGS.sqlIndexAnalysisPurgeConsequence },
+  // Story 21.25: a rebuild locks the table against changes while it runs, so each rebuild warns.
+  [EXPLORER_SQL_TABLE]: {
+    [SQL_TABLE_REBUILD_INDICES]: STRINGS.sqlTableRebuildAllConsequence,
+    // Collecting statistics may purge cached queries, and clearing the fixed ones changes what the optimizer uses, so each warns first.
+    [SQL_TABLE_TUNE]: STRINGS.sqlTableTuneConsequence,
+    [SQL_TABLE_CLEAR_STATISTICS]: STRINGS.sqlTableClearStatisticsConsequence,
+    // Story 21.31: a fixed value overrides what the optimizer measures, so each setter warns first.
+    [SQL_TABLE_SET_EXTENT_SIZE]: STRINGS.sqlTableSetConsequence,
+  },
+  [EXPLORER_SQL_INDICES]: { rebuild: STRINGS.sqlTableRebuildConsequence, [SQL_INDEX_SET_MAP_SIZE]: STRINGS.sqlTableSetConsequence },
+  [EXPLORER_SQL_SCHEMA]: { [SQL_SCHEMA_TUNE]: STRINGS.sqlSchemaTuneConsequence },
+  [EXPLORER_SQL_FIELD_STATISTICS]: { [SQL_FIELD_SET_SELECTIVITY]: STRINGS.sqlTableSetConsequence },
   // Story 20.15: a reset puts a screen back to the permissions its descriptor declares.
   [SCREEN_PERMISSIONS]: { [SCREEN_PERMISSIONS_RESET]: STRINGS.screenPermissionsResetConsequence },
   // Story 20.2: each production action but Start states the wait it makes, or what Recover does.
@@ -1035,10 +1304,13 @@ const WARNING_FILLS: Readonly<Record<string, Readonly<Record<string, string>>>> 
  * unavailable while a field holds no whole number; the instance's own rules answer the rest.
  */
 interface WarningValue {
-  readonly kind: 'flag' | 'field';
+  /** `'text'` (Story 21.31) is a field for any non-blank text the instance judges, as `'field'` is for a whole number. */
+  readonly kind: 'flag' | 'field' | 'text';
   readonly value: string;
   readonly labelKey: keyof typeof STRINGS;
   readonly hintKey?: keyof typeof STRINGS;
+  /** The most digits a whole-number field takes, where it takes more than nine. */
+  readonly digits?: number;
 }
 
 const WARNING_VALUES: Readonly<Record<string, Readonly<Record<string, WarningValue>>>> = {
@@ -1054,6 +1326,19 @@ const WARNING_VALUES: Readonly<Record<string, Readonly<Record<string, WarningVal
   [JOURNAL_LIST]: { [JOURNAL_INTEGRITY]: { kind: 'flag', value: 'CheckDetails', labelKey: 'journalIntegrityEveryRecord' } },
   // Story 21.2: a freeze names how many seconds the instance suspends writes, from 1 to 600.
   [BACKUP_TASK_LIST]: { [BACKUP_FREEZE]: { kind: 'field', value: BACKUP_LIMIT_VALUE, labelKey: 'backupFreezeLimitLabel', hintKey: 'backupFreezeLimitHelp' } },
+  // Story 21.25: a schema's Tune all tables asks whether to clear the tables' fixed values.
+  [EXPLORER_SQL_SCHEMA]: { [SQL_SCHEMA_TUNE]: { kind: 'flag', value: 'ClearValues', labelKey: 'sqlTuneClearValuesLabel' } },
+  // Story 21.31: each fixed-statistics setter asks for the one value it sets, hinted by its shape sentence. The selectivity is text the instance
+  // judges; the agent may also send the outlier values, which no screen collects.
+  [EXPLORER_SQL_TABLE]: {
+    [SQL_TABLE_SET_EXTENT_SIZE]: { kind: 'field', value: 'ExtentSize', labelKey: 'explorerSqlColumnExtentSize', hintKey: 'sqlTableExtentSizeShape', digits: 13 },
+  },
+  [EXPLORER_SQL_INDICES]: {
+    [SQL_INDEX_SET_MAP_SIZE]: { kind: 'field', value: 'SizeMB', labelKey: 'sqlIndexMapSizeLabel', hintKey: 'sqlTableMapSizeShape', digits: 15 },
+  },
+  [EXPLORER_SQL_FIELD_STATISTICS]: {
+    [SQL_FIELD_SET_SELECTIVITY]: { kind: 'text', value: 'Selectivity', labelKey: 'explorerSqlColumnSelectivity', hintKey: 'sqlTableSelectivityShape' },
+  },
 };
 
 /**
@@ -1093,6 +1378,11 @@ const PUBLISHED_PROBLEMS: readonly string[] = [
   STRINGS.encryptionKeyInactive,
   STRINGS.encryptionKeyAllActive,
   STRINGS.encryptionKeyDefault,
+  // Story 21.31: the shape refusals of the fixed-statistics setters' values.
+  STRINGS.sqlTableExtentSizeShape,
+  STRINGS.sqlTableSelectivityShape,
+  STRINGS.sqlTableWholeNumberShape,
+  STRINGS.sqlTableMapSizeShape,
 ];
 
 /** The entity type of a production, which the re-read event names (AD-14). */
@@ -1198,6 +1488,10 @@ export interface PendingConfirm {
   /** A warning dialog's whole-number field's label and hint (Story 18.4); absent or `''` for none. */
   readonly fieldLabel?: string;
   readonly fieldHint?: string;
+  /** The field's kind: `'text'` for a value the instance judges (Story 21.31), else a whole number. */
+  readonly fieldKind?: 'number' | 'text';
+  /** The most digits a whole-number field takes (Story 21.31); absent for the usual nine. */
+  readonly fieldDigits?: number;
   /** The broadcast dialog's count of checked rows (Story 16.6); absent for every other kind. */
   readonly count?: number;
   /** The broadcast dialog's message is being sent. */
@@ -1635,8 +1929,10 @@ export class ScreenActionHandler {
       consequence,
       advisory,
       flagLabel,
-      fieldLabel: asked?.kind === 'field' ? stringFor(asked.labelKey) : '',
-      fieldHint: asked?.kind === 'field' && asked.hintKey !== undefined ? stringFor(asked.hintKey) : '',
+      fieldLabel: asked !== null && asked.kind !== 'flag' ? stringFor(asked.labelKey) : '',
+      fieldHint: asked !== null && asked.kind !== 'flag' && asked.hintKey !== undefined ? stringFor(asked.hintKey) : '',
+      fieldKind: asked?.kind === 'text' ? 'text' : 'number',
+      ...(asked?.digits === undefined ? {} : { fieldDigits: asked.digits }),
       options,
       privileged,
       impact: '',
@@ -1809,7 +2105,8 @@ export class ScreenActionHandler {
     const digest = run.review['Digest'];
     if (this.waiting() !== null || typeof digest !== 'string' || digest === '') return false;
     const lines = reviewLinesOf(run.rows);
-    const sendable = lines.filter((line) => line.endsWith(`: ${STRINGS.interopResendVerdictResend}`)).length;
+    const verdict = Object.hasOwn(REVIEW_VERDICTS, descriptor) && Object.hasOwn(REVIEW_VERDICTS[descriptor], actionId) ? REVIEW_VERDICTS[descriptor][actionId] : STRINGS.interopResendVerdictResend;
+    const sendable = lines.filter((line) => line.endsWith(`: ${verdict}`)).length;
     const typed = name ?? (id.includes(',') ? String(sendable) : id);
     this.open('typed-name', descriptor, actionId, id, this.consequence(descriptor, actionId), [], sink, typed);
     const opened = this.waiting();
@@ -2106,8 +2403,21 @@ export class ScreenActionHandler {
   }
 }
 
-/** The sentences a dry run's 400 `detail.problem` begins with, which are published (Story 20.31): none of the messages can be resent, and an edit that changes nothing. */
-const DRY_RUN_SENTENCES: readonly string[] = [STRINGS.interopRefusalResendNone, STRINGS.interopRefusalEditNoChange];
+/** The sentences a dry run's 400 `detail.problem` begins with, which are published (Stories 20.31 and 24.16): none of the messages can be resent or acted on, and an edit that changes nothing. */
+const DRY_RUN_SENTENCES: readonly string[] = [STRINGS.interopRefusalResendNone, STRINGS.interopRefusalEditNoChange, STRINGS.interopSuspendedRefusalNone, STRINGS.interopExportRefusalNone];
+
+/**
+ * The verdict sentence a review line ends with for a message the action will act on, keyed by descriptor and then by action id, where it is not the resend's
+ * (Story 24.16): the count a person types over a set is how many messages read it.
+ */
+const REVIEW_VERDICTS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  [INTEROP_SUSPENDED_LIST]: {
+    [SUSPENDED_RESUBMIT]: STRINGS.interopSuspendedVerdictResubmit,
+    [SUSPENDED_EDIT_RESUBMIT]: STRINGS.interopSuspendedVerdictResubmit,
+    [SUSPENDED_DISCARD]: STRINGS.interopSuspendedVerdictDiscard,
+    [SUSPENDED_DELETE]: STRINGS.interopSuspendedVerdictDelete,
+  },
+};
 
 /** The sentence a refused dry run shows: the published first line of its problem, else a published state refusal or the envelope's reason. */
 function dryRunReason(result: { readonly reason: string | null; readonly detail: Record<string, unknown> | null }): string {

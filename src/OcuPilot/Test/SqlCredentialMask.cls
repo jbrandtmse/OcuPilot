@@ -152,15 +152,19 @@ Method TestAPlantedStatementIsMaskedInTheAgentsSqlRead()
 Method TestAPlantedStatementIsMaskedInTheCatalogTabs()
 {
     If '..Plant() Quit
-    For tEndpoint = "Catalog.TableStatements", "Catalog.CachedQueries" {
+    ; Story 21.6: the namespace's statement index answers a statement's text masked, and names no table to resolve first.
+    ; Story 21.26: the namespace's runtime statistics answer a statement's text masked, and name no table to resolve first.
+    ; Story 21.27: the index analysis rows answer a statement's text masked, and name no table to resolve first.
+    For tEndpoint = "Catalog.TableStatements", "Catalog.CachedQueries", "Catalog.Statements", "Catalog.RuntimeStats", "Catalog.IndexAnalysis" {
+        Set tNoTable = (tEndpoint = "Catalog.Statements") || (tEndpoint = "Catalog.RuntimeStats") || (tEndpoint = "Catalog.IndexAnalysis")
         Do ##class(OcuPilot.Test.AtelierPortFixture).Clear()
         Do ##class(OcuPilot.Test.AtelierPortCatalog).ArmCatalog()
-        Do ##class(OcuPilot.Test.AtelierPortFixture).Queue("Query", "200 OK", ##class(OcuPilot.Test.AtelierPortCatalog).Envelope(##class(OcuPilot.Test.AtelierPortCatalogTabs).ResolvedRow("table", "OcuProbe", "Thing")))
+        If 'tNoTable Do ##class(OcuPilot.Test.AtelierPortFixture).Queue("Query", "200 OK", ##class(OcuPilot.Test.AtelierPortCatalog).Envelope(##class(OcuPilot.Test.AtelierPortCatalogTabs).ResolvedRow("table", "OcuProbe", "Thing")))
         Set tRow = {}
         Do tRow.%Set($Select(tEndpoint = "Catalog.CachedQueries": "Query", 1: "STATEMENT"), ..PlantedText, "string")
         Do ##class(OcuPilot.Test.AtelierPortFixture).Queue("Query", "200 OK", ##class(OcuPilot.Test.AtelierPortCatalog).Envelope(tRow.%ToJSON()))
         Kill tQuery
-        Set tQuery("table") = "OcuProbe.Thing"
+        If 'tNoTable Set tQuery("table") = "OcuProbe.Thing"
         Set tSC = ##class(OcuPilot.Test.AtelierPortCatalog).Read(tEndpoint, .tQuery, .tRows, .tHttp, .tFault)
         Do $$$AssertEquals(tHttp, 200, tEndpoint _ ": the tab answers")
         If '$IsObject($Get(tRows)) Continue

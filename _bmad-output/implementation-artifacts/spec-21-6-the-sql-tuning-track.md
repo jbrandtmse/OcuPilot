@@ -2,13 +2,21 @@
 title: 'Story 21.6: The SQL tuning track'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '53619019bf2635717f16ab8ca38d45c8af15585c'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-21-context.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      ConfigPort.PurgeCachedQueries's no-qualifier default (the all-namespace purge Story 21.4's setting writes owe) is pinned by no test, and its all-namespace effect was not observed on the throwaway.
+    evidence: |-
+      The ConfigGateSeam override replaces the whole method, so no test runs the production fallback. Measured on ocupilot-ci 2026-11-22: a purge of {"allNamespace":1} run in HSCUSTOM or USER removed only that namespace's probe cached queries, and the other namespace's stayed for 30 s, the same as {} (inference: this build's all-namespace purge does not reach the other namespace's probe queries; settle it by reading PurgeAllNamespaces^%SYS.SQLSRV or purging with a second namespace's non-probe queries).
+    location: >-
+      src/OcuPilot/Port/ConfigPort.cls PurgeCachedQueries
+    severity: medium
 ---
 
 <intent-contract>
@@ -154,9 +162,80 @@ deferred: []
 - AC6. Given the `slowquery` workflow, when a turn follows it, then its steps name `explorer.sqlstatements.read` and no write tool, and it is still offered on the SQL query screen alone.
 - AC7. Given the throwaway, when the browser spec runs forward and in reverse with any other spec file, then it passes, and it leaves no frozen plan, plan error or probe cached query behind.
 
+### Review Findings
+
+- [x] [Review][HIGH] DW-2844, ruled in-story (Spec Change Log, second 2026-11-22 entry; veto U-144): the parallel-plan Freeze refusal on its own branch, Freeze's description refusal sentence, Clean's description sentence and Clean's consequence sentence, each verbatim as ruled; pinned (parallel-plan probe if the throwaway can make one, otherwise at the seam, said which), with a `mutation:` line; every consumer of the changed codes and strings grepped and run. Closed in rework 1: see `## Auto Run Result`.
+
+Code review, 2026-11-22 (four layers, full-opus). Each entry: severity, fix-risk, footprint in-story.
+
+- [x] [Review][Patch] high, fix-risk low: `SqlPort.Applied` called `StatementCall`, an OcuPilot method, while switched to the target namespace, against AD-16 and AD-61 rule 4 (it worked only because the call stays inside loaded routines). `StatementCall` now takes the namespace and switches around the vendor call alone [src/OcuPilot/Port/SqlPort.cls StatementCall, Applied; Test/SqlTuningPortFixture.cls]
+- [x] [Review][Patch] medium, fix-risk low: the 404 of an absent hash or cached-query class stated the table sentence. It now states the ruled sentences (U-143), in `AtelierError`, `strings.ts`, the `self-protection.test.mjs` pin and EXPERIENCE.md. The hash sentence drops "that this account can see": a principal refused SELECT on the probe table (-99) read the statement and its relations, on `ocupilot-ci` [src/OcuPilot/Port/SqlPort.cls StatementRead, PurgeTarget]
+- [x] [Review][Patch] medium, fix-risk low: the stale count counted frozen statements that no class holds, which the vendor's clean keeps (measured on `ocupilot-ci`), so a clean could leave `Stale` above 0 and the "nothing stale" refusal never fire. `STALECOUNTQUERY` leaves out frozen plans, and the clean's description says so [src/OcuPilot/Port/SqlPort.cls STALECOUNTQUERY; Screen/Tool/ExplorerSqlStatementClean.cls]
+- [x] [Review][Patch] medium, fix-risk low: the screen's Clear statistics assertion could not fail, because `SetStatistics` wrote the statistics in the test's namespace, not the probe's. It now takes the namespace, and the test asserts that the statistics read 3 before the screen's clear [src/OcuPilot/Test/SqlTuningProbe.cls SetStatistics; Test/SqlStatementWrite.cls]
+- [x] [Review][Patch] medium, fix-risk low: the own-statement test's clear-statistics case expected blank statistics, so "unchanged" could not fail and depended on the instance's statistics schedule. `RemoveOwn` clears the statistics, and that case sets them first [src/OcuPilot/Test/SqlStatementWrite.cls; Test/SqlTuningProbe.cls RemoveOwn]
+- [x] [Review][Patch] low: no test read the copy-out script of the tuning writes (AD-59). `SqlStatementRead.TestEachWritesScriptIsItsOneVendorCall` reads all eight [src/OcuPilot/Test/SqlStatementRead.cls]
+- [x] [Review][Patch] low: the gate test's refused purge never checked the table's cached query. It now does [src/OcuPilot/Test/SqlStatementRead.cls]
+- [x] [Review][Patch] low: the statement-index guard was narrowed to `SQL_MANAGER.STATEMENTINDEX` and missed the class-query form. It now checks both [src/OcuPilot/Test/AtelierPortCatalogTabs.cls]
+- [x] [Review][Patch] low: `WRITERESOURCE`'s comment said every vendor call checks `%Development`, which clean and the plan-error update do not [src/OcuPilot/Screen/Tool/SqlStatementAction.cls]
+- [x] [Review][Patch] low: stale prose in tests: `DeveloperFloor`'s write list and message omitted the eight writes, and `ExplorerDescriptor` had a typo [src/OcuPilot/Test/DeveloperFloor.cls; Test/ExplorerDescriptor.cls]
+- [x] [Review][Defer] low: two ruled strings claim more than the instance does. Freeze refuses an Unfrozen/Parallel plan as "already frozen", and Clean's consequence omits that frozen statements stay — deferred: DW-2844, decision-pending, a string ruling
+- [x] [Review][Defer] low: the failed purge (500) and the vendor refusal (409) are pinned at the port only — deferred: DW-2845, wontfix-accepted
+
+Rejected:
+
+- medium, by-design: the three page actions need a selected row, so an empty Cached queries tab offers no purge. The Spec Change Log accepts it (the backup task list's precedent), and no AC or EXPERIENCE.md row asks for a purge from an empty tab.
+- medium, by-design: the armed clean test asserts that `USER`'s index holds nothing stale. The matrix's "Nothing stale" row needs that state, the test's own namespace-wide clean makes it, and the class is armed.
+- low, by-design: a 404 relations read is not judged, and another failed read is an error status, which refuses the write. The fingerprint re-read closes a vanished target (Batch 1 decision).
+- low, wontfix-theoretical: a statement with no recorded relation, or one held by OcuPilot's code that reads no OcuPilot table, passes the arm. AD-10 keys on `STATEMENT_RELATIONS`. It becomes real if such a statement is shown to change OcuPilot's behavior once frozen.
+- low, wontfix-theoretical: a namespace whose name differs from its `%sqlcq` package piece, the bare prefix in the namespace count, a snippet with no namespace key, `PurgeCachedQueries` with a namespace and no qualifiers, a non-object fresh read reaching `StateDiff`, and a purge-table start with no table. Each is unreachable from today's callers.
+- low, wontfix-accepted: the table script names the caller's spelling (the purge accepts either case, Task 0 (c)); the 21.6 keys in `strings.ts` carry no EXPERIENCE.md line references; the browser spec's tests share one probe in file order. Reopen if a copied script fails, if the references check covers every key, or if a test run alone goes red.
+- low, by-design: the namespace-wide counts are fingerprinted (AD-51's Story 21.6 case), and the clean and plan-error update return no status (Task 0 (d)).
+- false: the exact-hash compare cannot be shown to matter. On `ocupilot-slot-a` (read-only), a lowercased hash matched no row, so `Hash` compares exactly.
+
 ## Spec Change Log
 
+- 2026-11-22, orchestrator ruling on the implement stage's strings outside the ruled list (code review applies it):
+  - Accepted as written: the two empty-state invitation fragments "freeze a statement's plan" and "purge cached queries" (EXPERIENCE.md Fixed-strings row, add-only), the 400's reuse of the generic field-shape sentence, and the eight tool DESCRIPTIONs with their id-shape messages. Each description's factual claims are checked against the instance or source (freeze holds the plan across index and statistics changes until unfrozen; clear statistics leaves the plan unchanged; clean removes only statements no class or routine still holds; `%sqlcq.USER.cls12` is the form the read's CachedQuery column reports); a claim that measures false is corrected in its own sentence.
+  - The 404 for an absent id gets its own sentences, not the table sentence: a statement hash "This namespace holds no SQL statement with that hash that this account can see." (the "that this account can see" clause only if the read filters statements by visibility; dropped if not), and a cached-query class "This namespace holds no cached query by that name." Both join EXPERIENCE.md beside the table sentence, add-only.
+  - Page actions only on a selected row are accepted (the backup task list's precedent); the agent still offers all three without one.
+- 2026-11-22, orchestrator ruling on DW-2844 (in-story, veto U-144), after the code review:
+  - Freeze refuses a plan in the Unfrozen/Parallel state on its own branch keyed on the plan state, verbatim "This statement's plan uses parallel processing and cannot be frozen."; "This statement's plan is already frozen." stays for a frozen plan only. Cite the vendor source or the classic dialog's disable condition for the state; pin the branch on a parallel-plan probe if the throwaway can make one, otherwise at the seam, and say which.
+  - Freeze's DESCRIPTION refusal sentence becomes, verbatim, "A statement whose plan is already frozen is refused, and so is one whose plan uses parallel processing, and so is a statement over OcuPilot's own tables."
+  - Clean's DESCRIPTION gains "A statement whose plan is frozen stays." (measured at review). Clean's consequence sentence becomes "Removes every statement in this namespace's index that no class or routine still holds. A statement whose plan is frozen stays.", keeping any further content the current sentence carries.
+  - The table-statistics half of Freeze's claim stays labeled (inference); the sentence is the vendor's documented behavior.
+
 ## Review Triage Log
+
+### 2026-11-22 — Review pass
+
+- verdicts: 17 findings — high 0, medium 4, low 10, false 3, maybe-false 0
+- findings:
+  - `medium` `defer` `ConfigPort.PurgeCachedQueries`'s no-qualifier default is run by no test (the seam replaces the method) — a pin cannot be made falsifiable here: on the throwaway a purge with `{"allNamespace": 1}` run in `HSCUSTOM` or `USER` removed only that namespace's probe cached queries, and another namespace's stayed for 30 s, the same as `{}` (inference: this build's all-namespace purge does not reach the other namespace's probe queries). Pre-existing behavior of Story 21.4's caller; deferred.
+  - `medium` `patch` The namespace purge's `{}` scope is never asserted against another namespace — `SqlTuningWrite.TestAnotherNamespacesCachedQueriesSurviveTheNamespacePurge` makes a probe in `HSCUSTOM` and asserts it survives the purge of `USER`; mutation: `Applied` drops the namespace argument -> red.
+  - `medium` `patch` Clean stale statements is never shown drawn in the shell — the browser spec's AC1 test now selects the probe row and asserts the command bar offers Freeze plan, Clear statistics and Clean stale statements; mutation: the `DESCRIPTOR_PAGES` row removed -> that test red.
+  - `medium` `patch` The clean precondition is refused only inside a conditional assertion — the guard is now an unconditional assertion that the clean left nothing stale, then the screen's and the agent's refusals; mutation: `Holds` admits an empty index -> both red.
+  - `low` `patch` AC1 to AC6 carry no `mutation:` result line — the lines are written under `## Verification`, from the observed reds.
+  - `low` `patch` AC7's reverse-order run is not recorded — the new spec and `system-explorer-sql.browser-spec.mjs` ran in both orders, each as its own call, green (recorded under Auto Run Result).
+  - `low` `reject` A live-safe test leaves the own-table statement's index entry and cached query — only an armed, namespace-wide Clean removes a statement-index entry, and the entry is OcuPilot's own table's; wontfix-accepted, reopen_if the entry is seen to hold a plan state or error after the class runs.
+  - `low` `reject` `SqlTuningProbe.SetStatistics` writes the statistics node directly — Task 0 (e) measured that the instance writes statistics on its own schedule and no supported call records them; accepted.
+  - `low` `patch` A doc comment in `AtelierPortCatalogTabs` sits above the wrong parameter — moved above `VENDORPROCEDURE`.
+  - `low` `reject` The list read assumes the probe falls in the first 1,000 statements of `USER` (inference) — the namespace holds a handful of statements; no reachable failure.
+  - `false` `reject` Three unarmed classes change state on probe objects — the spec's live-safe classification and Boundaries ("creates its own probe table and statements, restores what it changed") are met; only the armed class acts namespace-wide.
+  - `false` `reject` Clear statistics and clean ship disabled for the agent — the spec's Keys ruling.
+  - `false` `reject` The list query is a new sibling rather than the per-table query widened — the spec's Design Notes ("extend, don't copy") name `CATALOGSTATEMENTINDEXQUERY`.
+  - `low` `reject` A 404 read of the target is not judged by the own-statement arm, and another failed read is an error status — a refused target-changed confirm closes the race; the Batch 1 decision.
+  - `low` `reject` The purge half of AC5 is pinned through `Prohibited.Prohibits` rather than the two callers — the purge tools carry no predicate by design.
+  - `low` `reject` The browser spec's AC2 has no second-freeze step — `SqlStatementWrite` pins it on both callers.
+  - `low` `reject` The browser spec purges one query; the table and namespace purges are pinned by `SqlCachedQueryPurge` and `SqlTuningWrite` — the three buttons' labels are asserted on the tab.
+
+### 2026-11-22 — Review pass (rework 1, DW-2844 only; the diff is this pass's, not the story's)
+
+- verdicts: 4 findings — high 0, medium 0, low 4, false 0, maybe-false 0; the intent-alignment layer reported no divergence
+- findings:
+  - `low` `patch` The probe's plan-flag reset in `Remove` has no pin — the new test calls `Remove` and asserts the statement reads `Unfrozen`; mutation: the reset skipped -> red.
+  - `low` `patch` No `mutation:` line for the parallel branch or the roster row — written under `## Verification`, each observed red.
+  - `low` `reject` Freeze's description omits the external-table refusal the classic dialog also applies — the description is the ruled sentence verbatim, and any freeze the instance refuses answers 409 `SQL.STATEMENT.VENDOR` (pinned by `TestTheInstancesRefusalIsAnsweredWithItsMessageInDetailAlone` with a seam message; the external-table case itself is unmeasured (inference)); wontfix-accepted, reopen_if a freeze over an external table is shown to succeed or to answer anything but that 409.
+  - `low` `patch` The Design Notes' string list kept the superseded Clean sentence — replaced in place, and the parallel refusal added to the refusal row.
 
 ## Design Notes
 
@@ -207,9 +286,9 @@ deferred: []
   - Unfreeze: "This statement takes the plan the optimizer chooses the next time it is prepared."
   - Clear statistics: "This statement's run statistics are removed, and counting starts again at its next run."
   - Clear plan error: "The plan error is removed from the statement index. The plan itself is unchanged."
-  - Clean: "Statements that no class or routine in this namespace still holds are removed from its statement index."
+  - Clean: "Removes every statement in this namespace's index that no class or routine still holds. A statement whose plan is frozen stays."
   - Purge: "The purged queries are prepared again the next time each one runs."
-- Precondition refusals: "This statement's plan is already frozen." · "This statement's plan is not frozen." · "This statement has no plan error." · "This namespace's statement index holds no stale statements."
+- Precondition refusals: "This statement's plan is already frozen." · "This statement's plan uses parallel processing and cannot be frozen." · "This statement's plan is not frozen." · "This statement has no plan error." · "This namespace's statement index holds no stale statements."
 - Vendor refusal `SQL.STATEMENT.VENDOR`: "The instance did not apply this change to the statement."
 - Three suggested prompts for the list: "Which statements take the longest on average?" · "Is any plan frozen, and does a newer plan exist?" · "Which statements have a plan error?". Command aliases: "statement index" · "frozen plans".
 - The `slowquery` step's text: "Read the namespace's statement index for statements with a high average time, a frozen plan that differs from the current one, or a plan error."
@@ -236,13 +315,36 @@ deferred: []
 - `ConfigPort.cls`, `ConfigGateSeam.cls` and `EntityType.cls` show only a merge of feature, with no diff. `SqlPort.cls`, `AtelierPort.cls`, `Workflow.cls`, `WorkflowCatalog.cls`, `suggested-prompts.test.mjs` and the `ExplorerSql*` descriptors are untouched.
 - Epic 24's worktree also holds uncommitted count edits to `ReadTool`, `ToolEmit` and `ToolRoundTrip`, so expect a union at the merge.
 
+**Re-validated at implement, 2026-11-22** (775 commits on HEAD since the plan's base `09c93d033`; no clause of an AC, a ruled string, a code, an AD or the batch plan changed):
+
+- Line numbers in the Code Map have moved and are to be re-found by name: `AtelierPort` (`CATALOGSTATEMENTSQUERY` :228, `CATALOGSTATEMENTSCOLUMNS` :271, `CatalogRows` :1354, `CatalogQuery` :1450, `CatalogResolve` :1474, `CatalogRelation` :1505, `Pairs` :800, `NamespacePairs` :812, `WritePairs` :833), `ConfigPort` (`PurgeAfterSet` :1192, `PurgeSteps` :1217, `PurgeCachedQueries` :1226, still without an argument), `ConfigGateSeam.PurgeCachedQueries` :269, `Prohibited` (`COVEREDTYPES` :320, `OCUPILOTSQL` :1007, `Prohibits` :1747 and its branch list after it). `SqlPort`, `Workflow` and the `ExplorerSql*` descriptors are unchanged since the plan.
+- **Placement.** Story 21.5's Globals list is position 15, and Epics 21 and 24 have since taken 16 (`ExplorerNamespaceDiff`), 17 (`ExplorerUnitTests`), 18 (`ExplorerCommand`) and 19 (`ExplorerClassMethod`). The SQL statements list takes the next free position, 20, which is the spec's own rule ("the next free position at implement time").
+- `OCUPILOT_ALLOW_CONFIG_SETTINGS`'s `# classes:` line is at `scripts/ci-throwaway.sh:1002` and now lists thirteen classes after `SqlSettingWrite`. `SqlTuningWrite` is added to it. Epic 24's `ConfirmNamespaceRoster` is in HEAD.
+- Epic 24 has no commit on any path this story edits for the server classes listed in its footprint check (`git log origin/OCU-1-epic24 ^origin/feature/OCU-1_ocupilot-mvp` over `SqlPort`, `AtelierPort`, `ConfigPort`, `EntityType`, `Baseline`, `Prohibited`, `Workflow`, `AtelierError`: empty). Its uncommitted edits to `EntityType`, `Baseline` and `Prohibited` stay add-only here.
+- The spine's AD-10 and AD-51 entries for Story 21.6 are as the plan cites them (spine :411 and :1267).
+
 **Task 0, measured by the implement stage on `ocupilot-ci` before code** (each restored; record results here; until then each is an inference):
 
 - (a) As a principal holding only `AtelierPort.WritePairs`, freeze, unfreeze, clear statistics, clear plan error, clean and each purge succeed. The same principal without the routines database's WRITE is refused (`<PROTECT>` or a status). Record which.
+  - **Measured on `ocupilot-ci`, 2026-11-22.** A user holding one role of exactly the five `WritePairs('HSCUSTOM')` pairs (`%Development:USE`, READ on `%DB_HSCUSTOM`, `%DB_ENSLIB`, `%DB_HSLIB` and `%DB_IRISLIB`, WRITE on `%DB_HSCUSTOM`) froze, unfroze, set and cleared a plan error, cleaned and purged by table, class and namespace, each with its effect read back. The same user without WRITE on `%DB_HSCUSTOM` is refused by neither: the freeze, the unfreeze and the error update answer OK and change nothing, while a purge still takes effect. The pair is therefore the port's gate, and the read-back is what shows a silent no-op. No pair beyond `WritePairs` is needed.
 - (b) A probe statement whose cached query is purged has no location, and `Clean()` removes it. Whether `Clean()` removes any statement that still has a location. Its duration on `HSCUSTOM`. Whether `Clean()` or any of the calls writes to the current device (a write would reach the REST answer; if so, the port redirects output).
+  - **Measured.** Purging one statement's class leaves its row with no location, and `Clean()` removed it. `Clean()` removed exactly the statements with no location in the namespace (878 to 154, the 724 that had none) and no statement that still had one. It ran in 0.014 s on `HSCUSTOM`. With the current device redirected to a file, `Clean()` wrote 0 bytes. A freeze or unfreeze can drop the statement's location (inference: the vendor purges the cached query when the plan changes); `Clean()` clears the whole namespace's stale rows, not only the caller's.
 - (c) `PurgeQueries({"table":["Schema.Table"]})` with the SQL name removes that table's cached queries only, and `{"class":["%sqlcq.<NS>.cls<n>"]}` removes that class only. Whether the table name must be the internal form.
+  - **Measured.** `{"table":["OcuProbe216.T1"]}` and `{"table":["OCUPROBE216.T1"]}` each removed all of that table's cached queries and left the other table's; `{"class":["%sqlcq.HSCUSTOM.cls109"]}` removed that class and its statement's location only; `{}` purged the namespace's. After each purge the count of `%sqlcq.` locations for the target read 0. The SQL name works as typed or in upper case; a table whose name holds a dot was not measured (SQL refuses to create one). A cached-query class is not visible to `%Dictionary` and a purge deletes it; its count is read from `STATEMENT_LOCATIONS`, where a location reads `<class>.1`.
 - (d) `UpdateSQLIndex^%SYS.SQLSRV(hash, "probe")` sets `Error`, and `UpdateSQLIndex^%SYS.SQLSRV(hash, "")` clears it. That is the plan-error fixture.
+  - **Measured.** Both read as stated, from `INFORMATION_SCHEMA.STATEMENTS.Error`. On an absent hash the call answers OK and changes nothing.
 - (e) Freeze then unfreeze leaves `Frozen` 0. After `ClearStatement` the `Stat*` columns read empty or 0. Record which, since the read-back row says "blank".
+  - **Measured.** `Frozen` reads 1 after a freeze and 0 after the unfreeze. After `ClearStatement` the `Stat*` columns read empty (blank), not 0, and the statement's `stat` node of the statement index is gone. A statement run in a probe session, in a job and over the Atelier route recorded no statistics within the measured forty minutes (inference: the instance writes them on a later schedule), so `SqlTuningProbe` writes the node the instance writes (`SetStatistics`) to give a statement its three runs.
+
+**Decided at implement, 2026-11-22 (Batch 1):**
+
+- Each statement tool's subject and read name `Namespace`, and each purge tool's too, so a confirm reaches the namespace its proposal read (`ConfirmNamespaceRoster`); a tool declares `PRECONDITIONFIELD` (the plan state, the plan error, the stale count or the cached-query count) because the registry refuses a subject without one.
+- The tools declare no `CLASSICPAGES`: the descriptor's own classic page already adds its custom resource, and `ToolEmit` holds the pairs to the screen's plus WRITE as an argument pair (`ExplorerSave.CodeWritePairs`).
+- `ConfigPort.PurgeCachedQueries` takes a second, optional argument, the namespace it runs in, switched by save and restore around the vendor call alone: OcuPilot's classes are not visible from another namespace, so `SqlPort` cannot call it from inside one.
+- The id arguments are `Hash` (the statement tools, `*` for the clean), `CachedQuery`, `Table` and `Target` (`*`).
+- A statement the own-statement arm finds absent (404) is not judged: the fingerprint re-read closes the proposal. Any other failed read is an error status, and a read that answers no table list is refused `PROHIBITED.OCUPILOTSQL`.
+- `PermittedChangeFields` needs no entry: the state row's label is the tool's `STATEFIELD`, which the sweep skips, so both new types pass the reviewed-few sweep with nothing changed.
+- Strings not in the ruled list, taken from existing sentences or written as plain fragments, are listed for the gate in the stage report: the 404 reason for an absent statement or cached-query class (the table sentence), the 400 reason for a hostile id (the generic field-shape sentence), the two empty-state invitations the generator requires of a write-capable list (`explorerSqlStatementListEmptyAgent`, `explorerSqlCachedQueriesEmptyAgent`) and the tools' descriptions and id-shape messages, which only the agent reads.
 
 ## Verification
 
@@ -281,13 +383,49 @@ The implement stage greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/
 - AC4: the purge builds `{}` for a table target -> `SqlCachedQueryPurge` red on the other table's surviving query.
 - AC5: the arm skips the relations read -> `SqlStatementWrite`'s own-statement test red on both callers. A failed relations read answers permitted -> `Prohibited` red.
 - AC6: `slowquery` loses its statement index read -> `WorkflowCatalog` red.
+- Observed (Batch 1, each applied on `ocupilot-ci`, reverted, tracked diff identical, source reloaded) and recorded as `mutation:` lines:
+  - mutation: AC1, `CATALOGSTATEMENTINDEXQUERY` drops `s.Error AS PLAN_ERROR` -> `SqlStatementRead` red; the descriptor drops `Hash` from its fields -> `screen-mirror.test.mjs` red.
+  - mutation: AC2, `FREEZE` calls `UnfreezeStatement` -> `SqlStatementWrite` red; the freeze precondition admits a frozen plan -> its refusal assertions red.
+  - mutation: AC3, `CLEARSTATISTICS` a no-op -> `SqlStatementWrite` red; `CLEAN` a no-op -> `SqlTuningWrite` red; `ExplorerSqlStatementClean.Holds` admits an index with nothing stale -> `SqlTuningWrite`'s two refusal assertions red.
+  - mutation: AC4, the table target builds `{}` -> `SqlCachedQueryPurge` red; `SqlPort.Applied` calls `PurgeCachedQueries` without the target namespace -> `SqlTuningWrite`'s purge assertions red.
+  - mutation: AC5, the arm skips the relations read -> `SqlStatementWrite`'s own-statement test red on both callers; a failed arm-own read answers permitted -> `Prohibited` red (once the test fails only the arm's own read).
+  - mutation: AC6, `slowquery` loses the step -> `WorkflowCatalog` red.
+  - mutation: AC7 (browser, after rebuild and redeploy), `ExplorerSqlStatementList`'s `DESCRIPTOR_PAGES` row removed -> `system-explorer-sql-statements.browser-spec.mjs`'s AC1 test red on the Clean stale statements button; reverted, rebuilt and redeployed.
 - AC7: the list's Freeze row action is removed from the descriptor -> `system-explorer-sql-statements.browser-spec.mjs` red, after rebuild and redeploy.
+  - mutation: removed `freeze` from `ExplorerSqlStatementList`'s `rowActions`, regenerated the mirror, rebuilt and redeployed -> the spec's AC2 and AC5 tests red on the wait for the Freeze plan button (the other three green). Reverted, mirror regenerated, rebuilt, redeployed and the source reloaded into `ocupilot-ci` (`LOADERRORS=0`); `git status --short` and the diff identical to before; the spec green again.
+- Batch 2's client pins (each applied, observed red, reverted): the pages' `actions.register` calls dropped -> `sql-statement-list.page.spec.ts` and `sql-cached-queries.page.spec.ts` red (2 and 3 tests); the clean sent on another target and the table purge on the namespace target -> both pages' request tests red; `freeze` dropped from `WARNING_CONSEQUENCES` -> the list page's warning tests red; two returns swapped in `consequenceSentence`'s SQL branches -> `proposal-view.test.mjs` red; one character of `sqlStatementRefusalAlreadyFrozen` changed -> `self-protection.test.mjs`'s `ATELIER_REFUSALS` test red.
+
+- Observed at code review (2026-11-22, each applied on `ocupilot-ci`, reverted, tree identical, source reloaded):
+  - mutation: follow-up, `SqlTuningWrite` green twice (runs 966, 967). `SqlPort.Applied` purges without the target namespace -> the other-namespace survival test red. `ExplorerSqlStatementClean.Holds` admits an empty index -> both clean refusals red. The browser spec ran green forward and reverse with `system-explorer-sql.browser-spec.mjs`. With the page's clean registration removed, rebuilt and redeployed -> AC1 red alone.
+  - mutation: AC3, `STALECOUNTQUERY` counts frozen plans -> `SqlTuningWrite.TestAFrozenStatementNoClassHoldsIsNotStale` red. `CLEARSTATISTICS` a no-op -> `SqlStatementWrite`'s agent and screen assertions red.
+  - mutation: AC5, the arm skips clear statistics -> the own-statement test's verdict and both unchanged-state assertions red.
+  - mutation: the hash 404 states the table sentence -> `SqlStatementRead` red. One word of `sqlStatementNotFoundReason` changed -> `self-protection.test.mjs` red. `TuningSnippet` renders `UnfreezeStatement` for `FREEZE` -> `SqlStatementRead`'s script test red.
+
+- Observed at rework 1 (2026-11-22, each applied on `ocupilot-ci`, reverted, tree identical, source reloaded):
+  - mutation: DW-2844, `ExplorerSqlStatementFreeze.RefusalCode` answers `REFUSALCODE` for every plan -> `SqlStatementWrite.TestAParallelPlanIsRefusedItsOwnSentenceOnBothCallers` red on both sentence assertions (run 1015).
+  - mutation: DW-2844, `SqlTuningProbe.Remove` skips the plan-flag reset -> the same test's last assertion red (run 1025).
+  - mutation: DW-2844, one word added to `REASONSTATEMENTPARALLEL` -> `self-protection.test.mjs`'s `ATELIER_REFUSALS` test red naming the pair.
 
 **Runner ruling at the spec gate (2026-11-16):** validated. AD-51's Story 21.6 entry is corrected at its origin: `Clean` takes no argument and cleans the namespace's stale entries (the gate's reading of the escalation). The escalated strings and in-stage decisions are kept (veto U-83).
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Re-plan, cycle 2: the intent, matrix, Code Map, Tasks, ACs and Verification are rewritten for the narrowed story (U-76). Task 0's five write measurements wait for the implement stage on `ocupilot-ci`. Escalated for the gate: the strings, and the reading of clean's target as `*` (Design Notes).
+**Implemented (2026-11-22).** Task 0's five measurements are recorded in Design Notes. Batch 1 (commit `595d8a352`): `Catalog.Statements`, `SqlPort`'s `Statements` and `CachedQueries` endpoints, eight tools, the own-statement arm, the eight keys, two entity types, the `slowquery` step, the fixture and four test classes, the rosters. Batch 2 (commit `ccab7839b`): the two pages, handler, labels, consequence codes, ruled strings, refusal pins, the Fixed-strings row, and the browser spec. The finalize commit carries the review patches below.
+
+**Review.** 17 findings: 4 medium (3 patched, 1 deferred), 10 low (4 patched, 6 closed), 3 false; the patches are in `## Review Triage Log`. `followup_review_recommended: true`: the three patched mediums (the other-namespace purge probe and the unconditional clean refusal in `SqlTuningWrite`, the Clean button assertion) ran once each on `ocupilot-ci`, and CI's fresh shards are their first fresh-environment run.
+
+**Verified.** Every Batch 1 and Batch 2 `(loop)` and `(once)` line ran green on `ocupilot-ci` (LOADERRORS=0; the classes and node suites in the Batch reports; `npm run test:tools` 2401, `npm run test:components` 3882; both browser specs, forward and in reverse order; `check-objectscript` 0 problems; `lint-docs` clean; initial bundle 2.25 MB). Each Rule 19 mutation is recorded under `## Verification`. The full ObjectScript sweep, the smoke and the fresh check are the runner's.
+
+**For the gate (veto window, strings not in the ruled list).** (1) Two empty-state invitation fragments the descriptor generator requires of a write-capable list: "freeze a statement's plan" and "purge cached queries" (`explorerSqlStatementListEmptyAgent`, `explorerSqlCachedQueriesEmptyAgent`), written into the Fixed-strings row. (2) The 404 reason for an absent statement hash or cached-query class reuses the table sentence ("This namespace holds no table by that name that this account can see."), and the 400 reason for a malformed id reuses the generic field-shape sentence. (3) The eight tools' agent-facing `DESCRIPTION` lines and id-shape messages.
+
+**Residual risks.** The three page actions (clean, purge this table's, purge the namespace's) register under row-action ids, so the command bar draws them only after a row is selected (`BackupTaskListPage`'s behavior; an empty Cached queries tab offers no purge). `ConfigPort.PurgeCachedQueries` gained an optional namespace argument (SqlPort cannot reach OcuPilot's classes from another namespace). The all-namespace purge default is deferred (see `deferred:`).
+
+**Rework 1 (DW-2844, 2026-11-22).** Closed the `[Review][HIGH]` item.
+
+- Changed: Freeze refuses a plan in the `Unfrozen/Parallel` state with its own code `SQL.STATEMENT.PARALLEL` (`AtelierError`), through a new `RefusalCode` hook on `SqlStatementAction` that `ExplorerSqlStatementFreeze` overrides; the already-frozen sentence stays for every other refused plan. Source for the state: the classic dialog's disable condition and button title (`SQLStatementDetails.cls:111`, `:650`, `:739`). Freeze's description and Clean's consequence carry the ruled sentences, in `AtelierError`, `strings.ts` (new key `sqlStatementRefusalParallel`) and the EXPERIENCE.md Fixed-strings row, the replaced sentence in place and the new one added; the `self-protection.test.mjs` roster gains the pair.
+- Pinned at the instance's own index, not at a seam, not on an optimizer-made plan: `%PARALLEL` over 8,192 rows read `Unfrozen` on `ocupilot-ci` (probe objects removed, read back absent), so `SqlTuningProbe.SetPlanFlag` writes the plan-state flag into the statement index and `TestAParallelPlanIsRefusedItsOwnSentenceOnBothCallers` drives the real tool and the real fresh read through both callers. The mutation lines are under `## Verification`.
+- Verified on `ocupilot-ci`: reload `LOADERRORS=0`; `SqlStatementWrite` (7), `SqlTuningWrite` (4), `SqlStatementRead` (5), `ToolEmit` (11), `ToolRoundTrip` (2), `ConfirmNamespaceRoster` (3) and `SqlCachedQueryPurge` (4) green, one class per call; `npm run test:tools` 2402 and `npm run test:components` 3882 green; `system-explorer-sql-statements.browser-spec.mjs` 5 of 5 after rebuild and redeploy; `check-objectscript` 0 problems, `lint-docs` clean. `ExplorerSqlStatementFreeze` got its final form (a literal code parameter, since a tool cannot name `AtelierError`) after the browser spec and the first runs of `ToolEmit`, `ToolRoundTrip`, `ConfirmNamespaceRoster` and `SqlCachedQueryPurge`; the first three and `SqlStatementWrite`, `SqlTuningWrite` and `SqlStatementRead` were rerun on it, `SqlCachedQueryPurge` and the browser spec were not.
+- Review: 4 findings, all low (3 patched, 1 closed `wontfix-accepted`), in `## Review Triage Log`. `followup_review_recommended: false`: no `high` beyond the item was patched.

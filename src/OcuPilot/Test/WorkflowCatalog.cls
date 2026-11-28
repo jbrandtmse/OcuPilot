@@ -120,6 +120,64 @@ Method TestEveryNamedToolResolvesAsItsKind()
     Do $$$AssertEquals($ListLength($ClassMethod(..#WORKFLOW, "Writes", "nosuch")), 0, "an unknown id names none")
 }
 
+/// <p>AC6 (Story 21.6). The <code>slowquery</code> workflow reads the namespace's statement index among its steps' reads, names no write tool, and is
+/// still offered by the SQL query screen alone.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Kernel.Agent.Workflow</code>'s <code>slowquery</code> loses its <code>explorer.sqlstatements.read</code> step -> the
+/// read assertion goes red; the step gains a write -> the write assertion goes red; Story 21.26: the step that names the two runtime statistics reads is
+/// removed -> the runtime statistics assertion goes red; Story 21.27: the step that names the index analysis read loses it, or loses the advice read -> the index analysis assertion goes red; Story 21.28: the step that names the alternate plans read is removed or reworded -> the alternate plans assertion goes red.</p>
+Method TestTheSlowQueryWorkflowReadsTheStatementIndexAndWritesNothing()
+{
+    Set tEntry = $ClassMethod(..#WORKFLOW, "Lookup", "slowquery", .tFound)
+    Do $$$AssertTrue(tFound, "the catalog holds slowquery")
+    If 'tFound Quit
+    Set tReads = ""
+    Set tSteps = tEntry.%Get("steps").%GetIterator()
+    While tSteps.%GetNext(.tStepIndex, .tStep) {
+        If tStep.%GetTypeOf("reads") '= "array" Continue
+        Set tNames = tStep.%Get("reads").%GetIterator()
+        While tNames.%GetNext(.tNameIndex, .tName) {
+            Set tReads = tReads _ $Select(tReads = "": "", 1: ",") _ tName
+        }
+    }
+    Do $$$AssertTrue($ListFind($ListFromString(tReads), "explorer.sqlstatements.read") > 0, "its steps name the statement index read: " _ tReads)
+    Do $$$AssertEquals($ListLength($ClassMethod(..#WORKFLOW, "Writes", "slowquery")), 0, "and no write tool")
+    ; Story 21.26: its steps also name the runtime statistics and the collection setting reads.
+    Do $$$AssertTrue(($ListFind($ListFromString(tReads), "explorer.sqlruntimestats.read") > 0) && ($ListFind($ListFromString(tReads), "explorer.sqlruntimestatssettings.read") > 0), "its steps name the runtime statistics and the collection setting reads: " _ tReads)
+    ; The step that reads the statistics carries the note about Plan with statistics' rows.
+    Set tNoted = 0
+    Set tSteps = tEntry.%Get("steps").%GetIterator()
+    While tSteps.%GetNext(.tStepIndex, .tStep) {
+        If tStep.%Get("say") [ "Plan with statistics runs the statement without its values, so a filtered query can show zero rows." Set tNoted = tNoted + 1
+    }
+    Do $$$AssertEquals(tNoted, 1, "exactly one step carries the ruled note about Plan with statistics")
+    ; Story 21.27: a step names the index analysis read, with the ruled wording for a namespace that holds none.
+    Set tAnalysisSteps = 0
+    Set tSteps = tEntry.%Get("steps").%GetIterator()
+    While tSteps.%GetNext(.tStepIndex, .tStep) {
+        If (tStep.%Get("say") [ "Read the namespace's index analysis for table scans, temporary indices and missing join or outlier indices") && (tStep.%Get("say") [ "when no analysis is recorded, say so and that a person can gather statements and run a report on SQL index analyzer.") && (tStep.%GetTypeOf("reads") = "array") && (tStep.%Get("reads").%ToJSON() [ """explorer.sqlindexanalysis.read""") && (tStep.%Get("reads").%ToJSON() [ """explorer.sqladvice.read""") Set tAnalysisSteps = tAnalysisSteps + 1
+    }
+    Do $$$AssertEquals(tAnalysisSteps, 1, "exactly one step names the index analysis read and the advice read, with the ruled wording")
+    ; Story 21.28: one step reads the alternate plans and suggests the person compare, with the ruled wording; the agent has no compare to name.
+    Set tAlternateSteps = 0
+    Set tSteps = tEntry.%Get("steps").%GetIterator()
+    While tSteps.%GetNext(.tStepIndex, .tStep) {
+        If (tStep.%Get("say") = "Read the alternate plans for the slowest query and, when another plan costs less than the one the optimizer chose, suggest the person compare the two from SQL query; a comparison runs the query once for each plan without its values.") && (tStep.%GetTypeOf("reads") = "array") && (tStep.%Get("reads").%ToJSON() = "[""explorer.sqlalternateplans.read""]") && (tStep.%GetTypeOf("writes") = "unassigned") Set tAlternateSteps = tAlternateSteps + 1
+    }
+    Do $$$AssertEquals(tAlternateSteps, 1, "exactly one step reads the alternate plans, with the ruled wording and no write")
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
+    Set tOffering = ""
+    For tI = 1:1:$ListLength(tList) {
+        Set tClass = $List(tList, tI)
+        If $$$ISERR($ClassMethod(tClass, "DeclarationJson", .tDeclaration)) || '$IsObject($Get(tDeclaration)) Continue
+        If tDeclaration.%GetTypeOf("suggestedPrompts") '= "array" Continue
+        Set tPrompts = tDeclaration.%Get("suggestedPrompts").%GetIterator()
+        While tPrompts.%GetNext(.tIndex, .tPrompt) {
+            If tPrompt.%Get("workflow") = "slowquery" Set tOffering = tOffering _ $Select(tOffering = "": "", 1: ",") _ $Piece(tClass, ".", *)
+        }
+    }
+    Do $$$AssertEquals(tOffering, "ExplorerSqlQuery", "and it is still offered on the SQL query screen alone")
+}
+
 /// <p>Every workflow not marked <code>entry</code> is offered by the suggested prompt of at least one built screen,
 /// and every prompt's <code>workflow</code> names a catalog id. A workflow marked <code>entry</code> is offered by
 /// an entry control instead: no built screen's prompt names it, and it has no write.</p>

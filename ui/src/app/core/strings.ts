@@ -2278,7 +2278,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:662 */
+  /** EXPERIENCE.md:687 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -4705,6 +4705,16 @@ export const STRINGS = {
   explorerRoutineDeleteConsequence: 'The routine\'s source and compiled code are removed and cannot be restored from OcuPilot.',
   /** EXPERIENCE.md:592 */
   explorerRoutineDeleteSetConsequence: 'Deletes <n> documents. Each one\'s source and compiled code are removed and cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:592 */
+  explorerSourceControlTitle: 'Source control asks about <document>',
+  /** EXPERIENCE.md:592 */
+  explorerSourceControlQuestionLead: 'This namespace\'s source-control class asks:',
+  /** EXPERIENCE.md:592 */
+  explorerSourceControlAlertLead: 'This namespace\'s source-control class says:',
+  /** EXPERIENCE.md:592 */
+  explorerSourceControlAnswerRefused: 'The source-control class reported an error for this answer, so its step may not have finished.',
+  /** EXPERIENCE.md:592 */
+  explorerSourceControlUnsupported: 'This namespace\'s source-control class asked for a step OcuPilot cannot show for <document>. Open the document in an editor that supports server-side source control to finish it.',
   /** EXPERIENCE.md:593 */
   explorerEditSource: 'Edit source',
   /** EXPERIENCE.md:593 */
@@ -5513,6 +5523,221 @@ export const STRINGS = {
   journalRecordListPrompt3: 'Are any of these records inside a transaction?',
   /** EXPERIENCE.md:596 */
   explorerSqlStatementsNote: 'Statistics are as of the instance\'s last aggregation, so a recently run statement can read blank.',
+  // Story 21.6: the SQL statements list's columns beyond the table's Statements tab, its empty state, the two empty-state invitations and
+  // the prompts.
+  explorerSqlColumnStatementHash: 'Statement hash',
+  explorerSqlColumnPlanError: 'Plan error',
+  explorerSqlColumnPlanSaved: 'Plan saved',
+  explorerSqlColumnPlanVersion: 'Plan version',
+  explorerSqlStatementListEmpty: 'No SQL statements are recorded in this namespace.',
+  explorerSqlStatementListEmptyAgent: 'freeze a statement\'s plan',
+  explorerSqlCachedQueriesEmptyAgent: 'purge cached queries',
+  explorerSqlStatementListPrompt1: 'Which statements take the longest on average?',
+  explorerSqlStatementListPrompt2: 'Is any plan frozen, and does a newer plan exist?',
+  explorerSqlStatementListPrompt3: 'Which statements have a plan error?',
+  // Story 21.26: the SQL runtime statistics list and the Runtime statistics collection list, their columns, empty states, note and prompts.
+  explorerSqlTabRuntimeStats: 'SQL runtime statistics',
+  runtimeStatsSettingsLabel: 'Runtime statistics collection',
+  runtimeStatsColumnCursor: 'Cursor',
+  runtimeStatsColumnModule: 'Module',
+  runtimeStatsColumnRuns: 'Runs',
+  runtimeStatsColumnModuleRuns: 'Module runs',
+  runtimeStatsColumnAverageRows: 'Average rows',
+  runtimeStatsColumnAverageGlobalRefs: 'Average global references',
+  runtimeStatsColumnAverageCommands: 'Average commands',
+  runtimeStatsColumnAverageDiskWait: 'Average disk wait',
+  explorerSqlRuntimeStatsEmpty: 'No runtime statistics are recorded in this namespace.',
+  explorerSqlRuntimeStatsEmptyAgent: 'purge runtime statistics',
+  runtimeStatsSettingsEmptyAgent: 'change runtime statistics collection',
+  explorerSqlRuntimeStatsNote: 'Statistics are recorded only while collection is on, and by Plan with statistics on SQL query.',
+  explorerSqlRuntimeStatsPrompt2: 'Which module of a slow statement takes the most time?',
+  explorerSqlRuntimeStatsPrompt3: 'Are runtime statistics being collected?',
+  runtimeStatsSettingsPrompt1: 'Is runtime statistics collection on, and when does it stop?',
+  configRefusalSqlStatsNoStop: 'Collection must be on before its stop can be set.',
+  // Story 21.27: the SQL index analyzer list, its columns, empty state, note and prompts. Report, Schema, Table, Index, Module, Match, Extent size and
+  // Statement reuse the published columns.
+  explorerSqlTabIndexAnalysis: 'SQL index analyzer',
+  indexAnalysisColumnUsageCount: 'Usage count',
+  indexAnalysisColumnStatementType: 'Statement type',
+  indexAnalysisColumnClassOrRoutine: 'Class or routine',
+  indexAnalysisColumnMapType: 'Map type',
+  indexAnalysisColumnIndexFields: 'Index fields',
+  indexAnalysisColumnDataFields: 'Data fields',
+  indexAnalysisColumnIndexNeeded: 'Index needed',
+  indexAnalysisColumnOutlierField: 'Outlier field',
+  indexAnalysisColumnBlockCount: 'Block count',
+  explorerSqlIndexAnalysisEmpty: 'No index analysis is recorded in this namespace.',
+  explorerSqlIndexAnalysisEmptyAgent: 'gather SQL statements for analysis',
+  explorerSqlIndexAnalysisNote: 'Reports read the statements last gathered in this namespace. Gather them again after the code changes.',
+  explorerSqlIndexAnalysisPrompt1: 'Which indices are never used?',
+  explorerSqlIndexAnalysisPrompt2: 'Which queries scan a whole table?',
+  explorerSqlIndexAnalysisPrompt3: 'Which queries need an index for a join?',
+  explorerSqlTabReports: 'SQL troubleshooting reports',
+  explorerSqlReportsColumnWrc: 'Support case (WRC)',
+  explorerSqlReportsColumnDelimited: 'Delimited identifiers',
+  explorerSqlReportsEmpty: 'No query is saved for a troubleshooting report in this namespace.',
+  explorerSqlReportsEmptyAgent: 'save a query for a troubleshooting report',
+  explorerSqlReportsNote: 'A saved query is listed for the person who saved it and for holders of %All or %Developer.',
+  explorerSqlReportsPrompt1: 'Which queries are saved for a support case?',
+  explorerSqlReportsPrompt2: 'Which saved queries failed to plan?',
+  explorerSqlReportsPrompt3: 'When was each support case\'s query saved?',
+  // Story 21.29: the reports' actions, dialog fields, consequences, status lines and refusals. Each consequence and refusal is the sentence the server sends.
+  // The Delete action is actionDelete, the field names are explorerSqlReportsColumnWrc and explorerSqlColumnStatement, and the two destinations are
+  // explorerTransferServer and explorerTransferBrowser.
+  sqlReportsSaveAction: 'Save query',
+  sqlReportsGenerateAction: 'Generate report',
+  sqlReportsWrcHelp: 'The case number InterSystems support gave you, digits only.',
+  sqlReportsSaveTitle: 'Save query for a troubleshooting report',
+  sqlReportsGenerateTitle: 'Generate report for support case <wrc>',
+  sqlReportsSaveConsequence:
+    'Saving runs the statement once, without its values, to record its plan and statistics, then stores the statement, its plan, the definitions of the classes it reads and its compiled code under this support case.',
+  sqlReportsDeleteConsequence: 'This saved query is removed from its support case\'s report. Save it again to restore it.',
+  sqlReportsGenerateConsequence:
+    'The report holds every query you can see that is saved for this support case in this namespace, with its plan, the definitions of the classes it reads and its compiled code. A file already at this name is replaced.',
+  sqlReportsSaveDone: 'Saved the query for support case <wrc>.',
+  sqlReportsDeleteDone: 'Deleted the saved query.',
+  sqlReportsExportDone: 'Exported the report for support case <wrc> to <path>.',
+  sqlReportsExportSaved: 'Saved the report for support case <wrc> as <file>.',
+  sqlReportsRefusalVendor: 'The instance did not save this query.',
+  sqlReportsRefusalGenerateVendor: 'The instance did not write this report.',
+  sqlReportsRefusalQueryOnly: 'Saving a query runs it, so it takes a query only.',
+  sqlReportsRefusalWrc: 'A support case number is a whole number of up to 9 digits.',
+  sqlReportsRefusalNoRows: 'No query is saved for this support case in this namespace.',
+  sqlReportsRefusalTooLong: 'This report is longer than 3,000,000 characters, so it can be generated to a server file only.',
+  // Story 21.27: the analyzer's three page actions, the dialog fields, the five report names, the consequences and refusals the actions state, and Advise on
+  // SQL query with its findings. Each consequence and refusal is the sentence the server sends. The High and Low confidence names are taskPriorityHigh and
+  // taskPriorityLow, and the Recommendation header is securityAdvisorColumnRecommendation.
+  sqlIndexAnalysisGatherAction: 'Gather statements',
+  sqlIndexAnalysisRunAction: 'Run report',
+  sqlIndexAnalysisPurgeAction: 'Purge analysis',
+  sqlIndexAnalysisSkipSystemLabel: 'Skip system classes and routines',
+  sqlIndexAnalysisSkipInsertsLabel: 'Skip INSERT statements',
+  sqlIndexAnalysisSkipIdKeysLabel: 'Skip IDKEY indices (Index usage only)',
+  sqlIndexAnalysisReportIU: 'Index usage',
+  sqlIndexAnalysisReportTS: 'Table scan',
+  sqlIndexAnalysisReportTI: 'Temporary index',
+  sqlIndexAnalysisReportJI: 'Missing join index',
+  sqlIndexAnalysisReportOI: 'Outlier index',
+  sqlIndexAnalysisGatherConsequence:
+    'A new gathering of this namespace\'s cached queries, class methods, class queries and routines replaces its gathered statements and every report\'s results, and rebuilds its class dependency data.',
+  sqlIndexAnalysisGatherSystemConsequence:
+    'A new gathering of this namespace\'s cached queries, class methods, class queries and routines replaces its gathered statements and every report\'s results, and rebuilds its class dependency data. Gathering system classes and routines can take longer than the page waits; the list shows the result when it finishes.',
+  sqlIndexAnalysisRunConsequence: 'This report\'s earlier results in this namespace are replaced.',
+  sqlIndexAnalysisPurgeConsequence:
+    'This namespace\'s gathered statements and every report\'s results are removed. Gather statements again before running a report.',
+  sqlIndexAnalysisRefusalNoRows: 'This namespace holds no index analysis.',
+  sqlIndexAnalysisRefusalNoStatements: 'Gather this namespace\'s statements before running this report.',
+  sqlIndexAnalysisRefusalReport: 'Choose Index usage, Table scan, Temporary index, Missing join index or Outlier index.',
+  sqlIndexAnalysisRefusalBusy: 'An index analysis is already running in this namespace.',
+  sqlIndexAnalysisRefusalVendor: 'The instance did not complete this index analysis.',
+  sqlAdviceAction: 'Advise',
+  sqlAdviceRefusal: 'Advice reads a query\'s plan, so it takes a query only.',
+  sqlAdviceKindFullScan: 'Full table scan',
+  sqlAdviceKindMissingIndex: 'Missing index',
+  sqlAdviceKindNotTuned: 'Table not tuned',
+  sqlAdviceKindTempFile: 'Temporary file',
+  sqlAdviceKindUnusedIndex: 'Unused index',
+  sqlAdviceConfidenceMedium: 'Medium',
+  sqlAdviceColumnFinding: 'Finding',
+  sqlAdviceColumnConfidence: 'Confidence',
+  sqlAdviceNote: 'Advice is read from this one plan and its tables\' indices. Check it against the real workload.',
+  sqlAdviceEmpty: 'OcuPilot found nothing to advise for this plan.',
+  sqlAdviceUnrecognized: 'OcuPilot did not recognize this plan\'s format, so it offers no advice.',
+  // The numbers are OcuPilot.Port.SqlAdvice's MAXFINDINGS and MAXTABLES; self-protection.test.mjs holds them equal.
+  sqlAdviceTruncated: 'Only the first 200 findings, from at most 20 tables, are shown.',
+  // OcuPilot.Api.AtelierError's REASONSQLSELECTPRIVILEGE, with %1 the table or tables the refused read names; the server fills it in.
+  sqlSelectPrivilegeRefusal: 'Reading this needs the SQL SELECT privilege on %1.',
+  sqlRuntimeStatsPurgeAction: 'Purge statistics',
+  explorerSqlPlanWithStatistics: 'Plan with statistics',
+  sqlRuntimeStatsPurgeConsequence: 'This namespace\'s runtime statistics are removed. New statistics are recorded only while collection is on.',
+  sqlRuntimeStatsSetConsequence: 'This applies to every namespace on the instance. A query prepared while collection was set to Off records nothing once collection is turned on, until its cached query is purged.',
+  sqlRuntimeStatsRefusalNoRows: 'This namespace holds no runtime statistics.',
+  sqlRuntimeStatsRefusalVendor: 'The instance did not purge this namespace\'s runtime statistics.',
+  sqlPlanStatisticsRefusal: 'Plan with statistics runs the statement, so it takes a query only.',
+  sqlPlanStatisticsNote: 'Plan with statistics runs the statement without its values, so a filtered query can show zero rows.',
+  // Story 21.28: SQL query's Alternate plans. Map type reuses indexAnalysisColumnMapType, the refusals are the instance's own sentences, and the 100 is OcuPilot.Port.SqlPort's ALTMAXPLANS; self-protection.test.mjs holds it equal.
+  sqlAlternatePlansAction: 'Alternate plans',
+  sqlAlternatePlansHeading: 'Possible plans',
+  sqlAlternateComparedHeading: 'Compared plans',
+  sqlAlternateColumnCost: 'Cost',
+  sqlAlternateColumnStartingMap: 'Starting map',
+  sqlAlternateShowPlan: 'Show plan',
+  sqlAlternateComparePlans: 'Compare plans',
+  sqlAlternateHint: 'Check up to five plans to compare.',
+  sqlAlternateCompareNote:
+    'Compare plans runs the statement once for each plan, without its values, so a filtered query can show zero rows. Comparing can take longer than the page waits; what each run recorded stays on Runtime statistics.',
+  sqlAlternatePlansTruncated: 'Only the first 100 possible plans are listed.',
+  // Story 21.6: the statement and cached-query actions, the sentences their dialogs and cards state, and the refusals the instance answers.
+  // Purge on one query reuses auditDatabasePurgeConfirm.
+  sqlStatementFreezeAction: 'Freeze plan',
+  sqlStatementUnfreezeAction: 'Unfreeze plan',
+  sqlStatementClearStatisticsAction: 'Clear statistics',
+  sqlStatementClearErrorAction: 'Clear plan error',
+  sqlStatementCleanAction: 'Clean stale statements',
+  sqlCachedQueryPurgeTableAction: 'Purge this table\'s cached queries',
+  sqlCachedQueryPurgeAllAction: 'Purge all cached queries in this namespace',
+  sqlStatementFreezeConsequence: 'This statement keeps its current plan until it is unfrozen, even when its indices or table statistics change.',
+  sqlStatementUnfreezeConsequence: 'This statement takes the plan the optimizer chooses the next time it is prepared.',
+  sqlStatementClearStatisticsConsequence: 'This statement\'s run statistics are removed, and counting starts again at its next run.',
+  sqlStatementClearErrorConsequence: 'The plan error is removed from the statement index. The plan itself is unchanged.',
+  sqlStatementCleanConsequence: 'Removes every statement in this namespace\'s index that no class or routine still holds. A statement whose plan is frozen stays.',
+  sqlCachedQueryPurgeConsequence: 'The purged queries are prepared again the next time each one runs.',
+  sqlStatementRefusalAlreadyFrozen: 'This statement\'s plan is already frozen.',
+  sqlStatementRefusalParallel: 'This statement\'s plan uses parallel processing and cannot be frozen.',
+  sqlStatementRefusalNotFrozen: 'This statement\'s plan is not frozen.',
+  sqlStatementRefusalNoError: 'This statement has no plan error.',
+  sqlStatementRefusalNoStale: 'This namespace\'s statement index holds no stale statements.',
+  sqlStatementRefusalVendor: 'The instance did not apply this change to the statement.',
+  sqlStatementNotFoundReason: 'This namespace holds no SQL statement with that hash.',
+  sqlCachedQueryNotFoundReason: 'This namespace holds no cached query by that name.',
+  // Story 21.25: the table maintenance writes. The sentences the rebuilds' dialogs and cards state, the refusals the instance answers and the
+  // refusal of one of OcuPilot's own tables.
+  sqlIndexRebuildAction: 'Rebuild index',
+  sqlTableRebuildAllAction: 'Rebuild all indices',
+  sqlTableRebuildConsequence: 'This index is emptied and built again from the table\'s rows. The table is locked against changes while it runs. Changes to the table wait meanwhile, and fail if the rebuild outlasts their lock timeout.',
+  sqlTableRebuildAllConsequence: 'Every index of this table is emptied and built again from its rows. The table is locked against changes while it runs. Changes to the table wait meanwhile, and fail if the rebuild outlasts their lock timeout.',
+  sqlTableRefusalDataMap: 'This is the table\'s data map, which has no index to rebuild.',
+  sqlTableRefusalVendor: 'The instance did not apply this change to the table.',
+  sqlTableRefusalOcuPilot: 'This table is one of OcuPilot\'s own, so OcuPilot does not rebuild or tune it.',
+  explorerSqlTableMaintenanceEmptyAgent: 'rebuild indices',
+  // Story 21.25: the statistics writes -- the action labels of the Table info and Tables tabs, the sentences their cards and dialogs state, the
+  // refusal of a table with no fixed statistics -- and the Field statistics tab.
+  sqlTableTuneAction: 'Collect statistics',
+  sqlTableClearStatisticsAction: 'Clear fixed statistics',
+  sqlSchemaTuneAction: 'Tune all tables',
+  sqlTableTuneConsequence: 'The table\'s extent size and each field\'s selectivity are measured from its current rows. Some cached queries may be purged, including ones on other tables, so their plans may change.',
+  sqlTableClearStatisticsConsequence: 'The fixed statistics saved for this table are removed. The optimizer uses collected statistics, or none.',
+  sqlSchemaTuneConsequence: 'Every table in this schema is measured as Collect statistics measures one.',
+  sqlTableRefusalNoFixed: 'This table has no fixed statistics.',
+  explorerSqlSchemaTuneEmptyAgent: 'tune table',
+  explorerSqlTabFieldStatistics: 'Field statistics',
+  explorerSqlColumnOutlierValue: 'Outlier value',
+  explorerSqlColumnOutlierSelectivity: 'Outlier selectivity',
+  explorerSqlColumnAverageFieldSize: 'Average field size',
+  explorerSqlColumnFixedSelectivity: 'Fixed selectivity',
+  explorerSqlColumnFixedOutlierValue: 'Fixed outlier value',
+  explorerSqlColumnFixedOutlierSelectivity: 'Fixed outlier selectivity',
+  explorerSqlColumnFixedAverageFieldSize: 'Fixed average field size',
+  explorerSqlFieldStatisticsEmpty: 'No field statistics are recorded for this table.',
+  explorerSqlFieldStatisticsPrompt1: 'Which fields have fixed selectivity?',
+  explorerSqlFieldStatisticsPrompt2: 'Do the collected and fixed values differ?',
+  explorerSqlFieldStatisticsPrompt3: 'Which field has an outlier value?',
+  // Story 21.25: the schema Tune dialog's value label.
+  sqlTuneClearValuesLabel: 'Clear values',
+  // Story 21.31: the fixed-statistics setters -- the three action labels, the map size's value label, the consequence the three share and the
+  // shape sentences their dialogs hint and the instance answers.
+  sqlTableSetExtentSizeAction: 'Set extent size',
+  sqlFieldSetSelectivityAction: 'Set selectivity',
+  sqlIndexSetMapSizeAction: 'Set map size',
+  sqlIndexMapSizeLabel: 'Map size (MB)',
+  sqlTableSetConsequence: 'The optimizer uses this value in place of the collected one until the table\'s fixed statistics are cleared. If the table\'s statistics were collected, they are first saved as its fixed statistics.',
+  sqlTableExtentSizeShape: 'Enter a whole number from 0 to 1,000,000,000,000.',
+  sqlTableSelectivityShape: 'Enter 1, or a percentage over 0% and up to 99.999%.',
+  sqlTableWholeNumberShape: 'Enter a whole number, 0 or more.',
+  sqlTableMapSizeShape: 'Enter a whole number, 1 or more.',
+  /** The Field statistics tab's command alias, which its descriptor carries. */
+  explorerSqlFieldStatisticsAlias: 'table statistics',
+  sqlTableRefusalSetAfterFix: 'The table\'s collected statistics were saved as its fixed statistics, but the new value was not set.',
   // Story 18.6: License key and License servers -- their titles, License key's twelve field labels
   // beyond License usage's "License units", the authorization-key line, the activate dialog's
   // labels, validity, restart and reduction sentences and consequence, Print and its printed-by
@@ -7774,7 +7999,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopTraceViewMermaid: 'Mermaid text',
   /** EXPERIENCE.md:604 */
-  interopTraceArrow: 'Message <id>: <type> from <source> to <target>, <status>',
+  interopTraceArrow: 'Message <id> <label>: <type> from <source> to <target>, <status>',
   /** EXPERIENCE.md:604 */
   interopTraceNoBody: '(no body)',
   /** EXPERIENCE.md:604 */
@@ -7901,13 +8126,13 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   analyticsTermListCriterion: 'Term list',
   /** EXPERIENCE.md:604 */
-  analyticsCubesEmpty: 'No cube is defined in this namespace.',
+  analyticsCubesEmpty: 'No cube in this namespace is visible to you.',
   /** EXPERIENCE.md:604 */
-  analyticsCubeMeasuresEmpty: 'This cube no longer exists, or it has no measures.',
+  analyticsCubeMeasuresEmpty: 'This cube no longer exists, you cannot read it, or it has no measures.',
   /** EXPERIENCE.md:604 */
-  analyticsCubeDimensionsEmpty: 'This cube no longer exists, or it has no dimensions.',
+  analyticsCubeDimensionsEmpty: 'This cube no longer exists, you cannot read it, or it has no dimensions.',
   /** EXPERIENCE.md:604 */
-  analyticsCubeRelationshipsEmpty: 'This cube no longer exists, or it has no relationships.',
+  analyticsCubeRelationshipsEmpty: 'This cube no longer exists, you cannot read it, or it has no relationships.',
   /** EXPERIENCE.md:604 */
   analyticsTermListsEmpty: 'No term list is defined in this namespace.',
   /** EXPERIENCE.md:604 */
@@ -8476,6 +8701,121 @@ export const STRINGS = {
   analyticsDashboardWidgetsPrompt2: 'Which widgets show a pivot, and which a KPI?',
   /** EXPERIENCE.md:620 */
   analyticsDashboardWidgetsPrompt3: 'Which widget takes its data from another widget?',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelsLabel: 'PMML models',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlTargetType: 'Target type',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlDataSources: 'Data sources',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlVerification: 'Verification records',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlRecords: 'Records',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlRecall: 'Recall',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlFMeasure: 'F-measure',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlMicro: 'Micro',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlActualValue: 'Actual value',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlPredictedValue: 'Predicted value',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlProbability: 'Probability',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlCorrect: 'Correct',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlIncorrect: 'Incorrect',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlSigma: 'Sigma',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlRSE: 'RSE',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlRSquared: 'R\u00B2',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlSql: 'SQL',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlSourceVerification: 'Model verification records',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlSourceCustom: 'Custom data source (SQL)',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelsEmpty: 'No PMML models are defined in this namespace.',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelGone: 'This PMML model no longer exists.',
+  /** EXPERIENCE.md:621 */
+  analyticsRefusalPmmlInput: 'Choose one of this model\'s data sources; a custom data source is one SQL query.',
+  /** EXPERIENCE.md:621 */
+  analyticsRefusalPmmlQueryOnly: 'A model is tested here only against an SQL query; this data source is not one.',
+  /** EXPERIENCE.md:621 */
+  analyticsRefusalPmmlCube: 'This data source\'s cube is not one this namespace holds, or you cannot read it.',
+  /** EXPERIENCE.md:621 */
+  analyticsRefusalPmmlBusy: 'A PMML test you started is still running; cancel it or wait for it to end.',
+  /** EXPERIENCE.md:621 */
+  analyticsRefusalPmmlFull: 'As many background runs as this instance allows are running; try again when one ends.',
+  /** EXPERIENCE.md:621 */
+  analyticsRefusalPmmlNotFound: 'No PMML test of yours has this id; an ended run is kept for 15 minutes.',
+  /** EXPERIENCE.md:621 */
+  analyticsRefusalPmmlLost: 'The PMML test ended without an answer; run it again.',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelsPrompt1: 'Which PMML models does this namespace hold?',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelsPrompt2: 'What does each model predict?',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelsPrompt3: 'Which models carry verification records?',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelTestPrompt1: 'Explain what this model predicts.',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelTestPrompt2: 'Which data sources can I test this model against?',
+  /** EXPERIENCE.md:621 */
+  analyticsPmmlModelTestPrompt3: 'How do I read precision and recall?',
+  /** EXPERIENCE.md:622 */
+  analyticsPmmlNewAction: 'New PMML definition',
+  /** EXPERIENCE.md:622 */
+  analyticsPmmlTextLabel: 'PMML',
+  /** EXPERIENCE.md:622 */
+  analyticsPmmlSaveConsequence: 'The class is saved and compiled, and the classes it generates are made in its package.',
+  /** EXPERIENCE.md:622 */
+  analyticsRefusalPmmlTaken: 'This namespace already holds this class, or classes in its package.',
+  /** EXPERIENCE.md:622 */
+  analyticsRefusalPmmlText: 'Paste one PMML document of at most 3,000,000 characters, with no document type declaration and no } character.',
+  /** EXPERIENCE.md:622 */
+  analyticsRefusalPmmlCompile: 'The instance refused to compile the PMML definition, so nothing was changed.',
+  /** EXPERIENCE.md:622 */
+  analyticsRefusalPmmlReadonly: 'The database that holds this namespace\'s classes is read-only.',
+  /** EXPERIENCE.md:622 */
+  analyticsPmmlModelsEmptyAgent: 'create a PMML definition',
+  /** EXPERIENCE.md:623 */
+  analyticsPmmlExportAction: 'Export to cube',
+  /** EXPERIENCE.md:623 */
+  analyticsPmmlResultClassLabel: 'Result class name',
+  /** EXPERIENCE.md:623 */
+  analyticsPmmlCubeNameLabel: 'Cube name',
+  /** EXPERIENCE.md:623 */
+  analyticsPmmlCubeClassLabel: 'Cube class name',
+  /** EXPERIENCE.md:623 */
+  analyticsPmmlSourceClassLabel: 'Link to source class',
+  /** EXPERIENCE.md:623 */
+  analyticsPmmlExportConsequence:
+    'The test runs again with your rights. Its results are copied into a new result class, and a new cube class reads them. The cube is not built until you build it in the Cube manager, and OcuPilot cannot undo an export.',
+  /** EXPERIENCE.md:623 */
+  analyticsPmmlExportedLine: 'Exported {count} records to {class}. Build the cube {cube} in the Cube manager.',
+  /** EXPERIENCE.md:623 */
+  analyticsRefusalPmmlSame: 'The result class and the cube class must be two classes, neither in the other\'s package.',
+  /** EXPERIENCE.md:623 */
+  analyticsRefusalPmmlCubeTaken: 'This namespace already holds a cube with this name.',
+  /** EXPERIENCE.md:623 */
+  analyticsRefusalPmmlCubeName: 'A cube name is 1 to 250 characters, with no control character and no } character.',
+  /** EXPERIENCE.md:623 */
+  analyticsRefusalPmmlSourceClass: 'The class to link to is not one this namespace holds.',
+  /** EXPERIENCE.md:623 */
+  analyticsRefusalPmmlExportRun: 'The test did not finish, so nothing was exported.',
+  /** EXPERIENCE.md:623 */
+  analyticsRefusalPmmlExportCompile: 'The instance refused the export\'s classes or rows, so nothing was changed.',
+  /** EXPERIENCE.md:623 */
+  analyticsRefusalPmmlDataHeld: 'This namespace already holds data stored under this class name. Choose another name.',
+  /** EXPERIENCE.md:623 */
+  analyticsPmmlModelTestEmptyAgent: 'export a test to a cube',
   /** EXPERIENCE.md:268 */
   agentInvestigateEntryAction: 'Investigate this entry',
   /** EXPERIENCE.md:268 */
@@ -9150,6 +9490,754 @@ export const STRINGS = {
   taskMailSettingsEmptyAgent: 'change a Task Manager email setting',
   /** EXPERIENCE.md:613 */
   configRefusalSubstitution: 'Use only these fields between #( and )#: <fields>.',
+  /** EXPERIENCE.md:613 */
+  taskOutputOpen: 'Open output file',
+  /** EXPERIENCE.md:613 */
+  taskOutputLabel: 'Task output',
+  /** EXPERIENCE.md:613 */
+  taskOutputDirectory: 'Output directory',
+  /** EXPERIENCE.md:613 */
+  taskOutputNone: 'This task does not write its output to a file.',
+  /** EXPERIENCE.md:613 */
+  taskOutputElsewhere: 'OcuPilot reads output files only in the manager directory. Open this one on the server.',
+  /** EXPERIENCE.md:613 */
+  taskOutputAbsent: 'This task has not written its output file yet. It writes one each time it runs.',
+  /** EXPERIENCE.md:613 */
+  taskOutputTruncated: 'OcuPilot shows only the end of this file.',
+  /** EXPERIENCE.md:613 */
+  taskOutputPrompt1: 'What did this task\'s last run report?',
+  /** EXPERIENCE.md:613 */
+  taskOutputPrompt2: 'Did this task\'s output show an error?',
+  /** EXPERIENCE.md:613 */
+  taskOutputPrompt3: 'Summarize this task\'s output.',
+  /** EXPERIENCE.md:613 */
+  taskMailPasswordAction: 'Set mail password',
+  /** EXPERIENCE.md:613 */
+  pageResourcesLabel: 'Page resources',
+  /** EXPERIENCE.md:613 */
+  pageResourcesEmpty: 'No classic pages have a custom resource on this instance.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesEmptyAgent: 'assign a resource to a classic page',
+  /** EXPERIENCE.md:613 */
+  pageResourcesNote: 'A page\'s custom resource decides who may open it in the classic portal and in OcuPilot. The instance still checks every read and write.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesPrompt1: 'Which classic pages have a custom resource?',
+  /** EXPERIENCE.md:613 */
+  pageResourcesPrompt2: 'Which resource does the Users page require?',
+  /** EXPERIENCE.md:613 */
+  pageResourcesPrompt3: 'Which OcuPilot screens follow a page\'s custom resource?',
+  /** EXPERIENCE.md:613 */
+  accessRefusalPageUnknown: 'No classic portal page has that name.',
+  /** EXPERIENCE.md:613 */
+  accessRefusalPageResourceRequired: 'Name the resource to assign. To remove one, clear it instead.',
+  /** EXPERIENCE.md:613 */
+  accessRefusalPageNotAssigned: 'This page has no custom resource, so there is nothing to clear.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesAssignAction: 'Assign resource',
+  /** EXPERIENCE.md:613 */
+  pageResourcesChangeAction: 'Change resource',
+  /** EXPERIENCE.md:613 */
+  pageResourcesClearAction: 'Clear resource',
+  /** EXPERIENCE.md:613 */
+  pageResourcesAssignTitle: 'Assign a resource to a page',
+  /** EXPERIENCE.md:613 */
+  pageResourcesChangeTitle: 'Change the resource of <page>',
+  /** EXPERIENCE.md:613 */
+  pageResourcesPageHelp: 'Name a classic page by its class.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesResourceHelp: 'Name a resource this instance defines.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesLineOne: '<screen> follows this page\'s resource and will require it from the next request.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesLineMany: 'These <count> screens follow this page\'s resource and will require it from the next request: <titles>.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesMore: 'and <n> more',
+  /** EXPERIENCE.md:613 */
+  pageResourcesLineNone: 'No OcuPilot screen replaces this page, so only the classic portal uses this resource.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesConsequenceChanged: 'Accounts that hold only the old resource can no longer open <screen>.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesConsequenceCleared: 'More accounts may open <screen>. The instance still checks what they do there.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesClearWarning: 'After this, the page needs no custom resource.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesActionLine: 'This page\'s resource will be required from the next request for: <actions>.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesActionConsequenceChanged: 'Accounts that hold only the old resource can no longer use: <actions>.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesActionConsequenceCleared: 'More accounts may use: <actions>. The instance still checks what they do there.',
+  /** EXPERIENCE.md:613 */
+  pageResourcesActionItem: '<action> on <screen>',
+  /** EXPERIENCE.md:613 */
+  pageResourcesActionItemUnnamed: 'changes on <screen>',
+  /** EXPERIENCE.md:613 */
+  pageResourcesSummaryAssign: 'Assign <resource> to <page>',
+  /** EXPERIENCE.md:613 */
+  pageResourcesSummaryChange: 'Change the resource of <page> to <resource>',
+  /** EXPERIENCE.md:613 */
+  pageResourcesSummaryClear: 'Clear the resource of <page>',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsLabel: 'System default settings',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsDiffLabel: 'Compare default settings',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingColumnDeployable: 'Deployable',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingColumnValueHere: 'Value here',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingColumnValueThere: 'Value there',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingAddAction: 'New default setting',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingEditTitle: 'Edit <setting>',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingHelp:
+    'A system default setting gives a setting its value in every production, item and host class it matches, unless the production sets its own value. Use * to match any.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingDeployableHelp: 'Deployable settings are exported with a production\'s deployment package.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingRemoveConsequence:
+    'Items that took this value use their own setting or the class default again, and it cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingPendingConsequence: 'A running production uses the new value once it is updated.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingRefusalTaken: 'This namespace already has a default setting for that production, item, host class and setting.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingRefusalSecret:
+    'This setting names a credential, so OcuPilot neither shows nor sets its value. Set it in the classic System Default Settings page.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingRefusalKey:
+    'Production, item, host class and setting are each 1 to 255 characters, may be * for any, and may not contain two vertical bars.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingRefusalValue: 'This value is not valid for that setting.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingRefusalRestricted: 'You may not change the default for this setting.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingRefusalSourceControl: 'This namespace uses source control, so change default settings in the classic System Default Settings page.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingRefusalTooMany: 'One of these namespaces has more default settings than one comparison covers.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsEmpty: 'This namespace has no system default settings.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsEmptyAgent: 'add a default setting',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsDiffEmpty: 'These two namespaces have the same default settings.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsPrompt1: 'Which default settings apply to this production?',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsPrompt2: 'Explain what this default setting changes.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsPrompt3: 'Add a default setting for an item\'s pool size.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsDiffPrompt1: 'Summarize how these namespaces\' default settings differ.',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsDiffPrompt2: 'Which differing settings would change how a production runs?',
+  /** EXPERIENCE.md:624 */
+  interopDefaultSettingsDiffPrompt3: 'Which settings exist in only one namespace?',
+  /** EXPERIENCE.md:625 */
+  interopCredentialBusinessPartner: 'Business partner',
+  /** EXPERIENCE.md:625 */
+  interopCredentialNotStored: 'Not stored',
+  /** EXPERIENCE.md:625 */
+  interopCredentialAddAction: 'New credential',
+  /** EXPERIENCE.md:625 */
+  interopCredentialEditTitle: 'Edit <name>',
+  /** EXPERIENCE.md:625 */
+  interopCredentialRemoveTitle: 'Remove <name>',
+  /** EXPERIENCE.md:625 */
+  interopCredentialHelp: 'Production settings name a credential to sign in to other systems. Its password is never shown here.',
+  /** EXPERIENCE.md:625 */
+  interopCredentialChangeConsequence: 'Anything that signs in with this credential uses the change from its next connection.',
+  /** EXPERIENCE.md:625 */
+  interopCredentialRefusalTaken: 'This namespace already has a credential with that name, in some letter case.',
+  /** EXPERIENCE.md:625 */
+  interopCredentialRefusalName: 'A credential name is 1 to 50 characters and holds no control characters.',
+  /** EXPERIENCE.md:625 */
+  interopCredentialRefusalPartner: 'This namespace has no business partner with that name.',
+  /** EXPERIENCE.md:625 */
+  interopCredentialRefusalValue: 'The instance did not accept this user name.',
+  /** EXPERIENCE.md:625 */
+  interopCredentialsEmpty: 'This namespace has no credentials.',
+  /** EXPERIENCE.md:625 */
+  interopCredentialsEmptyAgent: 'add a credential',
+  /** EXPERIENCE.md:625 */
+  interopCredentialsPrompt1: 'Which credentials does this namespace hold?',
+  /** EXPERIENCE.md:625 */
+  interopCredentialsPrompt2: 'Which credentials have no password stored?',
+  /** EXPERIENCE.md:625 */
+  interopCredentialsPrompt3: 'Add a credential for a business partner.',
+  /** EXPERIENCE.md:625 */
+  credentialRefusalProvider:
+    'An enabled agent definition reads its provider key from this credential, so only a person can remove it or change its password, on the Credentials screen.',
+  /** EXPERIENCE.md:626 */
+  interopSchedulesLabel: 'Schedule specs',
+  /** EXPERIENCE.md:626 */
+  interopScheduleAddAction: 'New schedule spec',
+  /** EXPERIENCE.md:626 */
+  interopScheduleHelp:
+    'A schedule spec starts and stops the production items whose schedule names it, as @ and its name. Each part is START or STOP, a colon and a date and time, for example START:*-*-*T08:00:00,STOP:*-*-*T17:00:00, where * matches any.',
+  /** EXPERIENCE.md:626 */
+  interopScheduleDeployableHelp: 'Deployable schedule specs are included when schedule specs are exported to a deployment package.',
+  /** EXPERIENCE.md:626 */
+  interopScheduleChangeConsequence: 'A running production that uses this schedule spec follows a changed spec at once.',
+  /** EXPERIENCE.md:626 */
+  interopScheduleRemoveConsequence:
+    'Items that name this schedule spec keep running until the production is next updated, and are then disabled and stopped until the schedule spec is added again. It cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:626 */
+  interopScheduleRefusalTaken: 'This namespace already has a schedule spec with that name, in some letter case.',
+  /** EXPERIENCE.md:626 */
+  interopScheduleRefusalName: 'A schedule spec name is 1 to 50 characters and holds no control characters.',
+  /** EXPERIENCE.md:626 */
+  interopScheduleRefusalSpec: 'This schedule is not valid. Each part is START or STOP, a colon and a date and time.',
+  /** EXPERIENCE.md:626 */
+  interopScheduleRefusalDescription: 'A description is at most 256 characters.',
+  /** EXPERIENCE.md:626 */
+  interopScheduleRefusalSourceControl: 'This namespace uses source control, so change schedule specs in the classic Schedule Specs page.',
+  /** EXPERIENCE.md:626 */
+  interopSchedulesEmpty: 'This namespace has no schedule specs.',
+  /** EXPERIENCE.md:626 */
+  interopSchedulesEmptyAgent: 'add a schedule spec',
+  /** EXPERIENCE.md:626 */
+  interopSchedulesPrompt1: 'Explain when this schedule spec starts and stops items.',
+  /** EXPERIENCE.md:626 */
+  interopSchedulesPrompt2: 'Which schedule specs are deployable?',
+  /** EXPERIENCE.md:626 */
+  interopSchedulesPrompt3: 'Add a schedule spec that runs on weekdays from 8 to 5.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeLabel: 'Purge management data',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingsLabel: 'Purge data settings',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingBodies: 'Include message bodies',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingIntegrity: 'Purge only completed sessions',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingBitmap: 'Run bitmap cleanup for namespace',
+  /** EXPERIENCE.md:628 */
+  interopPurgeRunConsequence:
+    'Deletes this namespace\'s event log entries, messages, completed business process records, business rule log entries, I/O log entries, host monitor data and managed alerts older than the days to keep, and their message bodies when Include message bodies is on. When Purge only completed sessions is on, a session with a message still in progress is kept whole, and so is an open managed alert. With 0 days, everything up to the end of today is deleted, except managed alerts from today. It cannot be undone.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeBitmapConsequence:
+    'Deletes this namespace\'s event log entries, messages, completed business process records, business rule log entries, I/O log entries, host monitor data and managed alerts older than the days to keep, and their message bodies when Include message bodies is on. When Purge only completed sessions is on, a session with a message still in progress is kept whole, and so is an open managed alert. With 0 days, everything up to the end of today is deleted, except managed alerts from today. It cannot be undone. Bitmap cleanup then runs over every class in this namespace with full system rights, and can take a long time. Those rights end when it finishes.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeRefusalDays: 'Older than (days) is a whole number from 0 to 99999.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeRefusalRunning: 'A purge is already running in this namespace. Try again when it has finished.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeEmpty: 'This namespace has no records to count.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeEmptyAgent: 'purge old records',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingsEmpty: 'This namespace has no purge settings.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingsEmptyAgent: 'change a purge setting',
+  /** EXPERIENCE.md:628 */
+  interopPurgePrompt1: 'What does a purge delete in this namespace?',
+  /** EXPERIENCE.md:628 */
+  interopPurgePrompt2: 'Which kind of record is most numerous here?',
+  /** EXPERIENCE.md:628 */
+  interopPurgePrompt3: 'Purge records older than 30 days.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingsPrompt1: 'Explain what each purge setting does.',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingsPrompt2: 'Does a purge here keep sessions that are still in progress?',
+  /** EXPERIENCE.md:628 */
+  interopPurgeSettingsPrompt3: 'Turn on Include message bodies.',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedLabel: 'Suspended messages',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedResubmitAction: 'Resubmit',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedEditResubmitAction: 'Edit and resubmit',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedDiscardAction: 'Discard',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedVerdictNotSuspended: 'is no longer suspended',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedVerdictResubmit: 'will be resubmitted',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedVerdictDiscard: 'will be discarded',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedVerdictDelete: 'will be deleted',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedOutcomeResubmitted: 'resubmitted',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedOutcomeNotResubmitted: 'not resubmitted',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedOutcomeDiscarded: 'discarded',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedOutcomeNotDiscarded: 'not discarded',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedOutcomeDeleted: 'deleted',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedOutcomeNotDeleted: 'not deleted',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedResubmitConsequence:
+    'Resubmitting puts each message marked to be resubmitted back on its target\'s queue under its own message id, and the running production processes it. It cannot be undone.',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedEditConsequence:
+    'Edit and resubmit saves the edited body as a new copy and puts the message back on its target\'s queue with it, under its own message id. The original body is kept. It cannot be undone.',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedDiscardConsequence:
+    'Discarding marks each message marked to be discarded as Discarded, so it is no longer suspended and is not processed. The message and its body are kept, and it can still be resent from Messages.',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedDeleteConsequence:
+    'Deleting removes each message marked to be deleted, its body when no other message uses it, and its search table entries. It cannot be undone.',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedRefusalNone: 'None of these messages can be acted on now. Each one\'s line says why.',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedRefusalChanged: 'These messages changed after they were reviewed, so nothing was changed. Review them again.',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedEmpty: 'No suspended messages in this namespace.',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedEmptyAgent: 'resubmit or discard suspended messages',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedPrompt1: 'Which messages are suspended here, and why?',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedPrompt2: 'Which target has the most suspended messages?',
+  /** EXPERIENCE.md:629 */
+  interopSuspendedPrompt3: 'Resubmit the suspended messages whose target is running.',
+  // Story 24.16 Batch 3: Messages' Export dialog, its verdicts and outcome words, its consequence, its two refusals and its status lines.
+  /** EXPERIENCE.md:631 */
+  interopMessageExportTitle: 'Export <n> messages',
+  /** EXPERIENCE.md:631 */
+  interopMessageExportTitleOne: 'Export 1 message',
+  /** EXPERIENCE.md:631 */
+  interopMessageExportSeparator: 'Message separator',
+  /** EXPERIENCE.md:631 */
+  interopMessageExportCharset: 'Character set',
+  /** EXPERIENCE.md:631 */
+  interopExportVerdictExport: 'will be exported',
+  /** EXPERIENCE.md:631 */
+  interopExportVerdictNotext: 'its body cannot be exported as text',
+  /** EXPERIENCE.md:631 */
+  interopExportOutcomeExported: 'exported',
+  /** EXPERIENCE.md:631 */
+  interopExportOutcomeNotExported: 'not exported',
+  /** EXPERIENCE.md:631 */
+  interopMessageExportConsequence:
+    'Exporting saves the body of each message marked to be exported to one file in this browser\'s downloads, in message id order, each marked off by the chosen separator. Each body exported is recorded in the audit log as viewed. Anyone who can open the file can read the messages.',
+  /** EXPERIENCE.md:631 */
+  interopExportRefusalNone: 'None of these messages can be exported. Each one\'s line says why.',
+  /** EXPERIENCE.md:631 */
+  interopExportRefusalChanged: 'These messages changed after they were reviewed, so nothing was exported. Review them again.',
+  /** EXPERIENCE.md:631 */
+  interopMessageExportSaved: 'Saved <n> messages as <file>.',
+  /** EXPERIENCE.md:631 */
+  interopMessageExportSavedOne: 'Saved 1 message as <file>.',
+  // Story 24.16 Batch 4: the local archive manager's three screens, its Run archive dialog, the classic captions its rows carry, its consequence, its five refusals, its empty states and prompts.
+  /** EXPERIENCE.md:632 */
+  interopArchiveLabel: 'Archive manager',
+  /** EXPERIENCE.md:632 */
+  interopArchiveSettingsLabel: 'Archive settings',
+  /** EXPERIENCE.md:632 */
+  interopArchiveErrorsLabel: 'Archive errors',
+  /** EXPERIENCE.md:632 */
+  interopArchiveAction: 'Run archive',
+  /** EXPERIENCE.md:632 */
+  interopArchiveSettingTarget: 'Archive to namespace',
+  /** EXPERIENCE.md:632 */
+  interopArchiveSettingClass: 'Archive manager class name',
+  /** EXPERIENCE.md:632 */
+  interopArchiveSettingDays: 'Number of days before archiving',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRowStart: 'Archive start time',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRowStop: 'Archive stop time',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRowProcessed: 'Total messages processed',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRowArchived: 'Total messages archived',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRowHeaders: 'Total message headers deleted',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRowBodies: 'Total message bodies deleted',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRowErrors: 'Total number of errors',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRowStatus: 'Archive status',
+  /** EXPERIENCE.md:632 */
+  interopArchiveStatusIdle: 'idle',
+  /** EXPERIENCE.md:632 */
+  interopArchiveMessages: 'Messages to archive',
+  /** EXPERIENCE.md:632 */
+  interopArchiveAcceptsNone: 'No other interoperability namespace on this instance.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRunConsequence:
+    'Archiving moves every message in this namespace older than the number of days before archiving, whatever its status, to the namespace set as Archive to namespace: its header is saved there under its own message id and its body as text, and then both are deleted here. A body that is not an EDI document or an object that can be written as XML is kept there only as its class name and id. With 0 days, everything up to the end of today is moved. The last run\'s history and error log are replaced. It cannot be undone.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRefusalRunning: 'An archive is already running in this namespace. Try again when it has finished.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRefusalNoTarget: 'Archive to namespace is not set to another interoperability namespace. Set it under Archive settings first.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRefusalClass:
+    'This namespace archives with its own archive manager class, which runs code OcuPilot does not run. Run it from the classic Archive Manager page.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRefusalTooMany:
+    'This namespace holds more messages than one archive run here can take. Purge older messages first, or run the archive from the classic Archive Manager page.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveRefusalTaken:
+    'Archive to namespace already holds a message with the id of one this run would move, so nothing was archived. Choose a namespace kept for archives.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveEmpty: 'This namespace has no archive history.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveEmptyAgent: 'archive old messages',
+  /** EXPERIENCE.md:632 */
+  interopArchiveSettingsEmpty: 'This namespace has no archive settings.',
+  /** EXPERIENCE.md:632 */
+  interopArchiveSettingsEmptyAgent: 'change an archive setting',
+  /** EXPERIENCE.md:632 */
+  interopArchiveErrorsEmpty: 'The last archive run recorded no errors.',
+  /** EXPERIENCE.md:632 */
+  interopArchivePrompt1: 'What does an archive run move, and where to?',
+  /** EXPERIENCE.md:632 */
+  interopArchivePrompt2: 'How many messages would an archive run move now?',
+  /** EXPERIENCE.md:632 */
+  interopArchivePrompt3: 'Did the last archive run finish without errors?',
+  /** EXPERIENCE.md:632 */
+  interopArchiveErrorsPrompt1: 'Which messages did the last archive run fail on, and why?',
+  /** EXPERIENCE.md:632 */
+  interopArchiveSettingsPrompt1: 'Set the days before archiving to 90.',
+  // Story 24.17 Batch 1: the managed alerts screen, the alert history screen, the Update alert dialog, the captions their columns and fields carry, the consequence, the six refusals, the empty states and the prompts.
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertsLabel: 'Managed alerts',
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertHistoryLabel: 'Alert history',
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertUpdateAction: 'Update alert',
+  /** EXPERIENCE.md:634 */
+  interopAlertColumnTime: 'Alert time',
+  /** EXPERIENCE.md:634 */
+  interopAlertColumnText: 'Alert text',
+  /** EXPERIENCE.md:634 */
+  interopAlertColumnOwner: 'Current owner',
+  /** EXPERIENCE.md:634 */
+  interopAlertColumnLevel: 'Escalation level',
+  /** EXPERIENCE.md:634 */
+  interopAlertColumnOpen: 'Is open',
+  /** EXPERIENCE.md:634 */
+  interopAlertColumnLastAction: 'Last action time',
+  /** EXPERIENCE.md:634 */
+  interopAlertColumnNextAction: 'Next action time',
+  /** EXPERIENCE.md:634 */
+  interopAlertColumnOldValues: 'Old values',
+  /** EXPERIENCE.md:634 */
+  interopAlertColumnNewValues: 'New values',
+  /** EXPERIENCE.md:634 */
+  interopAlertFieldNextMinutes: 'Next action in (minutes)',
+  /** EXPERIENCE.md:634 */
+  interopAlertOwnerUnassigned: 'Unassigned',
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertUpdateConsequence:
+    'Updating saves each change in the alert\'s history with your username and the reason given. The alert can be updated again, and a closed alert can be opened again.',
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertRefusalNotFound: 'This managed alert no longer exists.',
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertRefusalUnchanged: 'Nothing would change. Choose a new owner, open state, escalation level or next action time.',
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertRefusalOwner: 'The owner must be unassigned, you, or a user who can work on managed alerts in this namespace.',
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertRefusalLevel: 'The escalation level moves one step up or down from its current level, and never below 0.',
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertRefusalNextAction: 'Next action in (minutes) is a whole number from 1 to 20160.',
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertRefusalReason: 'Give a reason of 1 to 500 characters, with no control characters.',
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertsEmpty: 'No managed alerts in this namespace.',
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertsEmptyAgent: 'update a managed alert',
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertHistoryEmpty: 'This alert has no history yet.',
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertsPrompt1: 'Which managed alerts are open and unassigned?',
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertsPrompt2: 'Which open alerts are past their next action time?',
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertsPrompt3: 'Who owns the most open alerts?',
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertsPrompt4: 'Close this alert with the reason that it is resolved.',
+  /** EXPERIENCE.md:634 */
+  interopManagedAlertHistoryPrompt1: 'What has happened to this alert so far?',
+  // Story 24.17 Batch 2: the business rule log and business process log screens, the completed column and filter, the two purge consequences, the empty states and the prompts.
+  /** EXPERIENCE.md:636 */
+  interopRuleLogLabel: 'Business rule log',
+  /** EXPERIENCE.md:636 */
+  interopProcessLogLabel: 'Business process log',
+  /** EXPERIENCE.md:636 */
+  interopLogColumnCompleted: 'Is completed',
+  /** EXPERIENCE.md:636 */
+  interopRuleLogPurgeConsequence:
+    'Deletes this namespace\'s business rule log entries older than the days to keep. With 0 days, everything up to the end of today is deleted. It cannot be undone.',
+  /** EXPERIENCE.md:636 */
+  interopProcessLogPurgeConsequence:
+    'Deletes this namespace\'s completed business process records older than the days to keep; a business process still running is kept. With 0 days, every completed one up to the end of today is deleted. It cannot be undone.',
+  /** EXPERIENCE.md:636 */
+  interopRuleLogEmpty: 'No business rule log entries in this namespace.',
+  /** EXPERIENCE.md:636 */
+  interopRuleLogEmptyAgent: 'purge the business rule log',
+  /** EXPERIENCE.md:636 */
+  interopProcessLogEmpty: 'No business process records in this namespace.',
+  /** EXPERIENCE.md:636 */
+  interopProcessLogEmptyAgent: 'purge business process records',
+  /** EXPERIENCE.md:636 */
+  interopRuleLogPrompt1: 'Which rules returned an error recently?',
+  /** EXPERIENCE.md:636 */
+  interopRuleLogPrompt2: 'Which rule fires most often here?',
+  /** EXPERIENCE.md:636 */
+  interopRuleLogPrompt3: 'Purge business rule log entries older than 30 days.',
+  /** EXPERIENCE.md:636 */
+  interopProcessLogPrompt1: 'Which business processes are still running?',
+  /** EXPERIENCE.md:636 */
+  interopProcessLogPrompt2: 'Which business process has the most records?',
+  /** EXPERIENCE.md:636 */
+  interopProcessLogPrompt3: 'Purge completed business process records older than 30 days.',
+
+  // Story 24.17 Batch 3a: the workflow users screen, its dialog's help line, the two consequences, the four refusals, the empty state and the prompts.
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUsersLabel: 'Workflow users',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUserAddAction: 'New workflow user',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUserHelp: 'A workflow user is a user of this instance who can be sent workflow tasks through the workflow roles they belong to.',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUserRemoveConsequence:
+    'Removing this workflow user takes them out of every workflow role, deletes their worklist and leaves each task they hold unassigned. It cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUserInactiveConsequence:
+    'An inactive workflow user is sent no new tasks through their workflow roles; their worklist is deleted and each task they hold is left unassigned.',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUserRefusalSourceControl:
+    'This namespace uses source control, so change workflow users and roles in the classic Workflow Users and Workflow Roles pages.',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUserRefusalName: 'A new workflow user must be a user of this instance, named exactly as the user list spells it.',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUserRefusalTaken: 'This namespace already has a workflow user with that name, in some letter case.',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUserRefusalFullName: 'A full name is at most 128 characters and holds no control characters.',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUsersEmpty: 'This namespace has no workflow users.',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUsersEmptyAgent: 'add a workflow user',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUsersPrompt1: 'Which workflow users are inactive?',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUsersPrompt2: 'Which workflow users belong to no workflow role?',
+  /** EXPERIENCE.md:637 */
+  interopWorkflowUsersPrompt3: 'Add a workflow user for a user of this instance.',
+  // Story 24.17 Batch 3b: the workflow roles and role members screens, their dialogs' help lines, the three consequences, the eight refusals, the empty states and the prompts.
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRolesLabel: 'Workflow roles',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMembersLabel: 'Role members',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRoleAddAction: 'New workflow role',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberAddAction: 'Add member',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberColumnRank: 'Rank',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRoleHelp:
+    'A workflow role is a group of workflow users who are sent the same tasks. Capacity, from 1 to 100, is used to report the role\'s active tasks as a percentage.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberHelp: 'Rank 1 is the highest. The rank and the title can decide which member a task is sent to.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRoleRemoveConsequence:
+    'Removing this workflow role also removes each of its members from it. Tasks already sent through it are left as they are. It cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberAddConsequence: 'An active member is sent each unassigned task of this role.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberRemoveConsequence:
+    'Removing this member deletes their worklist for this role and leaves each task they hold through it unassigned.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRoleRefusalName: 'A workflow role name is 1 to 128 characters and holds no control characters.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRoleRefusalTaken: 'This namespace already has a workflow role with that name, in some letter case.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRoleRefusalDescription: 'A description is at most 2,000 characters.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRoleRefusalCapacity: 'Capacity is a whole number from 1 to 100.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberRefusalUser: 'This namespace has no workflow user with that name.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberRefusalTaken: 'This workflow user is already a member of this role.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberRefusalRank: 'Rank is a whole number from 1 to 5.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMemberRefusalTitle: 'A title is at most 128 characters and holds no control characters.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRolesEmpty: 'This namespace has no workflow roles.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRolesEmptyAgent: 'add a workflow role',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMembersEmpty: 'This workflow role has no members.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMembersEmptyAgent: 'add a member to this workflow role',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRolesPrompt1: 'Which workflow roles have no members?',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRolesPrompt2: 'Which workflow role has the most members?',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowRolesPrompt3: 'Add a workflow role for order approvals.',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMembersPrompt1: 'Which members of this role are inactive?',
+  /** EXPERIENCE.md:638 */
+  interopWorkflowMembersPrompt2: 'Add a member to this role.',
+  // Story 24.17 Batch 4: the workflow tasks and worklist screens, the Assign task dialog, the three consequences, the five refusals, the empty states and the prompts.
+  /** EXPERIENCE.md:641 */
+  interopWorkflowTasksLabel: 'Workflow tasks',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowWorklistLabel: 'Workflow worklist',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowTaskAssignTitle: 'Assign task',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowWorklistColumnAge: 'Age',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowTaskAssignConsequence: 'Assigning this task takes it off every other user\'s worklist.',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowTaskUnassignConsequence: 'Unassigning this task sends it to every active member of its workflow role.',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowTaskCancelConsequence:
+    'Canceling this task takes it off every worklist and returns it, canceled, to the business process that sent it. It cannot be undone.',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowTaskRefusalComplete: 'This task is already complete.',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowTaskRefusalUser: 'Assign the task to an active workflow user of this namespace, or to Unassigned.',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowTaskRefusalPriority: 'Priority is a whole number from 1 to 5.',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowTaskRefusalUnchanged: 'Nothing would change. Choose another user or priority.',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowTaskRefusalSender: 'This task cannot be canceled, because the business process that sent it is not waiting for it in the running production.',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowTasksEmpty: 'This namespace has no workflow tasks.',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowTasksEmptyAgent: 'assign or cancel a workflow task',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowWorklistEmpty: 'No workflow user in this namespace has a worklist item.',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowTasksPrompt1: 'Which workflow tasks are unassigned?',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowTasksPrompt2: 'Which workflow tasks have been open the longest?',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowTasksPrompt3: 'Assign the oldest unassigned task to an active member of its role.',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowWorklistPrompt1: 'Which workflow users have the most items on their worklist?',
+  /** EXPERIENCE.md:641 */
+  interopWorkflowWorklistPrompt2: 'Which worklist items are more than a day old?',
+  // Story 24.17 Batch 5: the System monitor screen, its Most active queues drill-down, the four groups, the twelve meters, the three empty states and the prompts.
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorLabel: 'System monitor',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorQueuesLabel: 'Most active queues',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorGroupThroughput: 'Production throughput',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorGroupJobs: 'Production jobs',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorGroupTime: 'System time',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorGroupQueues: 'Production queues',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorMeterScopes: 'Namespaces running productions',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorMeterProductionsRunning: 'Productions running',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorMeterProductionsTroubled: 'Productions suspended or troubled',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorMeterIncoming: 'Incoming messages in the last 30 seconds',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorMeterLastIncoming: 'Last incoming message',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorMeterOutgoing: 'Outgoing messages in the last 30 seconds',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorMeterLastOutgoing: 'Last outgoing message',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorMeterJobs: 'Active production jobs',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorMeterVisitingJobs: 'Visiting production jobs',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorMeterActiveQueues: 'Active queues',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorMeterAlerts: 'Production alerts',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorMeterErrors: 'Production errors',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorEmpty: 'The system monitor is unavailable.',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorQueuesEmpty: 'No production queue holds messages.',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorTasksEmpty: 'No tasks are scheduled to run.',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorPrompt1: 'Is any production suspended or troubled?',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorPrompt2: 'How many messages came in and went out in the last 30 seconds?',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorPrompt3: 'Which production queues hold the most messages?',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorQueuesPrompt2: 'Is one queue holding far more messages than the others?',
+  /** EXPERIENCE.md:642 */
+  interopSystemMonitorQueuesPrompt3: 'Which namespace\'s queues hold the most messages?',
+  // Story 24.18 Batch 1: the HL7 schemas screen, its New, Export, Import and Delete wording, the two consequences, the status lines, the empty state and the prompts.
+  /** EXPERIENCE.md:644 */
+  interopHl7SchemasLabel: 'HL7 schemas',
+  /** EXPERIENCE.md:644 */
+  interopHl7SchemaAddAction: 'New HL7 schema',
+  /** EXPERIENCE.md:644 */
+  interopHl7ColumnBase: 'Base schema',
+  /** EXPERIENCE.md:644 */
+  interopHl7ColumnStandard: 'Standard',
+  /** EXPERIENCE.md:644 */
+  interopHl7ImportTitle: 'Import an HL7 schema',
+  /** EXPERIENCE.md:644 */
+  interopHl7ExportTitle: 'Export HL7 schema <schema>',
+  /** EXPERIENCE.md:644 */
+  interopHl7DeleteTitle: 'Delete HL7 schema <schema>',
+  /** EXPERIENCE.md:644 */
+  interopHl7Help: 'A custom HL7 schema adds its own message types, structures and code tables to the schema it is based on.',
+  /** EXPERIENCE.md:644 */
+  interopHl7DeleteConsequence:
+    'Deleting this HL7 schema removes everything it defines. Schemas based on it, and items and rules that name it, can no longer find it. It cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:644 */
+  interopHl7ImportConsequence: 'Importing replaces this namespace\'s HL7 schema of the same name with the file\'s, and anything the file does not define is removed.',
+  /** EXPERIENCE.md:644 */
+  interopHl7ExportDone: 'Exported HL7 schema <schema> to <path>.',
+  /** EXPERIENCE.md:644 */
+  interopHl7ExportSaved: 'Saved HL7 schema <schema> as <file>.',
+  /** EXPERIENCE.md:644 */
+  interopHl7ImportDone: 'Imported the HL7 schema in <file>.',
+  /** EXPERIENCE.md:644 */
+  interopHl7SchemasEmpty: 'This namespace has no HL7 schemas.',
+  /** EXPERIENCE.md:644 */
+  interopHl7SchemasEmptyAgent: 'create a custom HL7 schema',
+  /** EXPERIENCE.md:644 */
+  interopHl7SchemasPrompt1: 'Which HL7 schemas here are custom, and what is each based on?',
+  /** EXPERIENCE.md:644 */
+  interopHl7SchemasPrompt2: 'Which custom HL7 schema changed most recently?',
+  /** EXPERIENCE.md:644 */
+  interopHl7SchemasPrompt3: 'Create a custom HL7 schema based on 2.5.1.',
+  // Story 24.18 Batch 1: the HL7 schemas' refusals, which the server answers; "A description is at most 2,000 characters." reuses `interopWorkflowRoleRefusalDescription`.
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalSourceControl: 'This namespace uses source control, so change HL7 schemas in the classic HL7 Schema Structures page.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalName: 'An HL7 schema name is 1 to 64 letters, digits, periods, underscores and hyphens, and begins with a letter or digit.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalTaken: 'This namespace already has an HL7 schema with that name, in some letter case.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalBase: 'Choose a base schema this namespace holds, or none.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalStandard: 'This is a standard HL7 schema, which the instance provides, so it cannot be changed or deleted.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalImportShape: 'An import file must hold exactly one HL7 schema and nothing else, in the form the Export action writes.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalImportStandard: 'This file holds a standard HL7 schema, which the instance provides, so it is not imported.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalImportChanged: 'The file or the schema changed after the import was reviewed, so nothing was imported. Review the import again.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalCase: 'An HL7 schema whose name differs from this one only in letter case already exists. Use its spelling, or choose another name.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalTooLarge: 'An HL7 schema file holds at most 3,000,000 characters, and this one holds more.',
+  /** EXPERIENCE.md:644 */
+  interopHl7RefusalLocked: 'Someone else is changing this HL7 schema right now, so nothing was written. Try again in a moment.',
 } as const;
 
 /**

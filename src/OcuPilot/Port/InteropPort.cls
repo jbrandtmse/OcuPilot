@@ -115,7 +115,7 @@
 /// <method>StopSeconds</method>, <method>RoutineResource</method>, <method>SourceControlled</method>,
 /// <method>VendorAbortItem</method>, <method>VendorJob</method>, <method>LockTable</method>, <method>VendorSendTest</method>,
 /// <method>TestWait</method>, <method>AllNamespacesReadable</method>, <method>DefaultReadOnly</method>,
-/// <method>VendorSetAutoStart</method> and <method>VendorSetShutdownGroup</method>, and the parameter <parameter>ABORTMAX</parameter>. Production overrides none.</p>
+/// <method>VendorSetAutoStart</method>, <method>VendorSetShutdownGroup</method>, <method>VendorLogPurge</method>, <method>LogHere</method> and <method>VendorMetrics</method>, and the parameters <parameter>ABORTMAX</parameter>, <parameter>RULELOGMAX</parameter>, <parameter>PROCESSLOGMAX</parameter> and <parameter>SYSTEMMONITORROWSMAX</parameter>. Production overrides none.</p>
 Class OcuPilot.Port.InteropPort Extends %RegisteredObject
 {
 
@@ -125,7 +125,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses,Sessions,SessionSummary,SessionMessages,DefaultSettings,DefaultSettingsDiff,Credentials,Schedules,PurgeSettings,Purge,SuspendedMessages,ArchiveSettings,Archive,ArchiveErrors,ManagedAlerts,ManagedAlertActions,RuleLog,ProcessLog,WorkflowUsers,WorkflowRoles,WorkflowMembers,WorkflowTasks,WorkflowWorklist,SystemMonitor,SystemMonitorProcesses,SystemMonitorQueues,SystemMonitorTasks,Hl7Schemas";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -182,6 +182,23 @@ Parameter ENDPOINTLOOKUPENTRIES = "LookupEntries";
 /// <p>The namespace's business partners (Story 20.5): <code>LIST</code> only.</p>
 Parameter ENDPOINTBUSINESSPARTNERS = "BusinessPartners";
 
+/// <p>The namespace's system default settings (Story 24.15): <code>LIST</code>, one setting (<code>DEFAULTSETTING</code>) and the three
+/// writes, over <code>Ens.Config.DefaultSettings</code>.</p>
+Parameter ENDPOINTDEFAULTSETTINGS = "DefaultSettings";
+
+/// <p>The system default settings that differ between the route's namespace and the one the <parameter>DIFFTARGETKEY</parameter>
+/// criterion names (Story 24.15): <code>LIST</code> only, read in each namespace through the same read as
+/// <parameter>ENDPOINTDEFAULTSETTINGS</parameter>' list.</p>
+Parameter ENDPOINTDEFAULTSETTINGSDIFF = "DefaultSettingsDiff";
+
+/// <p>The namespace's credentials (Story 24.15): <code>LIST</code>, one credential (<code>CREDENTIAL</code>) and the four writes, over
+/// <code>Ens.Config.Credentials</code>. The password is never read: a row says only whether one is stored.</p>
+Parameter ENDPOINTCREDENTIALS = "Credentials";
+
+/// <p>The namespace's schedule specs (Story 24.15): <code>LIST</code>, one schedule spec (<code>SCHEDULE</code>) and the three writes, over
+/// <code>Ens.Util.Schedule</code>. A spec is shown as text and never run.</p>
+Parameter ENDPOINTSCHEDULES = "Schedules";
+
 /// <p>An item's host test (Story 20.6): <code>LIST</code> for the item <parameter>ITEMKEY</parameter> names (one row for each
 /// settable field of each request class it takes), <code>TESTTARGET</code> (the composed fresh read of the test about to be
 /// sent) and the write <code>SENDTEST</code>.</p>
@@ -222,7 +239,7 @@ Parameter ENDPOINTSESSIONMESSAGES = "SessionMessages";
 /// <p>The endpoints whose <code>LIST</code> declares search criteria of its own (Story 20.9). A declared read names criteria on
 /// the interoperability port only as its parent's route id, except on these; <file>ui/tools/screen-mirror.mjs</file> reads this
 /// list as it reads <parameter>ENDPOINTS</parameter>.</p>
-Parameter SEARCHENDPOINTS = "Messages";
+Parameter SEARCHENDPOINTS = "Messages,DefaultSettingsDiff,ManagedAlerts,RuleLog,ProcessLog";
 
 /// <p>The query key naming the message header a header or contents read is about: its one criterion, the header's id kept exactly
 /// (AD-13).</p>
@@ -260,6 +277,39 @@ Parameter LOOKUPWRITEPAIR = "%Ens_LookupTables:WRITE";
 /// interoperability configuration write holds at WRITE. The classic page declares no edit resource, so it admits a holder of READ.</p>
 Parameter PARTNERWRITEPAIR = "%Ens_ProductionConfig:WRITE";
 
+/// <p>The pairs the DefaultSettings and DefaultSettingsDiff endpoints require (Story 24.15): the classic Interoperability menu's
+/// <code>%Ens_Portal:USE</code> and <code>EnsPortal.DefaultSettings</code>' own resource. The vendor's calls check no privilege of their
+/// own beyond the database (measured), so these are the whole gate for a read.</p>
+Parameter DEFAULTSETTINGPAIRS = "%Ens_Portal:USE,%Ens_SystemDefaultConfig:READ";
+
+/// <p>The pair a default setting write adds: the classic page's own edit resource.</p>
+Parameter DEFAULTSETTINGWRITEPAIR = "%Ens_SystemDefaultConfig:WRITE";
+
+/// <p>The resource whose holder, without the <code>%All</code> role, writes only the settings the classic page's
+/// <code>canEditSettingName</code> admits (<method>DefaultSettingRestricted</method>), and the prefix of the resource each setting adds.</p>
+Parameter DEFAULTSETTINGRESTRICTEDPAIR = "%Ens_RestrictedUI_SystemDefaultSettings:USE";
+
+Parameter DEFAULTSETTINGRESOURCEPREFIX = "%Ens_SystemDefaultSettings_";
+
+/// <p>The setting whose write also needs <parameter>ITEMRUNPAIR</parameter>, as the classic page asks.</p>
+Parameter DEFAULTSETTINGENABLED = "Enabled";
+
+/// <p>The pairs the Credentials endpoint requires (Story 24.15): the classic Interoperability menu's <code>%Ens_Portal:USE</code> and
+/// <code>EnsPortal.Credentials</code>' own resource. The vendor's reads check no privilege of their own beyond the database (measured).</p>
+Parameter CREDENTIALPAIRS = "%Ens_Portal:USE,%Ens_Credentials:READ";
+
+/// <p>The pair a credential write adds: the classic page's own edit resource, which the vendor's password calls check themselves.</p>
+Parameter CREDENTIALWRITEPAIR = "%Ens_Credentials:WRITE";
+
+/// <p>The pairs the Schedules endpoint requires (Story 24.15): the classic Interoperability menu's <code>%Ens_Portal:USE</code> and
+/// <code>EnsPortal.ScheduleEditor</code>'s own resource. The vendor's reads check no privilege of their own beyond the database
+/// (measured).</p>
+Parameter SCHEDULEPAIRS = "%Ens_Portal:USE,%Ens_ProductionConfig:READ";
+
+/// <p>The pair a schedule spec write adds, the remove included: the classic page's own edit resource. The vendor's <code>%Save</code> and
+/// <code>%DeleteId</code> need WRITE on the namespace's globals database and no other pair (measured).</p>
+Parameter SCHEDULEWRITEPAIR = "%Ens_ProductionConfig:WRITE";
+
 /// <p>The pairs the ItemTest endpoint requires: the classic Interoperability menu's <code>%Ens_Portal:USE</code> and
 /// <code>EnsPortal.TestingService</code>'s own resource (Story 20.6). The vendor's <code>SendTestRequest</code> checks no
 /// privilege (measured), so these, and WRITE on the namespace's globals database for a send, are the whole gate.</p>
@@ -269,8 +319,9 @@ Parameter TESTPAIRS = "%Ens_Portal:USE,%Ens_TestingService:USE";
 /// lookup table export and import (Story 20.5), whose files and reviewed counts the port reads from its query, and the host test's
 /// send (Story 20.6), whose request class and field values it reads from its query, and the data transformation test (Story 20.27),
 /// whose pasted message it reads from its query, and the edit-and-resend (Story 20.31), whose edited body it builds from the fields its
-/// query carries.</p>
-Parameter COMPOSEDTYPES = "LookupTables/EXPORT,LookupTables/IMPORT,ItemTest/SENDTEST,Transforms/TRANSFORMTEST,Messages/EDITRESEND";
+/// query carries, and the edit-and-resubmit of a suspended message (Story 24.16), which builds its edited body the same way, and the HL7 schema
+/// export and import (Story 24.18), which read their files and reviewed values from their query as the lookup tables' do.</p>
+Parameter COMPOSEDTYPES = "LookupTables/EXPORT,LookupTables/IMPORT,ItemTest/SENDTEST,Transforms/TRANSFORMTEST,Messages/EDITRESEND,SuspendedMessages/EDITRESUBMIT,Hl7Schemas/EXPORTHL7SCHEMA,Hl7Schemas/IMPORTHL7SCHEMA";
 
 /// <p>The pair each item tab adds to the Productions endpoint's pairs (the classic configuration page's
 /// <code>initSecurity</code>): the queue, the event log, the message headers and the jobs.</p>
@@ -475,6 +526,53 @@ Parameter TYPESETPARTNER = "SETPARTNER";
 /// <p>Remove a partner, with its description and both contacts.</p>
 Parameter TYPEREMOVEPARTNER = "REMOVEPARTNER";
 
+/// <p>One system default setting (Story 24.15): <code>{Production, Item, HostClass, Setting, Value, Description, Deployable, Secret,
+/// Namespace}</code>, the default setting tools' fresh read. The id is the composite <code>[Production, Item, HostClass, Setting]</code>,
+/// each part kept exactly. With <parameter>ACTIONKEY</parameter> in the query it refuses what that action would be refused
+/// (<method>ReadDefaultSetting</method>).</p>
+Parameter TYPEDEFAULTSETTING = "DEFAULTSETTING";
+
+/// <p>Add a default setting. The body names <code>Value</code>, <code>Description</code> and <code>Deployable</code>; the key is the id.</p>
+Parameter TYPEADDDEFAULT = "ADDDEFAULT";
+
+/// <p>Store new values for the fields of a default setting the namespace holds. The key cannot change.</p>
+Parameter TYPESETDEFAULT = "SETDEFAULT";
+
+/// <p>Remove a default setting.</p>
+Parameter TYPEREMOVEDEFAULT = "REMOVEDEFAULT";
+
+/// <p>One credential (Story 24.15): <code>{Name, Username, BusinessPartner, Password, Namespace}</code>, the credential tools' fresh read;
+/// <code>Password</code> is <code>stored</code> or <code>not stored</code>. The id is the credential's name, kept exactly. With
+/// <parameter>ACTIONKEY</parameter> in the query it refuses what that action would be refused (<method>ReadCredential</method>).</p>
+Parameter TYPECREDENTIAL = "CREDENTIAL";
+
+/// <p>Add a credential. The body names <code>Username</code>, <code>BusinessPartner</code> and, optionally, <code>Password</code>; the name is the id.</p>
+Parameter TYPEADDCREDENTIAL = "ADDCREDENTIAL";
+
+/// <p>Store a new user name or business partner for a credential the namespace holds. The name cannot change.</p>
+Parameter TYPESETCREDENTIAL = "SETCREDENTIAL";
+
+/// <p>Store a new password for a credential the namespace holds. The body is the password alone.</p>
+Parameter TYPEPASSWORDCREDENTIAL = "PASSWORDCREDENTIAL";
+
+/// <p>Remove a credential, and its password with it.</p>
+Parameter TYPEREMOVECREDENTIAL = "REMOVECREDENTIAL";
+
+/// <p>One schedule spec (Story 24.15): <code>{Name, Description, ScheduleSpec, Deployable, Namespace}</code>, the schedule tools' fresh read. The
+/// id is the schedule spec's name, kept exactly. With <parameter>ACTIONKEY</parameter> in the query it refuses what that action would be refused
+/// (<method>ReadSchedule</method>).</p>
+Parameter TYPESCHEDULE = "SCHEDULE";
+
+/// <p>Add a schedule spec. The body names <code>ScheduleSpec</code> and, optionally, <code>Description</code> and <code>Deployable</code>; the name
+/// is the id.</p>
+Parameter TYPEADDSCHEDULE = "ADDSCHEDULE";
+
+/// <p>Store a new spec, description or deployable flag for a schedule spec the namespace holds. The name cannot change.</p>
+Parameter TYPESETSCHEDULE = "SETSCHEDULE";
+
+/// <p>Remove a schedule spec.</p>
+Parameter TYPEREMOVESCHEDULE = "REMOVESCHEDULE";
+
 /// <p>The query key naming the table an entries list reads: its one criterion.</p>
 Parameter TABLEKEY = "table";
 
@@ -546,6 +644,40 @@ Parameter TYPEEDITRESEND = "EDITRESEND";
 /// <p>The most messages one resend names, and so the most it sends (Story 20.31). A set over it is refused whole, never cut. The
 /// sentence that states it is <file>ui/src/app/core/strings.ts</file>'s, and the descriptor's <code>multiSelect.max</code> equals it.</p>
 Parameter RESENDMAX = 100;
+
+/// <p>The message export (Story 24.16 Batch 3), on the Messages endpoint: <code>EXPORT</code> is the composed fresh read (the review, one verdict for each id, and
+/// the two lists), <code>EXPORTMESSAGES</code> the write and <code>EXPORTCHOICES</code> the lists alone. The export writes no database, so its pairs carry READ on the
+/// globals database and the classic export dialog's resource and the Contents pane's, which the export is never a way round.</p>
+/// <p><code>EXPORT</code> answers what <code>RESEND</code> does, with <code>Production</code> <code>""</code>, and <code>{Separator, Charset, Separators: [], Charsets: []}</code>.
+/// <code>EXPORTMESSAGES</code> answers <code>{Namespace, Exported, Failed, Messages: [{ID}|{ID, Error}], File}</code>, <code>File</code> the bytes of the export base64-encoded
+/// and empty when nothing was exported. <code>EXPORTCHOICES</code> answers <code>{Separators: [], Charsets: [], DefaultSeparator, DefaultCharset}</code>.</p>
+Parameter EXPORTPAIR = "%Ens_MessageExport:USE";
+
+Parameter TYPEEXPORTMESSAGES = "EXPORTMESSAGES";
+
+Parameter TYPEEXPORTCHOICES = "EXPORTCHOICES";
+
+/// <p>The query keys carrying the separator and the character set an export is made with.</p>
+Parameter SEPARATORKEY = "separator";
+
+Parameter CHARSETKEY = "charset";
+
+/// <p>The classic export dialog's message separators, in its order, and the default of each choice. The character sets are the instance's own
+/// (<method>ExportCharsets</method>).</p>
+Parameter EXPORTSEPARATORS = "CRLF,CR,LF,MLLP,Tab,None";
+
+Parameter DEFAULTSEPARATOR = "CRLF";
+
+Parameter DEFAULTCHARSET = "UTF8";
+
+/// <p>The most bytes an export's file holds; the most messages it names is <parameter>RESENDMAX</parameter>. The bytes travel base64-encoded in one JSON string of at most
+/// <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter> characters, so the file holds at most three quarters of that, 2,250,000 bytes (a test holds the
+/// two equal); an export over it is refused whole, never cut.</p>
+Parameter EXPORTMAXBYTES = 2250000;
+
+/// <p>The most characters an export converts to its character set in one piece: at nine bytes a character, the widest any listed character set writes, a piece stays under
+/// the longest string the instance holds.</p>
+Parameter EXPORTCHUNK = 300000;
 
 /// <p>The text an edited HL7 message's <code>Source</code> ends with, followed by the original body's id, as the classic Edit and
 /// Resend page writes it, and the lower-case prefix of the body class names OcuPilot never edits.</p>
@@ -688,6 +820,81 @@ Parameter PARTNERNAMEMAX = 255;
 
 /// <p>The entity type the audit row of a partner write names.</p>
 Parameter ENTITYPARTNER = "business-partner";
+
+/// <p>What every system default setting refusal code begins with (<class>OcuPilot.Api.InteropError</class>).</p>
+Parameter DEFAULTSETTINGCODEPREFIX = "INTEROP.DEFAULTSETTING.";
+
+/// <p>The default setting fields in the order a row carries them (Story 24.15); <parameter>DEFAULTSETTINGSETFIELDS</parameter> is the
+/// three a write may set.</p>
+Parameter DEFAULTSETTINGFIELDS = "Production,Item,HostClass,Setting,Value,Description,Deployable";
+
+Parameter DEFAULTSETTINGSETFIELDS = "Value,Description,Deployable";
+
+/// <p>The most characters the vendor stores for each part of a default setting's key (measured: <code>MAXLEN</code> 255), and for a
+/// value and a description (2,000).</p>
+Parameter DEFAULTSETTINGKEYMAX = 255;
+
+Parameter DEFAULTSETTINGTEXTMAX = 2000;
+
+/// <p>The most default settings one namespace may hold for a comparison to cover it: past it
+/// <code>INTEROP.DEFAULTSETTING.TOOMANY</code> names the namespace.</p>
+Parameter DEFAULTSETTINGSIDEMAX = 5000;
+
+/// <p>The query key naming the other namespace a comparison reads: its one criterion.</p>
+Parameter DIFFTARGETKEY = "target";
+
+/// <p>The words a comparison row's <code>Change</code> takes.</p>
+Parameter DIFFONLYHERE = "only here";
+
+Parameter DIFFONLYTHERE = "only there";
+
+Parameter DIFFDIFFERS = "differs";
+
+/// <p>What every credential refusal code begins with (<class>OcuPilot.Api.InteropError</class>).</p>
+Parameter CREDENTIALCODEPREFIX = "INTEROP.CREDENTIAL.";
+
+/// <p>The fields a credential row carries, in order, and the two an edit may set (Story 24.15).</p>
+Parameter CREDENTIALFIELDS = "Name,Username,BusinessPartner,Password";
+
+Parameter CREDENTIALSETFIELDS = "Username,BusinessPartner";
+
+/// <p>The most characters the vendor stores for a credential's name (measured: the default string length, 50).</p>
+Parameter CREDENTIALNAMEMAX = 50;
+
+/// <p>The most characters the vendor stores for a user name.</p>
+Parameter CREDENTIALUSERMAX = 3640873;
+
+/// <p>The words a row's <code>Password</code> takes.</p>
+Parameter CREDENTIALSTORED = "stored";
+
+Parameter CREDENTIALNOTSTORED = "not stored";
+
+/// <p>The entity type the audit row of a credential write names.</p>
+Parameter ENTITYCREDENTIAL = "interop-credential";
+
+/// <p>What every schedule spec refusal code begins with (<class>OcuPilot.Api.InteropError</class>).</p>
+Parameter SCHEDULECODEPREFIX = "INTEROP.SCHEDULE.";
+
+/// <p>The fields a schedule spec row carries, in order (Story 24.15).</p>
+Parameter SCHEDULEFIELDS = "Name,Description,ScheduleSpec,Deployable";
+
+/// <p>The most characters the vendor stores for a schedule spec's name (measured: the default string length, 50) and for its description
+/// (measured: 256).</p>
+Parameter SCHEDULENAMEMAX = 50;
+
+Parameter SCHEDULEDESCRIPTIONMAX = 256;
+
+/// <p>The entity type the audit row of a schedule spec write names.</p>
+Parameter ENTITYSCHEDULE = "interop-schedule";
+
+/// <p>The vendor's judge of a schedule spec, which the port calls (Story 24.15): <code>Ens.ScheduleHandler:ValidateScheduleSpec</code>, a class
+/// method marked <code>Internal</code> with the formal spec and return type below, which a test reads from the instance. <code>ParseScheduleSpec</code>
+/// is never called, because it logs a bad spec and answers OK.</p>
+Parameter SCHEDULEVALIDATOR = "ValidateScheduleSpec";
+
+Parameter SCHEDULEVALIDATORFORMAL = "&pScheduleSpec,&pScheduleErrors,*pLength";
+
+Parameter SCHEDULEVALIDATORRETURN = "%Library.Status";
 
 /// <p>The entity types and verbs the audit row of a lookup write names (<method>AuditRuntime</method>, Story 20.5).</p>
 Parameter ENTITYLOOKUPTABLE = "lookup-table";
@@ -972,10 +1179,10 @@ ClassMethod IsMessageWrite(pType As %String) As %Boolean
     Quit (pType = ..#TYPERESENDMESSAGES) || (pType = ..#TYPEEDITRESEND)
 }
 
-/// <p>Whether <var>pType</var> is one of the Messages endpoint's four resend types, the two reads and the two writes.</p>
+/// <p>Whether <var>pType</var> is one of the Messages endpoint's types: the four resend types, the two reads and the two writes, and the three export types.</p>
 ClassMethod IsMessageType(pType As %String) As %Boolean
 {
-    Quit (pType = ..#TYPERESEND) || (pType = ..#TYPEEDIT) || ..IsMessageWrite(pType)
+    Quit (pType = ..#TYPERESEND) || (pType = ..#TYPEEDIT) || ..IsMessageWrite(pType) || ..IsMessageExportType(pType)
 }
 
 /// <p>Whether <var>pType</var> is one of the business partner writes this port carries (Story 20.26): an action-style or merge
@@ -983,6 +1190,27 @@ ClassMethod IsMessageType(pType As %String) As %Boolean
 ClassMethod IsPartnerWrite(pType As %String) As %Boolean
 {
     Quit (pType = ..#TYPEADDPARTNER) || (pType = ..#TYPESETPARTNER) || (pType = ..#TYPEREMOVEPARTNER)
+}
+
+/// <p>Whether <var>pType</var> is one of the system default setting writes this port carries (Story 24.15): a create, a merge or a
+/// delete over the <code>DEFAULTSETTING</code> read, needing WRITE on the namespace's globals database and no routines database.</p>
+ClassMethod IsDefaultSettingWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADDDEFAULT) || (pType = ..#TYPESETDEFAULT) || (pType = ..#TYPEREMOVEDEFAULT)
+}
+
+/// <p>Whether <var>pType</var> is one of the credential writes this port carries (Story 24.15): a create, a merge, a password set or a
+/// delete over the <code>CREDENTIAL</code> read, needing WRITE on the namespace's globals database and no routines database.</p>
+ClassMethod IsCredentialWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADDCREDENTIAL) || (pType = ..#TYPESETCREDENTIAL) || (pType = ..#TYPEPASSWORDCREDENTIAL) || (pType = ..#TYPEREMOVECREDENTIAL)
+}
+
+/// <p>Whether <var>pType</var> is one of the schedule spec writes this port carries (Story 24.15): a create, a merge or a delete over the
+/// <code>SCHEDULE</code> read, needing WRITE on the namespace's globals database and no routines database.</p>
+ClassMethod IsScheduleWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADDSCHEDULE) || (pType = ..#TYPESETSCHEDULE) || (pType = ..#TYPEREMOVESCHEDULE)
 }
 
 /// <p>Whether <var>pType</var> is one of the Productions endpoint's two startup writes (Story 24.3): a merge over the
@@ -995,7 +1223,7 @@ ClassMethod IsStartupWrite(pType As %String) As %Boolean
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
 ClassMethod IsAnyWrite(pType As %String) As %Boolean
 {
-    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
+    Quit ..IsStartupWrite(pType) || ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsDefaultSettingWrite(pType) || ..IsCredentialWrite(pType) || ..IsScheduleWrite(pType) || ..IsPurgeWrite(pType) || ..IsArchiveWrite(pType) || (pType = ..#TYPEARCHIVESETTINGSET) || ..IsSuspendedWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType) || ..IsAlertWrite(pType) || ..IsLogPurgeWrite(pType) || ..IsWorkflowWrite(pType) || ..IsWorkflowRoleWrite(pType) || ..IsWorkflowMemberWrite(pType) || ..IsWorkflowTaskWrite(pType) || ..IsHl7SchemaWrite(pType)
 }
 
 /// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads, Story 20.30's session trace and Story 24.4's three session reads. Each serves
@@ -1029,6 +1257,34 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
         Set tSpec = ..#PRODUCTIONPAIRS
     } ElseIf (pEndpoint = ..#ENDPOINTLOOKUPTABLES) || (pEndpoint = ..#ENDPOINTLOOKUPENTRIES) {
         Set tSpec = ..#LOOKUPPAIRS
+    } ElseIf (pEndpoint = ..#ENDPOINTDEFAULTSETTINGS) || (pEndpoint = ..#ENDPOINTDEFAULTSETTINGSDIFF) {
+        Set tSpec = ..#DEFAULTSETTINGPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTCREDENTIALS {
+        Set tSpec = ..#CREDENTIALPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTSCHEDULES {
+        Set tSpec = ..#SCHEDULEPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTPURGESETTINGS {
+        Set tSpec = ..#PURGESETTINGPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTPURGE {
+        Set tSpec = ..#PURGEPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES {
+        Set tSpec = ..#MESSAGEPAIRS
+    } ElseIf (pEndpoint = ..#ENDPOINTARCHIVESETTINGS) || (pEndpoint = ..#ENDPOINTARCHIVE) || (pEndpoint = ..#ENDPOINTARCHIVEERRORS) {
+        Set tSpec = ..#ARCHIVEPAIRS
+    } ElseIf (pEndpoint = ..#ENDPOINTMANAGEDALERTS) || (pEndpoint = ..#ENDPOINTMANAGEDALERTACTIONS) {
+        Set tSpec = ..#ALERTPAIRS
+    } ElseIf (pEndpoint = ..#ENDPOINTWORKFLOWUSERS) || (pEndpoint = ..#ENDPOINTWORKFLOWROLES) || (pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS) {
+        Set tSpec = ..#WORKFLOWPAIRS
+    } ElseIf (pEndpoint = ..#ENDPOINTWORKFLOWTASKS) || (pEndpoint = ..#ENDPOINTWORKFLOWWORKLIST) {
+        Set tSpec = ..#WORKFLOWTASKPAIRS
+    } ElseIf $ListFind(..SystemMonitorEndpoints(), pEndpoint) {
+        Set tSpec = ..#SYSTEMMONITORPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTHL7SCHEMAS {
+        Set tSpec = ..#HL7PAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTRULELOG {
+        Set tSpec = ..#RULELOGPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTPROCESSLOG {
+        Set tSpec = ..#PROCESSLOGPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
         Set tSpec = ..#TESTPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTITEMCLASSES {
@@ -1066,11 +1322,28 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     If pType = ..#TYPESUSPENDJOB Set tSpec = tSpec _ "," _ ..#SUSPENDPAIR
     If ..IsLookupWrite(pType) Set tSpec = tSpec _ "," _ ..#LOOKUPWRITEPAIR
     If ..IsPartnerWrite(pType) Set tSpec = tSpec _ "," _ ..#PARTNERWRITEPAIR
+    If ..IsDefaultSettingWrite(pType) Set tSpec = tSpec _ "," _ ..#DEFAULTSETTINGWRITEPAIR
+    If ..IsCredentialWrite(pType) Set tSpec = tSpec _ "," _ ..#CREDENTIALWRITEPAIR
+    If ..IsScheduleWrite(pType) Set tSpec = tSpec _ "," _ ..#SCHEDULEWRITEPAIR
+    If ((pEndpoint = ..#ENDPOINTARCHIVESETTINGS) && (pType = ..#TYPEARCHIVESETTINGSET)) || ((pEndpoint = ..#ENDPOINTARCHIVE) && ..IsArchiveWrite(pType)) Set tSpec = tSpec _ "," _ ..#ARCHIVEWRITEPAIR
+    If (pEndpoint = ..#ENDPOINTMANAGEDALERTS) && (..IsAlertWrite(pType) || (pType = ..#TYPEALERTOWNERS)) Set tSpec = tSpec _ "," _ ..#ALERTWRITEPAIR
+    If (pEndpoint = ..#ENDPOINTWORKFLOWUSERS) && (..IsWorkflowWrite(pType) || (pType = ..#TYPEWORKFLOWUSERCHOICES)) Set tSpec = tSpec _ "," _ ..#WORKFLOWWRITEPAIR
+    If ((pEndpoint = ..#ENDPOINTWORKFLOWROLES) && ..IsWorkflowRoleWrite(pType)) || ((pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS) && ..IsWorkflowMemberWrite(pType)) Set tSpec = tSpec _ "," _ ..#WORKFLOWWRITEPAIR
+    If (pEndpoint = ..#ENDPOINTWORKFLOWTASKS) && ..IsWorkflowTaskWrite(pType) Set tSpec = tSpec _ "," _ ..#WORKFLOWWRITEPAIR
+    If (pEndpoint = ..#ENDPOINTHL7SCHEMAS) && ..IsHl7SchemaWrite(pType) Set tSpec = tSpec _ "," _ ..#HL7WRITEPAIR
+    If ((pEndpoint = ..#ENDPOINTRULELOG) || (pEndpoint = ..#ENDPOINTPROCESSLOG)) && ..IsLogPurgeWrite(pType) Set tSpec = tSpec _ "," _ ..#LOGPURGEPAIR
     If pType = ..#TYPEAUTOSTART Set tSpec = tSpec _ "," _ ..#AUTOSTARTPAIR
     If pType = ..#TYPESHUTDOWNGROUP Set tSpec = tSpec _ "," _ ..#GROUPPAIR
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && ((pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)) Set tSpec = tSpec _ "," _ ..#DTLTESTPAIR
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ((pType = ..#TYPERESEND) || (pType = ..#TYPERESENDMESSAGES)) Set tSpec = tSpec _ "," _ ..#RESENDPAIR
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ((pType = ..#TYPEEDIT) || (pType = ..#TYPEEDITRESEND)) Set tSpec = tSpec _ "," _ ..#MESSAGECONTENTPAIR _ "," _ ..#RESENDPAIR _ "," _ ..#EDITRESENDPAIR
+    If (pEndpoint = ..#ENDPOINTMESSAGES) && ..IsMessageExportType(pType) Set tSpec = tSpec _ "," _ ..#EXPORTPAIR _ "," _ ..#MESSAGECONTENTPAIR
+    If pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES {
+        Set tKind = ..SuspendedKind(pType)
+        If tKind = "resubmit" Set tSpec = tSpec _ "," _ ..#RESENDPAIR
+        If tKind = "edit" Set tSpec = tSpec _ "," _ ..#MESSAGECONTENTPAIR _ "," _ ..#RESENDPAIR _ "," _ ..#EDITRESENDPAIR
+        If (tKind = "discard") || (tKind = "delete") Set tSpec = tSpec _ "," _ ..#DISCARDPAIR
+    }
     Quit ##class(OcuPilot.Screen.Gate).ParsePairSpec(tSpec)
 }
 
@@ -1092,6 +1365,26 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTLOOKUPTABLES Quit (pType = ..#TYPELOOKUPTABLE) || (pType = ..#TYPEDELETETABLE) || (pType = ..#TYPEIMPORTTABLE) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPEEXPORT)
     If pEndpoint = ..#ENDPOINTLOOKUPENTRIES Quit (pType = ..#TYPELOOKUPENTRY) || (pType = ..#TYPEADDENTRY) || (pType = ..#TYPESETENTRY) || (pType = ..#TYPEREMOVEENTRY)
     If pEndpoint = ..#ENDPOINTBUSINESSPARTNERS Quit (pType = ..#TYPEPARTNER) || ..IsPartnerWrite(pType)
+    If pEndpoint = ..#ENDPOINTDEFAULTSETTINGS Quit (pType = ..#TYPEDEFAULTSETTING) || ..IsDefaultSettingWrite(pType)
+    If pEndpoint = ..#ENDPOINTDEFAULTSETTINGSDIFF Quit 0
+    If pEndpoint = ..#ENDPOINTCREDENTIALS Quit (pType = ..#TYPECREDENTIAL) || ..IsCredentialWrite(pType)
+    If pEndpoint = ..#ENDPOINTSCHEDULES Quit (pType = ..#TYPESCHEDULE) || ..IsScheduleWrite(pType)
+    If pEndpoint = ..#ENDPOINTPURGESETTINGS Quit (pType = ..#TYPESETTING) || (pType = ..#TYPEPURGESETTINGSET)
+    If pEndpoint = ..#ENDPOINTPURGE Quit (pType = ..#TYPEPURGESTATE) || (pType = ..#TYPEPURGE)
+    If pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES Quit ..SuspendedKind(pType) '= ""
+    If pEndpoint = ..#ENDPOINTARCHIVESETTINGS Quit (pType = ..#TYPESETTING) || (pType = ..#TYPEARCHIVESETTINGSET)
+    If pEndpoint = ..#ENDPOINTARCHIVE Quit (pType = ..#TYPEARCHIVESTATE) || (pType = ..#TYPEARCHIVE)
+    If pEndpoint = ..#ENDPOINTARCHIVEERRORS Quit 0
+    If pEndpoint = ..#ENDPOINTMANAGEDALERTS Quit (pType = ..#TYPEALERT) || (pType = ..#TYPEALERTOWNERS) || (pType = ..#TYPEUPDATEALERT)
+    If pEndpoint = ..#ENDPOINTMANAGEDALERTACTIONS Quit 0
+    If pEndpoint = ..#ENDPOINTWORKFLOWUSERS Quit (pType = ..#TYPEWORKFLOWUSER) || (pType = ..#TYPEWORKFLOWUSERCHOICES) || ..IsWorkflowWrite(pType)
+    If pEndpoint = ..#ENDPOINTWORKFLOWROLES Quit (pType = ..#TYPEWORKFLOWROLE) || ..IsWorkflowRoleWrite(pType)
+    If pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS Quit (pType = ..#TYPEWORKFLOWMEMBER) || ..IsWorkflowMemberWrite(pType)
+    If pEndpoint = ..#ENDPOINTWORKFLOWTASKS Quit (pType = ..#TYPEWORKFLOWTASK) || ..IsWorkflowTaskWrite(pType)
+    If pEndpoint = ..#ENDPOINTWORKFLOWWORKLIST Quit 0
+    If pEndpoint = ..#ENDPOINTHL7SCHEMAS Quit (pType = ..#TYPEHL7SCHEMA) || (pType = ..#TYPEHL7IMPORTFILE) || (pType = ..#TYPEEXPORTHL7SCHEMA) || ..IsHl7SchemaWrite(pType)
+    If pEndpoint = ..#ENDPOINTRULELOG Quit (pType = ..#TYPERULELOGSTATE) || (pType = ..#TYPEPURGERULELOG)
+    If pEndpoint = ..#ENDPOINTPROCESSLOG Quit (pType = ..#TYPEPROCESSLOGSTATE) || (pType = ..#TYPEPURGEPROCESSLOG)
     If pEndpoint = ..#ENDPOINTITEMTEST Quit (pType = ..#TYPETESTTARGET) || (pType = ..#TYPESENDTEST)
     If pEndpoint = ..#ENDPOINTTRANSFORMS Quit (pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)
     If pEndpoint = ..#ENDPOINTMESSAGES Quit ..IsMessageType(pType)
@@ -1202,6 +1495,11 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
             Quit
         }
+        ; The system monitor is instance-wide: it judges its pairs alone and never reads the request's namespace (Story 24.17 Batch 5).
+        If $ListFind(..SystemMonitorEndpoints(), pEndpoint) {
+            Set tSC = ..InvokeSystemMonitor(pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
         Set tWrite = ..IsAnyWrite(pType)
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
@@ -1242,6 +1540,66 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If (pEndpoint = ..#ENDPOINTBUSINESSPARTNERS) && (pType '= ..#TYPELIST) {
             Set tSC = ..InvokePartner(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pEndpoint = ..#ENDPOINTDEFAULTSETTINGS) || (pEndpoint = ..#ENDPOINTDEFAULTSETTINGSDIFF) {
+            Set tSC = ..InvokeDefaultSetting(tNamespace, pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTCREDENTIALS {
+            Set tSC = ..InvokeCredential(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTSCHEDULES {
+            Set tSC = ..InvokeSchedule(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTPURGESETTINGS {
+            Set tSC = ..InvokePurgeSettings(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTPURGE {
+            Set tSC = ..InvokePurge(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES {
+            Set tSC = ..InvokeSuspended(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTARCHIVESETTINGS {
+            Set tSC = ..InvokeArchiveSettings(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pEndpoint = ..#ENDPOINTARCHIVE) || (pEndpoint = ..#ENDPOINTARCHIVEERRORS) {
+            Set tSC = ..InvokeArchive(tNamespace, pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pEndpoint = ..#ENDPOINTMANAGEDALERTS) || (pEndpoint = ..#ENDPOINTMANAGEDALERTACTIONS) {
+            Set tSC = ..InvokeAlerts(tNamespace, pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTWORKFLOWUSERS {
+            Set tSC = ..InvokeWorkflowUser(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTHL7SCHEMAS {
+            Set tSC = ..InvokeHl7Schema(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTWORKFLOWROLES {
+            Set tSC = ..InvokeWorkflowRole(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS {
+            Set tSC = ..InvokeWorkflowMember(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pEndpoint = ..#ENDPOINTWORKFLOWTASKS) || (pEndpoint = ..#ENDPOINTWORKFLOWWORKLIST) {
+            Set tSC = ..InvokeWorkflowTask(tNamespace, pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pEndpoint = ..#ENDPOINTRULELOG) || (pEndpoint = ..#ENDPOINTPROCESSLOG) {
+            Set tSC = ..InvokeLog(tNamespace, pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
         }
 
@@ -1304,7 +1662,8 @@ ClassMethod Admit(pEndpoint As %String, pType As %String, pNamespace As %String,
 {
     Set pHttpStatus = 0
     Set pFault = ""
-    Set tWrite = ..IsAnyWrite(pType)
+    ; The owner choices are a read that needs the update's pairs, the database's WRITE among them (Story 24.17 Batch 1).
+    Set tWrite = ..IsAnyWrite(pType) || (pType = ..#TYPEALERTOWNERS) || (pType = ..#TYPEWORKFLOWUSERCHOICES)
     Set tFailedPair = ""
     ; EvaluateRequired, not EvaluatePairs: a pair list mis-edited to empty fails closed.
     If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(pEndpoint, pType), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
@@ -4332,6 +4691,8 @@ ClassMethod MessageCriterionReason(pName As %String) As %String
     If pName = "className" Quit pName _ " must be a class name."
     If pName = "match" Quit pName _ " must be any, source, target or body."
     If pName = "Messages" Quit pName _ " must name 1 to " _ ..#RESENDMAX _ " message header IDs, separated by commas: digits, not beginning with zero."
+    If pName = "separator" Quit pName _ " must be one of " _ $Replace(..#EXPORTSEPARATORS, ",", ", ") _ "."
+    If pName = "charset" Quit pName _ " must be one of the character sets this instance lists."
     Quit pName _ " is not valid."
 }
 
@@ -4986,17 +5347,29 @@ ClassMethod MessageSet(pText As %String, Output pIds As %List) As %Boolean
 /// and the body is no longer there (<var>pBodyGone</var>); <code>targetoff</code> for a request (<var>pType</var>
 /// <code>Request</code>) whose target is not an enabled item of the running production (<var>pEnabledTarget</var> 0), which the
 /// vendor queues and answers OK for (measured); <code>noreplyqueue</code> for any other type, a response, whose reply queue no longer
-/// exists (<var>pReplyQueue</var> 0); else <code>resend</code>. <var>pType</var> is the display word. Pure.</p>
-ClassMethod MessageVerdict(pType As %String, pExists As %Boolean, pBodyGone As %Boolean, pEnabledTarget As %Boolean, pReplyQueue As %Boolean) As %String
+/// exists (<var>pReplyQueue</var> 0); else <code>resend</code>. <var>pType</var> is the display word.</p>
+/// <p>For a suspended message (Story 24.16) <var>pKind</var> is the action, <code>resubmit</code>, <code>edit</code>, <code>discard</code> or
+/// <code>delete</code> (<method>SuspendedKind</method>), and a header that is not <var>pSuspended</var> reads <code>notsuspended</code>
+/// straight after <code>gone</code>. A discard and a delete read no body or target and answer the action's own word; a resubmit and an edit
+/// are judged as a resend is and answer <code>resubmit</code>.</p>
+/// <p>For an export (Story 24.16 Batch 3) <var>pKind</var> is <code>export</code>: after <code>gone</code>, <code>nobody</code> for a header whose body is not there
+/// (<var>pBodyGone</var>), <code>notext</code> for a body that cannot be shown as text (<var>pNoText</var>), else <code>export</code>. Pure.</p>
+ClassMethod MessageVerdict(pType As %String, pExists As %Boolean, pBodyGone As %Boolean, pEnabledTarget As %Boolean, pReplyQueue As %Boolean, pKind As %String = "", pSuspended As %Boolean = 1, pNoText As %Boolean = 0) As %String
 {
     If 'pExists Quit "gone"
+    If pKind = "export" {
+        If pBodyGone Quit "nobody"
+        Quit $Select(pNoText: "notext", 1: "export")
+    }
+    If (pKind '= "") && 'pSuspended Quit "notsuspended"
+    If (pKind = "discard") || (pKind = "delete") Quit pKind
     If pBodyGone Quit "nobody"
     If pType = "Request" {
         If 'pEnabledTarget Quit "targetoff"
     } ElseIf 'pReplyQueue {
         Quit "noreplyqueue"
     }
-    Quit "resend"
+    Quit $Select(pKind = "": "resend", 1: "resubmit")
 }
 
 /// <p>The digest that stands for the verdicts <var>pVerdicts</var> (<code>id=verdict</code> joined by a comma, in id order) of the
@@ -5026,6 +5399,18 @@ ClassMethod Sentence(pCode As %String) As %String
 ClassMethod OutcomeWord(pResent As %Boolean) As %String
 {
     Quit $Select(pResent: ##class(OcuPilot.Api.InteropError).#OUTCOMERESENT, 1: ##class(OcuPilot.Api.InteropError).#OUTCOMEFAILED)
+}
+
+/// <p>The words that follow a message id in the outcome line of a suspended write (Story 24.16): for the action <var>pKind</var>
+/// (<method>SuspendedKind</method>; an edit reads as a resubmit) <code>resubmitted</code>, <code>discarded</code> or <code>deleted</code> when <var>pDone</var> is 1, else
+/// <code>not resubmitted</code>, <code>not discarded</code> or <code>not deleted</code> (<class>OcuPilot.Api.InteropError</class>'s <code>OUTCOME</code>
+/// parameters).</p>
+ClassMethod SuspendedOutcomeWord(pKind As %String, pDone As %Boolean) As %String
+{
+    If pKind = "discard" Quit $Select(pDone: ##class(OcuPilot.Api.InteropError).#OUTCOMEDISCARDED, 1: ##class(OcuPilot.Api.InteropError).#OUTCOMENOTDISCARDED)
+    If pKind = "delete" Quit $Select(pDone: ##class(OcuPilot.Api.InteropError).#OUTCOMEDELETED, 1: ##class(OcuPilot.Api.InteropError).#OUTCOMENOTDELETED)
+    If pKind = "export" Quit $Select(pDone: ##class(OcuPilot.Api.InteropError).#OUTCOMEEXPORTED, 1: ##class(OcuPilot.Api.InteropError).#OUTCOMENOTEXPORTED)
+    Quit $Select(pDone: ##class(OcuPilot.Api.InteropError).#OUTCOMERESUBMITTED, 1: ##class(OcuPilot.Api.InteropError).#OUTCOMENOTRESUBMITTED)
 }
 
 /// <p>The namespace's production while it is running, in <var>pProduction</var> (<code>""</code> when none is: stopped, suspended or
@@ -5058,18 +5443,24 @@ ClassMethod RunningProduction(pNamespace As %String, Output pProduction As %Stri
 /// <code>""</code> for a header that is gone; <var>pFacts</var><code>(n)</code> is <code>$ListBuild(ID, Type, Source, Target,
 /// BodyClass, BodyId, Verdict)</code>; <var>pVerdicts</var> is <code>id=verdict</code> joined by a comma; <var>pEligible</var> counts
 /// <code>resend</code>.</p>
-ClassMethod JudgeMessages(pNamespace As %String, pProduction As %String, pIds As %List, Output pRows As %DynamicArray, ByRef pFacts, Output pVerdicts As %String, Output pEligible As %Integer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <p>For a suspended message (Story 24.16) <var>pKind</var> is the action (<method>MessageVerdict</method>): a header whose status is not
+/// Suspended reads <code>notsuspended</code>, <var>pEligible</var> counts the action's own verdict, and a discard or a delete reads no
+/// production, so <var>pProduction</var> may be <code>""</code> for them.</p>
+ClassMethod JudgeMessages(pNamespace As %String, pProduction As %String, pIds As %List, Output pRows As %DynamicArray, ByRef pFacts, Output pVerdicts As %String, Output pEligible As %Integer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pKind As %String = "") As %Status [ Private ]
 {
     Kill pFacts
     Set pFacts = 0
     Set pRows = ""
     Set pVerdicts = ""
     Set pEligible = 0
-    Set tSC = ..GatherItems(pNamespace, pProduction, "", 0, .tExists, .tFound, .tCount, .tCaught)
-    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the production's items could not be read", .pHttpStatus, .pFault)
+    Set tOk = $Select(pKind = "": "resend", (pKind = "edit"): "resubmit", 1: pKind)
     Kill tEnabled
-    For tI = 1:1:tFound {
-        If $List(tFound(tI), 4) Set tEnabled($ZConvert($List(tFound(tI), 1), "U")) = 1
+    If (pKind '= "discard") && (pKind '= "delete") && (pKind '= "export") {
+        Set tSC = ..GatherItems(pNamespace, pProduction, "", 0, .tExists, .tFound, .tCount, .tCaught)
+        If $IsObject(tCaught) Quit ..Mapped(tCaught, "the production's items could not be read", .pHttpStatus, .pFault)
+        For tI = 1:1:tFound {
+            If $List(tFound(tI), 4) Set tEnabled($ZConvert($List(tFound(tI), 1), "U")) = 1
+        }
     }
     Set pRows = []
     For tI = 1:1:$ListLength(pIds) {
@@ -5077,9 +5468,14 @@ ClassMethod JudgeMessages(pNamespace As %String, pProduction As %String, pIds As
         Set tSC = ..HeaderFacts(pNamespace, tId, .tHeaderExists, .tQueue, .tStatus, .tCaught, .tType, .tSource, .tTarget, .tBodyClass, .tBodyId, .tBodyExists, .tQueueExists)
         If $IsObject(tCaught) Quit
         Set tBodyGone = tHeaderExists && (tBodyClass '= "") && (tBodyId '= "") && 'tBodyExists
+        Set tNoText = 0
+        If (pKind = "export") && tHeaderExists {
+            Set tBodyGone = ((tBodyClass = "") || (tBodyId = "") || 'tBodyExists)
+            If 'tBodyGone Set tNoText = '..TextBodyHere(pNamespace, tBodyClass, tBodyId)
+        }
         Set tTargetEnabled = $Select(tTarget = "": 0, 1: ''$Data(tEnabled($ZConvert(tTarget, "U"))))
-        Set tVerdict = ..MessageVerdict(tType, tHeaderExists, tBodyGone, tTargetEnabled, tQueueExists)
-        If tVerdict = "resend" Set pEligible = pEligible + 1
+        Set tVerdict = ..MessageVerdict(tType, tHeaderExists, tBodyGone, tTargetEnabled, tQueueExists, pKind, (tStatus = "Suspended"), tNoText)
+        If tVerdict = tOk Set pEligible = pEligible + 1
         Set pVerdicts = pVerdicts _ $Select(pVerdicts = "": "", 1: ",") _ tId _ "=" _ tVerdict
         Set pFacts($Increment(pFacts)) = $ListBuild(tId, tType, tSource, tTarget, tBodyClass, tBodyId, tVerdict)
         Set tRow = {}
@@ -5103,17 +5499,25 @@ ClassMethod JudgeMessages(pNamespace As %String, pProduction As %String, pIds As
 /// <code>INTEROP.PRODUCTION.NOTRUNNING</code> as a whole. Composed for an action, a <var>pReviewed</var> the verdicts no longer give
 /// is 409 <code>INTEROP.RESEND.CHANGED</code>. Whether anything can be resent is the write's to refuse
 /// (<method>PerformResend</method>), so a dry run still answers the lines.</p>
-ClassMethod ReadResend(pNamespace As %String, pText As %String, pAction As %String, pReviewed As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <p>For a suspended message (Story 24.16) <var>pKind</var> is the action (<method>MessageVerdict</method>); only a resubmit reads the
+/// production's state, a discard and a delete answer <code>Production</code> <code>""</code>, and a moved review is 409
+/// <code>INTEROP.SUSPENDED.CHANGED</code>.</p>
+/// <p>For an export (Story 24.16 Batch 3) <var>pKind</var> is <code>export</code>: only the verdicts are read, no production's state, and a moved review is 409
+/// <code>INTEROP.EXPORT.CHANGED</code>.</p>
+ClassMethod ReadResend(pNamespace As %String, pText As %String, pAction As %String, pReviewed As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pKind As %String = "") As %Status [ Private ]
 {
     Set pRow = ""
     If '..MessageSet(pText, .tIds) Quit ..RefuseCriterion("Messages", .pHttpStatus, .pFault)
-    Set tSC = ..RunningProduction(pNamespace, .tProduction, .tCaught)
-    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the production's state could not be read", .pHttpStatus, .pFault)
-    If tProduction = "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#NOTRUNNING, .pHttpStatus, .pFault)
-    Set tSC = ..JudgeMessages(pNamespace, tProduction, tIds, .tRows, .tFacts, .tVerdicts, .tEligible, .pHttpStatus, .pFault)
+    Set tProduction = ""
+    If (pKind '= "discard") && (pKind '= "delete") && (pKind '= "export") {
+        Set tSC = ..RunningProduction(pNamespace, .tProduction, .tCaught)
+        If $IsObject(tCaught) Quit ..Mapped(tCaught, "the production's state could not be read", .pHttpStatus, .pFault)
+        If tProduction = "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#NOTRUNNING, .pHttpStatus, .pFault)
+    }
+    Set tSC = ..JudgeMessages(pNamespace, tProduction, tIds, .tRows, .tFacts, .tVerdicts, .tEligible, .pHttpStatus, .pFault, pKind)
     If $$$ISERR(tSC) Quit tSC
     Set tDigest = ..ResendDigest(tProduction, tVerdicts)
-    If (pAction '= "") && (pReviewed '= "") && (pReviewed '= tDigest) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#RESENDCHANGED, .pHttpStatus, .pFault)
+    If (pAction '= "") && (pReviewed '= "") && (pReviewed '= tDigest) Quit ..Conflict($Select(pKind = "": ##class(OcuPilot.Api.InteropError).#RESENDCHANGED, pKind = "export": ##class(OcuPilot.Api.InteropError).#EXPORTCHANGED, 1: ##class(OcuPilot.Api.InteropError).#SUSPENDEDCHANGED), .pHttpStatus, .pFault)
     Set pRow = {}
     Do pRow.%Set("Namespace", pNamespace, "string")
     Do pRow.%Set("Production", tProduction, "string")
@@ -5154,47 +5558,457 @@ ClassMethod VendorResend(pNamespace As %String, pId As %String, Output pNewId As
 /// with nothing sent. A message the vendor refuses is recorded with its text (cut at <parameter>ERRORTEXTMAX</parameter>) and the
 /// rest still go; a vendor <code>&lt;PROTECT&gt;</code> stops the write as 403 <code>PORT.ACCESSDENIED</code>. The vendor audits each
 /// new header, so this records nothing.</p>
-ClassMethod PerformResend(pNamespace As %String, pText As %String, pReviewed As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <p>For a suspended message (Story 24.16) <var>pKind</var> is <code>resubmit</code>, <code>discard</code> or <code>delete</code>
+/// (<method>SuspendedKind</method>): the same read, judgment and loop, each message whose verdict is the action's own acted on by
+/// <method>VendorSuspended</method>, the answer <code>{Namespace, Done, Failed, Messages: [{ID}|{ID, Error}]}</code>, no message acted on
+/// 409 <code>INTEROP.SUSPENDED.NONE</code> and a moved review 409 <code>INTEROP.SUSPENDED.CHANGED</code>. The vendor audits a resubmit
+/// itself; a discard and a delete, which it does not audit, record OcuPilot's own row naming the namespace, the action and the ids done
+/// and failed (<method>AuditRuntime</method>), a vendor error text never reaching a log line.</p>
+ClassMethod PerformResend(pNamespace As %String, pText As %String, pReviewed As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pKind As %String = "") As %Status [ Private ]
 {
     Set pResult = ""
-    Set tSC = ..ReadResend(pNamespace, pText, ..#TYPERESENDMESSAGES, pReviewed, .tRow, .pHttpStatus, .pFault)
+    Set tSuspended = (pKind '= "")
+    Set tSC = ..ReadResend(pNamespace, pText, $Select('tSuspended: ..#TYPERESENDMESSAGES, 1: ..SuspendedWriteType(pKind)), pReviewed, .tRow, .pHttpStatus, .pFault, pKind)
     If $$$ISERR(tSC) Quit tSC
-    If 'tRow.%Get("Eligible") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#RESENDNONE, .pHttpStatus, .pFault)
+    If 'tRow.%Get("Eligible") Quit ..Conflict($Select('tSuspended: ##class(OcuPilot.Api.InteropError).#RESENDNONE, 1: ##class(OcuPilot.Api.InteropError).#SUSPENDEDNONE), .pHttpStatus, .pFault)
+    Set tOk = $Select('tSuspended: "resend", 1: pKind)
     Set tSent = []
     Set tResent = 0
     Set tFailed = 0
     Set tStopped = ""
+    Set tDone = ""
+    Set tNot = ""
     Set tIterator = tRow.%Get("Messages").%GetIterator()
     While tIterator.%GetNext(.tIndex, .tMessage) {
-        If tMessage.%Get("Verdict") '= "resend" Continue
+        If tMessage.%Get("Verdict") '= tOk Continue
         Set tId = tMessage.%Get("ID")
-        Set tVendorSC = ..VendorResend(pNamespace, tId, .tNewId, .tCaught)
+        Set tNewId = ""
+        If tSuspended {
+            Set tVendorSC = ..VendorSuspended(pNamespace, pKind, tId, .tCaught)
+        } Else {
+            Set tVendorSC = ..VendorResend(pNamespace, tId, .tNewId, .tCaught)
+        }
         If $IsObject(tCaught) Set tVendorSC = tCaught.AsStatus()
         Set tEntry = {}
         Do tEntry.%Set("ID", tId, "string")
         If $$$ISOK(tVendorSC) {
-            Do tEntry.%Set("NewId", tNewId _ "", "string")
+            If 'tSuspended Do tEntry.%Set("NewId", tNewId _ "", "string")
             Set tResent = tResent + 1
+            Set tDone = tDone _ $Select(tDone = "": "", 1: ",") _ tId
         } Else {
             Set tText = $System.Status.GetErrorText(tVendorSC)
             If tText [ "<PROTECT>" {
                 Set tStopped = tVendorSC
                 Quit
             }
-            Do ..LogFault("a message could not be resent", tVendorSC)
+            Do ..LogFault($Select('tSuspended: "a message could not be resent", 1: "a suspended message could not be acted on"), $Select('tSuspended: tVendorSC, 1: ..VendorCodesStatus(tVendorSC)))
             Do tEntry.%Set("Error", $Extract(tText, 1, ..#ERRORTEXTMAX), "string")
             Set tFailed = tFailed + 1
+            Set tNot = tNot _ $Select(tNot = "": "", 1: ",") _ tId
         }
         Do tSent.%Push(tEntry)
     }
-    If tStopped '= "" Quit ..Statused(tStopped, "the message resend failed", .pHttpStatus, .pFault)
+    Set tAudited = tDone _ $Select((tDone '= "") && (tNot '= ""): ",", 1: "") _ tNot
+    If ((pKind = "discard") || (pKind = "delete")) && (tAudited '= "") {
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        Do tEffects.%Set("action", pKind, "string")
+        Do tEffects.%Set("done", tDone, "string")
+        Do tEffects.%Set("failed", tNot, "string")
+        Do ..AuditRuntime($Select(pKind = "discard": ..#VERBDISCARD, 1: ..#VERBDELETE), ..#ENTITYMESSAGE, tAudited, tEffects)
+    }
+    If tStopped '= "" Quit ..Statused(tStopped, $Select('tSuspended: "the message resend failed", 1: "the suspended message write failed"), .pHttpStatus, .pFault)
     Set pResult = {}
     Do pResult.%Set("Namespace", pNamespace, "string")
-    Do pResult.%Set("Resent", tResent, "number")
+    Do pResult.%Set($Select('tSuspended: "Resent", 1: "Done"), tResent, "number")
     Do pResult.%Set("Failed", tFailed, "number")
     Do pResult.%Set("Messages", tSent)
     Set pHttpStatus = 200
     Quit $$$OK
+}
+
+/// <p>Whether the body <var>pClass</var> <var>pBodyId</var> in <var>pNamespace</var> can be written as text by an export: a character stream, an EDI document or an
+/// <parameter>XMLADAPTOR</parameter> object, the kinds <method>ContentsText</method> draws. Nothing is audited. A body that does not open, or a fault, reads <code>0</code>. Switches
+/// the namespace by explicit save and restore; only this class runs while it is switched.</p>
+ClassMethod TextBodyHere(pNamespace As %String, pClass As %String, pBodyId As %String) As %Boolean [ Private ]
+{
+    Set tText = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tObject = ..OpenBodyHere(pClass, pBodyId)
+        If $IsObject(tObject) {
+            If tObject.%Extends("%Stream.Object") {
+                Set tText = ''tObject.IsCharacter()
+            } Else {
+                Set tText = ''(tObject.%Extends(..#DOCUMENTBASE) || tObject.%Extends(..#XMLADAPTOR))
+            }
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tText = 0
+    }
+    Quit tText
+}
+
+/// <p>The character sets this instance lists for a file, as a <class>%List</class>: the classic export dialog's own list (<code>GetIONames^%SYS.NLS</code>), read at the call.
+/// <parameter>DEFAULTCHARSET</parameter> is the one preselected.</p>
+ClassMethod ExportCharsets() As %List
+{
+    Set tNames = $$GetIONames^%SYS.NLS(.tDefaults, 1)
+    Set tList = ""
+    For tI = 1:1:$Length(tNames, ",") {
+        If $Piece(tNames, ",", tI) '= "" Set tList = tList _ $ListBuild($Piece(tNames, ",", tI))
+    }
+    Quit tList
+}
+
+/// <p>The characters that separate two messages in a file for the separator <var>pName</var> (<parameter>EXPORTSEPARATORS</parameter>), as the classic export writes them;
+/// <code>""</code> for <code>None</code> and for a name that is not one. Pure.</p>
+ClassMethod ExportSeparatorChars(pName As %String) As %String
+{
+    Quit $Case(pName, "CRLF": $Char(13, 10), "CR": $Char(13), "LF": $Char(10), "MLLP": $Char(28), "Tab": $Char(9), : "")
+}
+
+/// <p>The bytes a file for the character set <var>pCharset</var> begins with, which the classic export's file stream writes before its first character: the byte order mark of
+/// <code>UnicodeLittle</code> and <code>UnicodeBig</code>, none for any other. Pure.</p>
+ClassMethod ExportByteOrderMark(pCharset As %String) As %String
+{
+    Quit $Case(pCharset, "UnicodeLittle": $Char(255, 254), "UnicodeBig": $Char(254, 255), : "")
+}
+
+/// <p><var>pText</var> as the classic export's device carries it: each character above 255, which a byte cannot hold, is <code>?</code>. Pure.</p>
+ClassMethod ExportNarrow(pText As %String) As %String
+{
+    If '$ZIsWide(pText) Quit pText
+    Set tOut = ""
+    Set tFrom = 1
+    Set tLength = $Length(pText)
+    For tI = 1:1:tLength {
+        If $Ascii($Extract(pText, tI)) > 255 {
+            Set tOut = tOut _ $Extract(pText, tFrom, tI - 1) _ "?"
+            Set tFrom = tI + 1
+        }
+    }
+    Quit tOut _ $Extract(pText, tFrom, tLength)
+}
+
+/// <p>Write <var>pText</var> to <var>pBytes</var> converted to the character set <var>pCharset</var>, <parameter>EXPORTCHUNK</parameter> characters at a time, so no converted
+/// piece passes the longest string the instance holds in any character set; a piece never ends between the two halves of a surrogate pair. Stops, answering 1, once
+/// <var>pBytes</var> holds more than <parameter>EXPORTMAXBYTES</parameter> bytes; else 0.</p>
+ClassMethod ExportWrite(pBytes As %Stream.Object, pText As %String, pCharset As %String) As %Boolean
+{
+    Set tFrom = 1
+    Set tLength = $Length(pText)
+    While (tFrom <= tLength) && (pBytes.Size '> ..#EXPORTMAXBYTES) {
+        Set tTo = tFrom + ..#EXPORTCHUNK - 1
+        If (tTo < tLength) && ($Ascii(pText, tTo) >= 55296) && ($Ascii(pText, tTo) <= 56319) Set tTo = tTo + 1
+        Do pBytes.Write($ZConvert($Extract(pText, tFrom, tTo), "O", pCharset))
+        Set tFrom = tTo + 1
+    }
+    Quit (pBytes.Size > ..#EXPORTMAXBYTES)
+}
+
+/// <p>The text of the body <var>pObject</var> of header <var>pHeaderId</var> as the classic export writes it to its device (Story 24.16 Batch 3), in <var>pWire</var>, one
+/// character a byte: an EDI document as <code>OutputToDevice</code> writes it (an EDI XML document with <code>wt</code>) with each character above 255 a <code>?</code>, an
+/// <parameter>XMLADAPTOR</parameter> object as an indented <code>%XML.Writer</code> writes it, its UTF-8 bytes each a character, and a character stream as its text. At most
+/// <parameter>EXPORTMAXBYTES</parameter> + 1 characters are read, and <var>pTooLarge</var> is 1 when there was more. A body of another kind is an error status. Called while the
+/// message's namespace is switched. Overridable so a test can fail one message's render; production never overrides it.</p>
+ClassMethod ExportRenderHere(pHeaderId As %String, pObject As %RegisteredObject, Output pWire As %String, Output pTooLarge As %Boolean) As %Status [ Private ]
+{
+    Set pWire = ""
+    Set pTooLarge = 0
+    Set tLimit = ..#EXPORTMAXBYTES + 1
+    If pObject.%Extends("%Stream.Object") {
+        If 'pObject.IsCharacter() Quit $$$ERROR($$$GeneralError, "The body is not text.")
+        Do pObject.Rewind()
+        Set pWire = pObject.Read(tLimit)
+        Set pTooLarge = 'pObject.AtEnd
+        Quit $$$OK
+    }
+    If pObject.%Extends(..#DOCUMENTBASE) {
+        Set tStream = ##class(%Stream.TmpCharacter).%New()
+        If pObject.%Extends(..#XMLDOCUMENT) {
+            Set tSC = pObject.OutputToLibraryStream(tStream, "wt")
+        } Else {
+            Set tSC = pObject.OutputToLibraryStream(tStream)
+        }
+        If $$$ISERR(tSC) Quit tSC
+        Do tStream.Rewind()
+        Set tText = tStream.Read(tLimit)
+        Set pTooLarge = 'tStream.AtEnd
+        Set pWire = ..ExportNarrow(tText)
+        Quit $$$OK
+    }
+    If pObject.%Extends(..#XMLADAPTOR) {
+        Set tStream = ##class(%Stream.TmpBinary).%New()
+        Set tWriter = ##class(%XML.Writer).%New()
+        Set tWriter.Indent = 1
+        Set tSC = tWriter.OutputToStream(tStream)
+        If $$$ISOK(tSC) Set tSC = tWriter.RootObject(pObject)
+        If $$$ISERR(tSC) Quit tSC
+        Do tStream.Rewind()
+        Set pWire = tStream.Read(tLimit)
+        Set pTooLarge = 'tStream.AtEnd
+        Quit $$$OK
+    }
+    Quit $$$ERROR($$$GeneralError, "The body is not text.")
+}
+
+/// <p>Render the body of message header <var>pHeaderId</var> in <var>pNamespace</var> into <var>pBytes</var> as one member of an export: <var>pPrefix</var> (the separator, or
+/// the MLLP start) and the body's text (<method>ExportRenderHere</method>), a <code>CRLF</code> inside them one <code>LF</code> as the classic export's file stream writes it, then
+/// converted to the character set <var>pCharset</var>. <var>pClass</var> and <var>pBodyId</var> name the body for the view audit, which this does not write. <var>pRenderSC</var>
+/// is the render's status, <var>pTooLarge</var> 1 when the body, or the bytes so far, pass <parameter>EXPORTMAXBYTES</parameter>, and a thrown fault is <var>pCaught</var>, with the
+/// namespace restored. Only this class and vendor classes run while the namespace is switched.</p>
+ClassMethod ExportMemberHere(pNamespace As %String, pHeaderId As %String, pPrefix As %String, pCharset As %String, pBytes As %Stream.Object, Output pClass As %String, Output pBodyId As %String, Output pRenderSC As %Status, Output pTooLarge As %Boolean, Output pCaught) As %Status [ Private ]
+{
+    Set pClass = ""
+    Set pBodyId = ""
+    Set pRenderSC = $$$OK
+    Set pTooLarge = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tHeader = ##class(Ens.MessageHeader).%OpenId(pHeaderId)
+        If $IsObject(tHeader) {
+            Set pClass = tHeader.MessageBodyClassName
+            Set pBodyId = tHeader.MessageBodyId
+        }
+        Set tHeader = ""
+        Set tObject = ..OpenBodyHere(pClass, pBodyId)
+        If '$IsObject(tObject) {
+            Set pRenderSC = $$$ERROR($$$GeneralError, "The message body is no longer there.")
+        } Else {
+            Set pRenderSC = ..ExportRenderHere(pHeaderId, tObject, .tWire, .pTooLarge)
+            If $$$ISOK(pRenderSC) && 'pTooLarge Set pTooLarge = ..ExportWrite(pBytes, $Replace(pPrefix _ tWire, $Char(13, 10), $Char(10)), pCharset)
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>Record the view of each body of <var>pViews</var> (<code>pViews(n)</code> is <code>$ListBuild(header id, body class, body id)</code>, <var>pViews</var> the count), as the classic
+/// Contents pane records it (<method>AuditViewHere</method>), in <var>pNamespace</var>. A fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod AuditViewsHere(pNamespace As %String, ByRef pViews, Output pCaught) As %Status [ Private ]
+{
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        For tI = 1:1:+$Get(pViews) Do ..AuditViewHere($List(pViews(tI), 1), $List(pViews(tI), 2), $List(pViews(tI), 3))
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>Whether <var>pType</var> is one of the Messages endpoint's three export types (Story 24.16 Batch 3): the composed review, the write and the choices read.</p>
+ClassMethod IsMessageExportType(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEEXPORT) || (pType = ..#TYPEEXPORTMESSAGES) || (pType = ..#TYPEEXPORTCHOICES)
+}
+
+/// <p>The two lists an export is made with, <code>{Separators: [], Charsets: [], DefaultSeparator, DefaultCharset}</code> (<parameter>EXPORTSEPARATORS</parameter> and
+/// <method>ExportCharsets</method>).</p>
+ClassMethod ExportChoices() As %DynamicObject
+{
+    Set tChoices = {}
+    Set tSeparators = []
+    For tI = 1:1:$Length(..#EXPORTSEPARATORS, ",") Do tSeparators.%Push($Piece(..#EXPORTSEPARATORS, ",", tI), "string")
+    Set tCharsets = []
+    Set tList = ..ExportCharsets()
+    For tI = 1:1:$ListLength(tList) Do tCharsets.%Push($List(tList, tI), "string")
+    Do tChoices.%Set("Separators", tSeparators)
+    Do tChoices.%Set("Charsets", tCharsets)
+    Do tChoices.%Set("DefaultSeparator", ..#DEFAULTSEPARATOR, "string")
+    Do tChoices.%Set("DefaultCharset", ..#DEFAULTCHARSET, "string")
+    Quit tChoices
+}
+
+/// <p>The review of an export (Story 24.16 Batch 3): <method>ReadResend</method>'s answer for the messages <var>pText</var> names, judged for an export, and
+/// <code>{Separator, Charset, Separators, Charsets}</code> beside it. An empty <var>pSeparator</var> or <var>pCharset</var> reads <parameter>DEFAULTSEPARATOR</parameter> or
+/// <parameter>DEFAULTCHARSET</parameter>. A set that is not 1 to <parameter>RESENDMAX</parameter> ids, a separator outside <parameter>EXPORTSEPARATORS</parameter> and a
+/// character set the instance does not list are each 400 <code>PORT.VALIDATION</code> naming it, before anything is read.</p>
+ClassMethod ReadExport(pNamespace As %String, pText As %String, pAction As %String, pReviewed As %String, pSeparator As %String, pCharset As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Set tSeparator = $Select(pSeparator = "": ..#DEFAULTSEPARATOR, 1: pSeparator)
+    Set tCharset = $Select(pCharset = "": ..#DEFAULTCHARSET, 1: pCharset)
+    If '..MessageSet(pText, .tIds) Quit ..RefuseCriterion("Messages", .pHttpStatus, .pFault)
+    If '$ListFind($ListFromString(..#EXPORTSEPARATORS), tSeparator) Quit ..RefuseCriterion("separator", .pHttpStatus, .pFault)
+    If '$ListFind(..ExportCharsets(), tCharset) Quit ..RefuseCriterion("charset", .pHttpStatus, .pFault)
+    Set tSC = ..ReadResend(pNamespace, pText, pAction, pReviewed, .pRow, .pHttpStatus, .pFault, "export")
+    If $$$ISERR(tSC) || '$IsObject(pRow) Quit tSC
+    Set tChoices = ..ExportChoices()
+    Do pRow.%Set("Separator", tSeparator, "string")
+    Do pRow.%Set("Charset", tCharset, "string")
+    Do pRow.%Set("Separators", tChoices.%Get("Separators"))
+    Do pRow.%Set("Charsets", tChoices.%Get("Charsets"))
+    Quit $$$OK
+}
+
+/// <p>Export the messages <var>pText</var> names whose verdict is <code>export</code> (Story 24.16 Batch 3): the review is made again first (<method>ReadExport</method>, composed for
+/// this write), so a <var>pReviewed</var> the verdicts no longer give is 409 <code>INTEROP.EXPORT.CHANGED</code> and no message reading <code>export</code> is 409
+/// <code>INTEROP.EXPORT.NONE</code>, each with nothing rendered. The bodies are rendered in ascending id order as the classic export writes them
+/// (<method>ExportMemberHere</method>), the separator before each but the first and after the last, and an MLLP file framed as the classic frames it, into a stream the file is
+/// built in; nothing is written to the instance's disk. A body whose render fails is recorded with the vendor's text (cut at <parameter>ERRORTEXTMAX</parameter>) and the rest are still
+/// exported; a render that throws is 500, after the namespace is restored. A file over <parameter>EXPORTMAXBYTES</parameter> is 409 <code>INTEROP.EXPORT.TOOLARGE</code>, decided
+/// before any view is audited and before any byte leaves. Only then is the view of each body exported recorded (<method>AuditViewsHere</method>), and the answer is
+/// <code>{Namespace, Exported, Failed, Messages: [{ID}|{ID, Error}], File}</code>, <code>File</code> the bytes base64-encoded in one call, <code>""</code> when none was exported.
+/// OcuPilot records no row of its own: an export changes nothing.</p>
+ClassMethod PerformExport(pNamespace As %String, pText As %String, pReviewed As %String, pSeparator As %String, pCharset As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..ReadExport(pNamespace, pText, ..#TYPEEXPORTMESSAGES, pReviewed, pSeparator, pCharset, .tRow, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If 'tRow.%Get("Eligible") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#EXPORTNONE, .pHttpStatus, .pFault)
+    Set tSeparatorName = tRow.%Get("Separator")
+    Set tCharset = tRow.%Get("Charset")
+    Set tSeparator = ..ExportSeparatorChars(tSeparatorName)
+    Set tBytes = ##class(%Stream.TmpBinary).%New()
+    Do tBytes.Write(..ExportByteOrderMark(tCharset))
+    Set tSent = []
+    Set tExported = 0
+    Set tFailed = 0
+    Set tViews = 0
+    Set tIterator = tRow.%Get("Messages").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tMessage) {
+        If tMessage.%Get("Verdict") '= "export" Continue
+        Set tId = tMessage.%Get("ID")
+        Set tPrefix = $Select(tExported = 0: $Select(tSeparatorName = "MLLP": $Char(11), 1: ""), 1: tSeparator)
+        Set tSC = ..ExportMemberHere(pNamespace, tId, tPrefix, tCharset, tBytes, .tClass, .tBodyId, .tRenderSC, .tTooLarge, .tCaught)
+        If $IsObject(tCaught) Quit
+        If tTooLarge Quit
+        Set tEntry = {}
+        Do tEntry.%Set("ID", tId, "string")
+        If $$$ISOK(tRenderSC) {
+            Set tExported = tExported + 1
+            Set tViews = tViews + 1
+            Set tViews(tViews) = $ListBuild(tId, tClass, tBodyId)
+        } Else {
+            Do ..LogFault("a message could not be exported", ..VendorCodesStatus(tRenderSC))
+            Do tEntry.%Set("Error", $Extract($System.Status.GetErrorText(tRenderSC), 1, ..#ERRORTEXTMAX), "string")
+            Set tFailed = tFailed + 1
+        }
+        Do tSent.%Push(tEntry)
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message export failed", .pHttpStatus, .pFault)
+    If tTooLarge Quit ..Conflict(##class(OcuPilot.Api.InteropError).#EXPORTTOOLARGE, .pHttpStatus, .pFault)
+    Set tFile = ""
+    If tExported {
+        Do tBytes.Write(..ExportTail(tSeparatorName, tCharset))
+        If tBytes.Size > ..#EXPORTMAXBYTES Quit ..Conflict(##class(OcuPilot.Api.InteropError).#EXPORTTOOLARGE, .pHttpStatus, .pFault)
+        Set tSC = ..AuditViewsHere(pNamespace, .tViews, .tCaught)
+        If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message export could not be recorded", .pHttpStatus, .pFault)
+        Do tBytes.Rewind()
+        Set tFile = $System.Encryption.Base64Encode(tBytes.Read(tBytes.Size), 1)
+    }
+    Set pResult = {}
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    Do pResult.%Set("Exported", tExported, "number")
+    Do pResult.%Set("Failed", tFailed, "number")
+    Do pResult.%Set("Messages", tSent)
+    Do pResult.%Set("File", tFile, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The bytes an export file ends with, as the classic export writes them after its last message: the separator, and for MLLP a carriage return after it, with a
+/// <code>CRLF</code> one <code>LF</code>, converted to the character set <var>pCharset</var>. Pure.</p>
+ClassMethod ExportTail(pSeparatorName As %String, pCharset As %String) As %String
+{
+    Quit $ZConvert($Replace(..ExportSeparatorChars(pSeparatorName) _ $Select(pSeparatorName = "MLLP": $Char(13), 1: ""), $Char(13, 10), $Char(10)), "O", pCharset)
+}
+
+/// <p>Serve the export types of the Messages endpoint after <method>Invoke</method>'s gate (Story 24.16 Batch 3): the review (<code>EXPORT</code>), the write
+/// (<code>EXPORTMESSAGES</code>) and the two lists (<code>EXPORTCHOICES</code>). The messages travel under <parameter>IDKEY</parameter> as the set <method>MessageSet</method>
+/// reads, the separator and the character set under <parameter>SEPARATORKEY</parameter> and <parameter>CHARSETKEY</parameter>, the digest a person reviewed under
+/// <parameter>DIGESTKEY</parameter>. A read composed for an action carries it under <parameter>ACTIONKEY</parameter>, which must be the export's write, else 501.</p>
+ClassMethod InvokeMessageExport(pNamespace As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPEEXPORTCHOICES {
+            Set pResult = ..ExportChoices()
+            Set pHttpStatus = 200
+            Quit
+        }
+        Set tAction = $Select(pType = ..#TYPEEXPORTMESSAGES: pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && (tAction '= ..#TYPEEXPORTMESSAGES) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPEEXPORTMESSAGES {
+            Set tSC = ..PerformExport(pNamespace, $Get(pQuery(..#IDKEY)), $Get(pQuery(..#DIGESTKEY)), $Get(pQuery(..#SEPARATORKEY)), $Get(pQuery(..#CHARSETKEY)), .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadExport(pNamespace, $Get(pQuery(..#IDKEY)), tAction, $Get(pQuery(..#DIGESTKEY)), $Get(pQuery(..#SEPARATORKEY)), $Get(pQuery(..#CHARSETKEY)), .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the message export call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The lines <method>Snippet</method> adds for the export write (Story 24.16 Batch 3), from the stored payload of <var>pContext</var> and the query <var>pQuery</var>: for each id of
+/// the set <var>pId</var> names that the payload's <code>Verdicts</code> reads <code>export</code> (every id when it holds none), the body opened and written to the terminal
+/// as <code>OutputToDevice</code> writes it, the separator before it when it is not the first, and the view recorded (<code>AuditViewMessage</code>); then the separator after the last,
+/// and for MLLP the carriage return. <code>""</code>, so no draft is rendered, for a set that is not 1 to <parameter>RESENDMAX</parameter> message ids, a separator outside
+/// <parameter>EXPORTSEPARATORS</parameter> or a character set the instance does not list. Every id is a string literal and each separator its character codes, so nothing the
+/// query or the payload carries runs as code.</p>
+ClassMethod ExportSnippet(pId As %String, ByRef pQuery, pContext As %DynamicObject) As %String [ Private ]
+{
+    If '..MessageSet(pId, .tAll) Quit ""
+    Set tPayload = ""
+    If $IsObject(pContext) && (pContext.%GetTypeOf("payload") = "object") Set tPayload = pContext.%Get("payload")
+    Set tSeparator = $Get(pQuery(..#SEPARATORKEY))
+    If (tSeparator = "") && $IsObject(tPayload) && (tPayload.%GetTypeOf("Separator") = "string") Set tSeparator = tPayload.%Get("Separator")
+    If tSeparator = "" Set tSeparator = ..#DEFAULTSEPARATOR
+    Set tCharset = $Get(pQuery(..#CHARSETKEY))
+    If (tCharset = "") && $IsObject(tPayload) && (tPayload.%GetTypeOf("Charset") = "string") Set tCharset = tPayload.%Get("Charset")
+    If tCharset = "" Set tCharset = ..#DEFAULTCHARSET
+    If '$ListFind($ListFromString(..#EXPORTSEPARATORS), tSeparator) || '$ListFind(..ExportCharsets(), tCharset) Quit ""
+    Kill tReviewed
+    If $IsObject(tPayload) && (tPayload.%GetTypeOf("Verdicts") = "string") {
+        Set tVerdicts = tPayload.%Get("Verdicts")
+        For tI = 1:1:$Length(tVerdicts, ",") {
+            Set tPair = $Piece(tVerdicts, ",", tI)
+            If $Match($Piece(tPair, "=", 1), ..#MESSAGEIDPATTERN) Set tReviewed($Piece(tPair, "=", 1)) = $Piece(tPair, "=", 2)
+        }
+    }
+    Set tIds = ""
+    For tI = 1:1:$ListLength(tAll) {
+        If $Data(tReviewed($List(tAll, tI))) && (tReviewed($List(tAll, tI)) '= "export") Continue
+        Set tIds = tIds _ $ListBuild($List(tAll, tI))
+    }
+    Set tNL = $Char(10)
+    Set tCodes = ""
+    For tI = 1:1:$Length(..ExportSeparatorChars(tSeparator)) Set tCodes = tCodes _ $Select(tCodes = "": "", 1: ", ") _ $Ascii($Extract(..ExportSeparatorChars(tSeparator), tI))
+    Set tSep = $Select(tCodes = "": """""", 1: "$Char(" _ tCodes _ ")")
+    Set tText = tNL _ " Set tSC = 1"
+    ; The script writes to the terminal that runs it, with the command's abbreviation: AD-12 allows no other spelling of the command in this tree.
+    If tSeparator = "MLLP" Set tText = tText _ tNL _ " W $Char(11)"
+    For tI = 1:1:$ListLength(tIds) {
+        Set tId = ..Literal($List(tIds, tI))
+        If tI > 1 Set tText = tText _ tNL _ " W " _ tSep
+        Set tText = tText _ tNL _ " Set tHeader = ##class(Ens.MessageHeader).%OpenId(" _ tId _ ")"
+        Set tText = tText _ tNL _ " Set tBody = $ClassMethod(tHeader.MessageBodyClassName, ""%OpenId"", tHeader.MessageBodyId)"
+        Set tText = tText _ tNL _ " If tBody.%Extends(""EnsLib.EDI.XML.Document"") { Do tBody.OutputToDevice(""wt"") } ElseIf tBody.%Extends(""EnsLib.EDI.Document"") { Do tBody.OutputToDevice() } ElseIf tBody.%Extends(""%Stream.Object"") { Do tBody.OutputToDevice() } ElseIf tBody.%Extends(""%XML.Adaptor"") { Set tWriter = ##class(%XML.Writer).%New(), tWriter.Indent = 1 Set tSC = $System.Status.AppendStatus(tSC, tWriter.OutputToDevice()) Set tSC = $System.Status.AppendStatus(tSC, tWriter.RootObject(tBody)) }"
+        Set tText = tText _ tNL _ " Do ##class(Ens.Util.Auditing).AuditViewMessage(""OcuPilot"", " _ tId _ ", tHeader.MessageBodyClassName, tHeader.MessageBodyId)"
+    }
+    Set tText = tText _ tNL _ " W " _ tSep
+    If tSeparator = "MLLP" Set tText = tText _ ", $Char(13)"
+    Quit tText
 }
 
 /// <p>The body of the message header <var>pHeaderId</var> as an edit reads it (Story 20.31), in <var>pFacts</var>, opened and
@@ -5362,7 +6176,10 @@ ClassMethod ConvertEditPlan(pNamespace As %String, ByRef pPlan, Output pViolatio
 /// <p><var>pPlan</var> answers what an edit sends from, as <method>ReadTestTarget</method>'s: <code>pPlan("kind")</code>, for a
 /// document <code>pPlan("content")</code>, else <code>pPlan</code> fields and <code>pPlan(n)</code> <code>$ListBuild(path, leaf,
 /// owner, chain, typed, logical)</code> for each changed field.</p>
-ClassMethod ReadEdit(pNamespace As %String, pId As %String, pAction As %String, pFieldsText As %String, pReviewed As %String, Output pRow As %DynamicObject, ByRef pPlan, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <p>For a suspended message (Story 24.16) <var>pSuspended</var> is 1: the message is judged as <code>edit</code>
+/// (<method>MessageVerdict</method>), so one that is not Suspended reads <code>notsuspended</code> and is not opened, an eligible one reads
+/// <code>resubmit</code>, and a moved review is 409 <code>INTEROP.SUSPENDED.CHANGED</code>.</p>
+ClassMethod ReadEdit(pNamespace As %String, pId As %String, pAction As %String, pFieldsText As %String, pReviewed As %String, Output pRow As %DynamicObject, ByRef pPlan, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSuspended As %Boolean = 0) As %Status [ Private ]
 {
     Set pRow = ""
     Kill pPlan
@@ -5371,7 +6188,7 @@ ClassMethod ReadEdit(pNamespace As %String, pId As %String, pAction As %String, 
     Set tSC = ..RunningProduction(pNamespace, .tProduction, .tCaught)
     If $IsObject(tCaught) Quit ..Mapped(tCaught, "the production's state could not be read", .pHttpStatus, .pFault)
     If tProduction = "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#NOTRUNNING, .pHttpStatus, .pFault)
-    Set tSC = ..JudgeMessages(pNamespace, tProduction, $ListBuild(pId), .tRows, .tFacts, .tVerdicts, .tEligible, .pHttpStatus, .pFault)
+    Set tSC = ..JudgeMessages(pNamespace, tProduction, $ListBuild(pId), .tRows, .tFacts, .tVerdicts, .tEligible, .pHttpStatus, .pFault, $Select(pSuspended: "edit", 1: ""))
     If $$$ISERR(tSC) Quit tSC
     Set tFact = tFacts(1)
     Set tVerdict = $List(tFact, 7)
@@ -5381,7 +6198,7 @@ ClassMethod ReadEdit(pNamespace As %String, pId As %String, pAction As %String, 
     Set tBody("editable") = 0
     Set tBody("kind") = ""
     Set tBody("meta") = 0
-    If tVerdict = "resend" {
+    If tVerdict = $Select(pSuspended: "resubmit", 1: "resend") {
         Set tSC = ..EditBodyFacts(pNamespace, pId, tBodyClass, $List(tFact, 6), .tBody, .tCaught)
         If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message body could not be read", .pHttpStatus, .pFault)
         If 'tBody("editable") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#EDITNOTEDITABLE, .pHttpStatus, .pFault)
@@ -5404,7 +6221,7 @@ ClassMethod ReadEdit(pNamespace As %String, pId As %String, pAction As %String, 
     }
     Set tOriginal = $Select(tKind = "": "", 1: ..Sha256Hex(tBodyClass _ $Char(3) _ tOriginalText))
     Set tDigest = ..Sha256Hex(tVerdict _ "|" _ tOriginal)
-    If (pAction '= "") && (pReviewed '= "") && (pReviewed '= tDigest) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#RESENDCHANGED, .pHttpStatus, .pFault)
+    If (pAction '= "") && (pReviewed '= "") && (pReviewed '= tDigest) Quit ..Conflict($Select(pSuspended: ##class(OcuPilot.Api.InteropError).#SUSPENDEDCHANGED, 1: ##class(OcuPilot.Api.InteropError).#RESENDCHANGED), .pHttpStatus, .pFault)
 
     ; The supplied fields.
     Kill tViolations
@@ -5545,7 +6362,9 @@ ClassMethod ReadEdit(pNamespace As %String, pId As %String, pAction As %String, 
 /// </ul>
 /// <p>A resend the vendor refuses after the clone was saved deletes the clone when no header names it. Called while the message's
 /// namespace is switched.</p>
-ClassMethod EditCloneHere(pHeaderId As %String, ByRef pPlan, Output pNewId As %String, Output pCloneClass As %String, Output pCloneId As %String, Output pStatus As %Status) [ Private ]
+/// <p>With <var>pSuspended</var> (Story 24.16) the header is resubmitted under its own id (<method>VendorResubmitWithBody</method>) and
+/// <var>pNewId</var> is that id.</p>
+ClassMethod EditCloneHere(pHeaderId As %String, ByRef pPlan, Output pNewId As %String, Output pCloneClass As %String, Output pCloneId As %String, Output pStatus As %Status, pSuspended As %Boolean = 0) [ Private ]
 {
     Set pNewId = ""
     Set pCloneClass = ""
@@ -5602,7 +6421,11 @@ ClassMethod EditCloneHere(pHeaderId As %String, ByRef pPlan, Output pNewId As %S
         Set pStatus = tClone.%ValidateObject()
         If $$$ISERR(pStatus) Quit
     }
-    Set pStatus = ..VendorResendWithBody(pHeaderId, tClone, .pNewId)
+    If pSuspended {
+        Set pStatus = ..VendorResubmitWithBody(pHeaderId, tClone, .pNewId)
+    } Else {
+        Set pStatus = ..VendorResendWithBody(pHeaderId, tClone, .pNewId)
+    }
     Set pCloneClass = tClone.%ClassName(1)
     Set pCloneId = tClone.%Id()
     If $$$ISERR(pStatus) && (pCloneId '= "") {
@@ -5623,17 +6446,27 @@ ClassMethod VendorResendWithBody(pHeaderId As %String, pClone As %RegisteredObje
     Quit ##class(Ens.MessageHeader).ResendDuplicatedMessage(pHeaderId, .pNewId, "", pClone)
 }
 
+/// <p><code>Ens.MessageHeader.ResubmitMessage</code> of the suspended header <var>pHeaderId</var> with the body <var>pClone</var> and no new
+/// target (Story 24.16), as the classic Edit and Resend page does for a suspended message: the header keeps its id, which is
+/// <var>pNewId</var>, takes the clone as its body and goes back on its target's queue. Called while the message's namespace is switched.
+/// Overridable so a test can refuse the resubmit after the clone was saved; production never overrides it.</p>
+ClassMethod VendorResubmitWithBody(pHeaderId As %String, pClone As %RegisteredObject, Output pNewId As %String) As %Status [ Private ]
+{
+    Set pNewId = pHeaderId
+    Quit ##class(Ens.MessageHeader).ResubmitMessage(pHeaderId, "", pClone)
+}
+
 /// <p><method>EditCloneHere</method> in <var>pNamespace</var>, switched by explicit save and restore; a fault is
 /// <var>pCaught</var>, with the namespace restored. Only vendor classes and this class run while it is switched. Overridable so a
 /// test can fail the resend after the clone was saved; production never overrides it.</p>
-ClassMethod VendorEditResend(pNamespace As %String, pHeaderId As %String, ByRef pPlan, Output pNewId As %String, Output pCloneClass As %String, Output pCloneId As %String, Output pCaught) As %Status [ Private ]
+ClassMethod VendorEditResend(pNamespace As %String, pHeaderId As %String, ByRef pPlan, Output pNewId As %String, Output pCloneClass As %String, Output pCloneId As %String, Output pCaught, pSuspended As %Boolean = 0) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pCaught = ""
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
-        Do ..EditCloneHere(pHeaderId, .pPlan, .pNewId, .pCloneClass, .pCloneId, .tSC)
+        Do ..EditCloneHere(pHeaderId, .pPlan, .pNewId, .pCloneClass, .pCloneId, .tSC, pSuspended)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -5649,16 +6482,24 @@ ClassMethod VendorEditResend(pNamespace As %String, pHeaderId As %String, ByRef 
 /// <code>INTEROP.RESEND.CHANGED</code>. Then a clone of the body carrying the changes is saved and the header resent with it
 /// (<method>EditCloneHere</method>). The answer is <code>{Namespace, Message, NewId, BodyClass, BodyId}</code>: the new header's id
 /// and the clone it names. The vendor audits the new header, so this records nothing.</p>
-ClassMethod PerformEditResend(pNamespace As %String, pId As %String, pFieldsText As %String, pReviewed As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <p>For a suspended message (<var>pSuspended</var>, Story 24.16) the header must read <code>resubmit</code> (else 409
+/// <code>INTEROP.SUSPENDED.NONE</code>) and is resubmitted under its own id with the clone, <code>NewId</code> being that id; a vendor
+/// error reaches the log as its error codes alone (<method>VendorCodesStatus</method>).</p>
+ClassMethod PerformEditResend(pNamespace As %String, pId As %String, pFieldsText As %String, pReviewed As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSuspended As %Boolean = 0) As %Status [ Private ]
 {
     Set pResult = ""
-    Set tSC = ..ReadEdit(pNamespace, pId, ..#TYPEEDITRESEND, pFieldsText, pReviewed, .tRow, .tPlan, .pHttpStatus, .pFault)
+    Set tSC = ..ReadEdit(pNamespace, pId, $Select(pSuspended: ..#TYPEEDITRESUBMIT, 1: ..#TYPEEDITRESEND), pFieldsText, pReviewed, .tRow, .tPlan, .pHttpStatus, .pFault, pSuspended)
     If $$$ISERR(tSC) Quit tSC
-    If tRow.%Get("Verdict") '= "resend" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#RESENDNONE, .pHttpStatus, .pFault)
+    If tRow.%Get("Verdict") '= $Select(pSuspended: "resubmit", 1: "resend") Quit ..Conflict($Select(pSuspended: ##class(OcuPilot.Api.InteropError).#SUSPENDEDNONE, 1: ##class(OcuPilot.Api.InteropError).#RESENDNONE), .pHttpStatus, .pFault)
     If 'tRow.%Get("Changed").%Size() Quit ..Conflict(##class(OcuPilot.Api.InteropError).#EDITNOCHANGE, .pHttpStatus, .pFault)
-    Set tVendorSC = ..VendorEditResend(pNamespace, pId, .tPlan, .tNewId, .tCloneClass, .tCloneId, .tCaught)
-    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the edited message could not be resent", .pHttpStatus, .pFault)
-    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the edited message could not be resent", .pHttpStatus, .pFault)
+    Set tVendorSC = ..VendorEditResend(pNamespace, pId, .tPlan, .tNewId, .tCloneClass, .tCloneId, .tCaught, pSuspended)
+    If pSuspended {
+        If $IsObject(tCaught) Set tVendorSC = tCaught.AsStatus()
+        If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC), "the edited suspended message could not be resubmitted", .pHttpStatus, .pFault)
+    } Else {
+        If $IsObject(tCaught) Quit ..Mapped(tCaught, "the edited message could not be resent", .pHttpStatus, .pFault)
+        If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the edited message could not be resent", .pHttpStatus, .pFault)
+    }
     Set pResult = {}
     Do pResult.%Set("Namespace", pNamespace, "string")
     Do pResult.%Set("Message", pId, "string")
@@ -5680,6 +6521,10 @@ ClassMethod InvokeMessageAction(pNamespace As %String, pType As %String, ByRef p
     Set tSC = $$$OK
     Set pResult = ""
     Try {
+        If ..IsMessageExportType(pType) {
+            Set tSC = ..InvokeMessageExport(pNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
         Set tEdit = (pType = ..#TYPEEDIT) || (pType = ..#TYPEEDITRESEND)
         Set tWrite = ..IsMessageWrite(pType)
         Set tAction = $Select(tWrite: pType, 1: $Get(pQuery(..#ACTIONKEY)))
@@ -5721,8 +6566,9 @@ ClassMethod InvokeMessageAction(pNamespace As %String, pType As %String, ByRef p
 /// copied in), and the header resent with the clone. The body's class and fields are read in the namespace
 /// <parameter>NAMESPACEKEY</parameter> names; a class they cannot be read for gives the lines without a field. Every id, name and
 /// value is a string literal, so nothing the payload carries runs as code, and every line closes any block it opens. A
-/// credential-named field is left out.</p>
-ClassMethod MessageSnippet(pType As %String, pId As %String, ByRef pQuery, pContext As %DynamicObject) As %String [ Private ]
+/// credential-named field is left out. With <var>pResubmit</var> (Story 24.16) the edit's last line is <code>ResubmitMessage</code> of the
+/// suspended header with the clone and no new target, which keeps the header's id, run only while the header still reads Suspended.</p>
+ClassMethod MessageSnippet(pType As %String, pId As %String, ByRef pQuery, pContext As %DynamicObject, pResubmit As %Boolean = 0) As %String [ Private ]
 {
     Set tNL = $Char(10)
     Set tPayload = ""
@@ -5810,6 +6656,7 @@ ClassMethod MessageSnippet(pType As %String, pId As %String, ByRef pQuery, pCont
         }
         Set tText = tText _ tNL _ " Set tSC = tClone.%ValidateObject()"
     }
+    If pResubmit Quit tText _ tNL _ " If $System.Status.IsOK(tSC) && (tHeader.Status = " _ ..#STATUSSUSPENDEDVALUE _ ") Set tSC = ##class(Ens.MessageHeader).ResubmitMessage(" _ tId _ ", """", tClone)"
     Quit tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = ##class(Ens.MessageHeader).ResendDuplicatedMessage(" _ tId _ ", .tNew, """", tClone)"
 }
 
@@ -6210,11 +7057,26 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTITEMS) && (..IsItemWrite(pType) || ..IsItemRunWrite(pType)) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTSETTINGS) && ..IsSettingWrite(pType) Quit "objectscript"
     If ..IsRuntimeWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
-    If (..IsLookupWrite(pType) || (pType = ..#TYPEEXPORT)) && ..Serves(pEndpoint, pType) Quit "objectscript"
+    If (..IsLookupWrite(pType) || ((pType = ..#TYPEEXPORT) && (pEndpoint = ..#ENDPOINTLOOKUPTABLES))) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTBUSINESSPARTNERS) && ..IsPartnerWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTDEFAULTSETTINGS) && ..IsDefaultSettingWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTCREDENTIALS) && ..IsCredentialWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTSCHEDULES) && ..IsScheduleWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTWORKFLOWUSERS) && ..IsWorkflowWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTWORKFLOWROLES) && ..IsWorkflowRoleWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTHL7SCHEMAS) && (..IsHl7SchemaWrite(pType) || (pType = ..#TYPEEXPORTHL7SCHEMA)) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS) && ..IsWorkflowMemberWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTWORKFLOWTASKS) && ..IsWorkflowTaskWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTPURGESETTINGS) && (pType = ..#TYPEPURGESETTINGSET) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTPURGE) && (pType = ..#TYPEPURGE) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTARCHIVESETTINGS) && (pType = ..#TYPEARCHIVESETTINGSET) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTARCHIVE) && (pType = ..#TYPEARCHIVE) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTMANAGEDALERTS) && (pType = ..#TYPEUPDATEALERT) Quit "objectscript"
+    If ((pEndpoint = ..#ENDPOINTRULELOG) || (pEndpoint = ..#ENDPOINTPROCESSLOG)) && ..IsLogPurgeWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES) && ..IsSuspendedWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTITEMTEST) && ..IsTestWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && (pType = ..#TYPETRANSFORMTEST) Quit "objectscript"
-    If (pEndpoint = ..#ENDPOINTMESSAGES) && ..IsMessageWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTMESSAGES) && (..IsMessageWrite(pType) || (pType = ..#TYPEEXPORTMESSAGES)) Quit "objectscript"
     If pEndpoint '= ..#ENDPOINTPRODUCTIONS Quit ""
     If ..IsWrite(pType) || ..IsStartupWrite(pType) Quit "objectscript"
     Quit ""
@@ -6235,16 +7097,72 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
-    If pEndpoint = ..#ENDPOINTITEMS {
+    If pEndpoint = ..#ENDPOINTPURGESETTINGS {
+        Set tPart = ..PurgeSettingSnippet($Get(pQuery(..#IDKEY)), pBody)
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTPURGE {
+        Set tPart = ..PurgeSnippet($Get(pQuery(..#PURGEDAYSKEY)))
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTARCHIVESETTINGS {
+        Set tPart = ..ArchiveSettingSnippet($Get(pQuery(..#IDKEY)), pBody, $Get(pQuery(..#NAMESPACEKEY)))
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTARCHIVE {
+        Set tText = tText _ ..ArchiveSnippet()
+    } ElseIf pEndpoint = ..#ENDPOINTMANAGEDALERTS {
+        Set tPart = ..AlertSnippet($Get(pQuery(..#IDKEY)), .pQuery)
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf (pEndpoint = ..#ENDPOINTRULELOG) || (pEndpoint = ..#ENDPOINTPROCESSLOG) {
+        Set tPart = ..LogPurgeSnippet(pEndpoint, $Get(pQuery(..#NAMESPACEKEY)), $Get(pQuery(..#PURGEDAYSKEY)))
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTSUSPENDEDMESSAGES {
+        Set tPart = ..SuspendedSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery, pContext)
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTITEMS {
         Set tText = tText _ ..ItemSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery, pContext)
     } ElseIf pEndpoint = ..#ENDPOINTSETTINGS {
         Set tText = tText _ ..SettingSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf pEndpoint = ..#ENDPOINTBUSINESSPARTNERS {
         Set tText = tText _ ..PartnerSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+    } ElseIf pEndpoint = ..#ENDPOINTDEFAULTSETTINGS {
+        Set tText = tText _ ..DefaultSettingSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+    } ElseIf pEndpoint = ..#ENDPOINTCREDENTIALS {
+        Set tText = tText _ ..CredentialSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+    } ElseIf pEndpoint = ..#ENDPOINTSCHEDULES {
+        Set tText = tText _ ..ScheduleSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+    } ElseIf pEndpoint = ..#ENDPOINTWORKFLOWUSERS {
+        Set tPart = ..WorkflowSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTHL7SCHEMAS {
+        Set tPart = ..Hl7SchemaSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery)
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTWORKFLOWROLES {
+        Set tPart = ..WorkflowRoleSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTWORKFLOWMEMBERS {
+        Set tPart = ..WorkflowMemberSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
+    } ElseIf pEndpoint = ..#ENDPOINTWORKFLOWTASKS {
+        Set tPart = ..WorkflowTaskSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery)
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
         Set tText = tText _ ..TestSnippet($Get(pQuery(..#IDKEY)), .pQuery)
     } ElseIf pEndpoint = ..#ENDPOINTTRANSFORMS {
         Set tText = tText _ ..TransformSnippet($Get(pQuery(..#IDKEY)), .pQuery)
+    } ElseIf (pEndpoint = ..#ENDPOINTMESSAGES) && (pType = ..#TYPEEXPORTMESSAGES) {
+        Set tPart = ..ExportSnippet($Get(pQuery(..#IDKEY)), .pQuery, pContext)
+        If tPart = "" Quit []
+        Set tText = tText _ tPart
     } ElseIf pEndpoint = ..#ENDPOINTMESSAGES {
         Set tText = tText _ ..MessageSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery, pContext)
     } ElseIf ..IsRuntimeWrite(pType) {
@@ -6960,11 +7878,12 @@ ClassMethod PerformLookup(pNamespace As %String, pType As %String, pTable As %St
 /// <parameter>CONTENTKEY</parameter> send. Refused before any vendor call: 400 <code>PORT.VALIDATION</code> when both files or neither
 /// is named, or a local file's name is longer than 255 characters or holds <code>/</code>, <code>\</code> or a control character; the
 /// resolve's own refusal on its field; and 409 <code>INTEROP.LOOKUP.TOOLARGE</code> for text longer than
-/// <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter>.</p>
-ClassMethod ImportText(ByRef pQuery, Output pText As %String, Output pLabel As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter>; <var>pTooLargeCode</var> names another code for that last refusal (the lookup tables' when empty).</p>
+ClassMethod ImportText(ByRef pQuery, Output pText As %String, Output pLabel As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pTooLargeCode As %String = "") As %Status [ Private ]
 {
     Set pText = ""
     Set pLabel = ""
+    If pTooLargeCode = "" Set pTooLargeCode = ##class(OcuPilot.Api.InteropError).#LOOKUPTOOLARGE
     Set tRoot = $Get(pQuery(..#ROOTKEY))
     Set tPath = $Get(pQuery(..#PATHKEY))
     Set tFileName = $Get(pQuery(..#FILENAMEKEY))
@@ -6977,7 +7896,7 @@ ClassMethod ImportText(ByRef pQuery, Output pText As %String, Output pLabel As %
         If (tFileName = "") || ($Length(tFileName) > ##class(OcuPilot.Port.AtelierPort).#MAXFILENAME) || (tFileName [ "/") || (tFileName [ "\") || ($ZStrip(tFileName, "*C") '= tFileName) {
             Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIMPORTFILENAME, .pHttpStatus, .pFault)
         }
-        If $Length(tContent) > tMax Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPTOOLARGE, .pHttpStatus, .pFault)
+        If $Length(tContent) > tMax Quit ..Conflict(pTooLargeCode, .pHttpStatus, .pFault)
         Set pLabel = tFileName
         Set pText = tContent
         Quit $$$OK
@@ -6990,7 +7909,7 @@ ClassMethod ImportText(ByRef pQuery, Output pText As %String, Output pLabel As %
     If $$$ISERR(tSC) Quit ..Fail("the import's file could not be read", tSC, .pHttpStatus, .pFault)
     If tTooLarge {
         Set pText = ""
-        Quit ..Conflict(##class(OcuPilot.Api.InteropError).#LOOKUPTOOLARGE, .pHttpStatus, .pFault)
+        Quit ..Conflict(pTooLargeCode, .pHttpStatus, .pFault)
     }
     Quit $$$OK
 }
@@ -7000,13 +7919,16 @@ ClassMethod ImportText(ByRef pQuery, Output pText As %String, Output pLabel As %
 /// document carries; <var>pDigest</var> its SHA-256 as lower-case hex. The vendor lists the file's documents without loading
 /// them (<code>$System.OBJ.LoadStream</code> with list-only), so a file that also holds a class or a routine, one that holds two tables,
 /// and the legacy form that holds no document (which the lister rejects) are each no table. A fault is <var>pCaught</var>, with
-/// the namespace restored.</p>
-ClassMethod ImportShape(pNamespace As %String, pText As %String, Output pTable As %String, Output pFileEntries As %Integer, Output pDigest As %String, Output pCaught) As %Status [ Private ]
+/// the namespace restored. <var>pSuffix</var> (default <parameter>LUTEXTENSION</parameter>) is the document's extension and <var>pElement</var> (default <code>entry</code>)
+/// the element counted into <var>pFileEntries</var>, matched by its local name in any XML namespace as the vendor's loader matches it; when <var>pFlagAttribute</var> names an attribute, <var>pFlagged</var> is 1 when a counted element carries it with a value the
+/// vendor reads as true (not empty, <code>0</code> or <code>false</code>).</p>
+ClassMethod ImportShape(pNamespace As %String, pText As %String, Output pTable As %String, Output pFileEntries As %Integer, Output pDigest As %String, Output pCaught, pSuffix As %String = "", pElement As %String = "entry", pFlagAttribute As %String = "", Output pFlagged As %Boolean) As %Status [ Private ]
 {
     Set pTable = ""
     Set pFileEntries = 0
     Set pCaught = ""
     Set pDigest = ""
+    Set pFlagged = 0
     Set tOrigNS = $NAMESPACE
     Try {
         Set tBytes = ##class(%Stream.GlobalBinary).%New()
@@ -7028,7 +7950,7 @@ ClassMethod ImportShape(pNamespace As %String, pText As %String, Output pTable A
         If $$$ISERR(tListSC) Quit
         Set tItem = $Order(tLoaded(""))
         If (tItem = "") || ($Order(tLoaded(tItem)) '= "") Quit
-        Set tSuffix = ..#LUTEXTENSION
+        Set tSuffix = $Select(pSuffix '= "": pSuffix, 1: ..#LUTEXTENSION)
         Set tStem = $Length(tItem) - $Length(tSuffix)
         If (tStem < 1) || ($Extract(tItem, tStem + 1, $Length(tItem)) '= tSuffix) Quit
         Set tTable = $Extract(tItem, 1, tStem)
@@ -7037,7 +7959,13 @@ ClassMethod ImportShape(pNamespace As %String, pText As %String, Output pTable A
         Set tSC = ##class(%XML.TextReader).ParseStream(tBytes, .tReader)
         If $$$ISERR(tSC) Quit
         While tReader.Read() {
-            If (tReader.NodeType = "element") && (tReader.Name = "entry") Set tCount = tCount + 1
+            If (tReader.NodeType = "element") && (tReader.LocalName = pElement) {
+                Set tCount = tCount + 1
+                If (pFlagAttribute '= "") && tReader.MoveToAttributeName(pFlagAttribute) {
+                    If $Case($ZConvert(tReader.Value, "L"), "": 0, "0": 0, "false": 0, : 1) Set pFlagged = 1
+                    Do tReader.MoveToElement()
+                }
+            }
         }
         If tCount < 1 Quit
         Set pTable = tTable
@@ -7145,9 +8073,7 @@ ClassMethod PerformImport(pNamespace As %String, pId As %String, ByRef pQuery, O
             } ElseIf (tNow("stamp") '= tPre("stamp")) || (tNow("entries") '= tPre("entries")) {
                 Set tToken = "IMPORTCHANGED"
             } Else {
-                Kill tLoaded, tSelected
-                Set tSelected(tTable _ ..#LUTEXTENSION) = ""
-                Set tVendorSC = $System.OBJ.LoadStream(tStream, "-d", .tErrorLog, .tLoaded, 0, .tSelected)
+                Set tVendorSC = ..DocumentLoad(tStream, tTable _ ..#LUTEXTENSION, .tLoaded)
                 If $$$ISOK(tVendorSC) && '$Data(tLoaded(tTable _ ..#LUTEXTENSION)) Set tToken = "IMPORTSHAPE"
                 Do ..LookupFactsHere(tTable, "", 1, .tAfter)
                 Set tAfterEntries = tAfter("entries")
@@ -7204,15 +8130,17 @@ ClassMethod ExportFile(pRoot As %String, pPath As %String, Output pResolved As %
 
 /// <p>The export's file for <var>pRoot</var> and <var>pPath</var>, resolved and checked exactly as <method>ExportTable</method> checks
 /// it before its vendor call, for a mint that must refuse what the write would (Story 20.5): the endpoint's pairs, then
-/// <method>ExportFile</method>. Nothing is written.</p>
-ClassMethod CheckExport(pRoot As %String, pPath As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+/// <method>ExportFile</method>. Nothing is written. <var>pEndpoint</var> is <parameter>ENDPOINTHL7SCHEMAS</parameter> for the HL7 schema export (Story 24.18) and the lookup
+/// tables' otherwise.</p>
+ClassMethod CheckExport(pRoot As %String, pPath As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pEndpoint As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set pHttpStatus = 0
     Set pFault = ""
+    If pEndpoint '= ..#ENDPOINTHL7SCHEMAS Set pEndpoint = ..#ENDPOINTLOOKUPTABLES
     Try {
         Set tFailedPair = ""
-        If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(..#ENDPOINTLOOKUPTABLES, ..#TYPEEXPORT), .tFailedPair) {
+        If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(pEndpoint, $Select(pEndpoint = ..#ENDPOINTHL7SCHEMAS: ..#TYPEEXPORTHL7SCHEMA, 1: ..#TYPEEXPORT)), .tFailedPair) {
             Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
@@ -7247,8 +8175,6 @@ ClassMethod ExportTable(pNamespace As %String, pTable As %String, ByRef pQuery, 
         Set tSC = ..ExportFile(tRoot, tPath, .tResolved, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit tSC
     }
-    Kill tItems
-    Set tItems(pTable _ ..#LUTEXTENSION) = ""
     Set tCaught = ""
     Set tVendorSC = $$$OK
     Set tText = ""
@@ -7257,20 +8183,7 @@ ClassMethod ExportTable(pNamespace As %String, pTable As %String, ByRef pQuery, 
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
-        If tToFile {
-            Set tVendorSC = $System.OBJ.Export(.tItems, tResolved, "-d")
-        } Else {
-            Set tStream = ##class(%Stream.GlobalCharacter).%New()
-            Set tVendorSC = $System.OBJ.ExportToStream(.tItems, .tStream, "-d")
-            If $$$ISOK(tVendorSC) {
-                If tStream.Size > tMax {
-                    Set tTooLarge = 1
-                } Else {
-                    Do tStream.Rewind()
-                    Set tText = tStream.Read(tMax)
-                }
-            }
-        }
+        Set tVendorSC = ..DocumentExport(pTable _ ..#LUTEXTENSION, tToFile, tResolved, tMax, .tText, .tTooLarge)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -7292,31 +8205,72 @@ ClassMethod ExportTable(pNamespace As %String, pTable As %String, ByRef pQuery, 
         Do pResult.%Set(..#ROOTKEY, tRoot, "string")
         Do pResult.%Set(..#PATHKEY, tPath, "string")
     } Else {
-        Set tLines = []
-        Set tLength = $Length(tText, $Char(10))
-        For tI = 1:1:tLength {
-            Set tLine = $Piece(tText, $Char(10), tI)
-            If (tI = tLength) && (tLine = "") Quit
-            Do tLines.%Push(tLine, "string")
-        }
-        Do pResult.%Set("lines", tLines)
+        Do pResult.%Set("lines", ..ExportLines(tText))
     }
     Set pHttpStatus = 200
     Quit $$$OK
 }
 
+/// <p>The vendor's export of the one document <var>pItem</var> in the current namespace, which the caller has already switched (Stories 20.5 and 24.18): to the server file
+/// <var>pFile</var> when <var>pToFile</var> (<code>$System.OBJ.Export</code>), else to <var>pText</var> (<code>$System.OBJ.ExportToStream</code>), which is left empty with
+/// <var>pTooLarge</var> 1 when the text is longer than <var>pMax</var> characters. The document is passed in the array form, so a comma in its name is not a separator.</p>
+ClassMethod DocumentExport(pItem As %String, pToFile As %Boolean, pFile As %String, pMax As %Integer, Output pText As %String, Output pTooLarge As %Boolean) As %Status
+{
+    Set pText = ""
+    Set pTooLarge = 0
+    Kill tItems
+    Set tItems(pItem) = ""
+    If pToFile Quit $System.OBJ.Export(.tItems, pFile, "-d")
+    Set tStream = ##class(%Stream.GlobalCharacter).%New()
+    Set tSC = $System.OBJ.ExportToStream(.tItems, .tStream, "-d")
+    If $$$ISOK(tSC) {
+        If tStream.Size > pMax {
+            Set pTooLarge = 1
+        } Else {
+            Do tStream.Rewind()
+            Set pText = tStream.Read(pMax)
+        }
+    }
+    Quit tSC
+}
+
+/// <p>The vendor's load of the one document <var>pItem</var> of <var>pStream</var> in the current namespace, which the caller has already switched (Stories 20.5 and 24.18):
+/// <code>$System.OBJ.LoadStream</code> with that document alone selected, answering the documents it loaded in <var>pLoaded</var>.</p>
+ClassMethod DocumentLoad(pStream As %Stream.Object, pItem As %String, Output pLoaded) As %Status
+{
+    Kill pLoaded, tSelected
+    Set tSelected(pItem) = ""
+    Quit $System.OBJ.LoadStream(pStream, "-d", .tErrorLog, .pLoaded, 0, .tSelected)
+}
+
+/// <p>An export's text <var>pText</var> as the lines the browser saves, split at line feeds, with no trailing empty line. Pure.</p>
+ClassMethod ExportLines(pText As %String) As %DynamicArray
+{
+    Set tLines = []
+    Set tLength = $Length(pText, $Char(10))
+    For tI = 1:1:tLength {
+        Set tLine = $Piece(pText, $Char(10), tI)
+        If (tI = tLength) && (tLine = "") Quit
+        Do tLines.%Push(tLine, "string")
+    }
+    Quit tLines
+}
+
 /// <p>The lines <method>Snippet</method> adds for an import or an export of the table <var>pTable</var> (Story 20.5): the vendor's own
 /// call on the table's one <code>.LUT</code> document, named in the array form the port passes, in the lock the import takes. A
 /// server file is named by its allowed directory and relative name in a comment, since the directory is resolved when the write
-/// runs; a local file's text is never in a script, so its import loads a stream the comment says it holds.</p>
-ClassMethod TransferSnippet(pType As %String, pTable As %String, ByRef pQuery) As %String [ Private ]
+/// runs; a local file's text is never in a script, so its import loads a stream the comment says it holds. The HL7 schema export and import (Story 24.18) pass their
+/// document's extension <var>pExtension</var>, their lock's global <var>pLockGlobal</var>, the guard lines <var>pGuards</var> that set <code>tGo</code> before the load, and the
+/// sentence literal <var>pLockedError</var> a lock not got sets; with guards the lock, the load and the release run only while <code>tGo</code> holds.</p>
+ClassMethod TransferSnippet(pType As %String, pTable As %String, ByRef pQuery, pExtension As %String = "", pLockGlobal As %String = "^Ens.LookupTable", pGuards As %String = "", pLockedError As %String = "") As %String [ Private ]
 {
     Set tNL = $Char(10)
-    Set tItems = tNL _ " Set tItems(" _ ..Literal(pTable _ ..#LUTEXTENSION) _ ") = """""
+    If pExtension = "" Set pExtension = ..#LUTEXTENSION
+    Set tItems = tNL _ " Set tItems(" _ ..Literal(pTable _ pExtension) _ ") = """""
     Set tPath = $Get(pQuery(..#PATHKEY))
     Set tFile = ..Literal(tPath)
     Set tSource = tNL _ " ; The server file is the allowed directory " _ $Translate($Get(pQuery(..#ROOTKEY)), $Char(10) _ $Char(13), "  ") _ " and the name " _ $Translate(tPath, $Char(10) _ $Char(13), "  ")
-    If pType = ..#TYPEEXPORT {
+    If (pType = ..#TYPEEXPORT) || (pType = ..#TYPEEXPORTHL7SCHEMA) {
         If tPath = "" Quit tItems _ tNL _ " Set tStream = ##class(%Stream.GlobalCharacter).%New()" _ tNL _ " Set tSC = $System.OBJ.ExportToStream(.tItems, .tStream, ""-d"")"
         Quit tSource _ tItems _ tNL _ " Set tSC = $System.OBJ.Export(.tItems, " _ tFile _ ", ""-d"")"
     }
@@ -7325,7 +8279,10 @@ ClassMethod TransferSnippet(pType As %String, pTable As %String, ByRef pQuery) A
         Set tSource = tNL _ " ; tStream holds the text of the file this browser sent, which no script carries"
         Set tLoad = "$System.OBJ.LoadStream(tStream, ""-d"", .tErrorLog, .tLoaded, 0, .tItems)"
     }
-    Quit tSource _ tItems _ tNL _ " Lock +^Ens.LookupTable(" _ ..Literal(pTable) _ "):" _ ..#LOCKSECONDS _ tNL _ " If $Test { Set tSC = " _ tLoad _ " } Else { Set tSC = $System.Status.Error(5001, ""the lookup table lock is held"") }" _ tNL _ " Lock -^Ens.LookupTable(" _ ..Literal(pTable) _ ")"
+    Set tGo = $Select(pGuards = "": "", 1: "If tGo ")
+    Set tLock = pLockGlobal _ "(" _ ..Literal(pTable) _ ")"
+    Set tLocked = $Select(pLockedError = "": """the lookup table lock is held""", 1: pLockedError)
+    Quit pGuards _ tSource _ tItems _ tNL _ " " _ tGo _ "Lock +" _ tLock _ ":" _ ..#LOCKSECONDS _ tNL _ " " _ $Select(pGuards = "": "If $Test", 1: "If tGo, $Test") _ " { Set tSC = " _ tLoad _ " } " _ $Select(pGuards = "": "Else", 1: "ElseIf tGo") _ " { Set tSC = $System.Status.Error(5001, " _ tLocked _ ") }" _ tNL _ " " _ tGo _ "Lock -" _ tLock
 }
 
 /// <p>The namespace's business partners, one row per partner, at most <var>pMax</var> when it is above zero (Story 20.5):
@@ -7774,6 +8731,5067 @@ ClassMethod PerformPartner(pNamespace As %String, pType As %String, pName As %St
     Set pHttpStatus = 200
     Set pFault = ""
     Quit $$$OK
+}
+
+/// <p>The statement the default setting list and the comparison read: every row of <code>Ens.Config.DefaultSettings</code> as its key,
+/// value, description and deployable flag, in key order (Story 24.15).</p>
+Parameter DEFAULTSETTINGSQL = "SELECT TOP ? ProductionName, ItemName, HostClassName, SettingName, SettingValue, Description, Deployable FROM Ens_Config.DefaultSettings ORDER BY ProductionName, ItemName, HostClassName, SettingName";
+
+/// <p>Whether the caller holds the <code>%All</code> role, as the vendor's own macro asks it (<code>$$$IOwnAllRole</code>): the roles
+/// list begins with it. A test seam overrides it (<class>OcuPilot.Test.InteropDefaultSettingRoleSeam</class>).</p>
+ClassMethod HoldsAllRole() As %Boolean
+{
+    Quit ($Extract($Roles, 1, 4) = "%All")
+}
+
+/// <p>Whether the caller holds <var>pPermission</var> on <var>pResource</var>, asked through the gate class at the time of the call
+/// (Story 24.15).</p>
+ClassMethod DefaultSettingHolds(pResource As %String, pPermission As %String) As %Boolean [ Private ]
+{
+    Quit ''$ClassMethod(..GateClass(), "EvaluateRequired", $ListBuild($ListBuild(pResource, pPermission)), .tFailedPair)
+}
+
+/// <p>Whether the caller may not write the default setting named <var>pSetting</var>, by the classic page's own per-setting rules
+/// (<code>EnsPortal.DefaultSettings</code>' <code>canEditSettingName</code>), restated here because its checks cache in the web session and
+/// these are asked at every call (Story 24.15, AD-8): the setting <code>Enabled</code> needs <parameter>ITEMRUNPAIR</parameter>; then a
+/// holder of the <code>%All</code> role may write any; a caller without <parameter>DEFAULTSETTINGRESTRICTEDPAIR</parameter> may write any;
+/// and a restricted caller never writes <code>*</code> and writes a setting <code>N</code> only with <code>%Ens_SystemDefaultSettings_N:USE</code>.</p>
+ClassMethod DefaultSettingRestricted(pSetting As %String) As %Boolean
+{
+    If (pSetting = ..#DEFAULTSETTINGENABLED) && '..DefaultSettingHolds($Piece(..#ITEMRUNPAIR, ":", 1), $Piece(..#ITEMRUNPAIR, ":", 2)) Quit 1
+    If ..HoldsAllRole() Quit 0
+    If '..DefaultSettingHolds($Piece(..#DEFAULTSETTINGRESTRICTEDPAIR, ":", 1), $Piece(..#DEFAULTSETTINGRESTRICTEDPAIR, ":", 2)) Quit 0
+    If pSetting = "*" Quit 1
+    Quit '..DefaultSettingHolds(..#DEFAULTSETTINGRESOURCEPREFIX _ pSetting, "USE")
+}
+
+/// <p>The vendor's id of the default setting whose four key parts <var>pParts</var> holds: the parts joined by <code>||</code>.</p>
+ClassMethod DefaultSettingId(pParts As %List) As %String [ Private ]
+{
+    Quit $ListToString(pParts, "||")
+}
+
+/// <p>Whether <var>pPart</var> is a valid part of a default setting's key: 1 to <parameter>DEFAULTSETTINGKEYMAX</parameter> characters
+/// with no control character, no <code>||</code>, and no <code>|</code> at either end, since the vendor's id joins the parts with
+/// <code>||</code> and a bar at a part's edge would split that id at another place. Pure.</p>
+ClassMethod DefaultSettingPartOK(pPart As %String) As %Boolean
+{
+    Quit (pPart '= "") && ($Length(pPart) <= ..#DEFAULTSETTINGKEYMAX) && ($ZStrip(pPart, "*C") = pPart) && (pPart '[ "||") && ($Extract(pPart) '= "|") && ($Extract(pPart, *) '= "|")
+}
+
+/// <p>Whether the instance can address <code>^Ens.Config.DefaultSettingsD</code> by the four parts <var>pParts</var>: a key whose encoded
+/// form is past the instance's subscript limit raises <code>&lt;SUBSCRIPT&gt;</code> in the vendor's own calls, so no setting holds it.
+/// The test reads a process-private global whose name is as long as the vendor's, which nothing writes. Names no other class, so it runs
+/// while a namespace is switched.</p>
+ClassMethod DefaultSettingFits(pParts As %List) As %Boolean
+{
+    Set tFits = 1
+    Try {
+        Set tProbe = $Data(^||Ens.Config.DefaultSettingsD($List(pParts, 1), $List(pParts, 2), $List(pParts, 3), $List(pParts, 4)))
+    } Catch {
+        Set tFits = 0
+    }
+    Quit tFits
+}
+
+/// <p>Whether <var>pParts</var> is four valid key parts the instance can address (<method>DefaultSettingPartOK</method>,
+/// <method>DefaultSettingFits</method>). Pure.</p>
+ClassMethod DefaultSettingKeyOK(pParts As %List) As %Boolean
+{
+    If '$ListValid(pParts) || ($ListLength(pParts) '= 4) Quit 0
+    Set tValid = 1
+    For tI = 1:1:4 {
+        If '..DefaultSettingPartOK($List(pParts, tI)) Set tValid = 0
+    }
+    If 'tValid Quit 0
+    Quit ..DefaultSettingFits(pParts)
+}
+
+/// <p>Whether the vendor accepts <var>pValue</var> for the setting the key parts name, in <var>pNamespace</var>: a transient
+/// <code>Ens.Config.DefaultSettings</code> is validated, never saved, so the vendor's own <code>%OnValidateObject</code> judges the value as
+/// its classic page does. The vendor's text is logged and never shown (Story 24.15).</p>
+ClassMethod DefaultSettingAccepts(pNamespace As %String, pParts As %List, pValue As %String) As %Boolean
+{
+    Set tVendorSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tObject = ##class(Ens.Config.DefaultSettings).%New()
+        Set tObject.ProductionName = $List(pParts, 1)
+        Set tObject.ItemName = $List(pParts, 2)
+        Set tObject.HostClassName = $List(pParts, 3)
+        Set tObject.SettingName = $List(pParts, 4)
+        Set tObject.SettingValue = pValue
+        Set tVendorSC = tObject.%ValidateObject()
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tVendorSC = ex.AsStatus()
+    }
+    If $$$ISERR(tVendorSC) Do ..LogFault("a default setting value did not pass the vendor's validation", tVendorSC)
+    Quit $$$ISOK(tVendorSC)
+}
+
+/// <p>The 422 violations of a default setting's key and fields, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field,
+/// code)</code> with the count in <code>pViolations</code> (Story 24.15): a key part that <method>DefaultSettingPartOK</method> refuses, or
+/// a key the instance cannot address, is <code>KEY</code> on that part (judged only when <var>pJudgeKey</var>, which an add passes); a value
+/// or description past <parameter>DEFAULTSETTINGTEXTMAX</parameter> is <code>VALUE</code>; a field of the wrong type is
+/// <code>PORT.FIELD.SHAPE</code>; and, with <var>pJudgeValue</var>, when nothing else is wrong and a value is given, or an add names none
+/// (the empty value), a value the vendor refuses (<method>DefaultSettingAccepts</method>) is <code>VALUE</code>. The vendor is never asked
+/// about a setting whose name the credential pattern matches, which every write refuses by its name. A caller that has not yet passed the
+/// port's gate and refusals passes <var>pJudgeValue</var> 0, so no vendor call runs before them. <var>pFields</var> is the body:
+/// <code>Value</code> and <code>Description</code> strings and <code>Deployable</code> a boolean.</p>
+ClassMethod DefaultSettingViolations(pNamespace As %String, pProduction As %String, pItem As %String, pHostClass As %String, pSetting As %String, pFields As %DynamicObject, Output pViolations, pJudgeKey As %Boolean = 1, pJudgeValue As %Boolean = 1) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tParts = $ListBuild(pProduction, pItem, pHostClass, pSetting)
+    Set tNames = $ListBuild("Production", "Item", "HostClass", "Setting")
+    If pJudgeKey {
+        For tI = 1:1:4 {
+            If '..DefaultSettingPartOK($List(tParts, tI)) Set pViolations($Increment(pViolations)) = $ListBuild($List(tNames, tI), ##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGKEY)
+        }
+        If 'pViolations && '..DefaultSettingFits(tParts) Set pViolations($Increment(pViolations)) = $ListBuild("Setting", ##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGKEY)
+    }
+    If '$IsObject(pFields) || 'pFields.%IsA("%Library.DynamicObject") Set pFields = {}
+    For tField = "Value", "Description" {
+        Set tType = pFields.%GetTypeOf(tField)
+        If tType = "string" {
+            If $Length(pFields.%Get(tField)) > ..#DEFAULTSETTINGTEXTMAX Set pViolations($Increment(pViolations)) = $ListBuild(tField, ##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGVALUE)
+        } ElseIf tType '= "unassigned" {
+            Set pViolations($Increment(pViolations)) = $ListBuild(tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        }
+    }
+    Set tType = pFields.%GetTypeOf("Deployable")
+    If (tType '= "boolean") && (tType '= "unassigned") Set pViolations($Increment(pViolations)) = $ListBuild("Deployable", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+    If pViolations || 'pJudgeValue || ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(pSetting) Quit $$$OK
+    If ((pFields.%GetTypeOf("Value") = "string") || (pJudgeKey && (pFields.%GetTypeOf("Value") = "unassigned"))) && '..DefaultSettingAccepts(pNamespace, tParts, pFields.%Get("Value")) {
+        Set pViolations($Increment(pViolations)) = $ListBuild("Value", ##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGVALUE)
+    }
+    Quit $$$OK
+}
+
+/// <p>The decision a default setting write <var>pType</var> is refused with, as the last segment of its code (<code>TAKEN</code>) or
+/// <code>ABSENT</code> for a target that is not there, else <code>""</code> (Story 24.15): an add of a key the namespace holds is
+/// <code>TAKEN</code>; a set or a remove of a key it does not hold is <code>ABSENT</code>. <var>pExists</var> is whether the setting is held
+/// under exactly that key. Pure.</p>
+ClassMethod DefaultSettingWriteToken(pType As %String, pExists As %Boolean) As %String
+{
+    If pType = ..#TYPEADDDEFAULT Quit $Select(pExists: "TAKEN", 1: "")
+    Quit $Select(pExists: "", 1: "ABSENT")
+}
+
+/// <p>The setting <var>pObject</var> as the seven values <parameter>DEFAULTSETTINGFIELDS</parameter> names, in that order. Runs while the
+/// setting's namespace is switched.</p>
+ClassMethod DefaultSettingLine(pObject As %RegisteredObject) As %List [ Private ]
+{
+    Set tValue = pObject.SettingValue
+    If tValue = $Char(0) Set tValue = ""
+    Set tDescription = pObject.Description
+    If tDescription = $Char(0) Set tDescription = ""
+    Quit $ListBuild(pObject.ProductionName, pObject.ItemName, pObject.HostClassName, pObject.SettingName, tValue, tDescription, ''pObject.Deployable)
+}
+
+/// <p>The row a default setting list and read answer, from the seven values <var>pLine</var> (<method>DefaultSettingLine</method>):
+/// <code>{Production, Item, HostClass, Setting, Value, Description, Deployable, Secret}</code>, and with <var>pNamespace</var>
+/// <code>Namespace</code> too. A setting whose name the credential pattern matches
+/// (<method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method>) answers an empty <code>Value</code> and <code>Secret</code> true: the value
+/// is dropped here, in the install namespace, and reaches nothing that renders the row (AD-35, Story 24.15).</p>
+ClassMethod DefaultSettingRow(pLine As %List, pNamespace As %String = "") As %DynamicObject [ Private ]
+{
+    Set tSecret = ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName($List(pLine, 4))
+    Set tRow = {}
+    Do tRow.%Set("Production", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("Item", $List(pLine, 2) _ "", "string")
+    Do tRow.%Set("HostClass", $List(pLine, 3) _ "", "string")
+    Do tRow.%Set("Setting", $List(pLine, 4) _ "", "string")
+    Do tRow.%Set("Value", $Select(tSecret: "", 1: $List(pLine, 5) _ ""), "string")
+    Do tRow.%Set("Description", $List(pLine, 6) _ "", "string")
+    Do tRow.%Set("Deployable", ''$List(pLine, 7), "boolean")
+    Do tRow.%Set("Secret", ''tSecret, "boolean")
+    If pNamespace '= "" Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The namespace's system default settings, one row per setting, at most <var>pMax</var> when it is above zero (Story 24.15):
+/// <method>DefaultSettingRow</method>'s fields, in key order. Read with <code>%ExecDirectNoPriv</code> after the gate (<method>SqlRows</method>);
+/// nothing is written.</p>
+ClassMethod ListDefaultSettings(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..SqlRows(pNamespace, ..#DEFAULTSETTINGSQL, .tFound, .tCaught, $Select(pMax > 0: pMax, 1: ..#SQLMAX))
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the system default setting list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Do pRows.%Push(..DefaultSettingRow(tFound(tI)))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The facts about the default setting the key parts <var>pParts</var> name, read in the current namespace, which the caller has already
+/// switched, and kept in <var>pFacts</var>: <code>exists</code> (the namespace holds it under exactly that key) and, when it does,
+/// <code>line</code> (<method>DefaultSettingLine</method>). A key the instance cannot address is not held. Nothing is written.</p>
+ClassMethod DefaultSettingFactsHere(pParts As %List, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("exists") = 0
+    Set pFacts("line") = ""
+    If '..DefaultSettingFits(pParts) Quit
+    Set tId = ..DefaultSettingId(pParts)
+    If '##class(Ens.Config.DefaultSettings).%ExistsId(tId) Quit
+    Set tObject = ##class(Ens.Config.DefaultSettings).%OpenId(tId)
+    If $IsObject(tObject) {
+        Set pFacts("exists") = 1
+        Set pFacts("line") = ..DefaultSettingLine(tObject)
+    }
+    Set tObject = ""
+}
+
+/// <p><method>DefaultSettingFactsHere</method> in <var>pNamespace</var>; a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod DefaultSettingFacts(pNamespace As %String, pParts As %List, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..DefaultSettingFactsHere(pParts, .pFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>403 <code>INTEROP.DEFAULTSETTING.RESTRICTED</code>: the classic page would not let the caller change this setting's default.</p>
+ClassMethod DefaultSettingRestrictedRefusal(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tCode = ##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGRESTRICTED
+    Quit ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, tCode, ##class(OcuPilot.Api.InteropError).ReasonFor(tCode), .pHttpStatus, .pFault)
+}
+
+/// <p>The refusals every default setting write is judged on before its namespace is read, as an error status with
+/// <var>pHttpStatus</var> and <var>pFault</var> set, or <code>$$$OK</code> (Story 24.15): <code>RESTRICTED</code> by the classic page's
+/// per-setting rules (<method>DefaultSettingRestricted</method>), <code>SOURCECONTROL</code> for a namespace under source control, then
+/// <code>SECRET</code> for a setting whose name the credential pattern matches.</p>
+ClassMethod DefaultSettingWriteRefusal(pNamespace As %String, pSetting As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    If ..DefaultSettingRestricted(pSetting) Quit ..DefaultSettingRestrictedRefusal(.pHttpStatus, .pFault)
+    If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGSOURCECONTROL, .pHttpStatus, .pFault)
+    If ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(pSetting) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGSECRET, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>One system default setting, fresh (Story 24.15): <method>DefaultSettingRow</method>'s fields and <code>Namespace</code>. A setting
+/// not held under exactly that key, or a key that is not four valid parts, is 404 <code>PORT.NOTFOUND</code>, unlogged. With
+/// <var>pAction</var> it refuses what that write would be refused, in this order (<method>DefaultSettingWriteRefusal</method>):
+/// <code>RESTRICTED</code>, <code>SOURCECONTROL</code>, <code>SECRET</code>; then, for an add (AD-54, which inverts the read),
+/// <code>TAKEN</code> when the key is held and otherwise the 404 a create expects.</p>
+ClassMethod ReadDefaultSetting(pNamespace As %String, pParts As %List, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If '..DefaultSettingKeyOK(pParts) Quit ..Absent(.pHttpStatus, .pFault)
+    If pAction '= "" {
+        Set tSC = ..DefaultSettingWriteRefusal(pNamespace, $List(pParts, 4), .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Do ..DefaultSettingFacts(pNamespace, pParts, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the system default setting read failed", .pHttpStatus, .pFault)
+    If pAction = ..#TYPEADDDEFAULT {
+        If ..DefaultSettingWriteToken(pAction, tFacts("exists")) '= "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGTAKEN, .pHttpStatus, .pFault)
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    Set pRow = ..DefaultSettingRow(tFacts("line"), pNamespace)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the DefaultSettings endpoint's <code>LIST</code> and typed types, and the DefaultSettingsDiff endpoint's <code>LIST</code>, after
+/// <method>Invoke</method>'s gate (Story 24.15). A typed call names the setting under <parameter>IDKEY</parameter> by the composite
+/// <code>[Production, Item, HostClass, Setting]</code>, each part kept exactly (AD-13); an id that is not four parts is 404. An
+/// <parameter>ACTIONKEY</parameter> names the write the read is composed for.</p>
+ClassMethod InvokeDefaultSetting(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pEndpoint = ..#ENDPOINTDEFAULTSETTINGSDIFF {
+                Set tSC = ..ListDefaultSettingDiff(pNamespace, $Get(pQuery(..#DIFFTARGETKEY)), +tMaxText, .pResult, .pHttpStatus, .pFault)
+            } Else {
+                Set tSC = ..ListDefaultSettings(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            }
+            Quit
+        }
+        Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite($Get(pQuery(..#IDKEY)))
+        Set tAction = $Select(..IsDefaultSettingWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsDefaultSettingWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsDefaultSettingWrite(pType) {
+            Set tSC = ..PerformDefaultSetting(pNamespace, pType, tParts, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadDefaultSetting(pNamespace, tParts, tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the system default setting call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Run default setting write <var>pType</var> on the setting the key parts <var>pParts</var> name in <var>pNamespace</var> and answer
+/// what it leaves (Story 24.15). The sequence:</p>
+/// <ol>
+/// <li>The refusals of <method>DefaultSettingWriteRefusal</method>, before anything is read.</li>
+/// <li>An add's or set's key and fields are judged by <method>DefaultSettingViolations</method> (422); a remove of a key that is not four
+/// valid parts is 404.</li>
+/// <li>In the namespace the setting is read again and judged by <method>DefaultSettingWriteToken</method>, so a state that moved since the
+/// review is refused by its own code with no vendor call; then the vendor's <code>%Save</code> of a new setting, <code>%Save</code> of the
+/// opened setting (concurrency 4, the reference dropped right after) with each field that differs, or <code>%DeleteId</code> runs. A set that
+/// moves no field calls nothing. A setting another process holds locked is 503.</li>
+/// </ol>
+/// <p>The vendor records its own audit row for each insert, update and delete (measured), so the port records none. The answer is the
+/// setting's row read again (<method>ReadDefaultSetting</method>); after a remove <code>{Production, Item, HostClass, Setting, Namespace}</code>.</p>
+ClassMethod PerformDefaultSetting(pNamespace As %String, pType As %String, pParts As %List, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If '$ListValid(pParts) || ($ListLength(pParts) '= 4) Quit ..Absent(.pHttpStatus, .pFault)
+    Set tSC = ..DefaultSettingWriteRefusal(pNamespace, $List(pParts, 4), .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    If pType = ..#TYPEREMOVEDEFAULT {
+        If '..DefaultSettingKeyOK(pParts) Quit ..Absent(.pHttpStatus, .pFault)
+    } Else {
+        Set tSC = ..DefaultSettingViolations(pNamespace, $List(pParts, 1), $List(pParts, 2), $List(pParts, 3), $List(pParts, 4), pBody, .tViolations, (pType = ..#TYPEADDDEFAULT))
+        If $$$ISERR(tSC) Quit tSC
+        If tViolations Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+        If '..DefaultSettingKeyOK(pParts) Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tBusy = 0
+    Set tChanged = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..DefaultSettingFactsHere(pParts, .tFacts)
+        Set tToken = ..DefaultSettingWriteToken(pType, tFacts("exists"))
+        If tToken = "" {
+            Set tId = ..DefaultSettingId(pParts)
+            If pType = ..#TYPEADDDEFAULT {
+                Set tObject = ##class(Ens.Config.DefaultSettings).%New()
+                Set tObject.ProductionName = $List(pParts, 1)
+                Set tObject.ItemName = $List(pParts, 2)
+                Set tObject.HostClassName = $List(pParts, 3)
+                Set tObject.SettingName = $List(pParts, 4)
+                If pBody.%GetTypeOf("Value") = "string" Set tObject.SettingValue = pBody.%Get("Value")
+                If pBody.%GetTypeOf("Description") = "string" Set tObject.Description = pBody.%Get("Description")
+                If pBody.%GetTypeOf("Deployable") = "boolean" Set tObject.Deployable = pBody.%Get("Deployable")
+                Set tVendorSC = tObject.%Save()
+            } ElseIf pType = ..#TYPESETDEFAULT {
+                Set tObject = ##class(Ens.Config.DefaultSettings).%OpenId(tId, 4)
+                If '$IsObject(tObject) {
+                    Set tBusy = 1
+                } Else {
+                    Set tHeld = ..DefaultSettingLine(tObject)
+                    If (pBody.%GetTypeOf("Value") = "string") && (pBody.%Get("Value") '= $List(tHeld, 5)) {
+                        Set tObject.SettingValue = pBody.%Get("Value")
+                        Set tChanged = tChanged _ $ListBuild("Value")
+                    }
+                    If (pBody.%GetTypeOf("Description") = "string") && (pBody.%Get("Description") '= $List(tHeld, 6)) {
+                        Set tObject.Description = pBody.%Get("Description")
+                        Set tChanged = tChanged _ $ListBuild("Description")
+                    }
+                    If (pBody.%GetTypeOf("Deployable") = "boolean") && (''pBody.%Get("Deployable") '= $List(tHeld, 7)) {
+                        Set tObject.Deployable = pBody.%Get("Deployable")
+                        Set tChanged = tChanged _ $ListBuild("Deployable")
+                    }
+                    If tChanged '= "" Set tVendorSC = tObject.%Save()
+                }
+            } Else {
+                Set tVendorSC = ##class(Ens.Config.DefaultSettings).%DeleteId(tId)
+            }
+        }
+        ; The setting's lock is released in the namespace it was taken in.
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Try {
+            Set $NAMESPACE = pNamespace
+        } Catch {
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the system default setting write failed", .pHttpStatus, .pFault)
+    If tBusy Quit ..Unavailable(.pHttpStatus, .pFault)
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken '= "" Quit ..Conflict(..#DEFAULTSETTINGCODEPREFIX _ tToken, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the system default setting write failed", .pHttpStatus, .pFault)
+    If pType = ..#TYPEREMOVEDEFAULT {
+        Set pResult = {}
+        Set tNames = $ListFromString(..#DEFAULTSETTINGFIELDS)
+        For tI = 1:1:4 {
+            Do pResult.%Set($List(tNames, tI), $List(pParts, tI), "string")
+        }
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tReadSC = ..ReadDefaultSetting(pNamespace, pParts, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Setting", $List(pParts, 4), "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The default settings of <var>pNamespace</var>, as <method>SqlRows</method> reads them, kept in <var>pSide</var> by key
+/// (<code>pSide("k" _ production, "k" _ item, "k" _ host class, "k" _ setting) = $ListBuild(value, description, deployable)</code>, so no
+/// subscript is empty or reads as a number) with the count in <var>pCount</var>. A side with more than
+/// <parameter>DEFAULTSETTINGSIDEMAX</parameter> rows is <var>pTooMany</var> and keeps none. A fault is <var>pCaught</var>.</p>
+ClassMethod DefaultSettingSide(pNamespace As %String, Output pSide, Output pCount As %Integer, Output pTooMany As %Boolean, Output pCaught) [ Private ]
+{
+    Kill pSide
+    Set pCount = 0
+    Set pTooMany = 0
+    Set tSC = ..SqlRows(pNamespace, ..#DEFAULTSETTINGSQL, .tFound, .pCaught, ..#DEFAULTSETTINGSIDEMAX + 1)
+    If $IsObject(pCaught) Quit
+    If tFound > ..#DEFAULTSETTINGSIDEMAX {
+        Set pTooMany = 1
+        Quit
+    }
+    For tI = 1:1:tFound {
+        Set tLine = tFound(tI)
+        Set pSide("k" _ $List(tLine, 1), "k" _ $List(tLine, 2), "k" _ $List(tLine, 3), "k" _ $List(tLine, 4)) = $ListBuild($List(tLine, 5), $List(tLine, 6), ''$List(tLine, 7))
+    }
+    Set pCount = tFound
+}
+
+/// <p>The system default settings that differ between <var>pNamespace</var> and the namespace <var>pTarget</var> names (Story 24.15,
+/// DW-2636), one row per setting, at most <var>pMax</var> when it is above zero, in key order:
+/// <code>{Production, Item, HostClass, Setting, Change, Value, OtherValue, Secret, Namespace, OtherNamespace}</code>. The settings are keyed
+/// by the exact composite key; <code>Change</code> is <parameter>DIFFONLYHERE</parameter>, <parameter>DIFFONLYTHERE</parameter> or
+/// <parameter>DIFFDIFFERS</parameter> (a different value, description or deployable flag); identical settings are not listed. A setting whose
+/// name the credential pattern matches shows neither value and still compares.</p>
+/// <p>Refused before any read: a <var>pTarget</var> that is empty or the route's namespace (400); the target not admitted as the route's
+/// namespace is (<method>Admit</method>: a malformed namespace name 400, a missing pair 403, a namespace that does not report interoperability,
+/// an unknown one included, 409 <code>INTEROP.NAMESPACE</code> naming it); a side over <parameter>DEFAULTSETTINGSIDEMAX</parameter> (409
+/// <code>INTEROP.DEFAULTSETTING.TOOMANY</code> naming it).</p>
+ClassMethod ListDefaultSettingDiff(pNamespace As %String, pTarget As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    If (pTarget = "") || ($ZConvert(pTarget, "U") = $ZConvert(pNamespace, "U")) Quit ..RefuseCriterion(..#DIFFTARGETKEY, .pHttpStatus, .pFault)
+    Set tSC = ..Admit(..#ENDPOINTDEFAULTSETTINGSDIFF, ..#TYPELIST, pTarget, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) {
+        If pHttpStatus = 409 Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.InteropError).#NAMESPACE, ##class(OcuPilot.Api.InteropError).#REASONNAMESPACE, .pHttpStatus, .pFault, {"namespace": (pTarget)})
+        Quit tSC
+    }
+    Do ..DefaultSettingSide(pNamespace, .tHere, .tHereCount, .tHereMany, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the system default settings could not be read", .pHttpStatus, .pFault)
+    If tHereMany Quit ..DefaultSettingTooMany(pNamespace, .pHttpStatus, .pFault)
+    Do ..DefaultSettingSide(pTarget, .tThere, .tThereCount, .tThereMany, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the system default settings could not be read", .pHttpStatus, .pFault)
+    If tThereMany Quit ..DefaultSettingTooMany(pTarget, .pHttpStatus, .pFault)
+    ; The union of both sides' keys, walked in order.
+    Merge tAll = tHere
+    Merge tAll = tThere
+    Set pRows = []
+    Set tCount = 0
+    Set tP = ""
+    For {
+        Set tP = $Order(tAll(tP))
+        If tP = "" Quit
+        Set tI = ""
+        For {
+            Set tI = $Order(tAll(tP, tI))
+            If tI = "" Quit
+            Set tC = ""
+            For {
+                Set tC = $Order(tAll(tP, tI, tC))
+                If tC = "" Quit
+                Set tS = ""
+                For {
+                    Set tS = $Order(tAll(tP, tI, tC, tS))
+                    If tS = "" Quit
+                    If (pMax > 0) && (tCount >= pMax) Quit
+                    Set tChange = ""
+                    Set tHeldHere = $Data(tHere(tP, tI, tC, tS), tLineHere)
+                    Set tHeldThere = $Data(tThere(tP, tI, tC, tS), tLineThere)
+                    If tHeldHere && 'tHeldThere {
+                        Set tChange = ..#DIFFONLYHERE
+                    } ElseIf 'tHeldHere && tHeldThere {
+                        Set tChange = ..#DIFFONLYTHERE
+                    } ElseIf tLineHere '= tLineThere {
+                        Set tChange = ..#DIFFDIFFERS
+                    }
+                    If tChange = "" Continue
+                    Set tSetting = $Extract(tS, 2, *)
+                    Set tSecret = ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(tSetting)
+                    Set tRow = {}
+                    Do tRow.%Set("Production", $Extract(tP, 2, *), "string")
+                    Do tRow.%Set("Item", $Extract(tI, 2, *), "string")
+                    Do tRow.%Set("HostClass", $Extract(tC, 2, *), "string")
+                    Do tRow.%Set("Setting", tSetting, "string")
+                    Do tRow.%Set("Change", tChange, "string")
+                    Do tRow.%Set("Value", $Select(tSecret || 'tHeldHere: "", 1: $List(tLineHere, 1) _ ""), "string")
+                    Do tRow.%Set("OtherValue", $Select(tSecret || 'tHeldThere: "", 1: $List(tLineThere, 1) _ ""), "string")
+                    Do tRow.%Set("Secret", ''tSecret, "boolean")
+                    Do tRow.%Set("Namespace", pNamespace, "string")
+                    Do tRow.%Set("OtherNamespace", pTarget, "string")
+                    Do pRows.%Push(tRow)
+                    Set tCount = tCount + 1
+                }
+            }
+        }
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>409 <code>INTEROP.DEFAULTSETTING.TOOMANY</code> naming <var>pNamespace</var> in <code>detail.namespace</code>.</p>
+ClassMethod DefaultSettingTooMany(pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tCode = ##class(OcuPilot.Api.InteropError).#DEFAULTSETTINGTOOMANY
+    Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, tCode, ##class(OcuPilot.Api.InteropError).ReasonFor(tCode), .pHttpStatus, .pFault, {"namespace": (pNamespace)})
+}
+
+/// <p>The lines <method>Snippet</method> adds for the default setting write <var>pType</var> of the setting the composite id
+/// <var>pId</var> names (Story 24.15): the vendor's <code>%Save</code> of a new setting with each field the body <var>pBody</var> carries,
+/// a <code>%Save</code> of the setting opened at concurrency 4 with the fields it carries, or <code>%DeleteId</code>. Keys and values are
+/// string literals; the value of a setting whose name the credential pattern matches is rendered as <code>&lt;Value&gt;</code>, never as
+/// sent (AD-35).</p>
+ClassMethod DefaultSettingSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
+    Set tId = ..Literal($ListToString(tParts, "||"))
+    If pType = ..#TYPEREMOVEDEFAULT Quit tNL _ " Set tSC = ##class(Ens.Config.DefaultSettings).%DeleteId(" _ tId _ ")"
+    If pType = ..#TYPEADDDEFAULT {
+        Set tText = tNL _ " Set tSetting = ##class(Ens.Config.DefaultSettings).%New()"
+        Set tNames = $ListBuild("ProductionName", "ItemName", "HostClassName", "SettingName")
+        For tI = 1:1:4 {
+            Set tText = tText _ tNL _ " Set tSetting." _ $List(tNames, tI) _ " = " _ ..Literal($ListGet(tParts, tI))
+        }
+    } Else {
+        Set tText = tNL _ " Set tSetting = ##class(Ens.Config.DefaultSettings).%OpenId(" _ tId _ ", 4)"
+    }
+    For tField = "Value", "Description", "Deployable" {
+        Set tProperty = $Case(tField, "Value": "SettingValue", : tField)
+        Set tType = $Select($IsObject(pBody): pBody.%GetTypeOf(tField), 1: "unassigned")
+        If tType = "string" {
+            Set tValue = $Select((tField = "Value") && ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName($ListGet(tParts, 4)): "<Value>", 1: pBody.%Get(tField))
+            Set tText = tText _ tNL _ " Set tSetting." _ tProperty _ " = " _ ..Literal(tValue)
+        } ElseIf tType = "boolean" {
+            Set tText = tText _ tNL _ " Set tSetting." _ tProperty _ " = " _ (''pBody.%Get(tField))
+        }
+    }
+    Quit tText _ tNL _ " Set tSC = tSetting.%Save()" _ tNL _ " Set tSetting = """""
+}
+
+/// <p>The statement the credential list reads: every credential's name, user name and business partner, in name order (Story 24.15). It names
+/// no password column, so the list never reads one.</p>
+Parameter CREDENTIALSQL = "SELECT TOP ? SystemName, Username, BusinessPartner FROM Ens_Config.Credentials ORDER BY SystemName";
+
+/// <p>Whether <var>pName</var> is a name the vendor stores for a credential (Story 24.15): 1 to <parameter>CREDENTIALNAMEMAX</parameter>
+/// characters with no control character. Pure.</p>
+ClassMethod CredentialNameOK(pName As %String) As %Boolean
+{
+    Quit (pName '= "") && ($Length(pName) <= ..#CREDENTIALNAMEMAX) && ($ZStrip(pName, "*C") = pName)
+}
+
+/// <p>Whether a password is stored for the credential <var>pName</var> in the current namespace, which the caller has already switched: the
+/// vendor's secondary node exists and is not empty (measured). The password is tested in one expression and never held, compared or returned.</p>
+ClassMethod CredentialStoredHere(pName As %String) As %Boolean [ Private ]
+{
+    If pName = "" Quit 0
+    Quit ($Length($Get(^Ens.SecondaryData.Password(pName))) > 0)
+}
+
+/// <p>The credential as the four values <parameter>CREDENTIALFIELDS</parameter> names, in that order, the last 1 when a password is stored. Runs
+/// while the credential's namespace is switched.</p>
+ClassMethod CredentialLine(pName As %String, pUsername As %String, pPartner As %String) As %List [ Private ]
+{
+    If pUsername = $Char(0) Set pUsername = ""
+    If pPartner = $Char(0) Set pPartner = ""
+    Quit $ListBuild(pName, pUsername, pPartner, ''..CredentialStoredHere(pName))
+}
+
+/// <p>The row a credential list and read answer, from the four values <var>pLine</var> (<method>CredentialLine</method>):
+/// <code>{Name, Username, BusinessPartner, Password}</code>, and with <var>pNamespace</var> <code>Namespace</code> too. <code>Password</code> is
+/// <parameter>CREDENTIALSTORED</parameter> or <parameter>CREDENTIALNOTSTORED</parameter> and never a value (AD-35, Story 24.15).</p>
+ClassMethod CredentialRow(pLine As %List, pNamespace As %String = "") As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("Name", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("Username", $List(pLine, 2) _ "", "string")
+    Do tRow.%Set("BusinessPartner", $List(pLine, 3) _ "", "string")
+    Do tRow.%Set("Password", $Select($List(pLine, 4): ..#CREDENTIALSTORED, 1: ..#CREDENTIALNOTSTORED), "string")
+    If pNamespace '= "" Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The credentials of the current namespace, which the caller has already switched, as <var>pFound</var>(n) = <method>CredentialLine</method>,
+/// at most <var>pMax</var>. Read with <code>%ExecDirectNoPriv</code> after the gate; nothing is written.</p>
+ClassMethod CredentialLinesHere(pMax As %Integer, Output pFound) [ Private ]
+{
+    Kill pFound
+    Set pFound = 0
+    Set tStatement = ##class(%SQL.Statement).%New()
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, ..#CREDENTIALSQL, pMax)
+    If '$IsObject(tResult) Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "the statement answered no result"))
+    If tResult.%SQLCODE < 0 Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message))
+    While tResult.%Next(.tNextSC) {
+        Set pFound($Increment(pFound)) = ..CredentialLine(tResult.%GetData(1), tResult.%GetData(2), tResult.%GetData(3))
+    }
+    If $$$ISERR($Get(tNextSC, $$$OK)) Throw ##class(%Exception.StatusException).CreateFromStatus(tNextSC)
+}
+
+/// <p>The namespace's credentials, one row per credential, at most <var>pMax</var> when it is above zero (Story 24.15):
+/// <method>CredentialRow</method>'s fields, in name order. Nothing is written and no password is read.</p>
+ClassMethod ListCredentials(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..CredentialLinesHere($Select(pMax > 0: pMax, 1: ..#SQLMAX), .tFound)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the credential list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Do pRows.%Push(..CredentialRow(tFound(tI)))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The facts about the credential <var>pName</var>, read in the current namespace, which the caller has already switched, and kept in
+/// <var>pFacts</var>: <code>exists</code> (held under exactly that name), <code>folded</code> (how many credentials hold that name in any letter
+/// case) and, when it exists, <code>line</code> (<method>CredentialLine</method>). A name the vendor cannot store is not held. Nothing is
+/// written.</p>
+ClassMethod CredentialFactsHere(pName As %String, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("exists") = 0
+    Set pFacts("folded") = 0
+    Set pFacts("line") = ""
+    If '..CredentialNameOK(pName) Quit
+    Set pFacts("exists") = ''##class(Ens.Config.Credentials).%ExistsId(pName)
+    Set tStatement = ##class(%SQL.Statement).%New()
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, "SELECT COUNT(*) FROM Ens_Config.Credentials WHERE LOWER(SystemName) = ?", $ZConvert(pName, "L"))
+    If '$IsObject(tResult) Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "the statement answered no result"))
+    If tResult.%SQLCODE < 0 Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message))
+    If tResult.%Next() Set pFacts("folded") = +tResult.%GetData(1)
+    Set tResult = ""
+    If 'pFacts("exists") Quit
+    Set tObject = ##class(Ens.Config.Credentials).%OpenId(pName)
+    If $IsObject(tObject) {
+        Set pFacts("line") = ..CredentialLine(pName, tObject.Username, tObject.BusinessPartner)
+    } Else {
+        Set pFacts("exists") = 0
+    }
+    Set tObject = ""
+}
+
+/// <p><method>CredentialFactsHere</method> in <var>pNamespace</var>; a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod CredentialFacts(pNamespace As %String, pName As %String, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..CredentialFactsHere(pName, .pFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>An edit's body <var>pBody</var> without the user name or business partner the credential <var>pName</var> in <var>pNamespace</var> already
+/// holds, so the edit's rules judge only what it changes: a partner removed since it was set, or one stored as free text elsewhere, does not
+/// refuse an edit of the user name (Story 24.15). A credential that cannot be read leaves the body whole; the write then answers for it.</p>
+ClassMethod CredentialMoves(pNamespace As %String, pName As %String, pBody As %DynamicObject) As %DynamicObject [ Private ]
+{
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit pBody
+    Do ..CredentialFacts(pNamespace, pName, .tFacts, .tCaught)
+    If $IsObject(tCaught) || ($Get(tFacts("line")) = "") Quit pBody
+    Set tMoves = ##class(%DynamicAbstractObject).%FromJSON(pBody.%ToJSON())
+    If (tMoves.%GetTypeOf("Username") = "string") && (tMoves.%Get("Username") = $List(tFacts("line"), 2)) Do tMoves.%Remove("Username")
+    If (tMoves.%GetTypeOf("BusinessPartner") = "string") && (tMoves.%Get("BusinessPartner") = $List(tFacts("line"), 3)) Do tMoves.%Remove("BusinessPartner")
+    Quit tMoves
+}
+
+/// <p>Whether <var>pNamespace</var> holds a business partner named exactly <var>pPartner</var>. A failed read answers 0, so a partner the
+/// instance cannot confirm is refused, never accepted (Story 24.15).</p>
+ClassMethod CredentialPartnerHeld(pNamespace As %String, pPartner As %String) As %Boolean
+{
+    Set tHeld = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tHeld = ''##class(Ens.Config.BusinessPartner).%ExistsId(pPartner)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tHeld = 0
+    }
+    Quit tHeld
+}
+
+/// <p>Whether the vendor accepts <var>pUsername</var> as a credential's user name, in <var>pNamespace</var>: the vendor's own datatype check of the
+/// property judges the value, and nothing is created or saved. The vendor's text is logged and never shown (Story 24.15).</p>
+ClassMethod CredentialAccepts(pNamespace As %String, pUsername As %String) As %Boolean
+{
+    Set tVendorSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tVendorSC = ##class(Ens.Config.Credentials).UsernameIsValid(pUsername)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tVendorSC = ex.AsStatus()
+    }
+    If $$$ISERR(tVendorSC) Do ..LogFault("a credential user name did not pass the vendor's validation", tVendorSC)
+    Quit $$$ISOK(tVendorSC)
+}
+
+/// <p>The 422 violations of a credential's name and fields, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field, code)</code>
+/// with the count in <code>pViolations</code> (Story 24.15): a name <method>CredentialNameOK</method> refuses is <code>NAME</code> (judged only when
+/// <var>pJudgeName</var>, which an add passes); a field that is not a string is <code>PORT.FIELD.SHAPE</code>; a user name past
+/// <parameter>CREDENTIALUSERMAX</parameter> is <code>VALUE</code>; and, with <var>pJudgeValue</var> and nothing else wrong, a business partner
+/// the namespace does not hold is <code>PARTNER</code> and a user name the vendor refuses is <code>VALUE</code>. A caller that has not yet passed
+/// the port's gate passes <var>pJudgeValue</var> 0, so no vendor call runs before it. <var>pFields</var> is the body: <code>Username</code>,
+/// <code>BusinessPartner</code> and <code>Password</code> strings.</p>
+ClassMethod CredentialViolations(pNamespace As %String, pName As %String, pFields As %DynamicObject, Output pViolations, pJudgeName As %Boolean = 1, pJudgeValue As %Boolean = 1) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    If pJudgeName && '..CredentialNameOK(pName) Set pViolations($Increment(pViolations)) = $ListBuild("Name", ##class(OcuPilot.Api.InteropError).#CREDENTIALNAME)
+    If '$IsObject(pFields) || 'pFields.%IsA("%Library.DynamicObject") Set pFields = {}
+    For tField = "Username", "BusinessPartner", "Password" {
+        Set tType = pFields.%GetTypeOf(tField)
+        If (tType '= "string") && (tType '= "unassigned") Set pViolations($Increment(pViolations)) = $ListBuild(tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+    }
+    If (pFields.%GetTypeOf("Username") = "string") && ($Length(pFields.%Get("Username")) > ..#CREDENTIALUSERMAX) Set pViolations($Increment(pViolations)) = $ListBuild("Username", ##class(OcuPilot.Api.InteropError).#CREDENTIALVALUE)
+    If pViolations || 'pJudgeValue Quit $$$OK
+    If (pFields.%GetTypeOf("BusinessPartner") = "string") && (pFields.%Get("BusinessPartner") '= "") && '..CredentialPartnerHeld(pNamespace, pFields.%Get("BusinessPartner")) {
+        Set pViolations($Increment(pViolations)) = $ListBuild("BusinessPartner", ##class(OcuPilot.Api.InteropError).#CREDENTIALPARTNER)
+    }
+    If (pFields.%GetTypeOf("Username") = "string") && '..CredentialAccepts(pNamespace, pFields.%Get("Username")) {
+        Set pViolations($Increment(pViolations)) = $ListBuild("Username", ##class(OcuPilot.Api.InteropError).#CREDENTIALVALUE)
+    }
+    Quit $$$OK
+}
+
+/// <p>The decision a credential write <var>pType</var> is refused with, as the last segment of its code (<code>TAKEN</code>) or
+/// <code>ABSENT</code> for a target that is not there, else <code>""</code> (Story 24.15): an add of a name the namespace holds in any letter case is
+/// <code>TAKEN</code> (the vendor's adapters resolve a name ignoring case); any other write of a name it does not hold exactly is <code>ABSENT</code>.
+/// <var>pExists</var> is whether the credential is held under exactly that name and <var>pFolded</var> how many hold it in any letter case. Pure.</p>
+ClassMethod CredentialWriteToken(pType As %String, pExists As %Boolean, pFolded As %Integer) As %String
+{
+    If pType = ..#TYPEADDCREDENTIAL Quit $Select(pExists || (pFolded > 0): "TAKEN", 1: "")
+    Quit $Select(pExists: "", 1: "ABSENT")
+}
+
+/// <p>One credential, fresh (Story 24.15): <method>CredentialRow</method>'s fields and <code>Namespace</code>. A credential not held under exactly
+/// that name, or a name the vendor cannot store, is 404 <code>PORT.NOTFOUND</code>, unlogged. With <var>pAction</var> an add (AD-54, which inverts the
+/// read) is <code>TAKEN</code> when the name is held in any letter case and otherwise the 404 a create expects.</p>
+ClassMethod ReadCredential(pNamespace As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If '..CredentialNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+    Do ..CredentialFacts(pNamespace, pName, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the credential read failed", .pHttpStatus, .pFault)
+    If pAction = ..#TYPEADDCREDENTIAL {
+        If ..CredentialWriteToken(pAction, tFacts("exists"), tFacts("folded")) '= "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#CREDENTIALTAKEN, .pHttpStatus, .pFault)
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    Set pRow = ..CredentialRow(tFacts("line"), pNamespace)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the Credentials endpoint's <code>LIST</code> and typed types after <method>Invoke</method>'s gate (Story 24.15): the
+/// <code>CREDENTIAL</code> read and the four writes, the credential named under <parameter>IDKEY</parameter> by its name, kept exactly (AD-13). An
+/// <parameter>ACTIONKEY</parameter> names the write the read is composed for.</p>
+ClassMethod InvokeCredential(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListCredentials(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tName = $Get(pQuery(..#IDKEY))
+        If tName = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsCredentialWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsCredentialWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsCredentialWrite(pType) {
+            Set tSC = ..PerformCredential(pNamespace, pType, tName, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadCredential(pNamespace, tName, tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the credential call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Run credential write <var>pType</var> on the credential <var>pName</var> in <var>pNamespace</var> and answer what it leaves (Story 24.15).
+/// The sequence:</p>
+/// <ol>
+/// <li>An add's or edit's fields are judged by <method>CredentialViolations</method> (422), and a password write needs a non-empty
+/// <code>Password</code> string; a name the vendor cannot store is 404 for any write but an add.</li>
+/// <li>In the namespace the credential is read again and judged by <method>CredentialWriteToken</method>, so a state that moved since the review is
+/// refused by its own code with no vendor call; then the vendor's <code>%Save</code> of a new credential (its password, when one is sent, set through
+/// the vendor's own <code>PasswordSet</code>), <code>%Save</code> of the opened credential (concurrency 4, the reference dropped right after) with
+/// each field that differs or its new password, or <code>%DeleteId</code>, which removes the password with it. An edit that moves no field calls
+/// nothing. A credential another process holds locked is 503.</li>
+/// <li>The namespace is restored, then OcuPilot's own audit row is recorded (<method>AuditRuntime</method>), because the vendor records none. It
+/// carries the namespace and the names of the fields written, never a value.</li>
+/// </ol>
+/// <p>The password is passed to the vendor and nowhere else: it is in no row, no audit payload, no log line and no refusal text. The answer is the
+/// credential's row read again (<method>ReadCredential</method>); after a remove <code>{Name, Namespace}</code>.</p>
+ClassMethod PerformCredential(pNamespace As %String, pType As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tPasswordType = pBody.%GetTypeOf("Password")
+    Set tPassword = $Select(tPasswordType = "string": pBody.%Get("Password"), 1: "")
+    If pType = ..#TYPEREMOVECREDENTIAL {
+        If '..CredentialNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+    } ElseIf pType = ..#TYPEPASSWORDCREDENTIAL {
+        If '..CredentialNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+        If tPassword = "" {
+            Set tViolations(1) = $ListBuild("Password", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+            Set tViolations = 1
+            Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+        }
+    } Else {
+        If (pType = ..#TYPESETCREDENTIAL) && '..CredentialNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+        Set tJudged = $Select(pType = ..#TYPESETCREDENTIAL: ..CredentialMoves(pNamespace, pName, pBody), 1: pBody)
+        Set tSC = ..CredentialViolations(pNamespace, pName, tJudged, .tViolations, (pType = ..#TYPEADDCREDENTIAL))
+        If $$$ISERR(tSC) Quit tSC
+        If tViolations Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tBusy = 0
+    Set tChanged = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..CredentialFactsHere(pName, .tFacts)
+        Set tToken = ..CredentialWriteToken(pType, tFacts("exists"), tFacts("folded"))
+        If tToken = "" {
+            If pType = ..#TYPEADDCREDENTIAL {
+                Set tObject = ##class(Ens.Config.Credentials).%New()
+                Set tObject.SystemName = pName
+                If pBody.%GetTypeOf("Username") = "string" Set tObject.Username = pBody.%Get("Username")
+                If pBody.%GetTypeOf("BusinessPartner") = "string" Set tObject.BusinessPartner = pBody.%Get("BusinessPartner")
+                If tPassword '= "" Set tVendorSC = tObject.PasswordSet(tPassword)
+                If $$$ISOK(tVendorSC) Set tVendorSC = tObject.%Save()
+            } ElseIf pType = ..#TYPEREMOVECREDENTIAL {
+                Set tVendorSC = ##class(Ens.Config.Credentials).%DeleteId(pName)
+            } Else {
+                Set tObject = ##class(Ens.Config.Credentials).%OpenId(pName, 4)
+                If '$IsObject(tObject) {
+                    Set tBusy = 1
+                } ElseIf pType = ..#TYPEPASSWORDCREDENTIAL {
+                    Set tVendorSC = tObject.PasswordSet(tPassword)
+                    If $$$ISOK(tVendorSC) Set tVendorSC = tObject.%Save()
+                } Else {
+                    Set tHeld = ..CredentialLine(pName, tObject.Username, tObject.BusinessPartner)
+                    If (pBody.%GetTypeOf("Username") = "string") && (pBody.%Get("Username") '= $List(tHeld, 2)) {
+                        Set tObject.Username = pBody.%Get("Username")
+                        Set tChanged = tChanged _ $ListBuild("Username")
+                    }
+                    If (pBody.%GetTypeOf("BusinessPartner") = "string") && (pBody.%Get("BusinessPartner") '= $List(tHeld, 3)) {
+                        Set tObject.BusinessPartner = pBody.%Get("BusinessPartner")
+                        Set tChanged = tChanged _ $ListBuild("BusinessPartner")
+                    }
+                    If tChanged '= "" Set tVendorSC = tObject.%Save()
+                }
+            }
+        }
+        ; The credential's lock is released in the namespace it was taken in.
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Try {
+            Set $NAMESPACE = pNamespace
+        } Catch {
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the credential write failed", .pHttpStatus, .pFault)
+    If tBusy Quit ..Unavailable(.pHttpStatus, .pFault)
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken '= "" Quit ..Conflict(..#CREDENTIALCODEPREFIX _ tToken, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the credential write failed", .pHttpStatus, .pFault)
+    If (pType '= ..#TYPESETCREDENTIAL) || (tChanged '= "") {
+        If pType = ..#TYPEADDCREDENTIAL {
+            For tField = "Username", "BusinessPartner" {
+                If (pBody.%GetTypeOf(tField) = "string") && (pBody.%Get(tField) '= "") Set tChanged = tChanged _ $ListBuild(tField)
+            }
+            If tPassword '= "" Set tChanged = tChanged _ $ListBuild("Password")
+        } ElseIf pType = ..#TYPEPASSWORDCREDENTIAL {
+            Set tChanged = $ListBuild("Password")
+        }
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        If pType '= ..#TYPEREMOVECREDENTIAL Do tEffects.%Set("fields", $ListToString(tChanged, ","), "string")
+        Do ..AuditRuntime($Case(pType, ..#TYPEADDCREDENTIAL: ..#VERBADD, ..#TYPEREMOVECREDENTIAL: ..#VERBREMOVE, : ..#VERBSET), ..#ENTITYCREDENTIAL, pName, tEffects)
+    }
+    If pType = ..#TYPEREMOVECREDENTIAL {
+        Set pResult = {}
+        Do pResult.%Set("Name", pName, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tReadSC = ..ReadCredential(pNamespace, pName, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Name", pName, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The two lines that open a create's script for a name compared ignoring letter case (AD-59): <code>tHeld</code> counts the rows of the SQL
+/// table <var>pTable</var> whose column <var>pColumn</var> equals the name <var>pName</var> in any letter case, the port's own taken-name rule, and
+/// is 1 when the count cannot be read; <code>tSC</code> is the refusal's sentence <var>pReason</var>, which only the create's own save replaces. Each
+/// step after them is gated on <code>'tHeld</code> on its own line.</p>
+ClassMethod FoldedFreeLines(pTable As %String, pColumn As %String, pName As %String, pReason As %String) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tCount = ..Literal("SELECT COUNT(*) FROM " _ pTable _ " WHERE LOWER(" _ pColumn _ ") = ?")
+    Set tText = tNL _ " Set tRS = ##class(%SQL.Statement).%ExecDirect(, " _ tCount _ ", $ZConvert(" _ ..Literal(pName) _ ", ""L"")), tHeld = $Select(tRS.%Next(): ''tRS.%GetData(1), 1: 1), tRS = """""
+    Quit tText _ tNL _ " Set tSC = $System.Status.Error(5001, " _ ..Literal(pReason) _ ")"
+}
+
+/// <p>The lines <method>Snippet</method> adds for the credential write <var>pType</var> of the credential named <var>pName</var> (Story 24.15): the
+/// vendor's <code>%Save</code> of a new credential, each step gated on a free name in any letter case (<method>FoldedFreeLines</method>), of the
+/// credential opened at concurrency 4 with the fields <var>pBody</var> carries, or <code>%DeleteId</code>. Names and values are string literals; a
+/// password is never rendered as sent: its line takes the placeholder <code>&lt;Password&gt;</code> where the body carries one (AD-35, AD-59).</p>
+ClassMethod CredentialSnippet(pType As %String, pName As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tName = ..Literal(pName)
+    If pType = ..#TYPEREMOVECREDENTIAL Quit tNL _ " Set tSC = ##class(Ens.Config.Credentials).%DeleteId(" _ tName _ ")"
+    Set tGate = ""
+    If pType = ..#TYPEADDCREDENTIAL {
+        Set tGate = "If 'tHeld "
+        Set tText = ..FoldedFreeLines("Ens_Config.Credentials", "SystemName", pName, ##class(OcuPilot.Api.InteropError).#REASONCREDENTIALTAKEN)
+        Set tText = tText _ tNL _ " " _ tGate _ "Set tCredential = ##class(Ens.Config.Credentials).%New(), tCredential.SystemName = " _ tName
+    } Else {
+        Set tText = tNL _ " Set tCredential = ##class(Ens.Config.Credentials).%OpenId(" _ tName _ ", 4)"
+    }
+    If pType '= ..#TYPEPASSWORDCREDENTIAL {
+        For tField = "Username", "BusinessPartner" {
+            Set tSupplied = $IsObject(pBody) && (pBody.%GetTypeOf(tField) = "string")
+            If tSupplied || (pType = ..#TYPEADDCREDENTIAL) Set tText = tText _ tNL _ " " _ tGate _ "Set tCredential." _ tField _ " = " _ ..Literal($Select(tSupplied: pBody.%Get(tField), 1: ""))
+        }
+    }
+    If (pType = ..#TYPEPASSWORDCREDENTIAL) || ((pType = ..#TYPEADDCREDENTIAL) && $IsObject(pBody) && (pBody.%GetTypeOf("Password") = "string")) {
+        Set tText = tText _ tNL _ " " _ tGate _ "Set tSC = tCredential.PasswordSet(""<Password>"")"
+    }
+    Quit tText _ tNL _ " " _ tGate _ "Set tSC = tCredential.%Save()" _ tNL _ " Set tCredential = """""
+}
+
+/// <p>The statement the schedule spec list reads: every schedule spec's name, description, spec and deployable flag, in name order (Story 24.15).</p>
+Parameter SCHEDULESQL = "SELECT TOP ? Name, Description, ScheduleSpec, Deployable FROM Ens_Util.Schedule ORDER BY Name";
+
+/// <p>Whether <var>pName</var> is a name this port writes for a schedule spec (Story 24.15): 1 to <parameter>SCHEDULENAMEMAX</parameter>
+/// characters with no control character. Pure.</p>
+ClassMethod ScheduleNameOK(pName As %String) As %Boolean
+{
+    Quit (pName '= "") && ($Length(pName) <= ..#SCHEDULENAMEMAX) && ($ZStrip(pName, "*C") = pName)
+}
+
+/// <p>The schedule spec as the four values <parameter>SCHEDULEFIELDS</parameter> names, in that order, the last 1 or 0. Pure.</p>
+ClassMethod ScheduleLine(pName As %String, pDescription As %String, pSpec As %String, pDeployable As %Boolean) As %List [ Private ]
+{
+    If pDescription = $Char(0) Set pDescription = ""
+    If pSpec = $Char(0) Set pSpec = ""
+    Quit $ListBuild(pName, pDescription, pSpec, ''pDeployable)
+}
+
+/// <p>The row a schedule spec list and read answer, from the four values <var>pLine</var> (<method>ScheduleLine</method>):
+/// <code>{Name, Description, ScheduleSpec, Deployable}</code>, and with <var>pNamespace</var> <code>Namespace</code> too. The spec is text and is
+/// never run.</p>
+ClassMethod ScheduleRow(pLine As %List, pNamespace As %String = "") As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("Name", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("Description", $List(pLine, 2) _ "", "string")
+    Do tRow.%Set("ScheduleSpec", $List(pLine, 3) _ "", "string")
+    Do tRow.%Set("Deployable", ''$List(pLine, 4), "boolean")
+    If pNamespace '= "" Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The namespace's schedule specs, one row per schedule spec, at most <var>pMax</var> when it is above zero (Story 24.15):
+/// <method>ScheduleRow</method>'s fields, in name order. Read with <code>%ExecDirectNoPriv</code> after the gate (<method>SqlRows</method>);
+/// nothing is written.</p>
+ClassMethod ListSchedules(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..SqlRows(pNamespace, ..#SCHEDULESQL, .tFound, .tCaught, $Select(pMax > 0: pMax, 1: ..#SQLMAX))
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the schedule spec list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tLine = tFound(tI)
+        Do pRows.%Push(..ScheduleRow(..ScheduleLine($List(tLine, 1), $List(tLine, 2), $List(tLine, 3), $List(tLine, 4))))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The facts about the schedule spec <var>pName</var>, read in the current namespace, which the caller has already switched, and kept in
+/// <var>pFacts</var>: <code>exists</code> (held under exactly that name), <code>folded</code> (how many schedule specs hold that name in any letter
+/// case) and, when it exists, <code>line</code> (<method>ScheduleLine</method>). A name this port does not write is not held. Nothing is
+/// written.</p>
+ClassMethod ScheduleFactsHere(pName As %String, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("exists") = 0
+    Set pFacts("folded") = 0
+    Set pFacts("line") = ""
+    If '..ScheduleNameOK(pName) Quit
+    Set pFacts("exists") = ''##class(Ens.Util.Schedule).%ExistsId(pName)
+    Set tStatement = ##class(%SQL.Statement).%New()
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, "SELECT COUNT(*) FROM Ens_Util.Schedule WHERE LOWER(Name) = ?", $ZConvert(pName, "L"))
+    If '$IsObject(tResult) Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "the statement answered no result"))
+    If tResult.%SQLCODE < 0 Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message))
+    If tResult.%Next() Set pFacts("folded") = +tResult.%GetData(1)
+    Set tResult = ""
+    If 'pFacts("exists") Quit
+    Set tObject = ##class(Ens.Util.Schedule).%OpenId(pName)
+    If $IsObject(tObject) {
+        Set pFacts("line") = ..ScheduleLine(pName, tObject.Description, tObject.ScheduleSpec, tObject.Deployable)
+    } Else {
+        Set pFacts("exists") = 0
+    }
+    Set tObject = ""
+}
+
+/// <p><method>ScheduleFactsHere</method> in <var>pNamespace</var>; a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod ScheduleFacts(pNamespace As %String, pName As %String, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..ScheduleFactsHere(pName, .pFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The vendor's status <var>pStatus</var> without any text it carries: an error status naming only the vendor's error codes, which is what
+/// reaches the log, because the vendor's text echoes the spec, the name or the description (Story 24.15). A lock the vendor could not take and a
+/// privilege refusal are kept as they came, so <method>Statused</method> still answers them as they are answered everywhere. Pure.</p>
+ClassMethod ScheduleVendorStatus(pStatus As %Status) As %Status
+{
+    If ..HasCode(pStatus, ..#CODERUNTIMELOCK) || ..HasCode(pStatus, ..#CODEPRIVILEGE) Quit pStatus
+    Set tCodes = ""
+    Set tProtect = 0
+    Try {
+        Set tCodes = $System.Status.GetErrorCodes(pStatus)
+        Set tProtect = ($System.Status.GetErrorText(pStatus) [ "<PROTECT>")
+    } Catch {
+        Set tCodes = ""
+    }
+    If tProtect Quit pStatus
+    Quit $$$ERROR($$$GeneralError, "the vendor refused the schedule spec write with error code " _ tCodes)
+}
+
+/// <p>Whether the vendor accepts <var>pSpec</var> as a schedule spec (Story 24.15): the vendor's own <code>ValidateScheduleSpec</code>, the
+/// check the classic page makes, which is pure and writes nothing; <code>ParseScheduleSpec</code> is never called, because it logs a bad spec. The
+/// empty spec is refused, since the vendor reads one as always on. The vendor's segment errors echo the spec, so only their error codes reach the
+/// log, and the spec reaches no line (<method>ScheduleVendorStatus</method>).</p>
+ClassMethod ScheduleSpecAccepted(pSpec As %String) As %Boolean
+{
+    If pSpec = "" Quit 0
+    Set tVendorSC = $$$OK
+    Try {
+        Set tSpec = pSpec
+        Kill tErrors
+        Set tVendorSC = $ClassMethod("Ens.ScheduleHandler", ..#SCHEDULEVALIDATOR, .tSpec, .tErrors, .tLength)
+    } Catch ex {
+        Set tVendorSC = ex.AsStatus()
+    }
+    If $$$ISERR(tVendorSC) Do ..LogFault("a schedule spec did not pass the vendor's validation", ..ScheduleVendorStatus(tVendorSC))
+    Quit $$$ISOK(tVendorSC)
+}
+
+/// <p>The 422 violations of a schedule spec's name and fields, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field, code)</code>
+/// with the count in <code>pViolations</code> (Story 24.15): a name <method>ScheduleNameOK</method> refuses is <code>NAME</code> (judged only when
+/// <var>pJudgeName</var>, which an add passes); a field of the wrong type is <code>PORT.FIELD.SHAPE</code>; a description past
+/// <parameter>SCHEDULEDESCRIPTIONMAX</parameter> characters is <code>DESCRIPTION</code>; and, with <var>pJudgeSpec</var> and nothing else wrong, a
+/// spec the vendor refuses is <code>SPEC</code>. An add with no spec (<var>pRequireSpec</var>) is <code>SPEC</code> too. A caller that has not yet
+/// passed the port's gate passes <var>pJudgeSpec</var> 0, so no vendor call runs before it. <var>pFields</var> is the body: <code>ScheduleSpec</code>
+/// and <code>Description</code> strings and <code>Deployable</code> a boolean.</p>
+ClassMethod ScheduleViolations(pName As %String, pFields As %DynamicObject, Output pViolations, pJudgeName As %Boolean = 1, pJudgeSpec As %Boolean = 1, pRequireSpec As %Boolean = 0) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    If pJudgeName && '..ScheduleNameOK(pName) Set pViolations($Increment(pViolations)) = $ListBuild("Name", ##class(OcuPilot.Api.InteropError).#SCHEDULENAME)
+    If '$IsObject(pFields) || 'pFields.%IsA("%Library.DynamicObject") Set pFields = {}
+    For tField = "ScheduleSpec", "Description" {
+        Set tType = pFields.%GetTypeOf(tField)
+        If (tType '= "string") && (tType '= "unassigned") Set pViolations($Increment(pViolations)) = $ListBuild(tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+    }
+    Set tType = pFields.%GetTypeOf("Deployable")
+    If (tType '= "boolean") && (tType '= "unassigned") Set pViolations($Increment(pViolations)) = $ListBuild("Deployable", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+    If (pFields.%GetTypeOf("Description") = "string") && ($Length(pFields.%Get("Description")) > ..#SCHEDULEDESCRIPTIONMAX) Set pViolations($Increment(pViolations)) = $ListBuild("Description", ##class(OcuPilot.Api.InteropError).#SCHEDULEDESCRIPTION)
+    If pViolations || 'pJudgeSpec Quit $$$OK
+    Set tSpecType = pFields.%GetTypeOf("ScheduleSpec")
+    If ((tSpecType = "string") || pRequireSpec) && '..ScheduleSpecAccepted($Select(tSpecType = "string": pFields.%Get("ScheduleSpec"), 1: "")) {
+        Set pViolations($Increment(pViolations)) = $ListBuild("ScheduleSpec", ##class(OcuPilot.Api.InteropError).#SCHEDULESPEC)
+    }
+    Quit $$$OK
+}
+
+/// <p>The decision a schedule spec write <var>pType</var> is refused with, as the last segment of its code (<code>TAKEN</code>) or
+/// <code>ABSENT</code> for a target that is not there, else <code>""</code> (Story 24.15): an add of a name the namespace holds in any letter case is
+/// <code>TAKEN</code> (the vendor notifies a running production by a name compared ignoring case); any other write of a name it does not hold
+/// exactly is <code>ABSENT</code>. <var>pExists</var> is whether the schedule spec is held under exactly that name and <var>pFolded</var> how many
+/// hold it in any letter case. Pure.</p>
+ClassMethod ScheduleWriteToken(pType As %String, pExists As %Boolean, pFolded As %Integer) As %String
+{
+    If pType = ..#TYPEADDSCHEDULE Quit $Select(pExists || (pFolded > 0): "TAKEN", 1: "")
+    Quit $Select(pExists: "", 1: "ABSENT")
+}
+
+/// <p>409 <code>INTEROP.SCHEDULE.SOURCECONTROL</code> when <var>pNamespace</var> is under source control, which refuses every schedule spec write,
+/// else <code>$$$OK</code> (Story 24.15).</p>
+ClassMethod ScheduleWriteRefusal(pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#SCHEDULESOURCECONTROL, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>One schedule spec, fresh (Story 24.15): <method>ScheduleRow</method>'s fields and <code>Namespace</code>. A schedule spec not held under exactly
+/// that name, or a name this port does not write, is 404 <code>PORT.NOTFOUND</code>, unlogged. With <var>pAction</var> it refuses what that write
+/// would be refused (<method>ScheduleWriteRefusal</method>); then an add (AD-54, which inverts the read) is <code>TAKEN</code> when the name is held
+/// in any letter case and otherwise the 404 a create expects.</p>
+ClassMethod ReadSchedule(pNamespace As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If '..ScheduleNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+    If pAction '= "" {
+        Set tSC = ..ScheduleWriteRefusal(pNamespace, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Do ..ScheduleFacts(pNamespace, pName, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the schedule spec read failed", .pHttpStatus, .pFault)
+    If pAction = ..#TYPEADDSCHEDULE {
+        If ..ScheduleWriteToken(pAction, tFacts("exists"), tFacts("folded")) '= "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#SCHEDULETAKEN, .pHttpStatus, .pFault)
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    Set pRow = ..ScheduleRow(tFacts("line"), pNamespace)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the Schedules endpoint's <code>LIST</code> and typed types after <method>Invoke</method>'s gate (Story 24.15): the
+/// <code>SCHEDULE</code> read and the three writes, the schedule spec named under <parameter>IDKEY</parameter> by its name, kept exactly (AD-13).
+/// An <parameter>ACTIONKEY</parameter> names the write the read is composed for.</p>
+ClassMethod InvokeSchedule(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListSchedules(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tName = $Get(pQuery(..#IDKEY))
+        If tName = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsScheduleWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsScheduleWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsScheduleWrite(pType) {
+            Set tSC = ..PerformSchedule(pNamespace, pType, tName, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadSchedule(pNamespace, tName, tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the schedule spec call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Run schedule spec write <var>pType</var> on the schedule spec <var>pName</var> in <var>pNamespace</var> and answer what it leaves (Story 24.15).
+/// The sequence:</p>
+/// <ol>
+/// <li>A namespace under source control refuses every write (<method>ScheduleWriteRefusal</method>), before anything is judged or read.</li>
+/// <li>An add's or edit's fields are judged by <method>ScheduleViolations</method> (422); a name this port does not write is 404 for any write
+/// but an add.</li>
+/// <li>In the namespace the schedule spec is read again and judged by <method>ScheduleWriteToken</method>, so a state that moved since the review is
+/// refused by its own code with no vendor call; then the vendor's <code>%Save</code> of a new schedule spec, <code>%Save</code> of the opened
+/// schedule spec (concurrency 4, the reference dropped right after) with each field that differs, or <code>%DeleteId</code>. An edit that moves no
+/// field calls nothing. A schedule spec another process holds locked is 503.</li>
+/// <li>The namespace is restored, then OcuPilot's own audit row is recorded (<method>AuditRuntime</method>), because the vendor records none. It
+/// carries the namespace and the names of the fields written, never a value.</li>
+/// </ol>
+/// <p>The vendor notifies a running production of an edit that changes the spec, in the confirming request; nothing is started, stopped or updated
+/// here. A vendor refusal reaches the log as its error codes alone (<method>ScheduleVendorStatus</method>). The answer is the schedule spec's row read
+/// again (<method>ReadSchedule</method>); after a remove <code>{Name, Namespace}</code>.</p>
+ClassMethod PerformSchedule(pNamespace As %String, pType As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..ScheduleWriteRefusal(pNamespace, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    If pType = ..#TYPEREMOVESCHEDULE {
+        If '..ScheduleNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+    } Else {
+        If (pType = ..#TYPESETSCHEDULE) && '..ScheduleNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+        Set tSC = ..ScheduleViolations(pName, pBody, .tViolations, (pType = ..#TYPEADDSCHEDULE), 1, (pType = ..#TYPEADDSCHEDULE))
+        If $$$ISERR(tSC) Quit tSC
+        If tViolations Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tBusy = 0
+    Set tChanged = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..ScheduleFactsHere(pName, .tFacts)
+        Set tToken = ..ScheduleWriteToken(pType, tFacts("exists"), tFacts("folded"))
+        If tToken = "" {
+            If pType = ..#TYPEADDSCHEDULE {
+                Set tObject = ##class(Ens.Util.Schedule).%New()
+                Set tObject.Name = pName
+                If pBody.%GetTypeOf("ScheduleSpec") = "string" Set tObject.ScheduleSpec = pBody.%Get("ScheduleSpec")
+                If pBody.%GetTypeOf("Description") = "string" Set tObject.Description = pBody.%Get("Description")
+                If pBody.%GetTypeOf("Deployable") = "boolean" Set tObject.Deployable = pBody.%Get("Deployable")
+                Set tVendorSC = tObject.%Save()
+            } ElseIf pType = ..#TYPEREMOVESCHEDULE {
+                Set tVendorSC = ##class(Ens.Util.Schedule).%DeleteId(pName)
+            } Else {
+                Set tObject = ##class(Ens.Util.Schedule).%OpenId(pName, 4)
+                If '$IsObject(tObject) {
+                    Set tBusy = 1
+                } Else {
+                    Set tHeld = ..ScheduleLine(pName, tObject.Description, tObject.ScheduleSpec, tObject.Deployable)
+                    If (pBody.%GetTypeOf("ScheduleSpec") = "string") && (pBody.%Get("ScheduleSpec") '= $List(tHeld, 3)) {
+                        Set tObject.ScheduleSpec = pBody.%Get("ScheduleSpec")
+                        Set tChanged = tChanged _ $ListBuild("ScheduleSpec")
+                    }
+                    If (pBody.%GetTypeOf("Description") = "string") && (pBody.%Get("Description") '= $List(tHeld, 2)) {
+                        Set tObject.Description = pBody.%Get("Description")
+                        Set tChanged = tChanged _ $ListBuild("Description")
+                    }
+                    If (pBody.%GetTypeOf("Deployable") = "boolean") && (''pBody.%Get("Deployable") '= $List(tHeld, 4)) {
+                        Set tObject.Deployable = pBody.%Get("Deployable")
+                        Set tChanged = tChanged _ $ListBuild("Deployable")
+                    }
+                    If tChanged '= "" Set tVendorSC = tObject.%Save()
+                }
+            }
+        }
+        ; The schedule spec's lock is released in the namespace it was taken in.
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Try {
+            Set $NAMESPACE = pNamespace
+        } Catch {
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the schedule spec write failed", .pHttpStatus, .pFault)
+    If tBusy Quit ..Unavailable(.pHttpStatus, .pFault)
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken '= "" Quit ..Conflict(..#SCHEDULECODEPREFIX _ tToken, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(..ScheduleVendorStatus(tVendorSC), "the schedule spec write failed", .pHttpStatus, .pFault)
+    If (pType '= ..#TYPESETSCHEDULE) || (tChanged '= "") {
+        If pType = ..#TYPEADDSCHEDULE {
+            Set tChanged = $ListBuild("ScheduleSpec")
+            If (pBody.%GetTypeOf("Description") = "string") && (pBody.%Get("Description") '= "") Set tChanged = tChanged _ $ListBuild("Description")
+            If (pBody.%GetTypeOf("Deployable") = "boolean") && pBody.%Get("Deployable") Set tChanged = tChanged _ $ListBuild("Deployable")
+        }
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        If pType '= ..#TYPEREMOVESCHEDULE Do tEffects.%Set("fields", $ListToString(tChanged, ","), "string")
+        Do ..AuditRuntime($Case(pType, ..#TYPEADDSCHEDULE: ..#VERBADD, ..#TYPEREMOVESCHEDULE: ..#VERBREMOVE, : ..#VERBSET), ..#ENTITYSCHEDULE, pName, tEffects)
+    }
+    If pType = ..#TYPEREMOVESCHEDULE {
+        Set pResult = {}
+        Do pResult.%Set("Name", pName, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tReadSC = ..ReadSchedule(pNamespace, pName, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Name", pName, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the schedule spec write <var>pType</var> of the schedule spec named <var>pName</var> (Story 24.15):
+/// the vendor's <code>%Save</code> of a new schedule spec, each step gated on a free name in any letter case (<method>FoldedFreeLines</method>), of
+/// the schedule spec opened at concurrency 4 with the fields <var>pBody</var> carries, or <code>%DeleteId</code>. Names and values are string
+/// literals.</p>
+ClassMethod ScheduleSnippet(pType As %String, pName As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tName = ..Literal(pName)
+    If pType = ..#TYPEREMOVESCHEDULE Quit tNL _ " Set tSC = ##class(Ens.Util.Schedule).%DeleteId(" _ tName _ ")"
+    Set tGate = ""
+    If pType = ..#TYPEADDSCHEDULE {
+        Set tGate = "If 'tHeld "
+        Set tText = ..FoldedFreeLines("Ens_Util.Schedule", "Name", pName, ##class(OcuPilot.Api.InteropError).#REASONSCHEDULETAKEN)
+        Set tText = tText _ tNL _ " " _ tGate _ "Set tSchedule = ##class(Ens.Util.Schedule).%New(), tSchedule.Name = " _ tName
+    } Else {
+        Set tText = tNL _ " Set tSchedule = ##class(Ens.Util.Schedule).%OpenId(" _ tName _ ", 4)"
+    }
+    For tField = "ScheduleSpec", "Description", "Deployable" {
+        Set tType = $Select($IsObject(pBody): pBody.%GetTypeOf(tField), 1: "unassigned")
+        If tType = "string" {
+            Set tText = tText _ tNL _ " " _ tGate _ "Set tSchedule." _ tField _ " = " _ ..Literal(pBody.%Get(tField))
+        } ElseIf tType = "boolean" {
+            Set tText = tText _ tNL _ " " _ tGate _ "Set tSchedule." _ tField _ " = " _ (''pBody.%Get(tField))
+        }
+    }
+    Quit tText _ tNL _ " " _ tGate _ "Set tSC = tSchedule.%Save()" _ tNL _ " Set tSchedule = """""
+}
+
+/// <p>The Workflow users endpoint (Story 24.17 Batch 3a): <code>LIST</code> (the namespace's <code>EnsLib.Workflow.UserDefinition</code> rows by name), <code>WORKFLOWUSER</code> (one user,
+/// fresh), <code>WORKFLOWUSERCHOICES</code> (the instance's users a new workflow user may take, as the classic Name selector lists them) and the writes
+/// <code>ADDWORKFLOWUSER</code>, <code>SETWORKFLOWUSER</code> and <code>REMOVEWORKFLOWUSER</code>, each the vendor's own <code>%Save</code> or <code>%DeleteId</code> as the classic page
+/// performs them.</p>
+Parameter ENDPOINTWORKFLOWUSERS = "WorkflowUsers";
+
+/// <p>The pairs the WorkflowUsers endpoint requires: the portal's and the classic Workflow Users page's own resource. The writes and the user choices add
+/// <parameter>WORKFLOWWRITEPAIR</parameter>, the page's edit resource, and the gate's WRITE on the namespace's globals database.</p>
+Parameter WORKFLOWPAIRS = "%Ens_Portal:USE,%Ens_WorkflowConfig:READ";
+
+Parameter WORKFLOWWRITEPAIR = "%Ens_WorkflowConfig:WRITE";
+
+/// <p>One workflow user, fresh: <code>{Name, FullName, IsActive, Roles, Namespace}</code>. With <parameter>ACTIONKEY</parameter> in the query it refuses what that write would be refused.</p>
+Parameter TYPEWORKFLOWUSER = "WORKFLOWUSER";
+
+/// <p>The instance's users a new workflow user may take: <code>{Name, Namespace}</code>, as the vendor's <code>Ens.ContextSearch.ListEnsembleUsers</code> answers them to the caller.</p>
+Parameter TYPEWORKFLOWUSERCHOICES = "WORKFLOWUSERCHOICES";
+
+Parameter TYPEADDWORKFLOWUSER = "ADDWORKFLOWUSER";
+
+Parameter TYPESETWORKFLOWUSER = "SETWORKFLOWUSER";
+
+Parameter TYPEREMOVEWORKFLOWUSER = "REMOVEWORKFLOWUSER";
+
+/// <p>What every workflow refusal code begins with (<class>OcuPilot.Api.InteropError</class>).</p>
+Parameter WORKFLOWCODEPREFIX = "INTEROP.WORKFLOW.";
+
+/// <p>The most workflow users a list answers, and the most user choices, to a call that names no cap of its own: 10,000, the classic table's own row limit. The list read ended in 0.05 seconds
+/// and the choices read in 0.04 seconds at 10,000 (measured). A call that names a cap gets that many, so the one row it asks for beyond what it shows reports its truncation (AD-36).</p>
+Parameter WORKFLOWUSERSMAX As INTEGER = 10000;
+
+Parameter WORKFLOWUSERCHOICESMAX As INTEGER = 10000;
+
+/// <p>The most characters the vendor stores for a workflow user's name and full name (<code>MAXLEN</code>).</p>
+Parameter WORKFLOWNAMEMAX As INTEGER = 128;
+
+/// <p>The entity type the audit row of a workflow user write names.</p>
+Parameter ENTITYWORKFLOWUSER = "interop-workflow-user";
+
+/// <p>The statement the workflow user list reads, as the classic table's own query: name, full name, active state and the count of the user's role memberships, in name order.</p>
+Parameter WORKFLOWUSERSQL = "SELECT TOP ? U.Name, U.FullName, U.IsActive, (SELECT COUNT(*) FROM EnsLib_Workflow.RoleMembership WHERE UserName = U.Name) FROM EnsLib_Workflow.UserDefinition U ORDER BY U.Name";
+
+/// <p>Whether <var>pType</var> is one of the workflow user writes this port carries (Story 24.17 Batch 3a): a create, a merge or a delete over the <code>WORKFLOWUSER</code> read, needing
+/// WRITE on the namespace's globals database and no routines database.</p>
+ClassMethod IsWorkflowWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADDWORKFLOWUSER) || (pType = ..#TYPESETWORKFLOWUSER) || (pType = ..#TYPEREMOVEWORKFLOWUSER)
+}
+
+/// <p>The most rows a workflow read answers: <var>pMax</var> when it is above zero, else <var>pLimit</var>. Pure.</p>
+ClassMethod WorkflowCap(pMax As %Integer, pLimit As %Integer) As %Integer
+{
+    Quit $Select(pMax > 0: pMax, 1: pLimit)
+}
+
+/// <p>Whether <var>pName</var> is a name this port reads or writes for a workflow user or a workflow role: 1 to <parameter>WORKFLOWNAMEMAX</parameter> characters with no control character.
+/// Pure.</p>
+ClassMethod WorkflowNameOK(pName As %String) As %Boolean
+{
+    Quit (pName '= "") && ($Length(pName) <= ..#WORKFLOWNAMEMAX) && ($ZStrip(pName, "*C") = pName)
+}
+
+/// <p>Whether <var>pFullName</var> is a full name or a member's title this port writes: at most <parameter>WORKFLOWNAMEMAX</parameter> characters with no control character; the empty one clears it. Pure.</p>
+ClassMethod WorkflowFullNameOK(pFullName As %String) As %Boolean
+{
+    Quit ($Length(pFullName) <= ..#WORKFLOWNAMEMAX) && ($ZStrip(pFullName, "*C") = pFullName)
+}
+
+/// <p>The workflow user as the four values a row carries, in order: name, full name, 1 or 0, the role count. Pure.</p>
+ClassMethod WorkflowLine(pName As %String, pFullName As %String, pActive As %Boolean, pRoles As %Integer) As %List [ Private ]
+{
+    If pFullName = $Char(0) Set pFullName = ""
+    Quit $ListBuild(pName, pFullName, ''pActive, +pRoles)
+}
+
+/// <p>The row a workflow user list and read answer, from the four values <var>pLine</var> (<method>WorkflowLine</method>): <code>{Name, FullName, IsActive, Roles, Namespace}</code>.</p>
+ClassMethod WorkflowRow(pLine As %List, pNamespace As %String) As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("Name", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("FullName", $List(pLine, 2) _ "", "string")
+    Do tRow.%Set("IsActive", ''$List(pLine, 3), "boolean")
+    Do tRow.%Set("Roles", +$List(pLine, 4), "number")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>A point inside each namespace-switched block of the workflow user reads and writes, which does nothing. A fixture overrides it to raise a fault there, so a test reads that the fault is
+/// logged after the namespace is restored; production never overrides it.</p>
+ClassMethod WorkflowHere() [ Private ]
+{
+}
+
+/// <p>The vendor's write of the workflow user write <var>pType</var> in the current namespace, which the caller has already switched: <code>%Save</code> of <var>pObject</var>, an add's new
+/// user or an edit's opened one, or <code>%DeleteId</code> of <var>pName</var>. Overridable so a fixture can answer a status or a fault; production never overrides it.</p>
+ClassMethod WorkflowVendor(pType As %String, pObject As %RegisteredObject, pName As %String) As %Status
+{
+    If pType = ..#TYPEREMOVEWORKFLOWUSER Quit ##class(EnsLib.Workflow.UserDefinition).%DeleteId(pName)
+    Quit pObject.%Save()
+}
+
+/// <p>Take the removed workflow user <var>pName</var> out of each workflow role the current namespace, which the caller has already switched, still records it in, through the vendor's own
+/// <code>EnsLib.Workflow.RoleDefinition.RemoveUserFromRole</code> as the classic Remove User From This Role dialog does, and answer how many in <var>pRemoved</var>. The vendor's
+/// <code>%DeleteId</code> of the user takes the memberships only where the namespace's own database holds the foreign-key registry a compile of
+/// <code>EnsLib.Workflow.RoleMembership</code> writes; elsewhere they stay behind, so this runs after every remove. A membership the vendor already took is not read, so it is not an error. It names
+/// no other OcuPilot class.</p>
+ClassMethod WorkflowMembershipsGone(pName As %String, Output pRemoved As %Integer) As %Status
+{
+    Set tSC = $$$OK
+    Set pRemoved = 0
+    Set tRoles = ""
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(, "SELECT RoleName FROM EnsLib_Workflow.RoleMembership WHERE %EXACT(UserName) = ?", pName)
+    If '$IsObject(tResult) Quit $$$ERROR($$$GeneralError, "the statement answered no result")
+    If tResult.%SQLCODE < 0 Quit $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
+    While tResult.%Next() {
+        Set tRoles = tRoles _ $ListBuild(tResult.%GetData(1))
+    }
+    Set tResult = ""
+    For tI = 1:1:$ListLength(tRoles) {
+        Set tRole = $List(tRoles, tI)
+        Set tSC = ##class(EnsLib.Workflow.RoleDefinition).RemoveUserFromRole(tRole, pName)
+        If $$$ISERR(tSC) Quit
+        ; RemoveUserFromRole answers the engine's status, not the delete's, so the membership is read again.
+        If ##class(EnsLib.Workflow.RoleMembership).IDExists(tRole, pName) {
+            Set tSC = $$$ERROR($$$GeneralError, "a workflow role membership was not removed")
+            Quit
+        }
+        Set pRemoved = pRemoved + 1
+    }
+    Quit tSC
+}
+
+/// <p>A vendor exception <var>pException</var> in this port's own words: the status it logs carries the vendor's error codes alone, never a name or a value, and the interoperability runtime
+/// lock the vendor could not take is 503, <code>&lt;PROTECT&gt;</code> 403, anything else 500 <code>INTERNAL</code>.</p>
+ClassMethod WorkflowMapped(pException As %Exception.AbstractException, pMessage As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Statused(..VendorCodesStatus(pException.AsStatus(), "the workflow user call"), pMessage, .pHttpStatus, .pFault)
+}
+
+/// <p>Whether <var>pFirst</var> and <var>pSecond</var> are the same string, letter case included. Pure.</p>
+ClassMethod WorkflowSame(pFirst As %String, pSecond As %String) As %Boolean
+{
+    Quit (pFirst = pSecond)
+}
+
+/// <p>A count of the rows the statement <var>pSql</var> answers for the value <var>pValue</var>, in the current namespace, read with <code>%ExecDirectNoPriv</code> after the gate. A fault is raised.</p>
+ClassMethod WorkflowCount(pSql As %String, pValue As %String) As %Integer [ Private ]
+{
+    Set tStatement = ##class(%SQL.Statement).%New()
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, pSql, pValue)
+    If '$IsObject(tResult) Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "the statement answered no result"))
+    If tResult.%SQLCODE < 0 Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message))
+    Set tCount = 0
+    If tResult.%Next() Set tCount = +tResult.%GetData(1)
+    Set tResult = ""
+    Quit tCount
+}
+
+/// <p>The facts about the workflow user <var>pName</var>, read in the current namespace, which the caller has already switched, and kept in <var>pFacts</var>: <code>exists</code> (held under
+/// exactly that name), <code>folded</code> (how many workflow users hold that name in any letter case), <code>chosen</code> (with <var>pWithChoices</var>, whether the instance's user choices
+/// answer exactly that name) and, when it exists, <code>line</code> (<method>WorkflowLine</method>). A name this port does not read is not held. Nothing is written.</p>
+ClassMethod WorkflowFactsHere(pName As %String, pWithChoices As %Boolean, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("exists") = 0
+    Set pFacts("folded") = 0
+    Set pFacts("chosen") = 0
+    Set pFacts("line") = ""
+    If '..WorkflowNameOK(pName) Quit
+    If pWithChoices {
+        Set tSC = ##class(Ens.ContextSearch).ListEnsembleUsers(.tCaption, .tTop, .tResults, .tParms)
+        If $$$ISERR(tSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tSC)
+        For tI = 1:1:+$Get(tResults) {
+            If ..WorkflowSame($Get(tResults(tI)), pName) {
+                Set pFacts("chosen") = 1
+                Quit
+            }
+        }
+    }
+    Set pFacts("folded") = ..WorkflowCount("SELECT COUNT(*) FROM EnsLib_Workflow.UserDefinition WHERE LOWER(Name) = ?", $ZConvert(pName, "L"))
+    ; Concurrency 0 reads the row without a lock, so a user another process holds locked is still read; the edit's own open at concurrency 4 is what meets the lock.
+    Set tObject = ##class(EnsLib.Workflow.UserDefinition).%OpenId(pName, 0)
+    If $IsObject(tObject) && ..WorkflowSame(tObject.Name, pName) {
+        Set pFacts("exists") = 1
+        Set pFacts("line") = ..WorkflowLine(pName, tObject.FullName, tObject.IsActive, ..WorkflowCount("SELECT COUNT(*) FROM EnsLib_Workflow.RoleMembership WHERE UserName = ?", pName))
+    }
+    Set tObject = ""
+}
+
+/// <p><method>WorkflowFactsHere</method> in <var>pNamespace</var>; a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod WorkflowFacts(pNamespace As %String, pName As %String, pWithChoices As %Boolean, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..WorkflowHere()
+        Do ..WorkflowFactsHere(pName, pWithChoices, .pFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The 422 violations of a workflow user's name and fields, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field, code)</code> with the count in <code>pViolations</code>
+/// (Story 24.17 Batch 3a): a name <method>WorkflowNameOK</method> refuses is <code>USERNAME</code> (judged only when <var>pJudgeName</var>, which an add passes); a <code>FullName</code> or
+/// <code>IsActive</code> of the wrong type is <code>PORT.FIELD.SHAPE</code>; a full name past <parameter>WORKFLOWNAMEMAX</parameter> characters or holding a control character is
+/// <code>FULLNAME</code>. It reads no vendor class. <var>pFields</var> is the body: <code>FullName</code> a string and <code>IsActive</code> a boolean.</p>
+ClassMethod WorkflowViolations(pName As %String, pFields As %DynamicObject, Output pViolations, pJudgeName As %Boolean = 1) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tBad = ..WorkflowBad(pName, pFields, pJudgeName)
+    For tI = 1:1:$ListLength(tBad) {
+        Set tEntry = $List(tBad, tI)
+        Set tCode = $Case($List(tEntry, 2), "USERNAME": ##class(OcuPilot.Api.InteropError).#WORKFLOWUSERNAME, "FULLNAME": ##class(OcuPilot.Api.InteropError).#WORKFLOWFULLNAME, : ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        Set pViolations($Increment(pViolations)) = $ListBuild($List(tEntry, 1), tCode)
+    }
+    Quit $$$OK
+}
+
+/// <p>The violations <method>WorkflowViolations</method> judges, as a <class>%List</class> of <code>$ListBuild(field, token)</code> where the token is <code>USERNAME</code>,
+/// <code>FULLNAME</code> or <code>SHAPE</code>, and <code>""</code> for none. It names no other class, so it is safe inside a block that has switched the namespace. Pure.</p>
+ClassMethod WorkflowBad(pName As %String, pFields As %DynamicObject, pJudgeName As %Boolean = 1) As %List
+{
+    Set tBad = ""
+    If pJudgeName && '..WorkflowNameOK(pName) Set tBad = tBad _ $ListBuild($ListBuild("Name", "USERNAME"))
+    If '$IsObject(pFields) || 'pFields.%IsA("%Library.DynamicObject") Set pFields = {}
+    Set tType = pFields.%GetTypeOf("FullName")
+    If tType = "string" {
+        If '..WorkflowFullNameOK(pFields.%Get("FullName")) Set tBad = tBad _ $ListBuild($ListBuild("FullName", "FULLNAME"))
+    } ElseIf tType '= "unassigned" {
+        Set tBad = tBad _ $ListBuild($ListBuild("FullName", "SHAPE"))
+    }
+    Set tType = pFields.%GetTypeOf("IsActive")
+    If (tType '= "boolean") && (tType '= "unassigned") Set tBad = tBad _ $ListBuild($ListBuild("IsActive", "SHAPE"))
+    Quit tBad
+}
+
+/// <p>The decision a workflow user write <var>pType</var> is refused with, as a token, else <code>""</code> (Story 24.17 Batch 3a): an add of a name the instance's user choices do not answer
+/// exactly is <code>USERNAME</code>; then an add of a name the namespace holds in any letter case is <code>TAKEN</code> (the vendor keys the name exactly, and two users of one spelling in
+/// another case would read as one); any other write of a name it does not hold exactly is <code>ABSENT</code>. <var>pExists</var> is whether the user is held under exactly that name,
+/// <var>pFolded</var> how many hold it in any letter case and <var>pChosen</var> whether the choices answer it. Pure.</p>
+ClassMethod WorkflowWriteToken(pType As %String, pExists As %Boolean, pFolded As %Integer, pChosen As %Boolean) As %String
+{
+    If pType = ..#TYPEADDWORKFLOWUSER {
+        If 'pChosen Quit "USERNAME"
+        Quit $Select(pExists || (pFolded > 0): "TAKEN", 1: "")
+    }
+    Quit $Select(pExists: "", 1: "ABSENT")
+}
+
+/// <p>409 <code>INTEROP.WORKFLOW.SOURCECONTROL</code> when <var>pNamespace</var> is under source control, which refuses every workflow user write, else <code>$$$OK</code>.</p>
+ClassMethod WorkflowWriteRefusal(pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#WORKFLOWSOURCECONTROL, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>422 <code>INTEROP.WORKFLOW.USERNAME</code>: the name is not one the instance's user choices answer.</p>
+ClassMethod WorkflowNameRefusal(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tViolations = 1
+    Set tViolations(1) = $ListBuild("Name", ##class(OcuPilot.Api.InteropError).#WORKFLOWUSERNAME)
+    Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+}
+
+/// <p>The workflow users of <var>pNamespace</var> by name, at most <var>pMax</var> (<parameter>WORKFLOWUSERSMAX</parameter> when that is not above zero): <code>{Name, FullName, IsActive, Roles,
+/// Namespace}</code>. Read with <code>%ExecDirectNoPriv</code> after the gate (<method>SqlRows</method>); nothing is written. A longer list than the cap is the caller's truncation, which it reads from
+/// the one row it asked for beyond its own cap.</p>
+ClassMethod ListWorkflowUsers(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..SqlRows(pNamespace, ..#WORKFLOWUSERSQL, .tFound, .tCaught, ..WorkflowCap(pMax, ..#WORKFLOWUSERSMAX))
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow user list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tLine = tFound(tI)
+        Do pRows.%Push(..WorkflowRow(..WorkflowLine($List(tLine, 1), $List(tLine, 2), $List(tLine, 3), $List(tLine, 4)), pNamespace))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The names the instance's users offer a new workflow user in <var>pNamespace</var>, as <code>Ens.ContextSearch.ListEnsembleUsers</code> answers them to the caller, at most <var>pMax</var>
+/// (<parameter>WORKFLOWUSERCHOICESMAX</parameter> when that is not above zero): <code>{Name, Namespace}</code>, each spelled as the vendor answers it. OcuPilot adds no privilege and reads no other
+/// user source, so a caller who cannot list every user is offered its own name. A fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod ListWorkflowChoices(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tCap = ..WorkflowCap(pMax, ..#WORKFLOWUSERCHOICESMAX)
+    Set tNames = ""
+    Set tCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..WorkflowHere()
+        Set tVendorSC = ##class(Ens.ContextSearch).ListEnsembleUsers(.tCaption, .tTop, .tResults, .tParms)
+        If $$$ISERR(tVendorSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tVendorSC)
+        For tI = 1:1:$Select(+$Get(tResults) > tCap: tCap, 1: +$Get(tResults)) {
+            Set tNames = tNames _ $ListBuild(tResults(tI))
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow user choices could not be listed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:$ListLength(tNames) {
+        Set tRow = {}
+        Do tRow.%Set("Name", $List(tNames, tI) _ "", "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+        Do pRows.%Push(tRow)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One workflow user, fresh (Story 24.17 Batch 3a): <method>WorkflowRow</method>'s fields. A user not held under exactly that name, or a name this port does not read, is 404
+/// <code>PORT.NOTFOUND</code>, unlogged. With <var>pAction</var> it refuses what that write would be refused (<method>WorkflowWriteRefusal</method>); an add (AD-54, which inverts the read) is then
+/// refused <code>USERNAME</code> for a name the instance's user choices do not answer, <code>TAKEN</code> when the name is held in any letter case, and otherwise the 404 a create expects.</p>
+ClassMethod ReadWorkflowUser(pNamespace As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If '..WorkflowNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+    If pAction '= "" {
+        Set tSC = ..WorkflowWriteRefusal(pNamespace, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Set tAdd = (pAction = ..#TYPEADDWORKFLOWUSER)
+    Do ..WorkflowFacts(pNamespace, pName, tAdd, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow user read failed", .pHttpStatus, .pFault)
+    If tAdd {
+        Set tToken = ..WorkflowWriteToken(pAction, tFacts("exists"), tFacts("folded"), tFacts("chosen"))
+        If tToken = "USERNAME" Quit ..WorkflowNameRefusal(.pHttpStatus, .pFault)
+        If tToken = "TAKEN" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#WORKFLOWUSERTAKEN, .pHttpStatus, .pFault)
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    Set pRow = ..WorkflowRow(tFacts("line"), pNamespace)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the WorkflowUsers endpoint's <code>LIST</code> and typed types after <method>Invoke</method>'s gate (Story 24.17 Batch 3a): the <code>WORKFLOWUSER</code> read, the
+/// <code>WORKFLOWUSERCHOICES</code> read and the three writes, the workflow user named under <parameter>IDKEY</parameter> by its name, kept exactly (AD-13). An <parameter>ACTIONKEY</parameter>
+/// names the write the read is composed for.</p>
+ClassMethod InvokeWorkflowUser(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If (pType = ..#TYPELIST) || (pType = ..#TYPEWORKFLOWUSERCHOICES) {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pType = ..#TYPELIST {
+                Set tSC = ..ListWorkflowUsers(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            } Else {
+                Set tSC = ..ListWorkflowChoices(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            }
+            Quit
+        }
+        Set tName = $Get(pQuery(..#IDKEY))
+        If tName = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsWorkflowWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsWorkflowWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsWorkflowWrite(pType) {
+            Set tSC = ..PerformWorkflowUser(pNamespace, pType, tName, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadWorkflowUser(pNamespace, tName, tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the workflow user call failed inside the port", ..VendorCodesStatus(ex.AsStatus(), "the workflow user call"), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Run workflow user write <var>pType</var> on the workflow user <var>pName</var> in <var>pNamespace</var> and answer what it leaves (Story 24.17 Batch 3a), as the classic page's
+/// <code>SaveItem</code> and <code>DeleteID</code> perform it. The sequence:</p>
+/// <ol>
+/// <li>A namespace under source control refuses every write (<method>WorkflowWriteRefusal</method>), before anything is read.</li>
+/// <li>In the namespace the user is read again with the instance's user choices (an add) and judged by <method>WorkflowWriteToken</method>, so a state that moved since the review is refused by its
+/// own code with no vendor call: <code>USERNAME</code>, <code>TAKEN</code> or a 404; then the fields are judged (<method>WorkflowViolations</method>, 422).</li>
+/// <li>The vendor's <code>%Save</code> of a new user, <code>%Save</code> of the opened user (concurrency 4, the reference dropped right after) with each field that differs, or
+/// <code>%DeleteId</code> (<method>WorkflowVendor</method>), a remove then taking the user out of each workflow role the namespace still records (<method>WorkflowMembershipsGone</method>). An edit
+/// that moves no field calls nothing. A user another process holds locked is 503. The vendor's own engine deletes the worklist of a user who is removed or made inactive and leaves the tasks they held
+/// unassigned.</li>
+/// <li>The namespace is restored, then OcuPilot's own audit row is recorded (<method>AuditRuntime</method>) whatever the vendor answered, because the vendor records none: the namespace, the names of
+/// the fields written (a remove: how many memberships it took after the vendor's delete) and whether it completed, never a value.</li>
+/// </ol>
+/// <p>A vendor error status or a fault is 500 <code>INTERNAL</code>, never 200. A vendor refusal reaches the log as its error codes alone. The answer is the user's row read again
+/// (<method>ReadWorkflowUser</method>); after a remove <code>{Name, Namespace}</code>.</p>
+ClassMethod PerformWorkflowUser(pNamespace As %String, pType As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..WorkflowWriteRefusal(pNamespace, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tAdd = (pType = ..#TYPEADDWORKFLOWUSER)
+    If '..WorkflowNameOK(pName) Quit $Select(tAdd: ..WorkflowNameRefusal(.pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tBusy = 0
+    Set tAttempted = 0
+    Set tChanged = ""
+    Set tBad = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..WorkflowHere()
+        Do ..WorkflowFactsHere(pName, tAdd, .tFacts)
+        Set tToken = ..WorkflowWriteToken(pType, tFacts("exists"), tFacts("folded"), tFacts("chosen"))
+        If tToken = "" Set tBad = ..WorkflowBad(pName, pBody, 0)
+        If (tToken = "") && (tBad = "") {
+            If tAdd {
+                Set tObject = ##class(EnsLib.Workflow.UserDefinition).%New()
+                Set tObject.Name = pName
+                If pBody.%GetTypeOf("FullName") = "string" Set tObject.FullName = pBody.%Get("FullName")
+                If pBody.%GetTypeOf("IsActive") = "boolean" Set tObject.IsActive = pBody.%Get("IsActive")
+                Set tAttempted = 1
+                Set tVendorSC = ..WorkflowVendor(pType, tObject, pName)
+            } ElseIf pType = ..#TYPEREMOVEWORKFLOWUSER {
+                Set tAttempted = 1
+                Set tVendorSC = ..WorkflowVendor(pType, "", pName)
+                If $$$ISOK(tVendorSC) Set tVendorSC = ..WorkflowMembershipsGone(pName, .tMembers)
+            } Else {
+                Set tObject = ##class(EnsLib.Workflow.UserDefinition).%OpenId(pName, 4)
+                If '$IsObject(tObject) {
+                    Set tBusy = 1
+                } Else {
+                    Set tHeld = ..WorkflowLine(pName, tObject.FullName, tObject.IsActive, 0)
+                    If (pBody.%GetTypeOf("FullName") = "string") && '..WorkflowSame(pBody.%Get("FullName"), $List(tHeld, 2)) {
+                        Set tObject.FullName = pBody.%Get("FullName")
+                        Set tChanged = tChanged _ $ListBuild("FullName")
+                    }
+                    If (pBody.%GetTypeOf("IsActive") = "boolean") && (''pBody.%Get("IsActive") '= $List(tHeld, 3)) {
+                        Set tObject.IsActive = pBody.%Get("IsActive")
+                        Set tChanged = tChanged _ $ListBuild("IsActive")
+                    }
+                    If tChanged '= "" {
+                        Set tAttempted = 1
+                        Set tVendorSC = ..WorkflowVendor(pType, tObject, pName)
+                    }
+                }
+            }
+        }
+        ; The user's lock is released in the namespace it was taken in.
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Try {
+            Set $NAMESPACE = pNamespace
+        } Catch {
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If tAttempted {
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        If tAdd {
+            Set tChanged = ""
+            If (pBody.%GetTypeOf("FullName") = "string") && (pBody.%Get("FullName") '= "") Set tChanged = tChanged _ $ListBuild("FullName")
+            If (pBody.%GetTypeOf("IsActive") = "boolean") && 'pBody.%Get("IsActive") Set tChanged = tChanged _ $ListBuild("IsActive")
+        }
+        If pType '= ..#TYPEREMOVEWORKFLOWUSER Do tEffects.%Set("fields", $ListToString(tChanged, ","), "string")
+        If pType = ..#TYPEREMOVEWORKFLOWUSER Do tEffects.%Set("memberships", +$Get(tMembers), "number")
+        Do tEffects.%Set("completed", ($$$ISOK(tVendorSC) && '$IsObject(tCaught)), "boolean")
+        Do ..AuditRuntime($Case(pType, ..#TYPEADDWORKFLOWUSER: ..#VERBADD, ..#TYPEREMOVEWORKFLOWUSER: ..#VERBREMOVE, : ..#VERBSET), ..#ENTITYWORKFLOWUSER, pName, tEffects)
+    }
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow user write failed", .pHttpStatus, .pFault)
+    If tBusy Quit ..Unavailable(.pHttpStatus, .pFault)
+    If tToken = "USERNAME" Quit ..WorkflowNameRefusal(.pHttpStatus, .pFault)
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken = "TAKEN" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#WORKFLOWUSERTAKEN, .pHttpStatus, .pFault)
+    If tBad '= "" {
+        Set tSC = ..WorkflowViolations(pName, pBody, .tViolations, 0)
+        Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the workflow user write"), "the workflow user write failed", .pHttpStatus, .pFault)
+    If pType = ..#TYPEREMOVEWORKFLOWUSER {
+        Set pResult = {}
+        Do pResult.%Set("Name", pName, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tReadSC = ..ReadWorkflowUser(pNamespace, pName, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Name", pName, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the workflow user write <var>pType</var> of the user named <var>pName</var> (Story 24.17 Batch 3a): the source control guard, each refusal as one
+/// guard that stops the write (an add's name the instance's user choices answer exactly and a name the namespace holds in any letter case; an edit's and a remove's user held), and the vendor's
+/// <code>%Save</code> of a new user, <code>%Save</code> of the user opened at concurrency 4 with the fields <var>pBody</var> carries, or <code>%DeleteId</code> and then
+/// <code>RemoveUserFromRole</code> for each workflow role the namespace still records the user in (<method>WorkflowMembershipsGone</method>). Names and values are string
+/// literals, so nothing the query carries runs as code. <code>""</code> for a name or a value the port would refuse by shape, which renders no draft. Nothing here runs; a person runs it.</p>
+ClassMethod WorkflowSnippet(pType As %String, pName As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    If '..WorkflowNameOK(pName) Quit ""
+    Set tAdd = (pType = ..#TYPEADDWORKFLOWUSER)
+    If pType '= ..#TYPEREMOVEWORKFLOWUSER {
+        Set tSC = ..WorkflowViolations(pName, pBody, .tViolations, tAdd)
+        If tViolations Quit ""
+    }
+    Set tNL = $Char(10)
+    Set tName = ..Literal(pName)
+    Set tError = "$System.Status.Error(5001, "
+    Set tText = tNL _ " Set tGo = '##class(%CSP.Portal.SourceControl.Util).IsEnabled($Namespace), tSC = $System.Status.OK()"
+    Set tText = tText _ tNL _ " If 'tGo Set tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWSOURCECONTROL) _ ")"
+    If tAdd {
+        Set tText = tText _ tNL _ " If tGo Do ##class(Ens.ContextSearch).ListEnsembleUsers(.tCaption, .tTop, .tUsers, .tParms) Set tChosen = 0 For tI = 1:1:+$Get(tUsers) { If tUsers(tI) = " _ tName _ " Set tChosen = 1 }"
+        Set tText = tText _ tNL _ " If tGo, 'tChosen Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWUSERNAME) _ ")"
+        Set tCount = ..Literal("SELECT COUNT(*) FROM EnsLib_Workflow.UserDefinition WHERE LOWER(Name) = ?")
+        Set tText = tText _ tNL _ " If tGo Set tRS = ##class(%SQL.Statement).%ExecDirect(, " _ tCount _ ", $ZConvert(" _ tName _ ", ""L"")), tHeld = $Select(tRS.%Next(): ''tRS.%GetData(1), 1: 1), tRS = """""
+        Set tText = tText _ tNL _ " If tGo, tHeld Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWUSERTAKEN) _ ")"
+        Set tText = tText _ tNL _ " If tGo Set tUser = ##class(EnsLib.Workflow.UserDefinition).%New(), tUser.Name = " _ tName
+    } Else {
+        Set tText = tText _ tNL _ " If tGo, '##class(EnsLib.Workflow.UserDefinition).%ExistsId(" _ tName _ ") Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.Error).#PORTNOTFOUND) _ ")"
+        If pType = ..#TYPEREMOVEWORKFLOWUSER {
+            Set tText = tText _ tNL _ " If tGo Set tSC = ##class(EnsLib.Workflow.UserDefinition).%DeleteId(" _ tName _ ")"
+            Set tMembers = ..Literal("SELECT RoleName FROM EnsLib_Workflow.RoleMembership WHERE %EXACT(UserName) = ?")
+            Quit tText _ tNL _ " If tGo, $System.Status.IsOK(tSC) { Set tRoles = """", tRS = ##class(%SQL.Statement).%ExecDirect(, " _ tMembers _ ", " _ tName _ ") While tRS.%Next() { Set tRoles = tRoles _ $ListBuild(tRS.%GetData(1)) } Set tRS = """" For tI = 1:1:$ListLength(tRoles) { If $System.Status.IsOK(tSC) Set tSC = ##class(EnsLib.Workflow.RoleDefinition).RemoveUserFromRole($List(tRoles, tI), " _ tName _ ") } }"
+        }
+        Set tText = tText _ tNL _ " If tGo Set tUser = ##class(EnsLib.Workflow.UserDefinition).%OpenId(" _ tName _ ", 4)"
+    }
+    If $IsObject(pBody) && (pBody.%GetTypeOf("FullName") = "string") Set tText = tText _ tNL _ " If tGo Set tUser.FullName = " _ ..Literal(pBody.%Get("FullName"))
+    If $IsObject(pBody) && (pBody.%GetTypeOf("IsActive") = "boolean") Set tText = tText _ tNL _ " If tGo Set tUser.IsActive = " _ (''pBody.%Get("IsActive"))
+    Quit tText _ tNL _ " If tGo Set tSC = tUser.%Save()" _ tNL _ " Set tUser = """""
+}
+
+/// <p>The Workflow roles endpoint (Story 24.17 Batch 3b): <code>LIST</code> (the namespace's <code>EnsLib.Workflow.RoleDefinition</code> rows by name), <code>WORKFLOWROLE</code> (one role, fresh)
+/// and the writes <code>ADDWORKFLOWROLE</code>, <code>SETWORKFLOWROLE</code> and <code>REMOVEWORKFLOWROLE</code>, each the vendor's own <code>%Save</code> or <code>%DeleteId</code> as the classic
+/// Workflow Roles page performs them.</p>
+Parameter ENDPOINTWORKFLOWROLES = "WorkflowRoles";
+
+/// <p>The Workflow role members endpoint (Story 24.17 Batch 3b): <code>LIST</code> (the <code>EnsLib.Workflow.RoleMembership</code> rows of one role, by the one criterion
+/// <parameter>WORKFLOWROLECRITERION</parameter>), <code>WORKFLOWMEMBER</code> (one membership, fresh, by the composite id <code>[Role, User]</code>)
+/// and the writes <code>ADDWORKFLOWMEMBER</code> and <code>REMOVEWORKFLOWMEMBER</code>, the vendor's own <code>AddUserToRole</code> and <code>RemoveUserFromRole</code> as the classic
+/// dialogs call them.</p>
+Parameter ENDPOINTWORKFLOWMEMBERS = "WorkflowMembers";
+
+Parameter TYPEWORKFLOWROLE = "WORKFLOWROLE";
+
+Parameter TYPEADDWORKFLOWROLE = "ADDWORKFLOWROLE";
+
+Parameter TYPESETWORKFLOWROLE = "SETWORKFLOWROLE";
+
+Parameter TYPEREMOVEWORKFLOWROLE = "REMOVEWORKFLOWROLE";
+
+Parameter TYPEWORKFLOWMEMBER = "WORKFLOWMEMBER";
+
+Parameter TYPEADDWORKFLOWMEMBER = "ADDWORKFLOWMEMBER";
+
+Parameter TYPEREMOVEWORKFLOWMEMBER = "REMOVEWORKFLOWMEMBER";
+
+/// <p>The most workflow roles a list answers, and the most members of one role or roles of one user, to a call that names no cap of its own: 10,000, the classic table's own row limit. The
+/// roles list ended in 0.04 seconds and the members list in 0.04 seconds at 10,000 (measured). A call that names a cap gets that many, so the one row it asks for beyond what it shows reports its
+/// truncation (AD-36).</p>
+Parameter WORKFLOWROLESMAX As INTEGER = 10000;
+
+Parameter WORKFLOWMEMBERSMAX As INTEGER = 10000;
+
+/// <p>The most characters the vendor stores for a role's description, and the whole numbers a role's capacity (1 to <parameter>WORKFLOWCAPACITYMAX</parameter>) and a member's rank (1 to
+/// <parameter>WORKFLOWRANKMAX</parameter>) may take, as the classic page and its dialog offer them.</p>
+Parameter WORKFLOWDESCRIPTIONMAX As INTEGER = 2000;
+
+Parameter WORKFLOWCAPACITYMAX As INTEGER = 100;
+
+Parameter WORKFLOWRANKMAX As INTEGER = 5;
+
+/// <p>The one criterion of the members list, which a call names.</p>
+Parameter WORKFLOWROLECRITERION = "role";
+
+/// <p>The entity types the audit rows of a workflow role write and a member write name.</p>
+Parameter ENTITYWORKFLOWROLE = "interop-workflow-role";
+
+Parameter ENTITYWORKFLOWMEMBER = "interop-workflow-member";
+
+/// <p>The statement the workflow role list reads, as the classic table's own query: name, description, capacity and the count of the role's memberships, in name order.</p>
+Parameter WORKFLOWROLESQL = "SELECT TOP ? R.Name, R.Description, R.Capacity, (SELECT COUNT(*) FROM EnsLib_Workflow.RoleMembership WHERE RoleName = R.Name) FROM EnsLib_Workflow.RoleDefinition R ORDER BY R.Name";
+
+/// <p>The columns and join the member statements read: role, user, the user's full name, rank, title and the user's active state. A membership whose user the namespace no longer holds is still read.</p>
+Parameter WORKFLOWMEMBERCOLUMNS = "M.RoleName, M.UserName, U.FullName, M.Ranking, M.Title, U.IsActive FROM EnsLib_Workflow.RoleMembership M LEFT JOIN EnsLib_Workflow.UserDefinition U ON U.Name = M.UserName";
+
+/// <p>Whether <var>pType</var> is one of the workflow role writes this port carries (Story 24.17 Batch 3b).</p>
+ClassMethod IsWorkflowRoleWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADDWORKFLOWROLE) || (pType = ..#TYPESETWORKFLOWROLE) || (pType = ..#TYPEREMOVEWORKFLOWROLE)
+}
+
+/// <p>Whether <var>pType</var> is one of the workflow member writes this port carries (Story 24.17 Batch 3b).</p>
+ClassMethod IsWorkflowMemberWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADDWORKFLOWMEMBER) || (pType = ..#TYPEREMOVEWORKFLOWMEMBER)
+}
+
+/// <p>Whether <var>pText</var> is a description this port writes: at most <parameter>WORKFLOWDESCRIPTIONMAX</parameter> characters; the empty one clears it. Pure.</p>
+ClassMethod WorkflowDescriptionOK(pText As %String) As %Boolean
+{
+    Quit $Length(pText) <= ..#WORKFLOWDESCRIPTIONMAX
+}
+
+/// <p>Whether <var>pValue</var> is a capacity this port writes: a whole number from 1 to <parameter>WORKFLOWCAPACITYMAX</parameter>. Pure.</p>
+ClassMethod WorkflowCapacityOK(pValue As %String) As %Boolean
+{
+    Quit $IsValidNum(pValue) && (pValue = (pValue \ 1)) && (pValue '< 1) && (pValue '> ..#WORKFLOWCAPACITYMAX)
+}
+
+/// <p>Whether <var>pValue</var> is a rank this port writes: a whole number from 1 to <parameter>WORKFLOWRANKMAX</parameter>. Pure.</p>
+ClassMethod WorkflowRankOK(pValue As %String) As %Boolean
+{
+    Quit $IsValidNum(pValue) && (pValue = (pValue \ 1)) && (pValue '< 1) && (pValue '> ..#WORKFLOWRANKMAX)
+}
+
+/// <p>The workflow role as the four values a row carries, in order: name, description, capacity, the member count. Pure.</p>
+ClassMethod WorkflowRoleLine(pName As %String, pDescription As %String, pCapacity As %String, pMembers As %Integer) As %List [ Private ]
+{
+    If pDescription = $Char(0) Set pDescription = ""
+    Quit $ListBuild(pName, pDescription, +pCapacity, +pMembers)
+}
+
+/// <p>The row a workflow role list and read answer, from the four values <var>pLine</var> (<method>WorkflowRoleLine</method>): <code>{Name, Description, Capacity, Members, Namespace}</code>.</p>
+ClassMethod WorkflowRoleRow(pLine As %List, pNamespace As %String) As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("Name", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("Description", $List(pLine, 2) _ "", "string")
+    Do tRow.%Set("Capacity", +$List(pLine, 3), "number")
+    Do tRow.%Set("Members", +$List(pLine, 4), "number")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The member as the six values a row carries, in order: role, user, the user's full name, rank, title and 1 or 0 for the user's active state. Pure.</p>
+ClassMethod WorkflowMemberLine(pRole As %String, pUser As %String, pFullName As %String, pRank As %String, pTitle As %String, pActive As %Boolean) As %List [ Private ]
+{
+    If pFullName = $Char(0) Set pFullName = ""
+    If pTitle = $Char(0) Set pTitle = ""
+    Quit $ListBuild(pRole, pUser, pFullName, +pRank, pTitle, ''pActive)
+}
+
+/// <p>The row a members list and read answer, from the six values <var>pLine</var> (<method>WorkflowMemberLine</method>): <code>{Role, User, FullName, Ranking, Title, IsActive, Namespace}</code>.</p>
+ClassMethod WorkflowMemberRow(pLine As %List, pNamespace As %String) As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("Role", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("User", $List(pLine, 2) _ "", "string")
+    Do tRow.%Set("FullName", $List(pLine, 3) _ "", "string")
+    Do tRow.%Set("Ranking", +$List(pLine, 4), "number")
+    Do tRow.%Set("Title", $List(pLine, 5) _ "", "string")
+    Do tRow.%Set("IsActive", ''$List(pLine, 6), "boolean")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The vendor's write of the workflow role write <var>pType</var> in the current namespace, which the caller has already switched: <code>%Save</code> of <var>pObject</var>, an add's new
+/// role or an edit's opened one, or <code>%DeleteId</code> of <var>pName</var>. Overridable so a fixture can answer a status or a fault; production never overrides it.</p>
+ClassMethod WorkflowRoleVendor(pType As %String, pObject As %RegisteredObject, pName As %String) As %Status
+{
+    If pType = ..#TYPEREMOVEWORKFLOWROLE Quit ##class(EnsLib.Workflow.RoleDefinition).%DeleteId(pName)
+    Quit pObject.%Save()
+}
+
+/// <p>The vendor's write of the member write <var>pType</var> in the current namespace, which the caller has already switched: <code>AddUserToRole</code> of <var>pUser</var> to <var>pRole</var>
+/// with <var>pRank</var> (<code>""</code> leaves the vendor's own, 3) and <var>pTitle</var>, or <code>RemoveUserFromRole</code>. Overridable so a fixture can answer a status or a fault;
+/// production never overrides it.</p>
+ClassMethod WorkflowMemberVendor(pType As %String, pRole As %String, pUser As %String, pRank As %String, pTitle As %String) As %Status
+{
+    If pType = ..#TYPEREMOVEWORKFLOWMEMBER Quit ##class(EnsLib.Workflow.RoleDefinition).RemoveUserFromRole(pRole, pUser)
+    If pRank = "" Quit ##class(EnsLib.Workflow.RoleDefinition).AddUserToRole(pRole, pUser, , pTitle)
+    Quit ##class(EnsLib.Workflow.RoleDefinition).AddUserToRole(pRole, pUser, pRank, pTitle)
+}
+
+/// <p>Take the memberships the vendor's delete of the role <var>pRole</var> left behind in the current namespace, which the caller has already switched. The vendor's <code>%DeleteId</code> of a
+/// role takes its memberships through a foreign key only where the namespace's own database holds the registry a compile of <code>EnsLib.Workflow.RoleMembership</code> writes; elsewhere they stay
+/// behind. Each is taken with the vendor's own <code>RoleMembership.IDDelete</code>, which has the effect the cascade has (a task sent through the role and its worklist items are left as they were), and
+/// read again. It names no other OcuPilot class.</p>
+ClassMethod WorkflowMembersGone(pRole As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tUsers = ""
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(, "SELECT UserName FROM EnsLib_Workflow.RoleMembership WHERE %EXACT(RoleName) = ?", pRole)
+    If '$IsObject(tResult) Quit $$$ERROR($$$GeneralError, "the statement answered no result")
+    If tResult.%SQLCODE < 0 Quit $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
+    While tResult.%Next() {
+        Set tUsers = tUsers _ $ListBuild(tResult.%GetData(1))
+    }
+    Set tResult = ""
+    For tI = 1:1:$ListLength(tUsers) {
+        Set tUser = $List(tUsers, tI)
+        Set tSC = ##class(EnsLib.Workflow.RoleMembership).IDDelete(pRole, tUser)
+        If $$$ISERR(tSC) Quit
+        If ##class(EnsLib.Workflow.RoleMembership).IDExists(pRole, tUser) {
+            Set tSC = $$$ERROR($$$GeneralError, "a workflow role membership was not removed")
+            Quit
+        }
+    }
+    Quit tSC
+}
+
+/// <p>The facts about the workflow role <var>pName</var>, read in the current namespace, which the caller has already switched, and kept in <var>pFacts</var>: <code>exists</code> (held under
+/// exactly that name), <code>folded</code> (how many roles hold that name in any letter case) and, when it exists, <code>line</code> (<method>WorkflowRoleLine</method>). A name this port does not
+/// read is not held. Nothing is written.</p>
+ClassMethod WorkflowRoleFactsHere(pName As %String, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("exists") = 0
+    Set pFacts("folded") = 0
+    Set pFacts("line") = ""
+    If '..WorkflowNameOK(pName) Quit
+    Set pFacts("folded") = ..WorkflowCount("SELECT COUNT(*) FROM EnsLib_Workflow.RoleDefinition WHERE LOWER(Name) = ?", $ZConvert(pName, "L"))
+    ; Concurrency 0 reads the row without a lock, so a role another process holds locked is still read; the edit's own open at concurrency 4 is what meets the lock.
+    Set tObject = ##class(EnsLib.Workflow.RoleDefinition).%OpenId(pName, 0)
+    If $IsObject(tObject) && ..WorkflowSame(tObject.Name, pName) {
+        Set pFacts("exists") = 1
+        Set pFacts("line") = ..WorkflowRoleLine(pName, tObject.Description, tObject.Capacity, ..WorkflowCount("SELECT COUNT(*) FROM EnsLib_Workflow.RoleMembership WHERE %EXACT(RoleName) = ?", pName))
+    }
+    Set tObject = ""
+}
+
+/// <p>The first row the statement <var>pSql</var> answers for the values <var>pArgs</var> in the current namespace, as the <class>%List</class> <var>pLine</var> of its columns, read with
+/// <code>%ExecDirectNoPriv</code> after the gate; answers whether there was one. A fault is raised.</p>
+ClassMethod WorkflowRowHere(pSql As %String, Output pLine As %List, pArgs...) As %Boolean [ Private ]
+{
+    Set pLine = ""
+    Set tStatement = ##class(%SQL.Statement).%New()
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, pSql, pArgs...)
+    If '$IsObject(tResult) Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "the statement answered no result"))
+    If tResult.%SQLCODE < 0 Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message))
+    Set tFound = tResult.%Next()
+    If tFound {
+        For tC = 1:1:tResult.%ResultColumnCount {
+            Set pLine = pLine _ $ListBuild(tResult.%GetData(tC))
+        }
+    }
+    Set tResult = ""
+    Quit tFound
+}
+
+/// <p>The facts about the membership of <var>pUser</var> in <var>pRole</var>, read in the current namespace, which the caller has already switched, and kept in <var>pFacts</var>:
+/// <code>roleExists</code> and <code>userExists</code> (the role and the workflow user held under exactly that name), <code>member</code> (the membership held) and, when it is,
+/// <code>line</code> (<method>WorkflowMemberLine</method>). A name this port does not read is not held. Nothing is written.</p>
+ClassMethod WorkflowMemberFactsHere(pRole As %String, pUser As %String, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("roleExists") = 0
+    Set pFacts("userExists") = 0
+    Set pFacts("member") = 0
+    Set pFacts("line") = ""
+    If ..WorkflowNameOK(pRole) {
+        Set tRole = ##class(EnsLib.Workflow.RoleDefinition).%OpenId(pRole, 0)
+        If $IsObject(tRole) && ..WorkflowSame(tRole.Name, pRole) Set pFacts("roleExists") = 1
+        Set tRole = ""
+    }
+    If ..WorkflowNameOK(pUser) {
+        Set tUser = ##class(EnsLib.Workflow.UserDefinition).%OpenId(pUser, 0)
+        If $IsObject(tUser) && ..WorkflowSame(tUser.Name, pUser) Set pFacts("userExists") = 1
+        Set tUser = ""
+    }
+    If pFacts("roleExists") && ..WorkflowNameOK(pUser) {
+        If ..WorkflowRowHere("SELECT " _ ..#WORKFLOWMEMBERCOLUMNS _ " WHERE %EXACT(M.RoleName) = ? AND %EXACT(M.UserName) = ?", .tLine, pRole, pUser) {
+            Set pFacts("member") = 1
+            Set pFacts("line") = ..WorkflowMemberLine($List(tLine, 1), $List(tLine, 2), $List(tLine, 3), $List(tLine, 4), $List(tLine, 5), $List(tLine, 6))
+        }
+    }
+}
+
+/// <p>The facts of <var>pKind</var> (<code>role</code> or <code>member</code>) about <var>pFirst</var> (and <var>pSecond</var>, the member's user), read in <var>pNamespace</var> into
+/// <var>pFacts</var>; a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod WorkflowFactsOf(pNamespace As %String, pKind As %String, pFirst As %String, pSecond As %String, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..WorkflowHere()
+        If pKind = "role" {
+            Do ..WorkflowRoleFactsHere(pFirst, .pFacts)
+        } Else {
+            Do ..WorkflowMemberFactsHere(pFirst, pSecond, .pFacts)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The violations of a workflow role's name and fields, as a <class>%List</class> of <code>$ListBuild(field, token)</code> where the token is <code>ROLENAME</code>,
+/// <code>DESCRIPTION</code>, <code>CAPACITY</code> or <code>SHAPE</code>, and <code>""</code> for none: a name <method>WorkflowNameOK</method> refuses is <code>ROLENAME</code> (judged only
+/// when <var>pJudgeName</var>, which an add passes); a description over <parameter>WORKFLOWDESCRIPTIONMAX</parameter> characters is <code>DESCRIPTION</code>; a capacity that is not a whole number
+/// from 1 to <parameter>WORKFLOWCAPACITYMAX</parameter> is <code>CAPACITY</code>; a field of the wrong type is <code>SHAPE</code>. It names no other class, so it is safe inside a block that has
+/// switched the namespace. Pure.</p>
+ClassMethod WorkflowRoleBad(pName As %String, pFields As %DynamicObject, pJudgeName As %Boolean = 1) As %List
+{
+    Set tBad = ""
+    If pJudgeName && '..WorkflowNameOK(pName) Set tBad = tBad _ $ListBuild($ListBuild("Name", "ROLENAME"))
+    If '$IsObject(pFields) || 'pFields.%IsA("%Library.DynamicObject") Set pFields = {}
+    Set tType = pFields.%GetTypeOf("Description")
+    If tType = "string" {
+        If '..WorkflowDescriptionOK(pFields.%Get("Description")) Set tBad = tBad _ $ListBuild($ListBuild("Description", "DESCRIPTION"))
+    } ElseIf tType '= "unassigned" {
+        Set tBad = tBad _ $ListBuild($ListBuild("Description", "SHAPE"))
+    }
+    Set tType = pFields.%GetTypeOf("Capacity")
+    If tType = "number" {
+        If '..WorkflowCapacityOK(pFields.%Get("Capacity")) Set tBad = tBad _ $ListBuild($ListBuild("Capacity", "CAPACITY"))
+    } ElseIf tType '= "unassigned" {
+        Set tBad = tBad _ $ListBuild($ListBuild("Capacity", "SHAPE"))
+    }
+    Quit tBad
+}
+
+/// <p>The 422 violations of a workflow role's name and fields, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field, code)</code> with the count in
+/// <code>pViolations</code>, from <method>WorkflowRoleBad</method>. It reads no vendor class.</p>
+ClassMethod WorkflowRoleViolations(pName As %String, pFields As %DynamicObject, Output pViolations, pJudgeName As %Boolean = 1) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tBad = ..WorkflowRoleBad(pName, pFields, pJudgeName)
+    For tI = 1:1:$ListLength(tBad) {
+        Set tEntry = $List(tBad, tI)
+        Set tCode = $Case($List(tEntry, 2), "ROLENAME": ##class(OcuPilot.Api.InteropError).#WORKFLOWROLENAME, "DESCRIPTION": ##class(OcuPilot.Api.InteropError).#WORKFLOWROLEDESCRIPTION, "CAPACITY": ##class(OcuPilot.Api.InteropError).#WORKFLOWROLECAPACITY, : ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        Set pViolations($Increment(pViolations)) = $ListBuild($List(tEntry, 1), tCode)
+    }
+    Quit $$$OK
+}
+
+/// <p>The violations of a membership's names and fields, as a <class>%List</class> of <code>$ListBuild(field, token)</code> where the token is <code>ROLENAME</code>,
+/// <code>MEMBERUSER</code>, <code>RANK</code>, <code>TITLE</code> or <code>SHAPE</code>, and <code>""</code> for none: a role name or a user name <method>WorkflowNameOK</method> refuses (judged only
+/// when <var>pJudgeNames</var>, which an add passes); a rank that is not a whole number from 1 to <parameter>WORKFLOWRANKMAX</parameter>, whatever its type, is <code>RANK</code>; a title over 128
+/// characters or holding a control character is <code>TITLE</code>; a title of the wrong type is <code>SHAPE</code>. It names no other class. Pure.</p>
+ClassMethod WorkflowMemberBad(pRole As %String, pUser As %String, pFields As %DynamicObject, pJudgeNames As %Boolean = 1) As %List
+{
+    Set tBad = ""
+    If pJudgeNames && '..WorkflowNameOK(pRole) Set tBad = tBad _ $ListBuild($ListBuild("Role", "ROLENAME"))
+    If pJudgeNames && '..WorkflowNameOK(pUser) Set tBad = tBad _ $ListBuild($ListBuild("User", "MEMBERUSER"))
+    If '$IsObject(pFields) || 'pFields.%IsA("%Library.DynamicObject") Set pFields = {}
+    Set tType = pFields.%GetTypeOf("Ranking")
+    If tType '= "unassigned" {
+        If (tType '= "number") || '..WorkflowRankOK(pFields.%Get("Ranking")) Set tBad = tBad _ $ListBuild($ListBuild("Ranking", "RANK"))
+    }
+    Set tType = pFields.%GetTypeOf("Title")
+    If tType = "string" {
+        If '..WorkflowFullNameOK(pFields.%Get("Title")) Set tBad = tBad _ $ListBuild($ListBuild("Title", "TITLE"))
+    } ElseIf tType '= "unassigned" {
+        Set tBad = tBad _ $ListBuild($ListBuild("Title", "SHAPE"))
+    }
+    Quit tBad
+}
+
+/// <p>The 422 violations of a membership's names and fields, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field, code)</code> with the count in
+/// <code>pViolations</code>, from <method>WorkflowMemberBad</method>. It reads no vendor class.</p>
+ClassMethod WorkflowMemberViolations(pRole As %String, pUser As %String, pFields As %DynamicObject, Output pViolations, pJudgeNames As %Boolean = 1) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tBad = ..WorkflowMemberBad(pRole, pUser, pFields, pJudgeNames)
+    For tI = 1:1:$ListLength(tBad) {
+        Set tEntry = $List(tBad, tI)
+        Set tCode = $Case($List(tEntry, 2), "ROLENAME": ##class(OcuPilot.Api.InteropError).#WORKFLOWROLENAME, "MEMBERUSER": ##class(OcuPilot.Api.InteropError).#WORKFLOWMEMBERUSER, "RANK": ##class(OcuPilot.Api.InteropError).#WORKFLOWMEMBERRANK, "TITLE": ##class(OcuPilot.Api.InteropError).#WORKFLOWMEMBERTITLE, : ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        Set pViolations($Increment(pViolations)) = $ListBuild($List(tEntry, 1), tCode)
+    }
+    Quit $$$OK
+}
+
+/// <p>The decision a workflow role write <var>pType</var> is refused with, as a token, else <code>""</code>: an add of a name the namespace holds in any letter case is <code>TAKEN</code> (the
+/// vendor keys the name exactly, and two roles of one spelling in another case would read as one); any other write of a name it does not hold exactly is <code>ABSENT</code>.
+/// <var>pExists</var> is whether the role is held under exactly that name and <var>pFolded</var> how many hold it in any letter case. Pure.</p>
+ClassMethod WorkflowRoleWriteToken(pType As %String, pExists As %Boolean, pFolded As %Integer) As %String
+{
+    If pType = ..#TYPEADDWORKFLOWROLE Quit $Select(pExists || (pFolded > 0): "TAKEN", 1: "")
+    Quit $Select(pExists: "", 1: "ABSENT")
+}
+
+/// <p>The decision a member write <var>pType</var> is refused with, as a token, else <code>""</code>: an add to a role not held exactly is <code>ABSENT</code>, of a user who is not a workflow user of
+/// the namespace, held exactly, <code>MEMBERUSER</code>, and of a user already a member <code>TAKEN</code>; a remove of a user who is not a member is <code>ABSENT</code>. Pure.</p>
+ClassMethod WorkflowMemberWriteToken(pType As %String, pRoleExists As %Boolean, pUserExists As %Boolean, pMember As %Boolean) As %String
+{
+    If pType = ..#TYPEADDWORKFLOWMEMBER {
+        If 'pRoleExists Quit "ABSENT"
+        If 'pUserExists Quit "MEMBERUSER"
+        Quit $Select(pMember: "TAKEN", 1: "")
+    }
+    Quit $Select(pMember: "", 1: "ABSENT")
+}
+
+/// <p>422 <code>INTEROP.WORKFLOW.ROLENAME</code>: the name is not one a workflow role takes.</p>
+ClassMethod WorkflowRoleNameRefusal(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tViolations = 1
+    Set tViolations(1) = $ListBuild("Name", ##class(OcuPilot.Api.InteropError).#WORKFLOWROLENAME)
+    Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+}
+
+/// <p>422 <code>INTEROP.WORKFLOW.MEMBERUSER</code>: the user is not a workflow user of the namespace.</p>
+ClassMethod WorkflowMemberUserRefusal(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tViolations = 1
+    Set tViolations(1) = $ListBuild("User", ##class(OcuPilot.Api.InteropError).#WORKFLOWMEMBERUSER)
+    Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+}
+
+/// <p>The workflow roles of <var>pNamespace</var> by name, at most <var>pMax</var> (<parameter>WORKFLOWROLESMAX</parameter> when that is not above zero): <code>{Name, Description, Capacity,
+/// Members, Namespace}</code>. Read with <code>%ExecDirectNoPriv</code> after the gate (<method>SqlRows</method>); nothing is written. A longer list than the cap is the caller's truncation, which it
+/// reads from the one row it asked for beyond its own cap.</p>
+ClassMethod ListWorkflowRoles(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..SqlRows(pNamespace, ..#WORKFLOWROLESQL, .tFound, .tCaught, ..WorkflowCap(pMax, ..#WORKFLOWROLESMAX))
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow role list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tLine = tFound(tI)
+        Do pRows.%Push(..WorkflowRoleRow(..WorkflowRoleLine($List(tLine, 1), $List(tLine, 2), $List(tLine, 3), $List(tLine, 4)), pNamespace))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The members of one role in <var>pNamespace</var>, at most <var>pMax</var> (<parameter>WORKFLOWMEMBERSMAX</parameter> when that is not above zero): <code>{Role, User, FullName, Ranking,
+/// Title, IsActive, Namespace}</code>, by user name. The call names the role under <parameter>WORKFLOWROLECRITERION</parameter>; a call that names no role, or a role name this port does not
+/// read, is 400 <code>PORT.VALIDATION</code>. Nothing is written.</p>
+ClassMethod ListWorkflowMembers(pNamespace As %String, ByRef pQuery, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tRole = $Get(pQuery(..#WORKFLOWROLECRITERION))
+    If '..WorkflowNameOK(tRole) Quit ..RefuseCriterion(..#WORKFLOWROLECRITERION, .pHttpStatus, .pFault)
+    Set tSC = ..SqlRows(pNamespace, "SELECT TOP ? " _ ..#WORKFLOWMEMBERCOLUMNS _ " WHERE %EXACT(M.RoleName) = ? ORDER BY M.UserName", .tFound, .tCaught, ..WorkflowCap(pMax, ..#WORKFLOWMEMBERSMAX), tRole)
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow members list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tLine = tFound(tI)
+        Do pRows.%Push(..WorkflowMemberRow(..WorkflowMemberLine($List(tLine, 1), $List(tLine, 2), $List(tLine, 3), $List(tLine, 4), $List(tLine, 5), $List(tLine, 6)), pNamespace))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One workflow role, fresh (Story 24.17 Batch 3b): <method>WorkflowRoleRow</method>'s fields. A role not held under exactly that name, or a name this port does not read, is 404
+/// <code>PORT.NOTFOUND</code>, unlogged. With <var>pAction</var> it refuses what that write would be refused (<method>WorkflowWriteRefusal</method>); an add (AD-54, which inverts the read) is then
+/// refused <code>ROLETAKEN</code> when the name is held in any letter case, and otherwise the 404 a create expects.</p>
+ClassMethod ReadWorkflowRole(pNamespace As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If '..WorkflowNameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+    If pAction '= "" {
+        Set tSC = ..WorkflowWriteRefusal(pNamespace, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Do ..WorkflowFactsOf(pNamespace, "role", pName, "", .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow role read failed", .pHttpStatus, .pFault)
+    If pAction = ..#TYPEADDWORKFLOWROLE {
+        If ..WorkflowRoleWriteToken(pAction, tFacts("exists"), tFacts("folded")) = "TAKEN" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#WORKFLOWROLETAKEN, .pHttpStatus, .pFault)
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    Set pRow = ..WorkflowRoleRow(tFacts("line"), pNamespace)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One membership, fresh (Story 24.17 Batch 3b): <method>WorkflowMemberRow</method>'s fields, named by <var>pRole</var> and <var>pUser</var>. A membership not held under exactly those names is 404
+/// <code>PORT.NOTFOUND</code>, unlogged. With <var>pAction</var> it refuses what that write would be refused (<method>WorkflowWriteRefusal</method>); an add (AD-54, which inverts the read) is then
+/// refused <code>MEMBERUSER</code> for a user who is not a workflow user of the namespace, <code>MEMBERTAKEN</code> when the membership is held, and otherwise the 404 a create expects.</p>
+ClassMethod ReadWorkflowMember(pNamespace As %String, pRole As %String, pUser As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If '..WorkflowNameOK(pRole) || '..WorkflowNameOK(pUser) Quit ..Absent(.pHttpStatus, .pFault)
+    If pAction '= "" {
+        Set tSC = ..WorkflowWriteRefusal(pNamespace, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Do ..WorkflowFactsOf(pNamespace, "member", pRole, pUser, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow member read failed", .pHttpStatus, .pFault)
+    If pAction = ..#TYPEADDWORKFLOWMEMBER {
+        Set tToken = ..WorkflowMemberWriteToken(pAction, tFacts("roleExists"), tFacts("userExists"), tFacts("member"))
+        If tToken = "MEMBERUSER" Quit ..WorkflowMemberUserRefusal(.pHttpStatus, .pFault)
+        If tToken = "TAKEN" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#WORKFLOWMEMBERTAKEN, .pHttpStatus, .pFault)
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    If 'tFacts("member") Quit ..Absent(.pHttpStatus, .pFault)
+    Set pRow = ..WorkflowMemberRow(tFacts("line"), pNamespace)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the WorkflowRoles endpoint's <code>LIST</code> and typed types after <method>Invoke</method>'s gate (Story 24.17 Batch 3b): the <code>WORKFLOWROLE</code> read and the three writes, the
+/// role named under <parameter>IDKEY</parameter> by its name, kept exactly (AD-13). An <parameter>ACTIONKEY</parameter> names the write the read is composed for.</p>
+ClassMethod InvokeWorkflowRole(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListWorkflowRoles(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tName = $Get(pQuery(..#IDKEY))
+        If tName = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsWorkflowRoleWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsWorkflowRoleWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsWorkflowRoleWrite(pType) {
+            Set tSC = ..PerformWorkflowRole(pNamespace, pType, tName, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadWorkflowRole(pNamespace, tName, tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the workflow role call failed inside the port", ..VendorCodesStatus(ex.AsStatus(), "the workflow role call"), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Serve the WorkflowMembers endpoint's <code>LIST</code> and typed types after <method>Invoke</method>'s gate (Story 24.17 Batch 3b): the <code>WORKFLOWMEMBER</code> read and the two
+/// writes, the membership named under <parameter>IDKEY</parameter> by the composite id <code>[Role, User]</code>, each part kept exactly (AD-13). An <parameter>ACTIONKEY</parameter> names the
+/// write the read is composed for.</p>
+ClassMethod InvokeWorkflowMember(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListWorkflowMembers(pNamespace, .pQuery, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite($Get(pQuery(..#IDKEY)))
+        If ($ListLength(tParts) '= 2) || ($List(tParts, 1) = "") || ($List(tParts, 2) = "") {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsWorkflowMemberWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsWorkflowMemberWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsWorkflowMemberWrite(pType) {
+            Set tSC = ..PerformWorkflowMember(pNamespace, pType, $List(tParts, 1), $List(tParts, 2), pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadWorkflowMember(pNamespace, $List(tParts, 1), $List(tParts, 2), tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the workflow member call failed inside the port", ..VendorCodesStatus(ex.AsStatus(), "the workflow member call"), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Run workflow role write <var>pType</var> on the role <var>pName</var> in <var>pNamespace</var> and answer what it leaves (Story 24.17 Batch 3b), as the classic page's <code>SaveItem</code> and
+/// <code>DeleteID</code> perform it. The sequence:</p>
+/// <ol>
+/// <li>A namespace under source control refuses every write (<method>WorkflowWriteRefusal</method>), before anything is read.</li>
+/// <li>In the namespace the role is read again and judged by <method>WorkflowRoleWriteToken</method>, so a state that moved since the review is refused by its own code with no vendor call:
+/// <code>TAKEN</code> or a 404; then the fields are judged (<method>WorkflowRoleViolations</method>, 422).</li>
+/// <li>The vendor's <code>%Save</code> of a new role (an absent capacity is the vendor's 100), <code>%Save</code> of the opened role (concurrency 4, the reference dropped right after) with each field
+/// that differs, or <code>%DeleteId</code> (<method>WorkflowRoleVendor</method>), a remove then taking the memberships the vendor's delete leaves (<method>WorkflowMembersGone</method>). An edit that
+/// moves no field calls nothing. A role another process holds locked is 503.</li>
+/// <li>The namespace is restored, then OcuPilot's own audit row is recorded (<method>AuditRuntime</method>) whatever the vendor answered, because the vendor records none: the namespace, the names of
+/// the fields written (a remove: how many members the role held) and whether it completed, never a description.</li>
+/// </ol>
+/// <p>A vendor error status or a fault is 500 <code>INTERNAL</code>, never 200. A vendor refusal reaches the log as its error codes alone. The answer is the role's row read again
+/// (<method>ReadWorkflowRole</method>); after a remove <code>{Name, Namespace}</code>.</p>
+ClassMethod PerformWorkflowRole(pNamespace As %String, pType As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..WorkflowWriteRefusal(pNamespace, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tAdd = (pType = ..#TYPEADDWORKFLOWROLE)
+    If '..WorkflowNameOK(pName) Quit $Select(tAdd: ..WorkflowRoleNameRefusal(.pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tBusy = 0
+    Set tAttempted = 0
+    Set tChanged = ""
+    Set tBad = ""
+    Set tMembers = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..WorkflowHere()
+        Do ..WorkflowRoleFactsHere(pName, .tFacts)
+        Set tToken = ..WorkflowRoleWriteToken(pType, tFacts("exists"), tFacts("folded"))
+        If tToken = "" Set tBad = ..WorkflowRoleBad(pName, pBody, 0)
+        If (tToken = "") && (tBad = "") {
+            If tAdd {
+                Set tObject = ##class(EnsLib.Workflow.RoleDefinition).%New()
+                Set tObject.Name = pName
+                If pBody.%GetTypeOf("Description") = "string" Set tObject.Description = pBody.%Get("Description")
+                If pBody.%GetTypeOf("Capacity") = "number" Set tObject.Capacity = pBody.%Get("Capacity")
+                Set tAttempted = 1
+                Set tVendorSC = ..WorkflowRoleVendor(pType, tObject, pName)
+            } ElseIf pType = ..#TYPEREMOVEWORKFLOWROLE {
+                Set tMembers = $List(tFacts("line"), 4)
+                Set tAttempted = 1
+                Set tVendorSC = ..WorkflowRoleVendor(pType, "", pName)
+                If $$$ISOK(tVendorSC) Set tVendorSC = ..WorkflowMembersGone(pName)
+            } Else {
+                Set tObject = ##class(EnsLib.Workflow.RoleDefinition).%OpenId(pName, 4)
+                If '$IsObject(tObject) {
+                    Set tBusy = 1
+                } Else {
+                    Set tHeld = ..WorkflowRoleLine(pName, tObject.Description, tObject.Capacity, 0)
+                    If (pBody.%GetTypeOf("Description") = "string") && '..WorkflowSame(pBody.%Get("Description"), $List(tHeld, 2)) {
+                        Set tObject.Description = pBody.%Get("Description")
+                        Set tChanged = tChanged _ $ListBuild("Description")
+                    }
+                    If (pBody.%GetTypeOf("Capacity") = "number") && (+pBody.%Get("Capacity") '= $List(tHeld, 3)) {
+                        Set tObject.Capacity = pBody.%Get("Capacity")
+                        Set tChanged = tChanged _ $ListBuild("Capacity")
+                    }
+                    If tChanged '= "" {
+                        Set tAttempted = 1
+                        Set tVendorSC = ..WorkflowRoleVendor(pType, tObject, pName)
+                    }
+                }
+            }
+        }
+        ; The role's lock is released in the namespace it was taken in.
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Try {
+            Set $NAMESPACE = pNamespace
+        } Catch {
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If tAttempted {
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        If tAdd {
+            Set tChanged = ""
+            If (pBody.%GetTypeOf("Description") = "string") && (pBody.%Get("Description") '= "") Set tChanged = tChanged _ $ListBuild("Description")
+            If pBody.%GetTypeOf("Capacity") = "number" Set tChanged = tChanged _ $ListBuild("Capacity")
+        }
+        If pType '= ..#TYPEREMOVEWORKFLOWROLE Do tEffects.%Set("fields", $ListToString(tChanged, ","), "string")
+        If pType = ..#TYPEREMOVEWORKFLOWROLE Do tEffects.%Set("members", +tMembers, "number")
+        Do tEffects.%Set("completed", ($$$ISOK(tVendorSC) && '$IsObject(tCaught)), "boolean")
+        Do ..AuditRuntime($Case(pType, ..#TYPEADDWORKFLOWROLE: ..#VERBADD, ..#TYPEREMOVEWORKFLOWROLE: ..#VERBREMOVE, : ..#VERBSET), ..#ENTITYWORKFLOWROLE, pName, tEffects)
+    }
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow role write failed", .pHttpStatus, .pFault)
+    If tBusy Quit ..Unavailable(.pHttpStatus, .pFault)
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken = "TAKEN" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#WORKFLOWROLETAKEN, .pHttpStatus, .pFault)
+    If tBad '= "" {
+        Set tSC = ..WorkflowRoleViolations(pName, pBody, .tViolations, 0)
+        Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the workflow role write"), "the workflow role write failed", .pHttpStatus, .pFault)
+    If pType = ..#TYPEREMOVEWORKFLOWROLE {
+        Set pResult = {}
+        Do pResult.%Set("Name", pName, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tReadSC = ..ReadWorkflowRole(pNamespace, pName, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Name", pName, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>Run member write <var>pType</var> on the membership of <var>pUser</var> in <var>pRole</var> in <var>pNamespace</var> and answer what it leaves (Story 24.17 Batch 3b), as the classic Add User
+/// To This Role and Remove User From This Role dialogs perform it. The sequence:</p>
+/// <ol>
+/// <li>A namespace under source control refuses every write (<method>WorkflowWriteRefusal</method>), before anything is read.</li>
+/// <li>In the namespace the role, the workflow user and the membership are read again and judged by <method>WorkflowMemberWriteToken</method>, so a state that moved since the review is refused by its
+/// own code with no vendor call: a 404, <code>MEMBERUSER</code> or <code>TAKEN</code>; then the rank and the title are judged (<method>WorkflowMemberViolations</method>, 422).</li>
+/// <li>The vendor's <code>AddUserToRole</code> (an absent rank is the vendor's 3) or <code>RemoveUserFromRole</code> (<method>WorkflowMemberVendor</method>), which answers the engine's status and drops
+/// the delete's: a remove therefore reads the membership again and answers an error status when it is still held. The vendor's own engine sends an active member the role's unassigned tasks and
+/// deletes a removed member's worklist for the role, leaving the tasks they held through it unassigned.</li>
+/// <li>The namespace is restored, then OcuPilot's own audit row is recorded (<method>AuditRuntime</method>) whatever the vendor answered, because the vendor records none: the namespace, the names of the
+/// fields written and whether it completed, never a title.</li>
+/// </ol>
+/// <p>A vendor error status or a fault is 500 <code>INTERNAL</code>, never 200, even after the membership was saved. The answer is the membership read again (<method>ReadWorkflowMember</method>);
+/// after a remove <code>{Role, User, Namespace}</code>.</p>
+ClassMethod PerformWorkflowMember(pNamespace As %String, pType As %String, pRole As %String, pUser As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..WorkflowWriteRefusal(pNamespace, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tAdd = (pType = ..#TYPEADDWORKFLOWMEMBER)
+    If '..WorkflowNameOK(pRole) Quit ..Absent(.pHttpStatus, .pFault)
+    If '..WorkflowNameOK(pUser) Quit $Select(tAdd: ..WorkflowMemberUserRefusal(.pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tAttempted = 0
+    Set tBad = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..WorkflowHere()
+        Do ..WorkflowMemberFactsHere(pRole, pUser, .tFacts)
+        Set tToken = ..WorkflowMemberWriteToken(pType, tFacts("roleExists"), tFacts("userExists"), tFacts("member"))
+        If tToken = "" Set tBad = ..WorkflowMemberBad(pRole, pUser, pBody, 0)
+        If (tToken = "") && (tBad = "") {
+            Set tAttempted = 1
+            If tAdd {
+                Set tRank = $Select(pBody.%GetTypeOf("Ranking") = "number": pBody.%Get("Ranking"), 1: "")
+                Set tTitle = $Select(pBody.%GetTypeOf("Title") = "string": pBody.%Get("Title"), 1: "")
+                Set tVendorSC = ..WorkflowMemberVendor(pType, pRole, pUser, tRank, tTitle)
+            } Else {
+                Set tVendorSC = ..WorkflowMemberVendor(pType, pRole, pUser, "", "")
+                ; RemoveUserFromRole answers the engine's status, not the delete's, so the membership is read again.
+                If $$$ISOK(tVendorSC) && ##class(EnsLib.Workflow.RoleMembership).IDExists(pRole, pUser) Set tVendorSC = $$$ERROR($$$GeneralError, "a workflow role membership was not removed")
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If tAttempted {
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        Do tEffects.%Set("role", pRole, "string")
+        Do tEffects.%Set("user", pUser, "string")
+        Set tChanged = ""
+        If tAdd {
+            If pBody.%GetTypeOf("Ranking") = "number" Set tChanged = tChanged _ $ListBuild("Ranking")
+            If (pBody.%GetTypeOf("Title") = "string") && (pBody.%Get("Title") '= "") Set tChanged = tChanged _ $ListBuild("Title")
+        }
+        Do tEffects.%Set("fields", $ListToString(tChanged, ","), "string")
+        Do tEffects.%Set("completed", ($$$ISOK(tVendorSC) && '$IsObject(tCaught)), "boolean")
+        Do ..AuditRuntime($Select(tAdd: ..#VERBADD, 1: ..#VERBREMOVE), ..#ENTITYWORKFLOWMEMBER, ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(pRole, pUser)), tEffects)
+    }
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow member write failed", .pHttpStatus, .pFault)
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken = "MEMBERUSER" Quit ..WorkflowMemberUserRefusal(.pHttpStatus, .pFault)
+    If tToken = "TAKEN" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#WORKFLOWMEMBERTAKEN, .pHttpStatus, .pFault)
+    If tBad '= "" {
+        Set tSC = ..WorkflowMemberViolations(pRole, pUser, pBody, .tViolations, 0)
+        Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the workflow member write"), "the workflow member write failed", .pHttpStatus, .pFault)
+    If 'tAdd {
+        Set pResult = {}
+        Do pResult.%Set("Role", pRole, "string")
+        Do pResult.%Set("User", pUser, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tReadSC = ..ReadWorkflowMember(pNamespace, pRole, pUser, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Role", pRole, "string")
+        Do tRow.%Set("User", pUser, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the workflow role write <var>pType</var> of the role named <var>pName</var> (Story 24.17 Batch 3b): the source control guard, each refusal as one
+/// guard that stops the write (an add's name the namespace holds in any letter case; an edit's and a remove's role held), and the vendor's <code>%Save</code> of a new role, <code>%Save</code> of the
+/// role opened at concurrency 4 with the fields <var>pBody</var> carries, or <code>%DeleteId</code> and then <code>RoleMembership.IDDelete</code> for each membership the namespace still records for the
+/// role (<method>WorkflowMembersGone</method>). Names and values are string literals, so nothing the query carries runs as code. <code>""</code> for a name or a value the port would refuse by shape,
+/// which renders no draft. Nothing here runs; a person runs it.</p>
+ClassMethod WorkflowRoleSnippet(pType As %String, pName As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    If '..WorkflowNameOK(pName) Quit ""
+    Set tAdd = (pType = ..#TYPEADDWORKFLOWROLE)
+    If pType '= ..#TYPEREMOVEWORKFLOWROLE {
+        Set tSC = ..WorkflowRoleViolations(pName, pBody, .tViolations, tAdd)
+        If tViolations Quit ""
+    }
+    Set tNL = $Char(10)
+    Set tName = ..Literal(pName)
+    Set tError = "$System.Status.Error(5001, "
+    Set tText = tNL _ " Set tGo = '##class(%CSP.Portal.SourceControl.Util).IsEnabled($Namespace), tSC = $System.Status.OK()"
+    Set tText = tText _ tNL _ " If 'tGo Set tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWSOURCECONTROL) _ ")"
+    If tAdd {
+        Set tCount = ..Literal("SELECT COUNT(*) FROM EnsLib_Workflow.RoleDefinition WHERE LOWER(Name) = ?")
+        Set tText = tText _ tNL _ " If tGo Set tRS = ##class(%SQL.Statement).%ExecDirect(, " _ tCount _ ", $ZConvert(" _ tName _ ", ""L"")), tHeld = $Select(tRS.%Next(): ''tRS.%GetData(1), 1: 1), tRS = """""
+        Set tText = tText _ tNL _ " If tGo, tHeld Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWROLETAKEN) _ ")"
+        Set tText = tText _ tNL _ " If tGo Set tRole = ##class(EnsLib.Workflow.RoleDefinition).%New(), tRole.Name = " _ tName
+    } Else {
+        Set tText = tText _ tNL _ " If tGo, '##class(EnsLib.Workflow.RoleDefinition).%ExistsId(" _ tName _ ") Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.Error).#PORTNOTFOUND) _ ")"
+        If pType = ..#TYPEREMOVEWORKFLOWROLE {
+            Set tText = tText _ tNL _ " If tGo Set tSC = ##class(EnsLib.Workflow.RoleDefinition).%DeleteId(" _ tName _ ")"
+            Set tMembers = ..Literal("SELECT UserName FROM EnsLib_Workflow.RoleMembership WHERE %EXACT(RoleName) = ?")
+            Quit tText _ tNL _ " If tGo, $System.Status.IsOK(tSC) { Set tUsers = """", tRS = ##class(%SQL.Statement).%ExecDirect(, " _ tMembers _ ", " _ tName _ ") While tRS.%Next() { Set tUsers = tUsers _ $ListBuild(tRS.%GetData(1)) } Set tRS = """" For tI = 1:1:$ListLength(tUsers) { If $System.Status.IsOK(tSC) Set tSC = ##class(EnsLib.Workflow.RoleMembership).IDDelete(" _ tName _ ", $List(tUsers, tI)) } }"
+        }
+        Set tText = tText _ tNL _ " If tGo Set tRole = ##class(EnsLib.Workflow.RoleDefinition).%OpenId(" _ tName _ ", 4)"
+    }
+    If $IsObject(pBody) && (pBody.%GetTypeOf("Description") = "string") Set tText = tText _ tNL _ " If tGo Set tRole.Description = " _ ..Literal(pBody.%Get("Description"))
+    If $IsObject(pBody) && (pBody.%GetTypeOf("Capacity") = "number") Set tText = tText _ tNL _ " If tGo Set tRole.Capacity = " _ +pBody.%Get("Capacity")
+    Quit tText _ tNL _ " If tGo Set tSC = tRole.%Save()" _ tNL _ " Set tRole = """""
+}
+
+/// <p>The lines <method>Snippet</method> adds for the member write <var>pType</var> of the membership named by the composite id <var>pId</var> (<code>[Role, User]</code>, Story 24.17 Batch 3b): the
+/// source control guard, each refusal as one guard that stops the write (an add's role held, user a workflow user and not yet a member; a remove's membership held), and the vendor's
+/// <code>AddUserToRole</code> with the rank and title <var>pBody</var> carries (an absent rank is the vendor's 3) or <code>RemoveUserFromRole</code>, whose answer drops the delete's status, so the
+/// membership is read again. Names and values are literals, so nothing the query carries runs as code. <code>""</code> for a name or a value the port would refuse by shape, which renders no draft.
+/// Nothing here runs; a person runs it.</p>
+ClassMethod WorkflowMemberSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
+    If $ListLength(tParts) '= 2 Quit ""
+    Set tRoleName = $List(tParts, 1)
+    Set tUserName = $List(tParts, 2)
+    If '..WorkflowNameOK(tRoleName) || '..WorkflowNameOK(tUserName) Quit ""
+    Set tAdd = (pType = ..#TYPEADDWORKFLOWMEMBER)
+    If tAdd {
+        Set tSC = ..WorkflowMemberViolations(tRoleName, tUserName, pBody, .tViolations, 1)
+        If tViolations Quit ""
+    }
+    Set tNL = $Char(10)
+    Set tRole = ..Literal(tRoleName)
+    Set tUser = ..Literal(tUserName)
+    Set tError = "$System.Status.Error(5001, "
+    Set tNotFound = tError _ ..Literal(##class(OcuPilot.Api.Error).#PORTNOTFOUND) _ ")"
+    Set tText = tNL _ " Set tGo = '##class(%CSP.Portal.SourceControl.Util).IsEnabled($Namespace), tSC = $System.Status.OK()"
+    Set tText = tText _ tNL _ " If 'tGo Set tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWSOURCECONTROL) _ ")"
+    If tAdd {
+        Set tText = tText _ tNL _ " If tGo, '##class(EnsLib.Workflow.RoleDefinition).%ExistsId(" _ tRole _ ") Set tGo = 0, tSC = " _ tNotFound
+        Set tText = tText _ tNL _ " If tGo, '##class(EnsLib.Workflow.UserDefinition).%ExistsId(" _ tUser _ ") Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWMEMBERUSER) _ ")"
+        Set tText = tText _ tNL _ " If tGo, ##class(EnsLib.Workflow.RoleMembership).IDExists(" _ tRole _ ", " _ tUser _ ") Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWMEMBERTAKEN) _ ")"
+        Set tRank = $Select($IsObject(pBody) && (pBody.%GetTypeOf("Ranking") = "number"): +pBody.%Get("Ranking"), 1: "")
+        Set tTitle = $Select($IsObject(pBody) && (pBody.%GetTypeOf("Title") = "string"): ..Literal(pBody.%Get("Title")), 1: """""")
+        Quit tText _ tNL _ " If tGo Set tSC = ##class(EnsLib.Workflow.RoleDefinition).AddUserToRole(" _ tRole _ ", " _ tUser _ ", " _ tRank _ ", " _ tTitle _ ")"
+    }
+    Set tText = tText _ tNL _ " If tGo, '##class(EnsLib.Workflow.RoleMembership).IDExists(" _ tRole _ ", " _ tUser _ ") Set tGo = 0, tSC = " _ tNotFound
+    Set tText = tText _ tNL _ " If tGo Set tSC = ##class(EnsLib.Workflow.RoleDefinition).RemoveUserFromRole(" _ tRole _ ", " _ tUser _ ")"
+    ; RemoveUserFromRole answers the engine's status, not the delete's, so the membership is read again.
+    Quit tText _ tNL _ " If tGo, $System.Status.IsOK(tSC), ##class(EnsLib.Workflow.RoleMembership).IDExists(" _ tRole _ ", " _ tUser _ ") Set tSC = " _ tError _ """a workflow role membership was not removed"")"
+}
+
+/// <p>The Workflow tasks endpoint (Story 24.17 Batch 4): <code>LIST</code> (the namespace's <code>EnsLib.Workflow.TaskResponse</code> rows, newest first, as the classic
+/// <code>Engine:Tasklist</code> reads them), <code>WORKFLOWTASK</code> (one task, fresh, by its task id) and the writes <code>ASSIGNWORKFLOWTASK</code> and <code>CANCELWORKFLOWTASK</code>,
+/// the vendor's own <code>Engine</code> calls as the classic Assign or Reassign Task dialog performs them.</p>
+Parameter ENDPOINTWORKFLOWTASKS = "WorkflowTasks";
+
+/// <p>The Workflow worklist endpoint (Story 24.17 Batch 4): <code>LIST</code> alone (the namespace's <code>EnsLib.Workflow.Worklist</code> rows, newest first, as the classic
+/// <code>Engine:Worklist</code> reads them).</p>
+Parameter ENDPOINTWORKFLOWWORKLIST = "WorkflowWorklist";
+
+/// <p>The pairs both endpoints require: the portal's. Neither classic page declares a resource of its own, so the gate's READ on the namespace's globals database is the rest of what they
+/// admit. A write adds <parameter>WORKFLOWWRITEPAIR</parameter> and WRITE on that database.</p>
+Parameter WORKFLOWTASKPAIRS = "%Ens_Portal:USE";
+
+/// <p>One workflow task, fresh: <code>{TaskId, RoleName, IsComplete, Status, Priority, Source, AssignedTo, Subject, TimeCreated, TimeCompleted, Duration, Namespace, User}</code>, <code>User</code>
+/// being <code>AssignedTo</code> under the name the assign's argument carries. With <parameter>ACTIONKEY</parameter> in the query it refuses what that write would be refused.</p>
+Parameter TYPEWORKFLOWTASK = "WORKFLOWTASK";
+
+Parameter TYPEASSIGNWORKFLOWTASK = "ASSIGNWORKFLOWTASK";
+
+Parameter TYPECANCELWORKFLOWTASK = "CANCELWORKFLOWTASK";
+
+/// <p>The most workflow tasks a list answers, and the most worklist items, to a call that names no cap of its own: 10,000, the classic tables' own row limit. Each read ended inside 0.12
+/// seconds at 10,000 (measured). A call that names a cap gets that many, so the one row it asks for beyond what it shows reports its truncation (AD-36).</p>
+Parameter WORKFLOWTASKSMAX As INTEGER = 10000;
+
+Parameter WORKFLOWWORKLISTMAX As INTEGER = 10000;
+
+/// <p>The query keys an assign's values travel under: the user to assign the task to (<code>""</code> unassigns it) and the priority. An absent key means unchanged.</p>
+Parameter WORKFLOWTASKUSERKEY = "taskuser";
+
+Parameter WORKFLOWTASKPRIORITYKEY = "taskpriority";
+
+/// <p>The entity type the audit rows of a workflow task write name, and the verbs they carry.</p>
+Parameter ENTITYWORKFLOWTASK = "interop-workflow-task";
+
+Parameter VERBWORKFLOWASSIGN = "assign";
+
+Parameter VERBWORKFLOWCANCEL = "cancel";
+
+/// <p>The columns of a task row, in the order <method>WorkflowTaskRow</method> reads them, as the classic <code>Engine:Tasklist</code> query selects them, and the table they come from.</p>
+Parameter WORKFLOWTASKCOLUMNS = "%ID, TaskStatus_RoleName, TaskStatus_IsComplete, %Status, %Priority, TaskStatus_Source, TaskStatus_AssignedTo, %Subject, TaskStatus_TimeCreated, TaskStatus_TimeCompleted, DATEDIFF('ss', TaskStatus_TimeCreated, TaskStatus_TimeCompleted)";
+
+Parameter WORKFLOWTASKFROM = "FROM EnsLib_Workflow.TaskResponse";
+
+/// <p>The statement the worklist reads, as the classic <code>Engine:Worklist</code> query selects its columns, newest item first.</p>
+Parameter WORKFLOWWORKLISTSQL = "SELECT TOP ? Task, UserName, RoleName, Task->%Priority, TimeCreated, Age, Task->TaskStatus_AssignedTo, Task->%Subject FROM EnsLib_Workflow.Worklist ORDER BY TimeCreated DESC, Task DESC";
+
+/// <p>Whether <var>pType</var> is one of the workflow task writes this port carries (Story 24.17 Batch 4): an assign (a user, Unassigned or a priority) or a cancel, each needing WRITE on the
+/// namespace's globals database and no routines database.</p>
+ClassMethod IsWorkflowTaskWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEASSIGNWORKFLOWTASK) || (pType = ..#TYPECANCELWORKFLOWTASK)
+}
+
+/// <p>Whether <var>pId</var> is a task id this port reads or writes: a whole number written without a sign or a leading zero. Pure.</p>
+ClassMethod WorkflowTaskIdOK(pId As %String) As %Boolean
+{
+    Quit $Match(pId, "^[1-9][0-9]{0,17}$")
+}
+
+/// <p>Whether <var>pValue</var> is a priority this port writes: a whole number from 1 to 5. Pure.</p>
+ClassMethod WorkflowTaskPriorityOK(pValue As %String) As %Boolean
+{
+    Quit $Match(pValue, "^[1-5]$")
+}
+
+/// <p>Whether <var>pUser</var> is a user name this port asks the vendor about: the empty one (Unassigned) or a name <method>WorkflowNameOK</method> accepts. Pure.</p>
+ClassMethod WorkflowTaskUserShapeOK(pUser As %String) As %Boolean
+{
+    Quit (pUser = "") || ..WorkflowNameOK(pUser)
+}
+
+/// <p>The published sentence a value of kind <var>pKind</var> (<code>user</code> or <code>priority</code>) is refused with, which the assign tool's screen action answers with, or <code>""</code> for
+/// another kind. Pure.</p>
+ClassMethod WorkflowTaskProblem(pKind As %String) As %String
+{
+    Set tCode = $Case(pKind, "user": ##class(OcuPilot.Api.InteropError).#WORKFLOWTASKUSER, "priority": ##class(OcuPilot.Api.InteropError).#WORKFLOWTASKPRIORITY, : "")
+    If tCode = "" Quit ""
+    Quit ##class(OcuPilot.Api.InteropError).ReasonFor(tCode)
+}
+
+/// <p>The vendor's write of the workflow task write <var>pType</var> in the current namespace, which the caller has already switched, on the task <var>pTask</var>, opened at concurrency 4 with
+/// its new priority set: <code>CompleteTask</code> with no action for a cancel; for an assign <code>AssignTask</code> to <var>pUser</var>, or for <code>""</code> <code>UnassignTask</code> and
+/// then <code>SendTaskToAll</code>. Overridable so a fixture can answer a status or a fault; production never overrides it.</p>
+ClassMethod WorkflowTaskVendor(pType As %String, pTask As %RegisteredObject, pUser As %String) As %Status
+{
+    If pType = ..#TYPECANCELWORKFLOWTASK Quit ##class(EnsLib.Workflow.Engine).CompleteTask(pTask)
+    If pUser '= "" Quit ##class(EnsLib.Workflow.Engine).AssignTask(pTask, pUser)
+    Set tSC = ##class(EnsLib.Workflow.Engine).UnassignTask(pTask)
+    If $$$ISERR(tSC) Quit tSC
+    Quit ##class(EnsLib.Workflow.Engine).SendTaskToAll(pTask)
+}
+
+/// <p>The task as the eleven values a row carries, in order, from the columns <parameter>WORKFLOWTASKCOLUMNS</parameter> read as <var>pLine</var>: the id, the role, 1 or 0 for complete, the status, the
+/// priority, the source, the assignee, the subject, the two stamps as the vendor stores them and the duration in whole seconds or <code>""</code>. A cleared string column reads as
+/// <code>""</code>. Pure.</p>
+ClassMethod WorkflowTaskLine(pLine As %List) As %List [ Private ]
+{
+    Quit $ListBuild($List(pLine, 1) _ "", ..AlertText($List(pLine, 2)), ''$List(pLine, 3), ..AlertText($List(pLine, 4)), +$List(pLine, 5), ..AlertText($List(pLine, 6)), ..AlertText($List(pLine, 7)), ..AlertText($List(pLine, 8)), ..AlertText($List(pLine, 9)), ..AlertText($List(pLine, 10)), $Select($List(pLine, 11) = "": "", 1: +$List(pLine, 11)))
+}
+
+/// <p>The row a tasks list and read answer, from the raw columns <var>pLine</var> (<method>WorkflowTaskLine</method>): <code>{TaskId, RoleName, IsComplete, Status, Priority, Source, AssignedTo,
+/// Subject, TimeCreated, TimeCompleted, Duration, Namespace, User}</code>, the stamps as the instance's local time as the other lists show them. Runs in the install namespace.</p>
+ClassMethod WorkflowTaskRow(pLine As %List, pNamespace As %String) As %DynamicObject [ Private ]
+{
+    Set tLine = ..WorkflowTaskLine(pLine)
+    Set tRow = {}
+    Do tRow.%Set("TaskId", $List(tLine, 1), "string")
+    Do tRow.%Set("RoleName", $List(tLine, 2), "string")
+    Do tRow.%Set("IsComplete", ''$List(tLine, 3), "boolean")
+    Do tRow.%Set("Status", $List(tLine, 4), "string")
+    Do tRow.%Set("Priority", $List(tLine, 5), "number")
+    Do tRow.%Set("Source", $List(tLine, 6), "string")
+    Do tRow.%Set("AssignedTo", $List(tLine, 7), "string")
+    Do tRow.%Set("Subject", $List(tLine, 8), "string")
+    Do tRow.%Set("TimeCreated", ..AlertLocal($List(tLine, 9)), "string")
+    Do tRow.%Set("TimeCompleted", ..AlertLocal($List(tLine, 10)), "string")
+    Do tRow.%Set("Duration", $List(tLine, 11) _ "", "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Do tRow.%Set("User", $List(tLine, 7), "string")
+    Quit tRow
+}
+
+/// <p>The facts about the task <var>pId</var>, read in the current namespace, which the caller has already switched, and kept in <var>pFacts</var>: <code>held</code>, and when it is <code>line</code>
+/// (the raw columns of <parameter>WORKFLOWTASKCOLUMNS</parameter>), <code>token</code> (the task's response token), <code>headerHeld</code> (the request header the token names is there) and
+/// <code>returnQueue</code> (that header's return queue). <code>userActive</code> is 1 when <var>pUser</var> names an active workflow user held exactly. A task id this port does not read is not
+/// held. Read with <code>%ExecDirectNoPriv</code> after the gate, so a task another process holds locked is still read; nothing is written.</p>
+ClassMethod WorkflowTaskFactsHere(pId As %String, pUser As %String, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("held") = 0
+    Set pFacts("line") = ""
+    Set pFacts("token") = ""
+    Set pFacts("headerHeld") = 0
+    Set pFacts("returnQueue") = ""
+    Set pFacts("userActive") = 0
+    If ..WorkflowTaskIdOK(pId) && ..WorkflowRowHere("SELECT " _ ..#WORKFLOWTASKCOLUMNS _ ", TaskStatus_ResponseToken " _ ..#WORKFLOWTASKFROM _ " WHERE %ID = ?", .tLine, pId) {
+        Set pFacts("held") = 1
+        Set pFacts("line") = $List(tLine, 1, 11)
+        Set pFacts("token") = $List(tLine, 12)
+        Set tHeader = $Piece(pFacts("token"), "|", 1)
+        If $Match(tHeader, "^[1-9][0-9]*$") && ..WorkflowRowHere("SELECT ReturnQueueName FROM Ens.MessageHeader WHERE %ID = ?", .tQueue, tHeader) {
+            Set pFacts("headerHeld") = 1
+            Set pFacts("returnQueue") = $List(tQueue, 1)
+            If pFacts("returnQueue") = $Char(0) Set pFacts("returnQueue") = ""
+        }
+    }
+    If (pUser '= "") && ..WorkflowNameOK(pUser) Set pFacts("userActive") = ''..WorkflowCount("SELECT COUNT(*) FROM EnsLib_Workflow.UserDefinition WHERE %EXACT(Name) = ? AND IsActive = 1", pUser)
+}
+
+/// <p><method>WorkflowTaskFactsHere</method> in <var>pNamespace</var>; a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod WorkflowTaskFacts(pNamespace As %String, pId As %String, pUser As %String, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..WorkflowHere()
+        Do ..WorkflowTaskFactsHere(pId, pUser, .pFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The violations of an assign's arguments, as a <class>%List</class> of <code>$ListBuild(field, token)</code> where the token is <code>USER</code>, <code>PRIORITY</code> or
+/// <code>SHAPE</code>, and <code>""</code> for none: a task id <method>WorkflowTaskIdOK</method> refuses (judged only when <var>pJudgeId</var>) or a field of the wrong type is
+/// <code>SHAPE</code>; a user name <method>WorkflowTaskUserShapeOK</method> refuses is <code>USER</code>; a priority that is not a whole number from 1 to 5 is <code>PRIORITY</code>. It names no
+/// other class and judges nothing the instance holds. Pure.</p>
+ClassMethod WorkflowTaskBad(pId As %String, pFields As %DynamicObject, pJudgeId As %Boolean = 1) As %List
+{
+    Set tBad = ""
+    If pJudgeId && '..WorkflowTaskIdOK(pId) Set tBad = tBad _ $ListBuild($ListBuild("TaskId", "SHAPE"))
+    If '$IsObject(pFields) || 'pFields.%IsA("%Library.DynamicObject") Set pFields = {}
+    Set tType = pFields.%GetTypeOf("User")
+    If tType = "string" {
+        If '..WorkflowTaskUserShapeOK(pFields.%Get("User")) Set tBad = tBad _ $ListBuild($ListBuild("User", "USER"))
+    } ElseIf tType '= "unassigned" {
+        Set tBad = tBad _ $ListBuild($ListBuild("User", "SHAPE"))
+    }
+    Set tType = pFields.%GetTypeOf("Priority")
+    If tType '= "unassigned" {
+        If ((tType '= "number") && (tType '= "string")) || '..WorkflowTaskPriorityOK(pFields.%Get("Priority")) Set tBad = tBad _ $ListBuild($ListBuild("Priority", "PRIORITY"))
+    }
+    Quit tBad
+}
+
+/// <p>The 422 violations of a task id and an assign's arguments, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field, code)</code> with the count in
+/// <code>pViolations</code>, from <method>WorkflowTaskBad</method>. It reads no vendor class.</p>
+ClassMethod WorkflowTaskViolations(pId As %String, pFields As %DynamicObject, Output pViolations, pJudgeId As %Boolean = 1) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tBad = ..WorkflowTaskBad(pId, pFields, pJudgeId)
+    For tI = 1:1:$ListLength(tBad) {
+        Set tEntry = $List(tBad, tI)
+        Set tCode = $Case($List(tEntry, 2), "USER": ##class(OcuPilot.Api.InteropError).#WORKFLOWTASKUSER, "PRIORITY": ##class(OcuPilot.Api.InteropError).#WORKFLOWTASKPRIORITY, : ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        Set pViolations($Increment(pViolations)) = $ListBuild($List(tEntry, 1), tCode)
+    }
+    Quit $$$OK
+}
+
+/// <p>The decision a workflow task write <var>pType</var> is refused with, as a token, else <code>""</code>, in the order the refusals are made: a task not held is <code>ABSENT</code>; a task already
+/// complete is <code>COMPLETE</code>; and for a cancel, no running production in the namespace is <code>NOTRUNNING</code> and a sender that is not waiting is <code>SENDER</code>. The assign's values
+/// are judged by <method>WorkflowTaskJudge</method>. <var>pRunning</var> is whether a production runs in the namespace and <var>pSender</var> whether <method>WorkflowTaskSenderOK</method> reads 1. Pure.</p>
+ClassMethod WorkflowTaskWriteToken(pType As %String, pHeld As %Boolean, pComplete As %Boolean, pRunning As %Boolean, pSender As %Boolean) As %String
+{
+    If 'pHeld Quit "ABSENT"
+    If pComplete Quit "COMPLETE"
+    If pType = ..#TYPECANCELWORKFLOWTASK {
+        If 'pRunning Quit "NOTRUNNING"
+        If 'pSender Quit "SENDER"
+    }
+    Quit ""
+}
+
+/// <p>Whether the response of a task can be delivered, as <code>Ens.Host.SendDeferredResponse</code> needs it: the production the task's response token <var>pToken</var> names is the one running,
+/// <var>pProduction</var>, its request header is held and that header has a return queue. Pure.</p>
+ClassMethod WorkflowTaskSenderOK(pToken As %String, pHeaderHeld As %Boolean, pReturnQueue As %String, pProduction As %String) As %Boolean
+{
+    If pProduction = "" Quit 0
+    Quit ''pHeaderHeld && (pReturnQueue '= "") && ($Piece(pToken, "|", 2) = pProduction)
+}
+
+/// <p>Whether <var>pQuery</var> carries any of an assign's values. Pure.</p>
+ClassMethod WorkflowTaskHasValues(ByRef pQuery) As %Boolean [ Private ]
+{
+    Quit $Data(pQuery(..#WORKFLOWTASKUSERKEY)) || $Data(pQuery(..#WORKFLOWTASKPRIORITYKEY))
+}
+
+/// <p>Judge the task <var>pId</var> in <var>pNamespace</var> for <var>pAction</var> (<code>""</code> for no write, else a write type), before any vendor call, in the order the spec names them, and leave
+/// what it read in <var>pFacts</var>: a task not held is 404; a complete one is 409 <code>INTEROP.WORKFLOW.TASKCOMPLETE</code>. For a cancel, no running production in the namespace is 409
+/// <code>INTEROP.PRODUCTION.NOTRUNNING</code> and a response that cannot be delivered (<method>WorkflowTaskSenderOK</method>) 409 <code>INTEROP.WORKFLOW.TASKSENDER</code>. For an assign judged
+/// with <var>pValues</var> (<var>pJudgeValues</var>), the values the query carries, in <var>pValues</var> by <code>user</code> and <code>priority</code> when present: a user that differs from the
+/// task's and is neither <code>""</code> nor an active workflow user held exactly is 422 <code>.TASKUSER</code>, a priority that differs and is not a whole number from 1 to 5 is
+/// <code>.TASKPRIORITY</code> (both reported together), and nothing differing is 409 <code>.TASKUNCHANGED</code>. A fault is mapped; nothing is written.</p>
+ClassMethod WorkflowTaskJudge(pNamespace As %String, pAction As %String, pId As %String, ByRef pQuery, pJudgeValues As %Boolean, Output pFacts, Output pValues, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Kill pValues
+    If '..WorkflowTaskIdOK(pId) Quit ..Absent(.pHttpStatus, .pFault)
+    Set tAssign = (pAction = ..#TYPEASSIGNWORKFLOWTASK)
+    Set tUserSent = tAssign && ''$Data(pQuery(..#WORKFLOWTASKUSERKEY))
+    Set tPrioritySent = tAssign && ''$Data(pQuery(..#WORKFLOWTASKPRIORITYKEY))
+    If tUserSent Set pValues("user") = pQuery(..#WORKFLOWTASKUSERKEY)
+    If tPrioritySent Set pValues("priority") = pQuery(..#WORKFLOWTASKPRIORITYKEY)
+    Do ..WorkflowTaskFacts(pNamespace, pId, $Select(tUserSent: pValues("user"), 1: ""), .pFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow task read failed", .pHttpStatus, .pFault)
+    Set tLine = $Select(pFacts("held"): ..WorkflowTaskLine(pFacts("line")), 1: "")
+    Set tProduction = ""
+    Set tSender = 0
+    If (pAction = ..#TYPECANCELWORKFLOWTASK) && pFacts("held") && '$List(tLine, 3) {
+        Set tSC = ..RunningProduction(pNamespace, .tProduction, .tRunCaught)
+        If $IsObject(tRunCaught) Quit ..Mapped(tRunCaught, "the production's state could not be read", .pHttpStatus, .pFault)
+        Set tSender = ..WorkflowTaskSenderOK(pFacts("token"), pFacts("headerHeld"), pFacts("returnQueue"), tProduction)
+    }
+    Set tToken = $Select(pAction = "": "", 1: ..WorkflowTaskWriteToken(pAction, pFacts("held"), $Select(pFacts("held"): $List(tLine, 3), 1: 0), (tProduction '= ""), tSender))
+    If (pAction = "") && 'pFacts("held") Set tToken = "ABSENT"
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken = "COMPLETE" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#WORKFLOWTASKCOMPLETE, .pHttpStatus, .pFault)
+    If tToken = "NOTRUNNING" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#NOTRUNNING, .pHttpStatus, .pFault)
+    If tToken = "SENDER" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#WORKFLOWTASKSENDER, .pHttpStatus, .pFault)
+    If 'tAssign || 'pJudgeValues Quit $$$OK
+    Set tCurrentUser = $List(tLine, 7)
+    Set tCurrentPriority = $List(tLine, 5)
+    Set tUserChanges = tUserSent && (pValues("user") '= tCurrentUser)
+    Set tPriorityChanges = tPrioritySent && (pValues("priority") '= tCurrentPriority)
+    Set tViolations = 0
+    If tUserChanges && ('..WorkflowTaskUserShapeOK(pValues("user")) || ((pValues("user") '= "") && 'pFacts("userActive"))) Set tViolations($Increment(tViolations)) = $ListBuild("User", ##class(OcuPilot.Api.InteropError).#WORKFLOWTASKUSER)
+    If tPriorityChanges && '..WorkflowTaskPriorityOK(pValues("priority")) Set tViolations($Increment(tViolations)) = $ListBuild("Priority", ##class(OcuPilot.Api.InteropError).#WORKFLOWTASKPRIORITY)
+    If tViolations Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    If 'tUserChanges && 'tPriorityChanges Quit ..Conflict(##class(OcuPilot.Api.InteropError).#WORKFLOWTASKUNCHANGED, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The workflow tasks of <var>pNamespace</var> newest first, at most <var>pMax</var> (<parameter>WORKFLOWTASKSMAX</parameter> when that is not above zero): <code>{TaskId, RoleName, IsComplete,
+/// Status, Priority, Source, AssignedTo, Subject, TimeCreated, TimeCompleted, Duration, Namespace, User}</code> (<method>WorkflowTaskRow</method>). Read with <code>%ExecDirectNoPriv</code> after
+/// the gate (<method>SqlRows</method>); nothing is written. A longer list than the cap is the caller's truncation, which it reads from the one row it asked for beyond its own cap.</p>
+ClassMethod ListWorkflowTasks(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..SqlRows(pNamespace, "SELECT TOP ? " _ ..#WORKFLOWTASKCOLUMNS _ " " _ ..#WORKFLOWTASKFROM _ " ORDER BY %ID DESC", .tFound, .tCaught, ..WorkflowCap(pMax, ..#WORKFLOWTASKSMAX))
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow task list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Do pRows.%Push(..WorkflowTaskRow(tFound(tI), pNamespace))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The worklist items of <var>pNamespace</var> newest first, at most <var>pMax</var> (<parameter>WORKFLOWWORKLISTMAX</parameter> when that is not above zero): <code>{TaskId, UserName,
+/// RoleName, Priority, TimeCreated, Age, AssignedTo, Subject, Namespace}</code>, one for each user a task was sent to. Read with <code>%ExecDirectNoPriv</code> after the gate; nothing is written.</p>
+ClassMethod ListWorkflowWorklist(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..SqlRows(pNamespace, ..#WORKFLOWWORKLISTSQL, .tFound, .tCaught, ..WorkflowCap(pMax, ..#WORKFLOWWORKLISTMAX))
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow worklist failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tLine = tFound(tI)
+        Set tRow = {}
+        Do tRow.%Set("TaskId", $List(tLine, 1) _ "", "string")
+        Do tRow.%Set("UserName", ..AlertText($List(tLine, 2)), "string")
+        Do tRow.%Set("RoleName", ..AlertText($List(tLine, 3)), "string")
+        Do tRow.%Set("Priority", +$List(tLine, 4), "number")
+        Do tRow.%Set("TimeCreated", ..AlertLocal($List(tLine, 5)), "string")
+        Do tRow.%Set("Age", ..AlertText($List(tLine, 6)), "string")
+        Do tRow.%Set("AssignedTo", ..AlertText($List(tLine, 7)), "string")
+        Do tRow.%Set("Subject", ..AlertText($List(tLine, 8)), "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+        Do pRows.%Push(tRow)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One workflow task, fresh (Story 24.17 Batch 4): <method>WorkflowTaskRow</method>'s fields. A task not held, or an id this port does not read, is 404 <code>PORT.NOTFOUND</code>, unlogged. With
+/// <var>pAction</var> it refuses what that write would be refused (<method>WorkflowTaskJudge</method>), judging the values <var>pQuery</var> carries only when it carries some, so the read that
+/// opens the assign dialog judges the task alone.</p>
+ClassMethod ReadWorkflowTask(pNamespace As %String, pId As %String, pAction As %String, ByRef pQuery, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Set tSC = ..WorkflowTaskJudge(pNamespace, pAction, pId, .pQuery, ..WorkflowTaskHasValues(.pQuery), .tFacts, .tValues, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pRow = ..WorkflowTaskRow(tFacts("line"), pNamespace)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the WorkflowTasks endpoint's and the WorkflowWorklist endpoint's <code>LIST</code> and the WorkflowTasks typed types after <method>Invoke</method>'s gate (Story 24.17 Batch 4): the
+/// <code>WORKFLOWTASK</code> read and the two writes, the task named under <parameter>IDKEY</parameter> by its task id. An <parameter>ACTIONKEY</parameter> names the write the read is composed for;
+/// an assign's values travel under <parameter>WORKFLOWTASKUSERKEY</parameter> and <parameter>WORKFLOWTASKPRIORITYKEY</parameter>.</p>
+ClassMethod InvokeWorkflowTask(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pEndpoint = ..#ENDPOINTWORKFLOWWORKLIST {
+                Set tSC = ..ListWorkflowWorklist(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            } Else {
+                Set tSC = ..ListWorkflowTasks(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            }
+            Quit
+        }
+        Set tId = $Get(pQuery(..#IDKEY))
+        If tId = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsWorkflowTaskWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsWorkflowTaskWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsWorkflowTaskWrite(pType) {
+            Set tSC = ..PerformWorkflowTask(pNamespace, pType, tId, .pQuery, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadWorkflowTask(pNamespace, tId, tAction, .pQuery, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the workflow task call failed inside the port", ..VendorCodesStatus(ex.AsStatus(), "the workflow task call"), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Run workflow task write <var>pType</var> on the task <var>pId</var> in <var>pNamespace</var> and answer what it leaves (Story 24.17 Batch 4), as the classic Assign or Reassign Task dialog's
+/// <code>SaveData</code> performs it, with no transaction. The sequence:</p>
+/// <ol>
+/// <li>The task is read again and judged before any vendor call (<method>WorkflowTaskJudge</method>): a 404, a complete task, an assign's user and priority and an assign that changes nothing,
+/// a cancel's running production and waiting sender.</li>
+/// <li>In the namespace the task is opened at concurrency 4 (a task another process holds locked is 503) and, for an assign whose priority differs, its priority is set. The vendor call is
+/// <method>WorkflowTaskVendor</method>: <code>AssignTask</code> to the user, or for Unassigned <code>UnassignTask</code> then <code>SendTaskToAll</code>, or <code>CompleteTask</code> with no action
+/// for a cancel. An assign that names no user keeps the task's own assignment. The reference is dropped in the namespace it was opened in.</li>
+/// <li>The namespace is restored, then OcuPilot's own audit row is recorded (<method>AuditRuntime</method>) whatever the vendor answered, because the vendor records none: the namespace, the task
+/// id, for an assign the assignee and the priority after, and whether it completed, never a subject or a message.</li>
+/// </ol>
+/// <p>A vendor error status or a fault is 500 <code>INTERNAL</code>, never 200, even after part of it was saved (an unassign whose <code>SendTaskToAll</code> fails, a cancel whose delivery fails
+/// after the vendor deleted the worklist). The answer is the task read again (<method>ReadWorkflowTask</method>).</p>
+ClassMethod PerformWorkflowTask(pNamespace As %String, pType As %String, pId As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..WorkflowTaskJudge(pNamespace, pType, pId, .pQuery, 1, .tFacts, .tValues, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tCancel = (pType = ..#TYPECANCELWORKFLOWTASK)
+    Set tLine = ..WorkflowTaskLine(tFacts("line"))
+    Set tTo = $Select($Data(tValues("user")): tValues("user"), 1: $List(tLine, 7))
+    Set tNewPriority = ""
+    If 'tCancel && $Data(tValues("priority")) && (tValues("priority") '= $List(tLine, 5)) Set tNewPriority = +tValues("priority")
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tBusy = 0
+    Set tAttempted = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..WorkflowHere()
+        Set tObject = ##class(EnsLib.Workflow.TaskResponse).%OpenId(pId, 4)
+        If '$IsObject(tObject) {
+            Set tBusy = 1
+        } Else {
+            If tNewPriority '= "" Set tObject.%Priority = tNewPriority
+            Set tAttempted = 1
+            Set tVendorSC = ..WorkflowTaskVendor(pType, tObject, tTo)
+        }
+        ; The task's lock is released in the namespace it was taken in.
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Try {
+            Set $NAMESPACE = pNamespace
+        } Catch {
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If tAttempted {
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        Do tEffects.%Set("task", pId, "string")
+        If 'tCancel {
+            Do tEffects.%Set("assignedTo", tTo, "string")
+            Do tEffects.%Set("priority", $Select(tNewPriority '= "": tNewPriority, 1: +$List(tLine, 5)), "number")
+        }
+        Do tEffects.%Set("completed", ($$$ISOK(tVendorSC) && '$IsObject(tCaught)), "boolean")
+        Do ..AuditRuntime($Select(tCancel: ..#VERBWORKFLOWCANCEL, 1: ..#VERBWORKFLOWASSIGN), ..#ENTITYWORKFLOWTASK, pId _ "", tEffects)
+    }
+    If $IsObject(tCaught) Quit ..WorkflowMapped(tCaught, "the workflow task write failed", .pHttpStatus, .pFault)
+    If tBusy Quit ..Unavailable(.pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the workflow task write"), "the workflow task write failed", .pHttpStatus, .pFault)
+    Kill tNone
+    Set tReadSC = ..ReadWorkflowTask(pNamespace, pId, "", .tNone, .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) || '$IsObject(tRow) {
+        Set tRow = {}
+        Do tRow.%Set("TaskId", pId, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the workflow task write <var>pType</var> of the task <var>pId</var> with the values <var>pQuery</var> carries (Story 24.17 Batch 4): the task
+/// opened at concurrency 4, each refusal as one guard that stops the write (a task not held, a task already complete, an assign's user, an assign that changes nothing, a cancel's running production
+/// and waiting sender), and the vendor's <code>AssignTask</code>, or <code>UnassignTask</code> then <code>SendTaskToAll</code>, or <code>CompleteTask</code> with no action. Ids, names and
+/// values are literals, so nothing the query carries runs as code. <code>""</code> for an id or a value the port would refuse by shape, which renders no draft. Nothing here runs; a person runs it.</p>
+ClassMethod WorkflowTaskSnippet(pType As %String, pId As %String, ByRef pQuery) As %String [ Private ]
+{
+    If '..WorkflowTaskIdOK(pId) Quit ""
+    Set tCancel = (pType = ..#TYPECANCELWORKFLOWTASK)
+    Set tUserSent = 'tCancel && ''$Data(pQuery(..#WORKFLOWTASKUSERKEY))
+    Set tPrioritySent = 'tCancel && ''$Data(pQuery(..#WORKFLOWTASKPRIORITYKEY))
+    Set tUserName = $Select(tUserSent: pQuery(..#WORKFLOWTASKUSERKEY), 1: "")
+    If tUserSent && '..WorkflowTaskUserShapeOK(tUserName) Quit ""
+    If tPrioritySent && '..WorkflowTaskPriorityOK(pQuery(..#WORKFLOWTASKPRIORITYKEY)) Quit ""
+    Set tNL = $Char(10)
+    Set tError = "$System.Status.Error(5001, "
+    Set tId = ..Literal(pId)
+    Set tText = tNL _ " Set tId = " _ tId _ ", tGo = ##class(EnsLib.Workflow.TaskResponse).%ExistsId(tId), tSC = $System.Status.OK()"
+    Set tText = tText _ tNL _ " If 'tGo Set tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.Error).#PORTNOTFOUND) _ ")"
+    Set tText = tText _ tNL _ " Set tTask = $Select(tGo: ##class(EnsLib.Workflow.TaskResponse).%OpenId(tId, 4), 1: """")"
+    Set tText = tText _ tNL _ " If tGo, '$IsObject(tTask) Set tGo = 0, tSC = " _ tError _ ..Literal(..#REASONLOCK) _ ")"
+    Set tText = tText _ tNL _ " If tGo, tTask.%TaskStatus.IsComplete Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWTASKCOMPLETE) _ ")"
+    If tCancel {
+        Set tText = tText _ tNL _ " Do ##class(Ens.Director).GetProductionStatus(.tCurrent, .tState, 2)"
+        Set tText = tText _ tNL _ " If tGo, +$Get(tState) '= 1 Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONNOTRUNNING) _ ")"
+        Set tText = tText _ tNL _ " Set tHeader = $Select(tGo: ##class(Ens.MessageHeader).%OpenId($Piece(tTask.%TaskStatus.ResponseToken, ""|"", 1)), 1: """")"
+        Set tText = tText _ tNL _ " If tGo, '$IsObject(tHeader) || ($Piece(tTask.%TaskStatus.ResponseToken, ""|"", 2) '= $Get(tCurrent)) || (tHeader.ReturnQueueName = """") Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWTASKSENDER) _ ")"
+        Quit tText _ tNL _ " If tGo Set tSC = ##class(EnsLib.Workflow.Engine).CompleteTask(tTask)" _ tNL _ " Set tTask = """""
+    }
+    Set tUserChanges = "0"
+    Set tPriorityChanges = "0"
+    If tUserSent {
+        Set tUserChanges = "(" _ ..Literal(tUserName) _ " '= tTask.%TaskStatus.AssignedTo)"
+        If tUserName '= "" {
+            Set tText = tText _ tNL _ " Set tUser = $Select(tGo: ##class(EnsLib.Workflow.UserDefinition).%OpenId(" _ ..Literal(tUserName) _ ", 0), 1: """")"
+            Set tText = tText _ tNL _ " If tGo, " _ tUserChanges _ ", '$IsObject(tUser) || 'tUser.IsActive || (tUser.Name '= " _ ..Literal(tUserName) _ ") Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWTASKUSER) _ ")"
+        }
+    }
+    If tPrioritySent Set tPriorityChanges = "(" _ +pQuery(..#WORKFLOWTASKPRIORITYKEY) _ " '= tTask.%Priority)"
+    Set tText = tText _ tNL _ " If tGo, '(" _ tUserChanges _ " || " _ tPriorityChanges _ ") Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONWORKFLOWTASKUNCHANGED) _ ")"
+    If tPrioritySent Set tText = tText _ tNL _ " If tGo, " _ tPriorityChanges _ " Set tTask.%Priority = " _ +pQuery(..#WORKFLOWTASKPRIORITYKEY)
+    Set tText = tText _ tNL _ " Set tTo = " _ $Select(tUserSent: ..Literal(tUserName), 1: "$Select(tGo: tTask.%TaskStatus.AssignedTo, 1: """")")
+    Set tText = tText _ tNL _ " If tGo, tTo = """" { Set tSC = ##class(EnsLib.Workflow.Engine).UnassignTask(tTask) If $System.Status.IsOK(tSC) Set tSC = ##class(EnsLib.Workflow.Engine).SendTaskToAll(tTask) }"
+    Set tText = tText _ tNL _ " If tGo, tTo '= """" Set tSC = ##class(EnsLib.Workflow.Engine).AssignTask(tTask, tTo)"
+    Quit tText _ tNL _ " Set tTask = """""
+}
+
+/// <p>The Purge data settings endpoint (Story 24.16): <code>LIST</code>, one setting (<code>SETTING</code>) and the write <code>SETTINGSET</code>, over
+/// the classic pages' own store, <code>^Ens.Configuration("PurgeSettings")</code>. No vendor method writes it, so the port sets the node.</p>
+Parameter ENDPOINTPURGESETTINGS = "PurgeSettings";
+
+/// <p>The Purge management data endpoint (Story 24.16): <code>LIST</code> (the six record counts of <code>Ens.Purge.GetAllCounts</code>),
+/// <code>PURGESTATE</code> (the settings a purge will use and whether one is running) and the write <code>PURGE</code> (<code>Ens.Purge.PurgeAll</code>).</p>
+Parameter ENDPOINTPURGE = "Purge";
+
+/// <p>The pairs the PurgeSettings endpoint requires: the classic Interoperability menu's <code>%Ens_Portal:USE</code> and the resource of
+/// <code>EnsPortal.PurgeSettings</code>, which the classic page asks at WRITE to show itself at all.</p>
+Parameter PURGESETTINGPAIRS = "%Ens_Portal:USE,%Ens_PurgeSettings:WRITE";
+
+/// <p>The pairs the Purge endpoint requires: <code>%Ens_Portal:USE</code> and the resource of <code>EnsPortal.PurgeAll</code>. No vendor purge asks it
+/// (measured), so these, and WRITE on the namespace's globals database for a purge, are the whole gate.</p>
+Parameter PURGEPAIRS = "%Ens_Portal:USE,%Ens_Purge:USE";
+
+/// <p>The write of one purge data setting (<code>SETTINGSET</code>, the read is <parameter>TYPESETTING</parameter>) and the purge's read of its state and its write.</p>
+Parameter TYPEPURGESETTINGSET = "SETTINGSET";
+
+Parameter TYPEPURGESTATE = "PURGESTATE";
+
+Parameter TYPEPURGE = "PURGE";
+
+/// <p>The query key carrying the days a purge keeps, a whole number from 0 to <parameter>PURGEMAXDAYS</parameter>, judged at the write.</p>
+Parameter PURGEDAYSKEY = "days";
+
+Parameter PURGEMAXDAYS As INTEGER = 99999;
+
+/// <p>The longest description a purge setting holds, and the entity types and verb the audit rows of a purge write name.</p>
+Parameter PURGETEXTMAX As INTEGER = 2000;
+
+Parameter ENTITYPURGE = "interop-purge";
+
+Parameter ENTITYPURGESETTING = "interop-purge-setting";
+
+Parameter VERBPURGE = "purge";
+
+/// <p>Whether <var>pType</var> is one of the writes the two purge endpoints carry (Story 24.16): the set of one purge setting and the purge itself,
+/// each needing WRITE on the namespace's globals database and no routines database.</p>
+ClassMethod IsPurgeWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEPURGESETTINGSET) || (pType = ..#TYPEPURGE)
+}
+
+/// <p>The four purge data settings, in the classic pages' order, as a <class>%List</class> of <class>%List</class>s:
+/// <code>name, node, default, kind</code>. The names are the classic captions; the node is the subscript under
+/// <code>^Ens.Configuration("PurgeSettings")</code>, and the default is what the classic page reads for a node that is not stored. Pure.</p>
+ClassMethod PurgeSettingRoster() As %List
+{
+    Quit $ListBuild($ListBuild("Include message bodies", "BodiesToo", 0, "boolean"), $ListBuild("Purge only completed sessions", "KeepIntegrity", 1, "boolean"), $ListBuild("Run bitmap cleanup for namespace", "NamespaceBitmapMaint", 0, "boolean"), $ListBuild("Description", "Desc", "", "text"))
+}
+
+/// <p>The roster entry of the setting <var>pName</var>, or <code>""</code> for a name the classic pages have no setting for. Pure.</p>
+ClassMethod PurgeSettingEntry(pName As %String) As %List
+{
+    Set tRoster = ..PurgeSettingRoster()
+    Set tFound = ""
+    For tI = 1:1:$ListLength(tRoster) {
+        If $List($List(tRoster, tI), 1) = pName Set tFound = $List(tRoster, tI)
+    }
+    Quit tFound
+}
+
+/// <p>The limits of the setting <var>pName</var> in <code>ConfigPort.Limits</code>' shape: a boolean is 0 or 1 and the description is text of at most
+/// <parameter>PURGETEXTMAX</parameter> characters; <code>""</code> for a name the classic pages have no setting for. Pure. The rules class asks it.</p>
+ClassMethod PurgeSettingLimits(pName As %String) As %List
+{
+    Set tEntry = ..PurgeSettingEntry(pName)
+    If tEntry = "" Quit ""
+    If $List(tEntry, 4) = "boolean" Quit $ListBuild("boolean", "", "", "", "", "")
+    Quit $ListBuild("text", "", "", "", ..#PURGETEXTMAX, "")
+}
+
+/// <p>The settings as they stand in the current namespace, which the caller has already switched, in <var>pFound</var>: one
+/// <code>$ListBuild(name, value, stored)</code> per roster entry. A node that is not stored reads the classic default; a boolean reads 0 or 1 as the classic
+/// page's <code>+$G()</code> does. Nothing is written.</p>
+ClassMethod PurgeSettingsHere(Output pFound) [ Private ]
+{
+    Kill pFound
+    Set tRoster = ..PurgeSettingRoster()
+    Set pFound = $ListLength(tRoster)
+    For tI = 1:1:pFound {
+        Set tEntry = $List(tRoster, tI)
+        Set tNode = $List(tEntry, 2)
+        Set tStored = ($Data(^Ens.Configuration("PurgeSettings", tNode)) # 2)
+        Set tValue = $Get(^Ens.Configuration("PurgeSettings", tNode), $List(tEntry, 3))
+        If $List(tEntry, 4) = "boolean" Set tValue = $Select(+tValue: 1, 1: 0)
+        Set pFound(tI) = $ListBuild($List(tEntry, 1), tValue _ "", tStored)
+    }
+}
+
+/// <p>The row a purge setting list and read answer, from the setting <var>pName</var>, its <var>pValue</var> and whether it is <var>pStored</var>:
+/// <code>{Name, Value, Stored, Kind, Accepts, Namespace}</code>. A description is text and is never run.</p>
+ClassMethod PurgeSettingRow(pName As %String, pValue As %String, pStored As %Boolean, pNamespace As %String) As %DynamicObject [ Private ]
+{
+    Set tLimits = ..PurgeSettingLimits(pName)
+    Set tRow = {}
+    Do tRow.%Set("Name", pName, "string")
+    Do tRow.%Set("Value", pValue, "string")
+    Do tRow.%Set("Stored", ''pStored, "boolean")
+    Do tRow.%Set("Kind", $ListGet(tLimits, 1), "string")
+    Do tRow.%Set("Accepts", ##class(OcuPilot.Port.ConfigPort).AcceptsOf(tLimits), "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The settings of <var>pNamespace</var> as <method>PurgeSettingsHere</method> reads them; a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod PurgeSettingsIn(pNamespace As %String, Output pFound, Output pCaught) [ Private ]
+{
+    Kill pFound
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..PurgeSettingsHere(.pFound)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The refusal <var>pCode</var> of <class>OcuPilot.Api.ConfigError</class>, on that class's status and slug, with its sentence.</p>
+ClassMethod PurgeConfigRefused(pCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(##class(OcuPilot.Api.ConfigError).HttpStatusFor(pCode), ##class(OcuPilot.Api.ConfigError).SlugFor(pCode), pCode, ##class(OcuPilot.Api.ConfigError).ReasonFor(pCode), .pHttpStatus, .pFault)
+}
+
+/// <p>One purge setting, fresh (Story 24.16): <method>PurgeSettingRow</method>. A name the classic pages have no setting for is 404
+/// <code>CONFIG.SETTING.NOTFOUND</code>, with or without <var>pAction</var>, which only names the write the read is composed for.</p>
+ClassMethod ReadPurgeSetting(pNamespace As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If ..PurgeSettingEntry(pName) = "" Quit ..PurgeConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND, .pHttpStatus, .pFault)
+    Do ..PurgeSettingsIn(pNamespace, .tFound, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the purge setting read failed", .pHttpStatus, .pFault)
+    For tI = 1:1:tFound {
+        If $List(tFound(tI), 1) '= pName Continue
+        Set pRow = ..PurgeSettingRow(pName, $List(tFound(tI), 2), $List(tFound(tI), 3), pNamespace)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the PurgeSettings endpoint after <method>Invoke</method>'s gate (Story 24.16): <code>LIST</code>, the <code>SETTING</code> read of the setting named
+/// under <parameter>IDKEY</parameter> and the write <code>SETTINGSET</code>.</p>
+ClassMethod InvokePurgeSettings(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Do ..PurgeSettingsIn(pNamespace, .tFound, .tCaught)
+            If $IsObject(tCaught) {
+                Set tSC = ..Mapped(tCaught, "the purge settings list failed", .pHttpStatus, .pFault)
+                Quit
+            }
+            Set pResult = []
+            For tI = 1:1:tFound {
+                Do pResult.%Push(..PurgeSettingRow($List(tFound(tI), 1), $List(tFound(tI), 2), $List(tFound(tI), 3), pNamespace))
+            }
+            Set pHttpStatus = 200
+            Quit
+        }
+        Set tName = $Get(pQuery(..#IDKEY))
+        If tName = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsPurgeWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && (tAction '= ..#TYPEPURGESETTINGSET) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPEPURGESETTINGSET {
+            Set tSC = ..PerformPurgeSetting(pNamespace, tName, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadPurgeSetting(pNamespace, tName, tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the purge setting call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Store the value <code>Value</code> of <var>pBody</var> for the purge setting <var>pName</var> in <var>pNamespace</var> and answer the setting's row, read
+/// again (Story 24.16). A name the classic pages have no setting for is 404 <code>CONFIG.SETTING.NOTFOUND</code> and a value the setting's kind does not accept
+/// is 400 <code>CONFIG.SETTING.VALUE</code>, each before anything is written. The node is set as the classic page's Save sets it, a boolean as 0 or 1. The
+/// namespace is restored, then OcuPilot's own audit row is recorded (<method>AuditRuntime</method>), because the classic page records none: it names the namespace and
+/// the setting, never the value.</p>
+ClassMethod PerformPurgeSetting(pNamespace As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tEntry = ..PurgeSettingEntry(pName)
+    If tEntry = "" Quit ..PurgeConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND, .pHttpStatus, .pFault)
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") || (pBody.%GetTypeOf("Value") '= "string") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.ConfigPort).#REASONBODY, .pHttpStatus, .pFault)
+    Set tValue = pBody.%Get("Value")
+    If '##class(OcuPilot.Area.Interop.PurgeSettingRules).ValueHolds(..PurgeSettingLimits(pName), tValue) Quit ..PurgeConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGVALUE, .pHttpStatus, .pFault)
+    Set tCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set ^Ens.Configuration("PurgeSettings", $List(tEntry, 2)) = $Select($List(tEntry, 4) = "boolean": +tValue, 1: tValue)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the purge setting write failed", .pHttpStatus, .pFault)
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("setting", pName, "string")
+    Do ..AuditRuntime(..#VERBSET, ..#ENTITYPURGESETTING, pName, tEffects)
+    Set tReadSC = ..ReadPurgeSetting(pNamespace, pName, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) || '$IsObject(tRow) {
+        Set tRow = {}
+        Do tRow.%Set("Name", pName, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>Whether <var>pDays</var> is a whole number from 0 to <parameter>PURGEMAXDAYS</parameter>, written without a sign, a point or a leading zero. Pure.</p>
+ClassMethod PurgeDaysOK(pDays As %String) As %Boolean
+{
+    Quit $Match(pDays, "^(0|[1-9][0-9]{0,4})$") && (+pDays '> ..#PURGEMAXDAYS)
+}
+
+/// <p>The published sentence of <code>INTEROP.PURGE.DAYS</code>, which the purge tool's argument rule answers with.</p>
+ClassMethod PurgeDaysReason() As %String
+{
+    Quit ##class(OcuPilot.Api.InteropError).ReasonFor(##class(OcuPilot.Api.InteropError).#PURGEDAYS)
+}
+
+/// <p>Whether the classic page's purge lock is held in the current namespace, which the caller has already switched: the lock is taken at once and let go when it
+/// was free. The lock is the vendor page's own (<code>^IRIS.Temp.EnsPurgeAll($Namespace,"lock")</code>); no node of that global is written.</p>
+ClassMethod PurgeRunningHere() As %Boolean [ Private ]
+{
+    Lock +^IRIS.Temp.EnsPurgeAll($Namespace, "lock"):0
+    If '$Test Quit 1
+    Lock -^IRIS.Temp.EnsPurgeAll($Namespace, "lock")
+    Quit 0
+}
+
+/// <p>The purge's state in <var>pNamespace</var> (Story 24.16): the three settings and the description a purge will use, and whether one is running, in
+/// <var>pFacts</var> (<code>settings</code> as <method>PurgeSettingsHere</method> builds it, <code>running</code>); a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod PurgeFacts(pNamespace As %String, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..PurgeSettingsHere(.tFound)
+        For tI = 1:1:tFound {
+            Set pFacts("settings", $List(tFound(tI), 1)) = $List(tFound(tI), 2)
+        }
+        Set pFacts("running") = ..PurgeRunningHere()
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The purge's state row (Story 24.16): <code>{BodiesToo, KeepIntegrity, NamespaceBitmapMaint, Description, DaysToKeep, Running, Namespace}</code>. The days belong to
+/// the call that asks for the purge, so <code>DaysToKeep</code> reads empty here. With <var>pAction</var> <parameter>TYPEPURGE</parameter> a purge that is already running is
+/// 409 <code>INTEROP.PURGE.RUNNING</code>.</p>
+ClassMethod ReadPurge(pNamespace As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Do ..PurgeFacts(pNamespace, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the purge state read failed", .pHttpStatus, .pFault)
+    If (pAction = ..#TYPEPURGE) && tFacts("running") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#PURGERUNNING, .pHttpStatus, .pFault)
+    Set pRow = {}
+    Do pRow.%Set("BodiesToo", ''tFacts("settings", "Include message bodies"), "boolean")
+    Do pRow.%Set("KeepIntegrity", ''tFacts("settings", "Purge only completed sessions"), "boolean")
+    Do pRow.%Set("NamespaceBitmapMaint", ''tFacts("settings", "Run bitmap cleanup for namespace"), "boolean")
+    Do pRow.%Set("Description", tFacts("settings", "Description"), "string")
+    Do pRow.%Set("DaysToKeep", "", "string")
+    Do pRow.%Set("Running", ''tFacts("running"), "boolean")
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The six record counts of <var>pNamespace</var>, one row each in the classic page's order, <code>{Type, Count, Namespace}</code>, <code>Type</code> the vendor's own
+/// name (Story 24.16): <code>Ens.Purge.GetAllCounts</code>, which reads and writes nothing.</p>
+ClassMethod ListPurgeCounts(pNamespace As %String, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ##class(Ens.Purge).GetAllCounts(.tCount)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the purge counts read failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tType = "Event Log", "Messages", "Business Processes", "Business Rule Log", "I/O Log", "Managed Alerts" {
+        Set tRow = {}
+        Do tRow.%Set("Type", tType, "string")
+        Do tRow.%Set("Count", +$Get(tCount(tType)), "number")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+        Do pRows.%Push(tRow)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the Purge endpoint after <method>Invoke</method>'s gate (Story 24.16): <code>LIST</code> (<method>ListPurgeCounts</method>), the <code>PURGESTATE</code> read
+/// (<method>ReadPurge</method>) and the write <code>PURGE</code> (<method>PerformPurge</method>). The purge's days travel in <parameter>PURGEDAYSKEY</parameter>.</p>
+ClassMethod InvokePurge(pNamespace As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListPurgeCounts(pNamespace, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsPurgeWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && (tAction '= ..#TYPEPURGE) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPEPURGE {
+            Set tSC = ..PerformPurge(pNamespace, $Get(pQuery(..#PURGEDAYSKEY)), .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadPurge(pNamespace, tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the purge call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The vendor's status <var>pStatus</var> without any text it carries: an error status naming only the vendor's error codes, which is what reaches the log
+/// (Story 24.16). A lock the vendor could not take and a privilege refusal are kept as they came. Pure.</p>
+ClassMethod PurgeVendorStatus(pStatus As %Status) As %Status
+{
+    Quit ..VendorCodesStatus(pStatus, "the purge")
+}
+
+/// <p>The vendor's status <var>pStatus</var> without any text it carries, as <method>PurgeVendorStatus</method> gives it for a purge: an error status that says only that the
+/// vendor reported <var>pWhat</var> with its error codes, which is what reaches the log (Story 24.16). A lock the vendor could not take and a privilege refusal are kept as they
+/// came, so <method>Statused</method> still maps them. Pure.</p>
+ClassMethod VendorCodesStatus(pStatus As %Status, pWhat As %String = "the call") As %Status
+{
+    If ..HasCode(pStatus, ..#CODERUNTIMELOCK) || ..HasCode(pStatus, ..#CODEPRIVILEGE) Quit pStatus
+    Set tCodes = ""
+    Set tProtect = 0
+    Try {
+        Set tCodes = $System.Status.GetErrorCodes(pStatus)
+        Set tProtect = ($System.Status.GetErrorText(pStatus) [ "<PROTECT>")
+    } Catch {
+        Set tCodes = ""
+    }
+    If tProtect Quit pStatus
+    Quit $$$ERROR($$$GeneralError, "the vendor reported " _ pWhat _ " with error code " _ tCodes)
+}
+
+/// <p>The vendor's purge of the current namespace, which the caller has already switched, run in a frame of its own that saves the process's roles and gives them back on
+/// every exit, a thrown error included (<method>VendorPurge</method>). The vendor's bitmap cleanup adds <code>%All</code> in a frame of its own and drops it when it
+/// returns; this frame keeps any vendor path that does not from reaching the request's later code or the pooled process's next request. With <var>pKind</var>
+/// <parameter>LOGKINDRULE</parameter> or <parameter>LOGKINDPROCESS</parameter> the frame runs that log's purge (<method>VendorLogPurge</method>, Story 24.17 Batch 2) and
+/// the other arguments are not used; <code>""</code> is the full purge. With <var>pKind</var> <parameter>LOGKINDMETRICS</parameter> the frame runs the Interoperability system monitor's read
+/// (<method>VendorMetrics</method>, Story 24.17 Batch 5): the frame is entered in the caller's namespace, <var>pDeleted</var> receives the vendor's meter values, and the vendor's
+/// own escalation to <code>%All</code> is given back with the frame.</p>
+ClassMethod PurgeFrame(pDays As %Integer, pKeepIntegrity As %Boolean, pBodiesToo As %Boolean, pBitmap As %Boolean, Output pDeleted, pKind As %String = "") As %Status
+{
+    New $ROLES
+    If pKind = ..#LOGKINDMETRICS Quit ..VendorMetrics(.pDeleted)
+    If pKind '= "" Quit ..VendorLogPurge(pKind, pDays, .pDeleted)
+    Quit ..VendorPurge(pDays, pKeepIntegrity, pBodiesToo, pBitmap, .pDeleted)
+}
+
+/// <p><code>Ens.Purge.PurgeAll</code> with the classic page's own arguments, the bitmap cleanup asked for only when <var>pBitmap</var> is set (the one extended option the port
+/// passes). <var>pDeleted</var> is the vendor's count for each kind it purged. Overridable so a fixture can answer a fault; production never overrides it.</p>
+ClassMethod VendorPurge(pDays As %Integer, pKeepIntegrity As %Boolean, pBodiesToo As %Boolean, pBitmap As %Boolean, Output pDeleted) As %Status
+{
+    If pBitmap Set tOptions("NamespaceBitmapMaint") = 1
+    Quit ##class(Ens.Purge).PurgeAll(.pDeleted, pDays, pKeepIntegrity, pBodiesToo, , .tOptions)
+}
+
+/// <p>Purge <var>pNamespace</var> as the classic Start Purge does, in this request (Story 24.16), and answer the purge's state row, read again. The sequence:</p>
+/// <ol>
+/// <li>The days are judged (<method>PurgeDaysOK</method>), 422 <code>INTEROP.PURGE.DAYS</code>, before any vendor call.</li>
+/// <li>In the namespace the classic page's lock is taken at once and held for the whole of the vendor call; a purge already running is 409
+/// <code>INTEROP.PURGE.RUNNING</code> and deletes nothing. The three settings are read at this moment, so a purge uses what is stored when it runs. An unset
+/// Purge only completed sessions is used as 1, as both classic pages display it; the classic Start Purge passes 0 for it.</li>
+/// <li>The vendor's <code>PurgeAll</code> runs (<method>PurgeFrame</method>) with no transaction; the lock is let go, the namespace restored, and OcuPilot's own audit row recorded
+/// (<method>AuditRuntime</method>) whatever the vendor answered, because the vendor records none: it names the namespace, the days, the three settings and the count the
+/// vendor deleted of each kind, never the description.</li>
+/// </ol>
+/// <p>A purge that outlasts the Web Gateway's response timeout runs to its end in this process, and its audit row is written then.</p>
+ClassMethod PerformPurge(pNamespace As %String, pDays As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If '..PurgeDaysOK(pDays) {
+        Set tViolations = 1
+        Set tViolations(1) = $ListBuild("DaysToKeep", ##class(OcuPilot.Api.InteropError).#PURGEDAYS)
+        Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
+    Set tCaught = ""
+    Set tHeld = 0
+    Set tVendorSC = $$$OK
+    Set tRan = 0
+    Kill tDeleted, tSettings
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Lock +^IRIS.Temp.EnsPurgeAll($Namespace, "lock"):0
+        Set tHeld = $Test
+        If tHeld {
+            Do ..PurgeSettingsHere(.tFound)
+            For tI = 1:1:tFound {
+                Set tSettings($List(tFound(tI), 1)) = $List(tFound(tI), 2)
+            }
+            Set tRan = 1
+            ; The vendor reads a cut-off before the instance's first day as an error, so days past the instance's calendar keep every record, as they say.
+            Set tKeepDays = $Select(+pDays > (+$Horolog - 2): +$Horolog - 2, 1: +pDays)
+            Set tVendorSC = ..PurgeFrame(tKeepDays, tSettings("Purge only completed sessions"), tSettings("Include message bodies"), tSettings("Run bitmap cleanup for namespace"), .tDeleted)
+            Lock -^IRIS.Temp.EnsPurgeAll($Namespace, "lock")
+            Set tHeld = 0
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Try {
+            Set $NAMESPACE = pNamespace
+            If tHeld Lock -^IRIS.Temp.EnsPurgeAll($Namespace, "lock")
+        } Catch {
+        }
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Statused(..PurgeVendorStatus(tCaught.AsStatus()), "the purge failed", .pHttpStatus, .pFault)
+    If 'tRan Quit ..Conflict(##class(OcuPilot.Api.InteropError).#PURGERUNNING, .pHttpStatus, .pFault)
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("daysToKeep", +pDays, "number")
+    Do tEffects.%Set("bodiesToo", ''tSettings("Include message bodies"), "boolean")
+    Do tEffects.%Set("keepIntegrity", ''tSettings("Purge only completed sessions"), "boolean")
+    Do tEffects.%Set("bitmapMaint", ''tSettings("Run bitmap cleanup for namespace"), "boolean")
+    Set tDeletedRow = {}
+    Do tDeletedRow.%Set("eventLog", +$Get(tDeleted("Event Logs")), "number")
+    Do tDeletedRow.%Set("messages", +$Get(tDeleted("Ensemble Messages")), "number")
+    Do tDeletedRow.%Set("messageBodies", +$Get(tDeleted("Message Bodies")), "number")
+    Do tDeletedRow.%Set("businessProcesses", +$Get(tDeleted("Business Processes")), "number")
+    Do tDeletedRow.%Set("businessRuleLog", +$Get(tDeleted("Business Rule Logs")), "number")
+    Do tDeletedRow.%Set("ioLog", +$Get(tDeleted("I/O Logs")), "number")
+    Do tDeletedRow.%Set("hostMonitor", +$Get(tDeleted("Host Monitor Data")), "number")
+    Do tDeletedRow.%Set("managedAlerts", +$Get(tDeleted("Managed Alerts")), "number")
+    Do tEffects.%Set("deleted", tDeletedRow)
+    Do tEffects.%Set("completed", $$$ISOK(tVendorSC), "boolean")
+    Do ..AuditRuntime(..#VERBPURGE, ..#ENTITYPURGE, pNamespace, tEffects)
+    If $$$ISERR(tVendorSC) Quit ..Statused(..PurgeVendorStatus(tVendorSC), "the purge failed", .pHttpStatus, .pFault)
+    Set tReadSC = ..ReadPurge(pNamespace, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) || '$IsObject(tRow) {
+        Set tRow = {}
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the purge write of the purge setting <var>pName</var> with <var>pBody</var> (Story 24.16): the one global set the port
+/// makes, the value as a string literal, a boolean as 0 or 1. <code>""</code> for a name or a value the port would refuse, which renders no draft.</p>
+ClassMethod PurgeSettingSnippet(pName As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    Set tEntry = ..PurgeSettingEntry(pName)
+    If (tEntry = "") || '$IsObject(pBody) || (pBody.%GetTypeOf("Value") '= "string") Quit ""
+    Set tValue = pBody.%Get("Value")
+    If '##class(OcuPilot.Area.Interop.PurgeSettingRules).ValueHolds(..PurgeSettingLimits(pName), tValue) Quit ""
+    Quit $Char(10) _ " Set ^Ens.Configuration(""PurgeSettings"", " _ ..Literal($List(tEntry, 2)) _ ") = " _ $Select($List(tEntry, 4) = "boolean": +tValue, 1: ..Literal(tValue))
+}
+
+/// <p>The lines <method>Snippet</method> adds for the purge of the days <var>pDays</var> (Story 24.16): the classic page's lock taken at once, the three settings read, and
+/// <code>Ens.Purge.PurgeAll</code> called while the lock is held. <code>""</code> for days the port would refuse, which renders no draft.</p>
+ClassMethod PurgeSnippet(pDays As %String) As %String [ Private ]
+{
+    If '..PurgeDaysOK(pDays) Quit ""
+    Set tNL = $Char(10)
+    Set tText = tNL _ " Lock +^IRIS.Temp.EnsPurgeAll($Namespace, ""lock""):0"
+    Set tText = tText _ tNL _ " Set tHeld = $Test"
+    Set tText = tText _ tNL _ " If 'tHeld Set tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONPURGERUNNING) _ ")"
+    Set tText = tText _ tNL _ " If tHeld Set tBodies = +$Get(^Ens.Configuration(""PurgeSettings"", ""BodiesToo"")), tKeep = +$Get(^Ens.Configuration(""PurgeSettings"", ""KeepIntegrity""), 1), tBitmap = +$Get(^Ens.Configuration(""PurgeSettings"", ""NamespaceBitmapMaint""))"
+    Set tText = tText _ tNL _ " If tHeld, tBitmap Set tOptions(""NamespaceBitmapMaint"") = 1"
+    ; The days the port itself would pass (PerformPurge): past the instance's calendar, the calendar's own count.
+    Set tDaysText = $Select(+pDays > (+$Horolog - 2): "+$Horolog - 2", 1: +pDays)
+    Set tText = tText _ tNL _ " If tHeld Set tSC = ##class(Ens.Purge).PurgeAll(.tDeleted, " _ tDaysText _ ", tKeep, tBodies, , .tOptions)"
+    Set tText = tText _ tNL _ " If tHeld Lock -^IRIS.Temp.EnsPurgeAll($Namespace, ""lock"")"
+    Quit tText
+}
+
+/// <p>The Archive settings endpoint (Story 24.16 Batch 4): <code>LIST</code>, one setting (<code>SETTING</code>) and the write <code>SETTINGSET</code>, over the vendor's own
+/// <code>Ens.Archive.Manager.GetArchiveParameters</code> and <code>SetArchiveParameters</code>. The archive class is shown and never set.</p>
+Parameter ENDPOINTARCHIVESETTINGS = "ArchiveSettings";
+
+/// <p>The Archive endpoint (Story 24.16 Batch 4): <code>LIST</code> (the last run's history, the classic page's eight rows), <code>ARCHIVESTATE</code> (what a run would use and
+/// whether one is running) and the write <code>ARCHIVE</code>, the vendor's <code>Ens.Archive.Manager.DoArchive</code> run in the request while the port holds the vendor's lock.</p>
+Parameter ENDPOINTARCHIVE = "Archive";
+
+/// <p>The Archive errors endpoint (Story 24.16 Batch 4): <code>LIST</code>, the vendor's <code>Ens.Archive.Manager:Errors</code> query.</p>
+Parameter ENDPOINTARCHIVEERRORS = "ArchiveErrors";
+
+/// <p>The pairs the three archive endpoints require: <code>%Ens_Portal:USE</code> and the classic Archive Manager page's own <code>%Ens_ArchiveManager:READ</code>. A write adds
+/// <parameter>ARCHIVEWRITEPAIR</parameter>, the classic page's edit resource; a run also needs WRITE on the target's globals database, judged at the write.</p>
+Parameter ARCHIVEPAIRS = "%Ens_Portal:USE,%Ens_ArchiveManager:READ";
+
+Parameter ARCHIVEWRITEPAIR = "%Ens_ArchiveManager:WRITE";
+
+Parameter TYPEARCHIVESETTINGSET = "SETTINGSET";
+
+Parameter TYPEARCHIVESTATE = "ARCHIVESTATE";
+
+Parameter TYPEARCHIVE = "ARCHIVE";
+
+/// <p>The most days before archiving a set accepts, and the vendor's class a run is allowed to use.</p>
+Parameter ARCHIVEMAXDAYS As INTEGER = 36500;
+
+Parameter ARCHIVECLASSNAME = "Ens.Archive.Manager";
+
+/// <p>The most message headers a namespace may hold for one archive run here to take: the vendor's run opens every header and body of the namespace. A run of twice this many took
+/// at most 20.1 seconds on the throwaway (measured), and half of that, times 1.5, stays inside 30 seconds on a runner that is slower (inference). A namespace above it is refused whole.</p>
+Parameter ARCHIVEMAXMESSAGES As INTEGER = 5000;
+
+/// <p>The most error rows the Archive errors list answers when the call gives no cap.</p>
+Parameter ARCHIVEERRORSMAX As INTEGER = 2000;
+
+/// <p>The most characters a stored archive class name is shown with.</p>
+Parameter ARCHIVETEXTMAX As INTEGER = 256;
+
+Parameter ENTITYARCHIVE = "interop-archive";
+
+Parameter ENTITYARCHIVESETTING = "interop-archive-setting";
+
+Parameter VERBARCHIVE = "archive";
+
+/// <p>Whether <var>pType</var> is the archive run, which needs WRITE on the namespace's globals database and, judged at the write, on the target's.</p>
+ClassMethod IsArchiveWrite(pType As %String) As %Boolean
+{
+    Quit pType = ..#TYPEARCHIVE
+}
+
+/// <p>The namespaces the classic Archive Manager page offers as Archive to namespace: the instance's interoperability namespaces
+/// (<code>^%SYS("Ensemble","InstalledNamespace")</code>) other than <var>pNamespace</var>, as a <class>%List</class>. Read at the call.</p>
+ClassMethod ArchiveTargets(pNamespace As %String) As %List
+{
+    Set tList = ""
+    Set tName = ""
+    For {
+        Set tName = $Order(^%SYS("Ensemble", "InstalledNamespace", tName))
+        If tName = "" Quit
+        If tName '= $ZConvert(pNamespace, "U") Set tList = tList _ $ListBuild(tName)
+    }
+    Quit tList
+}
+
+/// <p>The three archive settings, in the classic page's order, as a <class>%List</class> of <class>%List</class>s: <code>name, node, default, kind</code>. The name is the classic
+/// caption; the node is the subscript under <code>^Ens.ArchiveManager</code>, and the default is what the vendor reads for a node that is not stored. Pure.</p>
+ClassMethod ArchiveSettingRoster() As %List
+{
+    Quit $ListBuild($ListBuild("Archive to namespace", "Namespace", "", "choice"), $ListBuild("Archive manager class name", "Classname", ..#ARCHIVECLASSNAME, "text"), $ListBuild("Number of days before archiving", "DaysToArchive", 30, "integer"))
+}
+
+/// <p>The roster entry of the setting <var>pName</var>, or <code>""</code> for a name the classic page has no setting for. Pure.</p>
+ClassMethod ArchiveSettingEntry(pName As %String) As %List
+{
+    Set tRoster = ..ArchiveSettingRoster()
+    Set tFound = ""
+    For tI = 1:1:$ListLength(tRoster) {
+        If $List($List(tRoster, tI), 1) = pName Set tFound = $List(tRoster, tI)
+    }
+    Quit tFound
+}
+
+/// <p>Whether <var>pName</var> is the archive class setting, which is shown and never set. Pure.</p>
+ClassMethod ArchiveSettingReadOnly(pName As %String) As %Boolean
+{
+    Set tEntry = ..ArchiveSettingEntry(pName)
+    Quit (tEntry '= "") && ($List(tEntry, 2) = "Classname")
+}
+
+/// <p>The limits of the setting <var>pName</var> in <code>ConfigPort.Limits</code>' shape: Archive to namespace is a choice of <method>ArchiveTargets</method> of <var>pNamespace</var>,
+/// the days a whole number from 0 to <parameter>ARCHIVEMAXDAYS</parameter>, the class text; <code>""</code> for a name the classic page has no setting for. The rules class asks it.</p>
+ClassMethod ArchiveSettingLimits(pName As %String, pNamespace As %String) As %List
+{
+    Set tEntry = ..ArchiveSettingEntry(pName)
+    If tEntry = "" Quit ""
+    Set tKind = $List(tEntry, 4)
+    If tKind = "choice" Quit $ListBuild("choice", "", "", ..ArchiveTargets(pNamespace), "", "")
+    If tKind = "integer" Quit $ListBuild("integer", 0, ..#ARCHIVEMAXDAYS, "", "", "")
+    Quit $ListBuild("text", "", "", "", ..#ARCHIVETEXTMAX, "")
+}
+
+/// <p>The settings as they stand in the current namespace, which the caller has already switched, in <var>pFound</var>: one <code>$ListBuild(name, value, stored)</code> per roster
+/// entry, read through the vendor's own <code>GetArchiveParameters</code>, which answers the defaults for a node that is not stored. Nothing is written.</p>
+ClassMethod ArchiveSettingsHere(Output pFound) [ Private ]
+{
+    Kill pFound
+    Set tRoster = ..ArchiveSettingRoster()
+    Set pFound = $ListLength(tRoster)
+    Do ##class(Ens.Archive.Manager).GetArchiveParameters(.tTarget, .tClass, .tDays)
+    For tI = 1:1:pFound {
+        Set tEntry = $List(tRoster, tI)
+        Set tNode = $List(tEntry, 2)
+        Set tValue = $Case(tNode, "Namespace": tTarget, "Classname": tClass, : tDays)
+        Set pFound(tI) = $ListBuild($List(tEntry, 1), tValue _ "", ''($Data(^Ens.ArchiveManager(tNode)) # 2))
+    }
+}
+
+/// <p>The row an archive setting list and read answer, from the setting <var>pName</var>, its <var>pValue</var> and whether it is <var>pStored</var>:
+/// <code>{Name, Value, Stored, Kind, Accepts, ReadOnly, Namespace}</code>. The class row is read-only; Archive to namespace accepts the listed namespaces, or says there are none.</p>
+ClassMethod ArchiveSettingRow(pName As %String, pValue As %String, pStored As %Boolean, pNamespace As %String) As %DynamicObject [ Private ]
+{
+    Set tLimits = ..ArchiveSettingLimits(pName, pNamespace)
+    Set tReadOnly = ..ArchiveSettingReadOnly(pName)
+    If tReadOnly {
+        Set tAccepts = ##class(OcuPilot.Api.ConfigError).#ACCEPTSREADONLY
+    } ElseIf ($ListGet(tLimits, 1) = "choice") && ($ListLength($ListGet(tLimits, 4)) = 0) {
+        Set tAccepts = ##class(OcuPilot.Api.InteropError).#ACCEPTSNOARCHIVETARGET
+    } Else {
+        Set tAccepts = ##class(OcuPilot.Port.ConfigPort).AcceptsOf(tLimits)
+    }
+    Set tRow = {}
+    Do tRow.%Set("Name", pName, "string")
+    Do tRow.%Set("Value", pValue, "string")
+    Do tRow.%Set("Stored", ''pStored, "boolean")
+    Do tRow.%Set("Kind", $ListGet(tLimits, 1), "string")
+    Do tRow.%Set("Accepts", tAccepts, "string")
+    Do tRow.%Set("ReadOnly", ''tReadOnly, "boolean")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The settings of <var>pNamespace</var> as <method>ArchiveSettingsHere</method> reads them; a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod ArchiveSettingsIn(pNamespace As %String, Output pFound, Output pCaught) [ Private ]
+{
+    Kill pFound
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..ArchiveSettingsHere(.pFound)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>One archive setting, fresh (Story 24.16 Batch 4): <method>ArchiveSettingRow</method>. A name the classic page has no setting for is 404
+/// <code>CONFIG.SETTING.NOTFOUND</code>.</p>
+ClassMethod ReadArchiveSetting(pNamespace As %String, pName As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If ..ArchiveSettingEntry(pName) = "" Quit ..PurgeConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND, .pHttpStatus, .pFault)
+    Do ..ArchiveSettingsIn(pNamespace, .tFound, .tCaught)
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive setting read failed", .pHttpStatus, .pFault)
+    For tI = 1:1:tFound {
+        If $List(tFound(tI), 1) '= pName Continue
+        Set pRow = ..ArchiveSettingRow(pName, $List(tFound(tI), 2), $List(tFound(tI), 3), pNamespace)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the ArchiveSettings endpoint after <method>Invoke</method>'s gate (Story 24.16 Batch 4): <code>LIST</code>, the <code>SETTING</code> read of the setting named
+/// under <parameter>IDKEY</parameter> and the write <code>SETTINGSET</code>.</p>
+ClassMethod InvokeArchiveSettings(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Do ..ArchiveSettingsIn(pNamespace, .tFound, .tCaught)
+            If $IsObject(tCaught) {
+                Set tSC = ..ArchiveMapped(tCaught, "the archive settings list failed", .pHttpStatus, .pFault)
+                Quit
+            }
+            Set pResult = []
+            For tI = 1:1:tFound {
+                Do pResult.%Push(..ArchiveSettingRow($List(tFound(tI), 1), $List(tFound(tI), 2), $List(tFound(tI), 3), pNamespace))
+            }
+            Set pHttpStatus = 200
+            Quit
+        }
+        Set tName = $Get(pQuery(..#IDKEY))
+        If tName = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(pType = ..#TYPEARCHIVESETTINGSET: pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && (tAction '= ..#TYPEARCHIVESETTINGSET) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPEARCHIVESETTINGSET {
+            Set tSC = ..PerformArchiveSetting(pNamespace, tName, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadArchiveSetting(pNamespace, tName, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..ArchiveMapped(ex, "the archive setting call failed inside the port", .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Store the value <code>Value</code> of <var>pBody</var> for the archive setting <var>pName</var> in <var>pNamespace</var> and answer the setting's row, read again (Story 24.16
+/// Batch 4). A name the classic page has no setting for is 404 <code>CONFIG.SETTING.NOTFOUND</code>, the class is 409 <code>CONFIG.SETTING.READONLY</code> and a value the setting's
+/// kind does not accept, a target outside the namespaces the classic page lists included, is 400 <code>CONFIG.SETTING.VALUE</code>, each before anything is written. The vendor's
+/// <code>SetArchiveParameters</code> is called, as the classic Save calls it, with the two other values read at this moment; the namespace is restored, then OcuPilot's own audit row
+/// is recorded (<method>AuditRuntime</method>), because the vendor records none: it names the namespace, the setting and the value.</p>
+ClassMethod PerformArchiveSetting(pNamespace As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tEntry = ..ArchiveSettingEntry(pName)
+    If tEntry = "" Quit ..PurgeConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND, .pHttpStatus, .pFault)
+    If ..ArchiveSettingReadOnly(pName) Quit ..PurgeConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGREADONLY, .pHttpStatus, .pFault)
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") || (pBody.%GetTypeOf("Value") '= "string") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ##class(OcuPilot.Port.ConfigPort).#REASONBODY, .pHttpStatus, .pFault)
+    Set tValue = pBody.%Get("Value")
+    If '##class(OcuPilot.Area.Interop.ArchiveSettingRules).ValueHolds(..ArchiveSettingLimits(pName, pNamespace), tValue) Quit ..PurgeConfigRefused(##class(OcuPilot.Api.ConfigError).#SETTINGVALUE, .pHttpStatus, .pFault)
+    Set tCaught = ""
+    Set tSetSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ##class(Ens.Archive.Manager).GetArchiveParameters(.tTarget, .tClass, .tDays)
+        Set tNode = $List(tEntry, 2)
+        If tNode = "Namespace" Set tTarget = tValue
+        If tNode = "DaysToArchive" Set tDays = tValue
+        Set tSetSC = ##class(Ens.Archive.Manager).SetArchiveParameters(tTarget, tClass, tDays)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive setting write failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tSetSC) Quit ..Statused(..VendorCodesStatus(tSetSC, "the archive setting write"), "the archive setting write failed", .pHttpStatus, .pFault)
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("setting", pName, "string")
+    Do tEffects.%Set("value", tValue, "string")
+    Do ..AuditRuntime(..#VERBSET, ..#ENTITYARCHIVESETTING, pName, tEffects)
+    Set tReadSC = ..ReadArchiveSetting(pNamespace, pName, .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) || '$IsObject(tRow) {
+        Set tRow = {}
+        Do tRow.%Set("Name", pName, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The archive's facts in <var>pNamespace</var> (Story 24.16 Batch 4), in <var>pFacts</var>, read through the vendor's own getters with the namespace switched and nothing else:
+/// <code>target</code>, <code>class</code> and <code>days</code> (<code>GetArchiveParameters</code>), <code>running</code> (<code>GetRunningStatus</code>), and the last run's
+/// <code>start</code>, <code>stop</code>, <code>counts</code> (<code>GetRunningCount</code>, five comma-separated numbers) and <code>status</code>. A fault is <var>pCaught</var>, with
+/// the namespace restored. Nothing is written.</p>
+ClassMethod ArchiveFacts(pNamespace As %String, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ##class(Ens.Archive.Manager).GetArchiveParameters(.tTarget, .tClass, .tDays)
+        Set pFacts("target") = tTarget
+        Set pFacts("class") = tClass
+        Set pFacts("days") = tDays
+        Set pFacts("status") = ##class(Ens.Archive.Manager).GetRunningStatus()
+        Set pFacts("running") = (pFacts("status") = "running")
+        Set pFacts("start") = ##class(Ens.Archive.Manager).GetRunningStartTime()
+        Set pFacts("stop") = ##class(Ens.Archive.Manager).GetRunningStopTime()
+        Set pFacts("counts") = ##class(Ens.Archive.Manager).GetRunningCount()
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The cut-off the vendor's run uses for <var>pDays</var> days, <code>Ens.Purge.GetDoNotDeleteDate</code>, with days past the instance's calendar read as the calendar's own count so the
+/// read never raises (the vendor's run logs an error for each message in that case).</p>
+ClassMethod ArchiveCutoff(pDays As %Integer) As %String [ Private ]
+{
+    Quit ##class(Ens.Purge).GetDoNotDeleteDate($Select(+pDays > (+$Horolog - 2): +$Horolog - 2, 1: +pDays))
+}
+
+/// <p>The number of message headers <var>pNamespace</var> holds, and how many of them a run with <var>pDays</var> days would move, in <var>pTotal</var> and <var>pMoving</var>: the
+/// vendor's own rule, a header whose <code>TimeCreated</code> is before <code>Ens.Purge.GetDoNotDeleteDate(days)</code> (an empty one included), whatever its status. A fault is
+/// <var>pCaught</var>.</p>
+ClassMethod ArchiveCounts(pNamespace As %String, pDays As %Integer, Output pTotal As %Integer, Output pMoving As %Integer, Output pCaught) [ Private ]
+{
+    Set pTotal = 0
+    Set pMoving = 0
+    Set tSC = ..SqlRows(pNamespace, "SELECT COUNT(*) FROM Ens.MessageHeader", .tFound, .pCaught)
+    If $IsObject(pCaught) Quit
+    Set pTotal = +$List($Get(tFound(1)), 1)
+    Set tSC = ..SqlRows(pNamespace, "SELECT COUNT(*) FROM Ens.MessageHeader WHERE TimeCreated IS NULL OR TimeCreated < ?", .tFound, .pCaught, ..ArchiveCutoff(pDays))
+    If $IsObject(pCaught) Quit
+    Set pMoving = +$List($Get(tFound(1)), 1)
+}
+
+/// <p>The first refusal an archive run of <var>pNamespace</var> would meet that the namespace itself decides, as the code of <class>OcuPilot.Api.InteropError</class>, in the order the
+/// write judges them, or <code>""</code>: a run already <var>pRunning</var>, a stored class that is not <parameter>ARCHIVECLASSNAME</parameter>, a target that is not one of
+/// <method>ArchiveTargets</method>, and more than <parameter>ARCHIVEMAXMESSAGES</parameter> headers. Pure.</p>
+ClassMethod ArchiveRefusal(pNamespace As %String, pRunning As %Boolean, pClass As %String, pTarget As %String, pTotal As %Integer) As %String
+{
+    If pRunning Quit ##class(OcuPilot.Api.InteropError).#ARCHIVERUNNING
+    If pClass '= ..#ARCHIVECLASSNAME Quit ##class(OcuPilot.Api.InteropError).#ARCHIVECLASS
+    If (pTarget = "") || '$ListFind(..ArchiveTargets(pNamespace), pTarget) Quit ##class(OcuPilot.Api.InteropError).#ARCHIVENOTARGET
+    If pTotal > ..#ARCHIVEMAXMESSAGES Quit ##class(OcuPilot.Api.InteropError).#ARCHIVETOOMANY
+    Quit ""
+}
+
+/// <p>The archive state row (Story 24.16 Batch 4): <code>{Target, Classname, DaysToArchive, Running, Total, ToArchive, Namespace}</code>, which a run would use and what it would
+/// move. With <var>pAction</var> <parameter>TYPEARCHIVE</parameter> a run the namespace would refuse (<method>ArchiveRefusal</method>) is 409 with that code.</p>
+ClassMethod ReadArchive(pNamespace As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Do ..ArchiveFacts(pNamespace, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive state read failed", .pHttpStatus, .pFault)
+    Do ..ArchiveCounts(pNamespace, tFacts("days"), .tTotal, .tMoving, .tCaught)
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive state read failed", .pHttpStatus, .pFault)
+    If pAction = ..#TYPEARCHIVE {
+        Set tCode = ..ArchiveRefusal(pNamespace, tFacts("running"), tFacts("class"), tFacts("target"), tTotal)
+        If tCode '= "" Quit ..Conflict(tCode, .pHttpStatus, .pFault)
+    }
+    Set pRow = {}
+    Do pRow.%Set("Target", tFacts("target"), "string")
+    Do pRow.%Set("Classname", tFacts("class"), "string")
+    Do pRow.%Set("DaysToArchive", +tFacts("days"), "number")
+    Do pRow.%Set("Running", ''tFacts("running"), "boolean")
+    Do pRow.%Set("Total", tTotal, "number")
+    Do pRow.%Set("ToArchive", tMoving, "number")
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The last run's history of <var>pNamespace</var>, the classic page's eight rows in its order, <code>{Name, Value, Namespace}</code> (Story 24.16 Batch 4): the start and stop
+/// time as the vendor keeps them (empty before any run), the four counts and the number of errors, and <code>idle</code> or <code>running</code>. The rows are always there, so
+/// Run archive stays reachable before the first run.</p>
+ClassMethod ListArchiveHistory(pNamespace As %String, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Do ..ArchiveFacts(pNamespace, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive history read failed", .pHttpStatus, .pFault)
+    Set tCounts = tFacts("counts")
+    Set tLines = $ListBuild($ListBuild("Archive start time", tFacts("start")), $ListBuild("Archive stop time", tFacts("stop")), $ListBuild("Total messages processed", $Piece(tCounts, ",", 1)), $ListBuild("Total messages archived", $Piece(tCounts, ",", 2)), $ListBuild("Total message headers deleted", $Piece(tCounts, ",", 3)), $ListBuild("Total message bodies deleted", $Piece(tCounts, ",", 4)), $ListBuild("Total number of errors", $Piece(tCounts, ",", 5)), $ListBuild("Archive status", tFacts("status")))
+    Set pRows = []
+    For tI = 1:1:$ListLength(tLines) {
+        Set tRow = {}
+        Do tRow.%Set("Name", $List($List(tLines, tI), 1), "string")
+        Do tRow.%Set("Value", $List($List(tLines, tI), 2) _ "", "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+        Do pRows.%Push(tRow)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The last run's error log of <var>pNamespace</var> (Story 24.16 Batch 4): the vendor's <code>Ens.Archive.Manager:Errors</code> query, <code>{ErrorNumber, Time, Description,
+/// MessageId}</code>, at most <var>pMax</var> rows (<parameter>ARCHIVEERRORSMAX</parameter> when that is not above zero). The description is the vendor's text, shown and never run.</p>
+ClassMethod ListArchiveErrors(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tTop = $Select(pMax > 0: pMax, 1: ..#ARCHIVEERRORSMAX)
+    Set tCaught = ""
+    Set tStatusSC = $$$OK
+    Kill tFound
+    Set tFound = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tResultSet = ##class(%ResultSet).%New("Ens.Archive.Manager:Errors")
+        Set tStatusSC = tResultSet.Execute()
+        If $$$ISOK(tStatusSC) {
+            While tResultSet.Next() {
+                If tFound >= tTop Quit
+                Set tFound = tFound + 1
+                Set tFound(tFound) = $ListBuild(tResultSet.GetData(1), tResultSet.GetData(2), tResultSet.GetData(3), tResultSet.GetData(4))
+            }
+            Do tResultSet.Close()
+        }
+        Set tResultSet = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive errors read failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tStatusSC) Quit ..Statused(tStatusSC, "the archive errors read failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tRow = {}
+        Do tRow.%Set("ErrorNumber", +$List(tFound(tI), 1), "number")
+        Do tRow.%Set("Time", $List(tFound(tI), 2) _ "", "string")
+        Do tRow.%Set("Description", $List(tFound(tI), 3) _ "", "string")
+        Do tRow.%Set("MessageId", $List(tFound(tI), 4) _ "", "string")
+        Do pRows.%Push(tRow)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the Archive and ArchiveErrors endpoints after <method>Invoke</method>'s gate (Story 24.16 Batch 4): the history <code>LIST</code>, the <code>ARCHIVESTATE</code> read, the
+/// write <code>ARCHIVE</code>, and the error log's <code>LIST</code>.</p>
+ClassMethod InvokeArchive(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pEndpoint = ..#ENDPOINTARCHIVEERRORS {
+                Set tSC = ..ListArchiveErrors(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            } Else {
+                Set tSC = ..ListArchiveHistory(pNamespace, .pResult, .pHttpStatus, .pFault)
+            }
+            Quit
+        }
+        Set tAction = $Select(..IsArchiveWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && (tAction '= ..#TYPEARCHIVE) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPEARCHIVE {
+            Set tSC = ..PerformArchive(pNamespace, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadArchive(pNamespace, tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..ArchiveMapped(ex, "the archive call failed inside the port", .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>A vendor exception <var>pException</var> in this port's own words, as <method>Mapped</method> answers it, except that the status it logs carries the vendor's error codes alone
+/// and never the vendor's text (<method>VendorCodesStatus</method>): a lock it could not take is 503, <code>&lt;PROTECT&gt;</code> is 403, anything else 500 <code>INTERNAL</code>.</p>
+ClassMethod ArchiveMapped(pException As %Exception.AbstractException, pMessage As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Statused(..VendorCodesStatus(pException.AsStatus(), "the archive"), pMessage, .pHttpStatus, .pFault)
+}
+
+/// <p>Take the vendor's archive lock, <code>^Ens.ArchiveManager("lock")</code>, in <var>pNamespace</var> at once, and answer <code>1</code> when it is held. A fault is
+/// <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod ArchiveTake(pNamespace As %String, Output pCaught) As %Boolean [ Private ]
+{
+    Set pCaught = ""
+    Set tHeld = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Lock +^Ens.ArchiveManager("lock"):0
+        Set tHeld = $Test
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tHeld
+}
+
+/// <p>Let go of every hold this process has on the vendor's archive lock of <var>pNamespace</var>: the port's own, and any the vendor's run took and did not give back when it was
+/// cut short. Bounded, and it never throws, so the lock is free on every exit.</p>
+ClassMethod ArchiveRelease(pNamespace As %String)
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tName = $Name(^Ens.ArchiveManager("lock"))
+        For tI = 1:1:100 {
+            If $Get(^$LOCK(tName, "OWNER")) '= $Job Quit
+            Lock -^Ens.ArchiveManager("lock")
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+}
+
+/// <p>The ids of the headers <var>pTarget</var> already holds that a run of <var>pNamespace</var> with <var>pDays</var> days would move, comma-separated and empty for none,
+/// at most the first ten. A fault is <var>pCaught</var>.</p>
+ClassMethod ArchiveTaken(pNamespace As %String, pTarget As %String, pDays As %Integer, Output pCaught) As %String [ Private ]
+{
+    Set tSC = ..SqlRows(pNamespace, "SELECT ID FROM Ens.MessageHeader WHERE TimeCreated IS NULL OR TimeCreated < ?", .tFound, .pCaught, ..ArchiveCutoff(pDays))
+    If $IsObject(pCaught) Quit ""
+    Set tTaken = ""
+    Set tCount = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pTarget
+        Do ..ArchiveTargetHere()
+        For tI = 1:1:tFound {
+            Set tId = $List(tFound(tI), 1)
+            If $Data(^Ens.MessageHeaderD(tId)) {
+                Set tCount = tCount + 1
+                If tCount < 11 Set tTaken = tTaken _ $Select(tTaken = "": "", 1: ",") _ tId
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tTaken
+}
+
+/// <p>A point inside the target-switched read of <method>ArchiveTaken</method>, which does nothing. A fixture overrides it to raise a fault there, so a test reads that the fault is
+/// logged after the namespace is restored; production never overrides it.</p>
+ClassMethod ArchiveTargetHere() [ Private ]
+{
+}
+
+/// <p>The vendor's run in the current namespace, which the caller has already switched: <code>Ens.Archive.Manager.DoArchive</code>, called while the port holds the vendor's lock
+/// (the vendor's own <code>lock +</code> is re-entrant in this process) and with no transaction. Overridable so a fixture can answer a status or a fault; production never overrides it.</p>
+ClassMethod VendorArchive() As %Status
+{
+    Quit ##class(Ens.Archive.Manager).DoArchive()
+}
+
+/// <p>The vendor's status <var>pStatus</var> without any text it carries, as <method>PurgeVendorStatus</method> gives it for a purge. Pure.</p>
+ClassMethod ArchiveVendorStatus(pStatus As %Status) As %Status
+{
+    Quit ..VendorCodesStatus(pStatus, "the archive")
+}
+
+/// <p>Run the archive of <var>pNamespace</var> (Story 24.16 Batch 4): the vendor's own run, in this request, and answer the archive state row, read again. The sequence, each refusal
+/// before any vendor call and each leaving the lock free:</p>
+/// <ol>
+/// <li>The vendor's lock is taken at once in the namespace; a lock that is held is 409 <code>INTEROP.ARCHIVE.RUNNING</code>.</li>
+/// <li>The three settings are read: a stored class other than <parameter>ARCHIVECLASSNAME</parameter> is 409 <code>CLASS</code>, a target that is not a namespace the classic page lists
+/// is 409 <code>NOTARGET</code>, more than <parameter>ARCHIVEMAXMESSAGES</parameter> headers is 409 <code>TOOMANY</code>.</li>
+/// <li>WRITE on the target's globals database is required, 403 naming the pair (it admits the port's read of the target's ids too, as the vendor needs nothing more); a target that
+/// already holds a header id the run would move is 409 <code>TAKEN</code>.</li>
+/// <li><method>VendorArchive</method> runs, the namespace is restored, the five counts are read and OcuPilot's own audit row is recorded (<method>AuditRuntime</method>) whatever the vendor
+/// answered. A run whose status is an error, or that logged an error, is 500 <code>INTERNAL</code>, as a partial purge is.</li>
+/// </ol>
+/// <p>The lock is let go on every exit. A run that outlasts the Web Gateway's response timeout runs to its end in this process, and its audit row is written then.</p>
+ClassMethod PerformArchive(pNamespace As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tHeld = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ..ArchiveRun(pNamespace, .pResult, .pHttpStatus, .pFault, .tHeld)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pResult = ""
+        Set tSC = ..ArchiveMapped(ex, "the archive call failed inside the port", .pHttpStatus, .pFault)
+    }
+    If tHeld Do ..ArchiveRelease(pNamespace)
+    Quit tSC
+}
+
+/// <p><method>PerformArchive</method>'s steps; <var>pHeld</var> is set once the lock is taken, so the caller lets go of it whatever this method does.</p>
+ClassMethod ArchiveRun(pNamespace As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pHeld As %Boolean) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set pHeld = ..ArchiveTake(pNamespace, .tCaught)
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive lock could not be taken", .pHttpStatus, .pFault)
+    If 'pHeld Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ARCHIVERUNNING, .pHttpStatus, .pFault)
+    Do ..ArchiveFacts(pNamespace, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive state read failed", .pHttpStatus, .pFault)
+    Do ..ArchiveCounts(pNamespace, tFacts("days"), .tTotal, .tMoving, .tCaught)
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive state read failed", .pHttpStatus, .pFault)
+    Set tCode = ..ArchiveRefusal(pNamespace, 0, tFacts("class"), tFacts("target"), tTotal)
+    If tCode '= "" Quit ..Conflict(tCode, .pHttpStatus, .pFault)
+    Set tTarget = tFacts("target")
+    Set tDatabase = ""
+    If '##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase(tTarget, .tDatabase, .tReadOnly) || (tDatabase = "") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
+    Set tFailedPair = ""
+    If '$ClassMethod(..GateClass(), "EvaluateRequired", $ListBuild($ListBuild(tDatabase, ..#WRITEPERMISSION)), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    Set tTaken = ..ArchiveTaken(pNamespace, tTarget, tFacts("days"), .tCaught)
+    If $IsObject(tCaught) Quit ..ArchiveMapped(tCaught, "the archive target read failed", .pHttpStatus, .pFault)
+    If tTaken '= "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ARCHIVETAKEN, .pHttpStatus, .pFault)
+    Set tVendorSC = $$$OK
+    Set tRaised = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tVendorSC = ..VendorArchive()
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tRaised = ex
+    }
+    Do ..ArchiveFacts(pNamespace, .tAfter, .tAfterCaught)
+    Set tCounts = $Select($IsObject(tAfterCaught): "0,0,0,0,0", 1: tAfter("counts"))
+    Set tErrors = +$Piece(tCounts, ",", 5)
+    Set tCompleted = $$$ISOK(tVendorSC) && '$IsObject(tRaised) && (tErrors = 0) && '$IsObject(tAfterCaught)
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("target", tTarget, "string")
+    Do tEffects.%Set("daysToArchive", +tFacts("days"), "number")
+    Do tEffects.%Set("processed", +$Piece(tCounts, ",", 1), "number")
+    Do tEffects.%Set("archived", +$Piece(tCounts, ",", 2), "number")
+    Do tEffects.%Set("headersDeleted", +$Piece(tCounts, ",", 3), "number")
+    Do tEffects.%Set("bodiesDeleted", +$Piece(tCounts, ",", 4), "number")
+    Do tEffects.%Set("errors", tErrors, "number")
+    Do tEffects.%Set("completed", tCompleted, "boolean")
+    Do ..AuditRuntime(..#VERBARCHIVE, ..#ENTITYARCHIVE, pNamespace, tEffects)
+    If $IsObject(tRaised) Quit ..Statused(..ArchiveVendorStatus(tRaised.AsStatus()), "the archive failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(..ArchiveVendorStatus(tVendorSC), "the archive failed", .pHttpStatus, .pFault)
+    If 'tCompleted Quit ..Statused($$$ERROR($$$GeneralError, "the vendor reported the archive with " _ tErrors _ " errors"), "the archive failed", .pHttpStatus, .pFault)
+    Set tReadSC = ..ReadArchive(pNamespace, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) || '$IsObject(tRow) {
+        Set tRow = {}
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the archive setting <var>pName</var> set to <var>pBody</var>'s value in <var>pNamespace</var> (Story 24.16 Batch 4): the vendor's two
+/// reads and <code>SetArchiveParameters</code> with the one value replaced, as a string literal for a namespace and a whole number for the days. <code>""</code> for a name or a value the
+/// port would refuse, which renders no draft.</p>
+ClassMethod ArchiveSettingSnippet(pName As %String, pBody As %DynamicAbstractObject, pNamespace As %String) As %String [ Private ]
+{
+    Set tEntry = ..ArchiveSettingEntry(pName)
+    If (tEntry = "") || ..ArchiveSettingReadOnly(pName) || '$IsObject(pBody) || (pBody.%GetTypeOf("Value") '= "string") Quit ""
+    Set tValue = pBody.%Get("Value")
+    If '##class(OcuPilot.Area.Interop.ArchiveSettingRules).ValueHolds(..ArchiveSettingLimits(pName, pNamespace), tValue) Quit ""
+    Set tNL = $Char(10)
+    Set tText = tNL _ " Do ##class(Ens.Archive.Manager).GetArchiveParameters(.tTarget, .tClass, .tDays)"
+    If $List(tEntry, 2) = "Namespace" {
+        Set tText = tText _ tNL _ " Set tTarget = " _ ..Literal(tValue)
+    } Else {
+        Set tText = tText _ tNL _ " Set tDays = " _ +tValue
+    }
+    Quit tText _ tNL _ " Set tSC = ##class(Ens.Archive.Manager).SetArchiveParameters(tTarget, tClass, tDays)"
+}
+
+/// <p>The lines <method>Snippet</method> adds for the archive run (Story 24.16 Batch 4): the settings read, each refusal as one guard that stops the run, the vendor's lock taken at once,
+/// <code>Ens.Archive.Manager.DoArchive</code> called while it is held, and the lock let go. Nothing here runs; a person runs it.</p>
+ClassMethod ArchiveSnippet() As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tText = tNL _ " Do ##class(Ens.Archive.Manager).GetArchiveParameters(.tTarget, .tClass, .tDays)"
+    Set tText = tText _ tNL _ " Set tOk = 1"
+    Set tText = tText _ tNL _ " If tClass '= " _ ..Literal(..#ARCHIVECLASSNAME) _ " Set tOk = 0, tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.InteropError).ReasonFor(##class(OcuPilot.Api.InteropError).#ARCHIVECLASS)) _ ")"
+    Set tText = tText _ tNL _ " If tOk, (tTarget = """") || (tTarget = $Namespace) || '$Data(^%SYS(""Ensemble"", ""InstalledNamespace"", tTarget)) Set tOk = 0, tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.InteropError).ReasonFor(##class(OcuPilot.Api.InteropError).#ARCHIVENOTARGET)) _ ")"
+    Set tText = tText _ tNL _ " If tOk { &sql(SELECT COUNT(*) INTO :tTotal FROM Ens.MessageHeader) If tTotal > " _ ..#ARCHIVEMAXMESSAGES _ " Set tOk = 0, tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.InteropError).ReasonFor(##class(OcuPilot.Api.InteropError).#ARCHIVETOOMANY)) _ ") }"
+    Set tText = tText _ tNL _ " If tOk { Set tRS = ##class(%SQL.Statement).%ExecDirect(, ""SELECT ID FROM Ens.MessageHeader WHERE TimeCreated IS NULL OR TimeCreated < ?"", ##class(Ens.Purge).GetDoNotDeleteDate(tDays)) While tRS.%Next() { If $Data(^|tTarget|Ens.MessageHeaderD(tRS.%GetData(1))) Set tOk = 0, tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.InteropError).ReasonFor(##class(OcuPilot.Api.InteropError).#ARCHIVETAKEN)) _ ") Quit } }"
+    Set tText = tText _ tNL _ " If tOk { Lock +^Ens.ArchiveManager(""lock""):0 Set tHeld = $Test If 'tHeld Set tOk = 0, tSC = $System.Status.Error(5001, " _ ..Literal(##class(OcuPilot.Api.InteropError).ReasonFor(##class(OcuPilot.Api.InteropError).#ARCHIVERUNNING)) _ ") }"
+    Set tText = tText _ tNL _ " If tOk Set tSC = ##class(Ens.Archive.Manager).DoArchive()"
+    Set tText = tText _ tNL _ " If $Get(tHeld) Lock -^Ens.ArchiveManager(""lock"")"
+    Quit tText
+}
+
+/// <p>The Managed alerts endpoint (Story 24.17 Batch 1): <code>LIST</code> (the namespace's <code>Ens.Alerting.ManagedAlert</code> rows, newest first), <code>ALERT</code> (one alert's state, which the
+/// update's review and fingerprint read), <code>ALERTOWNERS</code> (who the classic form offers as an owner) and the write <code>UPDATEALERT</code>, the vendor's
+/// <code>UpdateManagedAlert</code>. The values of an update travel in the query under <parameter>ALERTOWNERKEY</parameter> and its four siblings, an absent one meaning unchanged.</p>
+Parameter ENDPOINTMANAGEDALERTS = "ManagedAlerts";
+
+/// <p>The Managed alert actions endpoint (Story 24.17 Batch 1): <code>LIST</code> of one alert's history, newest first, the alert named under <parameter>ALERTCRITERION</parameter>.</p>
+Parameter ENDPOINTMANAGEDALERTACTIONS = "ManagedAlertActions";
+
+/// <p>The pairs both endpoints require: the portal's and the classic Alerts page's and Managed Alert Viewer's own <code>%Ens_Alerts:READ</code>. The owner choices and the update add
+/// <parameter>ALERTWRITEPAIR</parameter>, the classic Alerts page's edit resource (and WRITE on the namespace's globals database, the gate's); an update of an alert another user owns also
+/// needs <parameter>ALERTADMINRESOURCE</parameter> at <parameter>ALERTADMINPERMISSION</parameter>, judged at the write.</p>
+Parameter ALERTPAIRS = "%Ens_Portal:USE,%Ens_Alerts:READ";
+
+Parameter ALERTWRITEPAIR = "%Ens_Alerts:WRITE";
+
+Parameter ALERTADMINRESOURCE = "%Ens_AlertAdministration";
+
+Parameter ALERTADMINPERMISSION = "USE";
+
+Parameter TYPEALERT = "ALERT";
+
+Parameter TYPEALERTOWNERS = "ALERTOWNERS";
+
+Parameter TYPEUPDATEALERT = "UPDATEALERT";
+
+/// <p>The most alerts a list answers to a call that names no cap of its own: the larger of 1,000 and 2,000 whose read ended within 5 seconds with three history rows each (0.04 seconds at 2,000,
+/// measured). A call that names a cap gets that many, so the one row it asks for beyond what it shows reports its truncation (AD-36).</p>
+Parameter ALERTSMAX As INTEGER = 2000;
+
+/// <p>The most history rows one alert's list answers to a call that names no cap of its own.</p>
+Parameter ALERTACTIONSMAX As INTEGER = 1000;
+
+/// <p>The most minutes a next action time may be set ahead, two weeks, and the most characters of a reason (the vendor's <code>Ens.Alerting.Action.Reason</code>).</p>
+Parameter ALERTNEXTMAX As INTEGER = 20160;
+
+Parameter ALERTREASONMAX As INTEGER = 500;
+
+/// <p>The shape of an alert's id: a whole number without a leading zero.</p>
+Parameter ALERTIDPATTERN = "^[1-9][0-9]{0,17}$";
+
+/// <p>The criterion of the history list: the alert's id.</p>
+Parameter ALERTCRITERION = "alert";
+
+/// <p>The query keys of an update's values, each present only when the caller sends that value.</p>
+Parameter ALERTOWNERKEY = "alertowner";
+
+Parameter ALERTOPENKEY = "alertopen";
+
+Parameter ALERTLEVELKEY = "alertlevel";
+
+Parameter ALERTMINUTESKEY = "alertminutes";
+
+Parameter ALERTREASONKEY = "alertreason";
+
+/// <p>The vendor's action bits (<code>EnsConstants.inc</code>): the four an update sets. The send-update and reoccurrence bits are never sent.</p>
+Parameter ALERTBITOWNER As INTEGER = 1;
+
+Parameter ALERTBITOPEN As INTEGER = 2;
+
+Parameter ALERTBITLEVEL As INTEGER = 4;
+
+Parameter ALERTBITNEXT As INTEGER = 8;
+
+Parameter ENTITYALERT = "interop-managed-alert";
+
+Parameter VERBALERTUPDATE = "update";
+
+/// <p>The columns of a list row, in the order <method>AlertRow</method> reads them.</p>
+Parameter ALERTCOLUMNS = "ID, AlertTime, AlertText, SourceConfigName, Production, SessionId, CurrentOwner, EscalationLevel, IsOpen, LastActionTime, NextActionTime";
+
+/// <p>The columns of a history row, in the order <method>AlertActionRow</method> reads them.</p>
+Parameter ALERTACTIONCOLUMNS = "Actions_ActionTime, Actions_Username, Actions_Action, Actions_Reason, Actions_OldValues, Actions_NewValues";
+
+/// <p>Whether <var>pType</var> is the managed alert update, which needs WRITE on the namespace's globals database.</p>
+ClassMethod IsAlertWrite(pType As %String) As %Boolean
+{
+    Quit pType = ..#TYPEUPDATEALERT
+}
+
+/// <p>The most rows a managed alert read answers: <var>pMax</var> when it is above zero, else <var>pLimit</var>, as the other capped lists of this port answer. Pure.</p>
+ClassMethod AlertCap(pMax As %Integer, pLimit As %Integer) As %Integer
+{
+    Quit $Select(pMax > 0: pMax, 1: pLimit)
+}
+
+/// <p>Whether <var>pId</var> has an alert id's shape. Pure.</p>
+ClassMethod AlertIdOK(pId As %String) As %Boolean
+{
+    Quit $Match(pId, ..#ALERTIDPATTERN)
+}
+
+/// <p>Whether <var>pReason</var> is 1 to <parameter>ALERTREASONMAX</parameter> characters with no control character. Pure.</p>
+ClassMethod AlertReasonOK(pReason As %String) As %Boolean
+{
+    Quit ($Length(pReason) > 0) && ($Length(pReason) '> ..#ALERTREASONMAX) && ($ZStrip(pReason, "*C") = pReason)
+}
+
+/// <p>Whether <var>pMinutes</var> is a whole number from 1 to <parameter>ALERTNEXTMAX</parameter>, written without a sign, a point or a leading zero. Pure.</p>
+ClassMethod AlertMinutesOK(pMinutes As %String) As %Boolean
+{
+    Quit $Match(pMinutes, "^[1-9][0-9]{0,4}$") && (+pMinutes '> ..#ALERTNEXTMAX)
+}
+
+/// <p>Whether <var>pLevel</var> is a whole number written without a sign, a point or a leading zero. Pure.</p>
+ClassMethod AlertLevelShapeOK(pLevel As %String) As %Boolean
+{
+    Quit $Match(pLevel, "^(0|[1-9][0-9]{0,8})$")
+}
+
+/// <p>Whether <var>pOwner</var> is a plausible owner name: at most 256 characters and no control character. The owner list judges the rest. Pure.</p>
+ClassMethod AlertOwnerShapeOK(pOwner As %String) As %Boolean
+{
+    Quit ($Length(pOwner) '> 256) && ($ZStrip(pOwner, "*C") = pOwner)
+}
+
+/// <p>The published sentence a value of kind <var>pKind</var> (<code>id</code>, <code>owner</code>, <code>level</code>, <code>minutes</code> or <code>reason</code>) is refused with, which the
+/// update tool's argument rules answer with, or <code>""</code> for another kind. Pure.</p>
+ClassMethod AlertProblem(pKind As %String) As %String
+{
+    Set tCode = $Case(pKind, "id": ##class(OcuPilot.Api.InteropError).#ALERTNOTFOUND, "owner": ##class(OcuPilot.Api.InteropError).#ALERTOWNER, "level": ##class(OcuPilot.Api.InteropError).#ALERTLEVEL, "minutes": ##class(OcuPilot.Api.InteropError).#ALERTNEXTACTION, "reason": ##class(OcuPilot.Api.InteropError).#ALERTREASON, : "")
+    If tCode = "" Quit ""
+    Quit ##class(OcuPilot.Api.InteropError).ReasonFor(tCode)
+}
+
+/// <p>A point inside each namespace-switched block of the owner list and the update, which does nothing. A fixture overrides it to raise a fault there, so a test reads that the fault is
+/// logged after the namespace is restored; production never overrides it.</p>
+ClassMethod AlertHere() [ Private ]
+{
+}
+
+/// <p>The vendor's update of alert <var>pId</var> in the current namespace, which the caller has already switched: <code>Ens.Alerting.ManagedAlert.UpdateManagedAlert</code> with
+/// <var>pBits</var>, the new values in <var>pChanges</var> by property name and the reason. Overridable so a fixture can answer a status or a fault; production never overrides it.</p>
+ClassMethod VendorAlertUpdate(pId As %String, pBits As %Integer, ByRef pChanges, pReason As %String) As %Status
+{
+    Quit ##class(Ens.Alerting.ManagedAlert).UpdateManagedAlert(pId, pBits, .pChanges, pReason)
+}
+
+/// <p>A vendor exception <var>pException</var> in this port's own words, as <method>ArchiveMapped</method> answers one: the status it logs carries the vendor's error codes alone.</p>
+ClassMethod AlertMapped(pException As %Exception.AbstractException, pMessage As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Statused(..VendorCodesStatus(pException.AsStatus(), "the managed alert call"), pMessage, .pHttpStatus, .pFault)
+}
+
+/// <p>404 <code>INTEROP.ALERT.NOTFOUND</code>: the alert is not there.</p>
+ClassMethod AlertGone(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.InteropError).#ALERTNOTFOUND, ##class(OcuPilot.Api.InteropError).#REASONALERTNOTFOUND, .pHttpStatus, .pFault)
+}
+
+/// <p>One list row of the columns <parameter>ALERTCOLUMNS</parameter> read as <var>pLine</var>: <code>{ID, AlertTime, AlertText, SourceConfigName, Production, SessionId, CurrentOwner,
+/// EscalationLevel, IsOpen, LastActionTime, NextActionTime, Namespace}</code>, the times as the instance's local time as the other lists show them.</p>
+ClassMethod AlertRow(pLine As %List, pNamespace As %String) As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("ID", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("AlertTime", ..AlertLocal($List(pLine, 2)), "string")
+    Do tRow.%Set("AlertText", ..AlertText($List(pLine, 3)), "string")
+    Do tRow.%Set("SourceConfigName", ..AlertText($List(pLine, 4)), "string")
+    Do tRow.%Set("Production", ..AlertText($List(pLine, 5)), "string")
+    Do tRow.%Set("SessionId", ..AlertText($List(pLine, 6)), "string")
+    Do tRow.%Set("CurrentOwner", ..AlertText($List(pLine, 7)), "string")
+    Do tRow.%Set("EscalationLevel", +$List(pLine, 8), "number")
+    Do tRow.%Set("IsOpen", ''$List(pLine, 9), "boolean")
+    Do tRow.%Set("LastActionTime", ..AlertLocal($List(pLine, 10)), "string")
+    Do tRow.%Set("NextActionTime", ..AlertLocal($List(pLine, 11)), "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>A stored text as it reads: <code>$Char(0)</code>, which a cleared string column reads as, is empty. Pure.</p>
+ClassMethod AlertText(pValue As %String) As %String [ Private ]
+{
+    Quit $Select(pValue = $Char(0): "", 1: pValue _ "")
+}
+
+/// <p>The stored UTC stamp <var>pUtc</var> as the instance's local time, or <code>""</code>.</p>
+ClassMethod AlertLocal(pUtc As %String) As %String [ Private ]
+{
+    Set tText = ..AlertText(pUtc)
+    If tText = "" Quit ""
+    Quit ..LocalStamp(tText)
+}
+
+/// <p>The whole minutes from now until the stored UTC stamp <var>pNext</var>, rounded to the nearest minute, or <code>""</code> when it is empty or unreadable. Reads the clock.</p>
+ClassMethod AlertNextMinutes(pNext As %String) As %String [ Private ]
+{
+    If pNext = "" Quit ""
+    Set tNext = ""
+    Try {
+        Set tNext = $ZDateTimeH(pNext, 3)
+    } Catch {
+        Set tNext = ""
+    }
+    If tNext = "" Quit ""
+    Set tNow = $ZTimeStamp
+    Set tSeconds = (($Piece(tNext, ",", 1) - $Piece(tNow, ",", 1)) * 86400) + ($Piece(tNext, ",", 2) - $Piece(tNow, ",", 2))
+    Quit (tSeconds + 30) \ 60
+}
+
+/// <p>The managed alerts of <var>pNamespace</var>, newest first, at most <var>pMax</var> (<parameter>ALERTSMAX</parameter> when that is not above zero): <code>{ID, AlertTime, AlertText, SourceConfigName,
+/// Production, SessionId, CurrentOwner, EscalationLevel, IsOpen, LastActionTime, NextActionTime, Namespace}</code>. The criterion <code>open</code> is <code>yes</code> or <code>no</code>; absent lists all.
+/// Every value is bound. A longer list than the cap is the caller's truncation, which it reads from the one row it asked for beyond its own cap.</p>
+ClassMethod ListAlerts(pNamespace As %String, ByRef pQuery, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tOpen = $Get(pQuery("open"))
+    If (tOpen '= "") && (tOpen '= "yes") && (tOpen '= "no") Quit ..RefuseCriterion("open", .pHttpStatus, .pFault)
+    Kill tArgs
+    Set tArgs = 1
+    Set tArgs(1) = ..AlertCap(pMax, ..#ALERTSMAX)
+    Set tSql = "SELECT TOP ? " _ ..#ALERTCOLUMNS _ " FROM Ens_Alerting.ManagedAlert"
+    If tOpen '= "" {
+        Set tSql = tSql _ " WHERE IsOpen = ?"
+        Set tArgs(2) = (tOpen = "yes")
+        Set tArgs = 2
+    }
+    Set tSql = tSql _ " ORDER BY ID DESC"
+    Set tSC = ..SqlRows(pNamespace, tSql, .tFound, .tCaught, tArgs...)
+    If $IsObject(tCaught) Quit ..AlertMapped(tCaught, "the managed alert list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Do pRows.%Push(..AlertRow(tFound(tI), pNamespace))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>A stored array of name and value pairs (<code>$ListBuild($ListBuild(name, value), ...)</code>) as the text <code>Name: value</code> joined by <code>; </code>. Pure.</p>
+ClassMethod AlertValuesText(pStored As %String) As %String [ Private ]
+{
+    Set tText = ""
+    If '$ListValid(pStored) Quit tText
+    For tI = 1:1:$ListLength(pStored) {
+        Set tPair = $List(pStored, tI)
+        If '$ListValid(tPair) || ($ListLength(tPair) < 1) Continue
+        Set tText = tText _ $Select(tText = "": "", 1: "; ") _ $List(tPair, 1) _ ": " _ $ListGet(tPair, 2)
+    }
+    Quit tText
+}
+
+/// <p>One history row of the columns <parameter>ALERTACTIONCOLUMNS</parameter> read as <var>pLine</var>: <code>{ActionTime, Username, Action, Reason, OldValues, NewValues}</code>, the action as the vendor's
+/// own words (<code>Ens.DataType.ManagedAlertAction.GetText</code>), the time as the instance's local time.</p>
+ClassMethod AlertActionRow(pLine As %List) As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("ActionTime", ..AlertLocal($List(pLine, 1)), "string")
+    Do tRow.%Set("Username", ..AlertText($List(pLine, 2)), "string")
+    Do tRow.%Set("Action", ##class(Ens.DataType.ManagedAlertAction).GetText(+$List(pLine, 3)), "string")
+    Do tRow.%Set("Reason", ..AlertText($List(pLine, 4)), "string")
+    Do tRow.%Set("OldValues", ..AlertValuesText($List(pLine, 5)), "string")
+    Do tRow.%Set("NewValues", ..AlertValuesText($List(pLine, 6)), "string")
+    Quit tRow
+}
+
+/// <p>The history of the alert named under <parameter>ALERTCRITERION</parameter>, newest first, at most <var>pMax</var> rows (<parameter>ALERTACTIONSMAX</parameter> when that is not above zero):
+/// <code>{ActionTime, Username, Action, Reason, OldValues, NewValues}</code>. A missing or malformed id is a 400 naming the criterion; an alert that is gone has no rows.</p>
+ClassMethod ListAlertActions(pNamespace As %String, ByRef pQuery, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tId = $Get(pQuery(..#ALERTCRITERION))
+    If '..AlertIdOK(tId) Quit ..RefuseCriterion(..#ALERTCRITERION, .pHttpStatus, .pFault)
+    Set tSql = "SELECT TOP ? " _ ..#ALERTACTIONCOLUMNS _ " FROM Ens_Alerting.ManagedAlert_Actions WHERE ManagedAlert = ? ORDER BY element_key DESC"
+    Set tSC = ..SqlRows(pNamespace, tSql, .tFound, .tCaught, ..AlertCap(pMax, ..#ALERTACTIONSMAX), +tId)
+    If $IsObject(tCaught) Quit ..AlertMapped(tCaught, "the managed alert history failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Do pRows.%Push(..AlertActionRow(tFound(tI)))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The alert <var>pId</var> of <var>pNamespace</var> as it stands, in <var>pFacts</var>: <code>found</code> (1 or 0), <code>owner</code>, <code>open</code> (0 or 1), <code>level</code>,
+/// <code>next</code> (the stored UTC stamp) and <code>count</code> (history rows). A fault is <var>pCaught</var>. Nothing is written.</p>
+ClassMethod AlertFacts(pNamespace As %String, pId As %String, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("found") = 0
+    Set pCaught = ""
+    If '..AlertIdOK(pId) Quit
+    Set tSC = ..SqlRows(pNamespace, "SELECT CurrentOwner, IsOpen, EscalationLevel, NextActionTime FROM Ens_Alerting.ManagedAlert WHERE ID = ?", .tFound, .pCaught, +pId)
+    If $IsObject(pCaught) || 'tFound Quit
+    Set pFacts("found") = 1
+    Set pFacts("owner") = ..AlertText($List(tFound(1), 1))
+    Set pFacts("open") = ''$List(tFound(1), 2)
+    Set pFacts("level") = +$List(tFound(1), 3)
+    Set pFacts("next") = ..AlertText($List(tFound(1), 4))
+    Set tSC = ..SqlRows(pNamespace, "SELECT COUNT(*) FROM Ens_Alerting.ManagedAlert_Actions WHERE ManagedAlert = ?", .tCount, .pCaught, +pId)
+    If $IsObject(pCaught) Quit
+    Set pFacts("count") = +$List($Get(tCount(1)), 1)
+}
+
+/// <p>Whether the caller may update an alert whose stored owner is <var>pOwner</var>, as the vendor's own save rule reads it: an unassigned alert or the caller's own needs nothing more, and another
+/// user's needs <parameter>ALERTADMINRESOURCE</parameter> at <parameter>ALERTADMINPERMISSION</parameter>, which <var>pFailedPair</var> names when it is not held.</p>
+ClassMethod AlertAdminHeld(pOwner As %String, Output pFailedPair As %String) As %Boolean [ Private ]
+{
+    Set pFailedPair = ""
+    If (pOwner = "") || (pOwner = $USERNAME) Quit 1
+    Quit $ClassMethod(..GateClass(), "EvaluateRequired", $ListBuild($ListBuild(..#ALERTADMINRESOURCE, ..#ALERTADMINPERMISSION)), .pFailedPair)
+}
+
+/// <p>The state row of alert <var>pId</var> (Story 24.17 Batch 1): <code>{ID, CurrentOwner, IsOpen, EscalationLevel, NextActionTime, ActionCount, Namespace}</code>, the next action time as stored.
+/// With <var>pAction</var> <parameter>TYPEUPDATEALERT</parameter> the caller's right to update the alert (<method>AlertAdminHeld</method>) and the values the query carries are judged as the
+/// write judges them (<method>AlertJudge</method>), so a refusal is answered before anything is stored.</p>
+ClassMethod ReadAlert(pNamespace As %String, pId As %String, pAction As %String, ByRef pQuery, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Do ..AlertFacts(pNamespace, pId, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..AlertMapped(tCaught, "the managed alert read failed", .pHttpStatus, .pFault)
+    If 'tFacts("found") Quit ..AlertGone(.pHttpStatus, .pFault)
+    If (pAction = ..#TYPEUPDATEALERT) && '..AlertAdminHeld(tFacts("owner"), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    ; A review that carries no value yet (the dry run that opens the update dialog) reads the state alone.
+    If (pAction = ..#TYPEUPDATEALERT) && ..AlertHasValues(.pQuery) {
+        Set tSC = ..AlertJudge(pNamespace, .pQuery, .tFacts, .tValues, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Set pRow = {}
+    Do pRow.%Set("ID", pId, "string")
+    Do pRow.%Set("CurrentOwner", tFacts("owner"), "string")
+    Do pRow.%Set("IsOpen", ''tFacts("open"), "boolean")
+    Do pRow.%Set("EscalationLevel", tFacts("level"), "number")
+    Do pRow.%Set("NextActionTime", tFacts("next"), "string")
+    Do pRow.%Set("ActionCount", tFacts("count"), "number")
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    ; The values an update sets, answered as what the alert holds, so a merge that sets one to that leaves it unchanged; the reason reads empty. The next action's minutes read empty
+    ; for a review and, for the re-read of a stored update (no action) that carries minutes, are the minutes left until the stored next action time, as text like the review's, which the read-back compares.
+    Do pRow.%Set("Owner", tFacts("owner"), "string")
+    Do pRow.%Set("Open", ''tFacts("open"), "boolean")
+    Set tMinutes = ""
+    If (pAction '= ..#TYPEUPDATEALERT) && $Data(pQuery(..#ALERTMINUTESKEY)) Set tMinutes = ..AlertNextMinutes(tFacts("next"))
+    Do pRow.%Set("NextActionMinutes", tMinutes, "string")
+    Do pRow.%Set("Reason", "", "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The owners the classic form offers for <var>pNamespace</var> (<code>%SYS.Ensemble.ListAlertingUsers</code> limited to the namespace), sorted, in <var>pNames</var> as a <class>%List</class>.
+/// The vendor adds <code>%All</code> inside its own frame; the process's roles, user and namespace read the same after it (measured). A fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod AlertOwnerNames(pNamespace As %String, Output pNames As %List, Output pCaught, Output pStatus As %Status) [ Private ]
+{
+    Set pNames = ""
+    Set pCaught = ""
+    Set pStatus = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..AlertHere()
+        Kill tUsers
+        Set pStatus = ##class(%SYS.Ensemble).ListAlertingUsers(.tUsers, pNamespace)
+        Set $NAMESPACE = tOrigNS
+        Set tName = ""
+        For {
+            Set tName = $Order(tUsers(tName))
+            If tName = "" Quit
+            Set pNames = pNames _ $ListBuild(tName)
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The owner choices (Story 24.17 Batch 1): <code>{Name, Namespace}</code> for each user the classic form lists as one who can work on managed alerts in <var>pNamespace</var>.</p>
+ClassMethod ListAlertOwners(pNamespace As %String, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Do ..AlertOwnerNames(pNamespace, .tNames, .tCaught, .tStatus)
+    If $IsObject(tCaught) Quit ..AlertMapped(tCaught, "the managed alert owners could not be listed", .pHttpStatus, .pFault)
+    If $$$ISERR(tStatus) Quit ..Statused(..VendorCodesStatus(tStatus, "the managed alert owners"), "the managed alert owners could not be listed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:$ListLength(tNames) {
+        Set tRow = {}
+        Do tRow.%Set("Name", $List(tNames, tI), "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+        Do pRows.%Push(tRow)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The update's values in <var>pQuery</var> as <var>pValues</var>, each member present only when the query carries it: <code>owner</code>, <code>open</code> (0 or 1), <code>level</code>,
+/// <code>minutes</code> and <code>reason</code>. Answers 0 when the open state is neither <code>0</code> nor <code>1</code>. Pure.</p>
+ClassMethod AlertValues(ByRef pQuery, Output pValues) As %Boolean [ Private ]
+{
+    Kill pValues
+    If $Data(pQuery(..#ALERTOWNERKEY)) Set pValues("owner") = pQuery(..#ALERTOWNERKEY)
+    If $Data(pQuery(..#ALERTLEVELKEY)) Set pValues("level") = pQuery(..#ALERTLEVELKEY)
+    If $Data(pQuery(..#ALERTMINUTESKEY)) Set pValues("minutes") = pQuery(..#ALERTMINUTESKEY)
+    Set pValues("reason") = $Get(pQuery(..#ALERTREASONKEY))
+    If $Data(pQuery(..#ALERTOPENKEY)) {
+        Set tOpen = pQuery(..#ALERTOPENKEY)
+        If (tOpen '= 0) && (tOpen '= 1) Quit 0
+        Set pValues("open") = +tOpen
+    }
+    Quit 1
+}
+
+/// <p>Whether <var>pQuery</var> carries any of an update's values. Pure.</p>
+ClassMethod AlertHasValues(ByRef pQuery) As %Boolean [ Private ]
+{
+    Quit $Data(pQuery(..#ALERTOWNERKEY)) || $Data(pQuery(..#ALERTOPENKEY)) || $Data(pQuery(..#ALERTLEVELKEY)) || $Data(pQuery(..#ALERTMINUTESKEY)) || $Data(pQuery(..#ALERTREASONKEY))
+}
+
+/// <p>Judge the update's values against the alert as it stands (<var>pFacts</var>), in the order the spec names them: the owner (unassigned, the caller, or one of
+/// <method>AlertOwnerNames</method>), the escalation level (the current level or one step up or down, never below 0), the next action minutes, the reason, and then that something would change.
+/// Each value outside its rule is 422 with its own code, the first one naming the answer; nothing differing is 409 <code>INTEROP.ALERT.UNCHANGED</code>. <var>pValues</var> is
+/// <method>AlertValues</method>'s. Judged before any vendor call; nothing is written.</p>
+ClassMethod AlertJudge(pNamespace As %String, ByRef pQuery, ByRef pFacts, Output pValues, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    If '..AlertValues(.pQuery, .pValues) Quit ..RefuseCriterion("Open", .pHttpStatus, .pFault)
+    Set tViolations = 0
+    If $Data(pValues("owner")) && (pValues("owner") '= pFacts("owner")) {
+        Set tOwner = pValues("owner")
+        Set tOk = ..AlertOwnerShapeOK(tOwner) && ((tOwner = "") || (tOwner = $USERNAME))
+        If 'tOk && ..AlertOwnerShapeOK(tOwner) {
+            Do ..AlertOwnerNames(pNamespace, .tNames, .tCaught, .tStatus)
+            If $IsObject(tCaught) Quit ..AlertMapped(tCaught, "the managed alert owners could not be listed", .pHttpStatus, .pFault)
+            If $$$ISERR(tStatus) Quit ..Statused(..VendorCodesStatus(tStatus, "the managed alert owners"), "the managed alert owners could not be listed", .pHttpStatus, .pFault)
+            Set tOk = ''$ListFind(tNames, tOwner)
+        }
+        If 'tOk Set tViolations($Increment(tViolations)) = $ListBuild("Owner", ##class(OcuPilot.Api.InteropError).#ALERTOWNER)
+    }
+    If $Data(pValues("level")) {
+        Set tLevel = pValues("level")
+        If '..AlertLevelShapeOK(tLevel) || ($ZAbs(tLevel - pFacts("level")) > 1) Set tViolations($Increment(tViolations)) = $ListBuild("EscalationLevel", ##class(OcuPilot.Api.InteropError).#ALERTLEVEL)
+    }
+    If $Data(pValues("minutes")) && '..AlertMinutesOK(pValues("minutes")) Set tViolations($Increment(tViolations)) = $ListBuild("NextActionMinutes", ##class(OcuPilot.Api.InteropError).#ALERTNEXTACTION)
+    If '..AlertReasonOK(pValues("reason")) Set tViolations($Increment(tViolations)) = $ListBuild("Reason", ##class(OcuPilot.Api.InteropError).#ALERTREASON)
+    If tViolations Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    Set tChanges = 0
+    If $Data(pValues("owner")) && (pValues("owner") '= pFacts("owner")) Set tChanges = tChanges + 1
+    If $Data(pValues("open")) && (pValues("open") '= pFacts("open")) Set tChanges = tChanges + 1
+    If $Data(pValues("level")) && (+pValues("level") '= pFacts("level")) Set tChanges = tChanges + 1
+    If $Data(pValues("minutes")) Set tChanges = tChanges + 1
+    If 'tChanges Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ALERTUNCHANGED, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>Serve the ManagedAlerts and ManagedAlertActions endpoints after <method>Invoke</method>'s gate (Story 24.17 Batch 1): the lists, the <code>ALERT</code> read, the <code>ALERTOWNERS</code> read
+/// and the write <code>UPDATEALERT</code>.</p>
+ClassMethod InvokeAlerts(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pEndpoint = ..#ENDPOINTMANAGEDALERTACTIONS {
+                Set tSC = ..ListAlertActions(pNamespace, .pQuery, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            } Else {
+                Set tSC = ..ListAlerts(pNamespace, .pQuery, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            }
+            Quit
+        }
+        If pType = ..#TYPEALERTOWNERS {
+            Set tSC = ..ListAlertOwners(pNamespace, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsAlertWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && (tAction '= ..#TYPEUPDATEALERT) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tId = $Get(pQuery(..#IDKEY))
+        If pType = ..#TYPEUPDATEALERT {
+            Set tSC = ..PerformAlertUpdate(pNamespace, tId, .pQuery, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadAlert(pNamespace, tId, tAction, .pQuery, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..AlertMapped(ex, "the managed alert call failed inside the port", .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Update alert <var>pId</var> of <var>pNamespace</var> as the classic Alerts page's Update does (Story 24.17 Batch 1), through the vendor's own
+/// <code>UpdateManagedAlert</code> with only the values that differ and their bits, in this request and with no transaction. The sequence, each refusal before any vendor call:</p>
+/// <ol>
+/// <li>An alert that is gone, or an id of the wrong shape: 404 <code>INTEROP.ALERT.NOTFOUND</code>.</li>
+/// <li>An alert another user owns needs <code>%Ens_AlertAdministration:USE</code>, 403 naming the pair.</li>
+/// <li>The values (<method>AlertJudge</method>): 422 for a value outside its rule, 409 <code>INTEROP.ALERT.UNCHANGED</code> when none differs.</li>
+/// <li>The vendor's update runs in the namespace; the namespace is restored; OcuPilot's own audit row is recorded (<method>AuditRuntime</method>) whatever the vendor answered, naming the namespace,
+/// each changed field with its new value and whether it completed, and never the reason. A vendor error is 500 <code>INTERNAL</code>.</li>
+/// </ol>
+ClassMethod PerformAlertUpdate(pNamespace As %String, pId As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Do ..AlertFacts(pNamespace, pId, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..AlertMapped(tCaught, "the managed alert read failed", .pHttpStatus, .pFault)
+    If 'tFacts("found") Quit ..AlertGone(.pHttpStatus, .pFault)
+    If '..AlertAdminHeld(tFacts("owner"), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    Set tSC = ..AlertJudge(pNamespace, .pQuery, .tFacts, .tValues, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    ; Only what differs goes to the vendor, with its bits, as the classic form sends it.
+    Kill tChanges
+    Set tBits = 0
+    Set tEffects = {}
+    Set tChanged = {}
+    If $Data(tValues("owner")) && (tValues("owner") '= tFacts("owner")) {
+        Set tChanges("CurrentOwner") = tValues("owner")
+        Set tBits = tBits + ..#ALERTBITOWNER
+        Do tChanged.%Set("CurrentOwner", tValues("owner"), "string")
+    }
+    If $Data(tValues("open")) && (tValues("open") '= tFacts("open")) {
+        Set tChanges("IsOpen") = tValues("open")
+        Set tBits = tBits + ..#ALERTBITOPEN
+        Do tChanged.%Set("IsOpen", ''tValues("open"), "boolean")
+    }
+    If $Data(tValues("level")) && (+tValues("level") '= tFacts("level")) {
+        Set tChanges("EscalationLevel") = +tValues("level")
+        Set tBits = tBits + ..#ALERTBITLEVEL
+        Do tChanged.%Set("EscalationLevel", +tValues("level"), "number")
+    }
+    If $Data(tValues("minutes")) {
+        Set tNext = $System.SQL.DATEADD("mi", +tValues("minutes"), $ZDateTime($ZTimeStamp, 3, , 3))
+        Set tChanges("NextActionTime") = tNext
+        Set tBits = tBits + ..#ALERTBITNEXT
+        Do tChanged.%Set("NextActionTime", tNext, "string")
+    }
+    Set tVendorSC = $$$OK
+    Set tRaised = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..AlertHere()
+        Set tVendorSC = ..VendorAlertUpdate(pId, tBits, .tChanges, tValues("reason"))
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tRaised = ex
+    }
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("changed", tChanged)
+    Do tEffects.%Set("completed", $$$ISOK(tVendorSC) && '$IsObject(tRaised), "boolean")
+    Do ..AuditRuntime(..#VERBALERTUPDATE, ..#ENTITYALERT, pId, tEffects)
+    If $IsObject(tRaised) Quit ..Statused(..VendorCodesStatus(tRaised.AsStatus(), "the managed alert update"), "the managed alert update failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the managed alert update"), "the managed alert update failed", .pHttpStatus, .pFault)
+    Set tReadSC = ..ReadAlert(pNamespace, pId, "", .pQuery, .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) || '$IsObject(tRow) {
+        Set tRow = {}
+        Do tRow.%Set("ID", pId, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the update of alert <var>pId</var> with the values <var>pQuery</var> carries (Story 24.17 Batch 1): the alert read, each refusal as one guard that stops
+/// the update, the changed values, and the vendor's <code>UpdateManagedAlert</code>. Every value is rendered as a literal, so nothing the query carries runs as code. <code>""</code> for an id or a value
+/// the port would refuse by shape, which renders no draft. Nothing here runs; a person runs it.</p>
+ClassMethod AlertSnippet(pId As %String, ByRef pQuery) As %String [ Private ]
+{
+    If '..AlertIdOK(pId) || '..AlertValues(.pQuery, .tValues) Quit ""
+    If $Data(tValues("owner")) && '..AlertOwnerShapeOK(tValues("owner")) Quit ""
+    If $Data(tValues("level")) && '..AlertLevelShapeOK(tValues("level")) Quit ""
+    If $Data(tValues("minutes")) && '..AlertMinutesOK(tValues("minutes")) Quit ""
+    If '..AlertReasonOK(tValues("reason")) Quit ""
+    Set tNL = $Char(10)
+    Set tError = "$System.Status.Error(5001, "
+    Set tText = tNL _ " Set tId = " _ ..Literal(pId) _ ", tOk = 1, tBits = 0"
+    Set tText = tText _ tNL _ " If '##class(Ens.Alerting.ManagedAlert).%ExistsId(tId) Set tOk = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONALERTNOTFOUND) _ ")"
+    Set tText = tText _ tNL _ " If tOk Set tAlert = ##class(Ens.Alerting.ManagedAlert).%OpenId(tId)"
+    Set tText = tText _ tNL _ " If tOk, (tAlert.CurrentOwner '= """") && (tAlert.CurrentOwner '= $Username) && '$System.Security.Check(" _ ..Literal(..#ALERTADMINRESOURCE) _ ", " _ ..Literal(..#ALERTADMINPERMISSION) _ ") Set tOk = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Kernel.Denial).Reason()) _ ")"
+    If $Data(tValues("owner")) && (tValues("owner") '= "") {
+        Set tText = tText _ tNL _ " If tOk, " _ ..Literal(tValues("owner")) _ " '= tAlert.CurrentOwner { Do ##class(%SYS.Ensemble).ListAlertingUsers(.tOwners, $Namespace) If (" _ ..Literal(tValues("owner")) _ " '= $Username) && '$Data(tOwners(" _ ..Literal(tValues("owner")) _ ")) Set tOk = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONALERTOWNER) _ ") }"
+    }
+    If $Data(tValues("level")) {
+        Set tText = tText _ tNL _ " If tOk, $ZAbs(" _ +tValues("level") _ " - tAlert.EscalationLevel) > 1 Set tOk = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONALERTLEVEL) _ ")"
+    }
+    ; Each line opens no block it does not close, so the script runs pasted line by line (AD-59).
+    Set tText = tText _ tNL _ " Kill tNew"
+    If $Data(tValues("owner")) Set tText = tText _ tNL _ " If tOk, " _ ..Literal(tValues("owner")) _ " '= tAlert.CurrentOwner Set tNew(""CurrentOwner"") = " _ ..Literal(tValues("owner")) _ ", tBits = tBits + " _ ..#ALERTBITOWNER
+    If $Data(tValues("open")) Set tText = tText _ tNL _ " If tOk, " _ tValues("open") _ " '= tAlert.IsOpen Set tNew(""IsOpen"") = " _ tValues("open") _ ", tBits = tBits + " _ ..#ALERTBITOPEN
+    If $Data(tValues("level")) Set tText = tText _ tNL _ " If tOk, " _ +tValues("level") _ " '= tAlert.EscalationLevel Set tNew(""EscalationLevel"") = " _ +tValues("level") _ ", tBits = tBits + " _ ..#ALERTBITLEVEL
+    If $Data(tValues("minutes")) Set tText = tText _ tNL _ " If tOk Set tNew(""NextActionTime"") = $System.SQL.DATEADD(""mi"", " _ +tValues("minutes") _ ", $ZDateTime($ZTimeStamp, 3, , 3)), tBits = tBits + " _ ..#ALERTBITNEXT
+    Set tText = tText _ tNL _ " If tOk, 'tBits Set tOk = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONALERTUNCHANGED) _ ")"
+    Set tText = tText _ tNL _ " If tOk Set tSC = ##class(Ens.Alerting.ManagedAlert).UpdateManagedAlert(tId, tBits, .tNew, " _ ..Literal(tValues("reason")) _ ")"
+    Quit tText
 }
 
 /// <p>The code prefix of a startup refusal: <code>INTEROP.STARTUP.</code> and the token <method>StartupRefusal</method> answers.</p>
@@ -9630,6 +15648,318 @@ ClassMethod TransformSnippet(pName As %String, ByRef pQuery) As %String [ Privat
     Quit tText
 }
 
+/// <p>The Suspended messages endpoint (Story 24.16): <code>LIST</code> (the namespace's headers whose status is Suspended), the four composed reads
+/// <code>RESUBMIT</code>, <code>EDITSUBMIT</code>, <code>DISCARD</code> and <code>DELETE</code>, and the four writes <code>RESUBMITMESSAGES</code>,
+/// <code>EDITRESUBMIT</code>, <code>DISCARDMESSAGES</code> and <code>DELETEMESSAGES</code>. It extends the resend family of the Messages endpoint
+/// (<method>ReadResend</method>, <method>PerformResend</method>, <method>ReadEdit</method>), which each carry the action as a kind
+/// (<method>SuspendedKind</method>).</p>
+Parameter ENDPOINTSUSPENDEDMESSAGES = "SuspendedMessages";
+
+/// <p>The pair a discard and a delete add to the Messages pairs: the resource of the classic Suspended Messages page's discard and delete.</p>
+Parameter DISCARDPAIR = "%Ens_MessageDiscard:USE";
+
+Parameter TYPERESUBMIT = "RESUBMIT";
+
+Parameter TYPEEDITSUBMIT = "EDITSUBMIT";
+
+Parameter TYPEDISCARD = "DISCARD";
+
+Parameter TYPEDELETE = "DELETE";
+
+Parameter TYPERESUBMITMESSAGES = "RESUBMITMESSAGES";
+
+Parameter TYPEEDITRESUBMIT = "EDITRESUBMIT";
+
+Parameter TYPEDISCARDMESSAGES = "DISCARDMESSAGES";
+
+Parameter TYPEDELETEMESSAGES = "DELETEMESSAGES";
+
+/// <p>The most rows a list of suspended messages answers when the call gives no cap, as the classic page's own query; and the status values the
+/// list reads and a discard writes.</p>
+Parameter SUSPENDEDMAX As INTEGER = 2000;
+
+Parameter STATUSSUSPENDEDVALUE As INTEGER = 5;
+
+Parameter STATUSDISCARDEDVALUE As INTEGER = 4;
+
+/// <p>The audit verb of a discard; a delete takes <parameter>VERBDELETE</parameter>.</p>
+Parameter VERBDISCARD = "discard";
+
+/// <p>The statement of the suspended list: <method>MessageRow</method>'s search columns, newest first, the cap and the status bound.</p>
+Parameter SUSPENDEDSQL = "SELECT TOP ? ID, TimeCreated, %EXTERNAL(Status), SourceConfigName, TargetConfigName, MessageBodyClassName, SessionId, %EXTERNAL(Type), IsError FROM Ens.MessageHeader WHERE Status = ? ORDER BY ID DESC";
+
+/// <p>The statements the delete of a suspended message reads and writes with, each bound: the header's body, the headers that name a body, and
+/// the header's removal.</p>
+Parameter DELETEBODYSQL = "SELECT MessageBodyId, MessageBodyClassName FROM Ens.MessageHeader WHERE ID = ?";
+
+Parameter DELETESHAREDSQL = "SELECT COUNT(*) FROM Ens.MessageHeader WHERE MessageBodyId = ? AND MessageBodyClassName = ?";
+
+Parameter DELETEHEADERSQL = "DELETE FROM Ens.MessageHeader WHERE ID = ?";
+
+/// <p>The verdict words of a suspended action, as <code>id=verdict</code> pairs a stored payload carries.</p>
+Parameter SUSPENDEDVERDICTS = "gone,notsuspended,nobody,targetoff,noreplyqueue,resubmit,discard,delete";
+
+/// <p>The action a Suspended messages type belongs to, <code>resubmit</code>, <code>edit</code>, <code>discard</code> or <code>delete</code>, for the read and the
+/// write of each; <code>""</code> for any other type. Pure.</p>
+ClassMethod SuspendedKind(pType As %String) As %String
+{
+    If (pType = ..#TYPERESUBMIT) || (pType = ..#TYPERESUBMITMESSAGES) Quit "resubmit"
+    If (pType = ..#TYPEEDITSUBMIT) || (pType = ..#TYPEEDITRESUBMIT) Quit "edit"
+    If (pType = ..#TYPEDISCARD) || (pType = ..#TYPEDISCARDMESSAGES) Quit "discard"
+    If (pType = ..#TYPEDELETE) || (pType = ..#TYPEDELETEMESSAGES) Quit "delete"
+    Quit ""
+}
+
+/// <p>The write of the action <var>pKind</var> (<method>SuspendedKind</method>), <code>""</code> for any other word. Pure.</p>
+ClassMethod SuspendedWriteType(pKind As %String) As %String
+{
+    Quit $Case(pKind, "resubmit": ..#TYPERESUBMITMESSAGES, "edit": ..#TYPEEDITRESUBMIT, "discard": ..#TYPEDISCARDMESSAGES, "delete": ..#TYPEDELETEMESSAGES, : "")
+}
+
+/// <p>Whether <var>pType</var> is one of the four writes of the Suspended messages endpoint (Story 24.16): an action-style write over a
+/// port-composed read of the messages, needing WRITE on the namespace's globals database and no routines database.</p>
+ClassMethod IsSuspendedWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPERESUBMITMESSAGES) || (pType = ..#TYPEEDITRESUBMIT) || (pType = ..#TYPEDISCARDMESSAGES) || (pType = ..#TYPEDELETEMESSAGES)
+}
+
+/// <p>The headers of <var>pNamespace</var> whose status is Suspended (Story 24.16), newest first, at most <var>pMax</var>
+/// (<parameter>SUSPENDEDMAX</parameter> when that is not above zero), as <code>{ID, TimeCreated, SessionId, Error, Type, Source, Target,
+/// BodyClass}</code>. The status and the cap are bound and no body is read.</p>
+ClassMethod ListSuspended(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tTop = $Select(pMax > 0: pMax, 1: ..#SUSPENDEDMAX)
+    Set tSC = ..SqlRows(pNamespace, ..#SUSPENDEDSQL, .tFound, .tCaught, tTop, ..#STATUSSUSPENDEDVALUE)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the suspended messages could not be listed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tRow = ..MessageRow(tFound(tI), "", "", 1)
+        Do tRow.%Remove("Status")
+        Do pRows.%Push(tRow)
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the Suspended messages endpoint after <method>Invoke</method>'s gate (Story 24.16): <code>LIST</code> (<method>ListSuspended</method>) and the
+/// four actions' reads and writes. The messages travel under <parameter>IDKEY</parameter> as the set <method>MessageSet</method> reads, or for an edit the
+/// one message; the fields of an edit under <parameter>FIELDSKEY</parameter>; the digest a person reviewed under <parameter>DIGESTKEY</parameter>. A read
+/// composed for an action carries it under <parameter>ACTIONKEY</parameter>, which must be the write of its own action, else 501.</p>
+ClassMethod InvokeSuspended(pNamespace As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListSuspended(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tKind = ..SuspendedKind(pType)
+        Set tWrite = ..IsSuspendedWrite(pType)
+        Set tAction = $Select(tWrite: pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && (tAction '= ..SuspendedWriteType(tKind)) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tId = $Get(pQuery(..#IDKEY))
+        Set tReviewed = $Get(pQuery(..#DIGESTKEY))
+        If tKind = "edit" {
+            If '$Match(tId, ..#MESSAGEIDPATTERN) {
+                Set tSC = ..RefuseCriterion("message", .pHttpStatus, .pFault)
+                Quit
+            }
+            If tWrite {
+                Set tSC = ..PerformEditResend(pNamespace, tId, $Get(pQuery(..#FIELDSKEY)), tReviewed, .pResult, .pHttpStatus, .pFault, 1)
+            } Else {
+                Set tSC = ..ReadEdit(pNamespace, tId, tAction, $Get(pQuery(..#FIELDSKEY)), tReviewed, .pResult, .tPlan, .pHttpStatus, .pFault, 1)
+            }
+            Quit
+        }
+        If tWrite {
+            Set tSC = ..PerformResend(pNamespace, tId, tReviewed, .pResult, .pHttpStatus, .pFault, tKind)
+        } Else {
+            Set tSC = ..ReadResend(pNamespace, tId, tAction, tReviewed, .pResult, .pHttpStatus, .pFault, tKind)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the suspended messages call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Whether the body class <var>pClass</var> is one the classic Suspended Messages delete removes a body of: a compiled class that is persistent or a
+/// stream, whose <code>ENSPURGE</code> parameter is not 0. Called while the message's namespace is switched.</p>
+ClassMethod BodyPurgeableHere(pClass As %String) As %Boolean [ Private ]
+{
+    If '$Match(pClass, ..#CLASSNAMEPATTERN) || '##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit 0
+    If '($ClassMethod(pClass, "%IsA", "%Library.Persistent") || $ClassMethod(pClass, "%IsA", "%Stream.Object")) Quit 0
+    Quit ($Parameter(pClass, "ENSPURGE") '= 0)
+}
+
+/// <p>The vendor's status codes a delete of a body that is already gone answers, which the classic page treats as done: an object not found, a file that cannot be
+/// deleted and a value that is not an instance (<code>DeleteObjectNotFound</code>, <code>FileCanNotDelete</code>, <code>NotAnInstanceError</code>).</p>
+Parameter DELETETOLERATEDCODES = "5810,5019,5825";
+
+/// <p>Whether <var>pStatus</var> is one of <parameter>DELETETOLERATEDCODES</parameter>. Pure.</p>
+ClassMethod DeleteTolerated(pStatus As %Status) As %Boolean [ Private ]
+{
+    Set tTolerated = 0
+    For tI = 1:1:$Length(..#DELETETOLERATEDCODES, ",") {
+        If $System.Status.Equals(pStatus, +$Piece(..#DELETETOLERATEDCODES, ",", tI)) {
+            Set tTolerated = 1
+            Quit
+        }
+    }
+    Quit tTolerated
+}
+
+/// <p>Delete the message header <var>pId</var> as the classic Suspended Messages page's delete does (Story 24.16), in the namespace the caller has already
+/// switched to: its body, with its search table entries, when no other header names it and the class is one <method>BodyPurgeableHere</method> admits, then
+/// the header by a bound delete. The classic page's journaling suspension and bitmap clean-up are not part of it. A body that cannot be deleted leaves the
+/// header in place; a header that is gone or a delete SQL refuses is an error status. A search table removal that fails does not stop the delete: its status
+/// is <var>pSearchSC</var>, for the caller to log once the namespace is restored. Every value is bound.</p>
+ClassMethod DeleteHeaderHere(pId As %String, Output pSearchSC As %Status) As %Status [ Private ]
+{
+    Set pSearchSC = $$$OK
+    Set tStatement = ##class(%SQL.Statement).%New()
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, ..#DELETEBODYSQL, pId)
+    If tResult.%SQLCODE < 0 Quit $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
+    If 'tResult.%Next() Quit $$$ERROR($$$DeleteObjectNotFound, "Ens.MessageHeader", pId)
+    Set tBodyId = tResult.%GetData(1)
+    Set tClass = tResult.%GetData(2)
+    Set tResult = ""
+    If tBodyId '= "" {
+        Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, ..#DELETESHAREDSQL, tBodyId, tClass)
+        If tResult.%SQLCODE < 0 Quit $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
+        Set tHolders = $Select(tResult.%Next(): +tResult.%GetData(1), 1: 0)
+        Set tResult = ""
+        If tHolders = 1 {
+            If (tClass = "") && (tBodyId = +tBodyId) Set tClass = "Ens.MessageBody"
+            If (tClass '= "") && ..BodyPurgeableHere(tClass) {
+                Try {
+                    Set tBodySC = $ClassMethod(tClass, "%DeleteId", tBodyId)
+                } Catch ex {
+                    Set tBodySC = ex.AsStatus()
+                }
+                If $$$ISOK(tBodySC) || ..DeleteTolerated(tBodySC) {
+                    Set tSearchSC = ..VendorRemoveSearchEntries(tClass, tBodyId)
+                    If $$$ISERR(tSearchSC) && '..DeleteTolerated(tSearchSC) Set pSearchSC = tSearchSC
+                } Else {
+                    Quit tBodySC
+                }
+            }
+        }
+    }
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, ..#DELETEHEADERSQL, pId)
+    If tResult.%SQLCODE < 0 Quit $$$ERROR($$$SQLCode, tResult.%SQLCODE, tResult.%Message)
+    Quit $$$OK
+}
+
+/// <p><code>Ens.SearchTableBase.RemoveSearchTableEntries</code> of the deleted body <var>pId</var> of class <var>pClass</var>, as the classic page's delete calls it
+/// (Story 24.16). Called while the message's namespace is switched. Overridable so a test can fail it; production never overrides it.</p>
+ClassMethod VendorRemoveSearchEntries(pClass As %String, pId As %String) As %Status [ Private ]
+{
+    Quit ##class(Ens.SearchTableBase).RemoveSearchTableEntries(pClass, pId, 1)
+}
+
+/// <p>The vendor's act on the suspended header <var>pId</var> in <var>pNamespace</var>, switched by explicit save and restore (Story 24.16): <code>resubmit</code>
+/// is <code>Ens.MessageHeader.ResubmitMessage</code>, which keeps the id; <code>discard</code> opens the header, <code>SetStatus</code> to Discarded and saves it, as the
+/// classic page does; <code>delete</code> is <method>DeleteHeaderHere</method>. A thrown fault is <var>pCaught</var>. Only vendor classes and this class run while it
+/// is switched; a search table removal the delete could not make is logged, as its error codes alone, once the namespace is restored. Overridable so a test can
+/// fail one message; production never overrides it.</p>
+ClassMethod VendorSuspended(pNamespace As %String, pKind As %String, pId As %String, Output pCaught) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tSearchSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        If pKind = "resubmit" {
+            Set tSC = ##class(Ens.MessageHeader).ResubmitMessage(pId)
+        } ElseIf pKind = "discard" {
+            Set tHeader = ##class(Ens.MessageHeader).%OpenId(pId, , .tSC)
+            If $IsObject(tHeader) {
+                Do tHeader.SetStatus(..#STATUSDISCARDEDVALUE)
+                Set tSC = tHeader.%Save()
+            } ElseIf $$$ISOK(tSC) {
+                Set tSC = $$$ERROR($$$LoadObjectNotFound, "Ens.MessageHeader", pId)
+            }
+            Set tHeader = ""
+        } Else {
+            Set tSC = ..DeleteHeaderHere(pId, .tSearchSC)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    If $$$ISERR(tSearchSC) Do ..LogFault("the search table entries of a deleted message body could not be removed", ..VendorCodesStatus(tSearchSC, "the search table removal"))
+    Quit tSC
+}
+
+/// <p>The lines <method>Snippet</method> adds for the Suspended messages write <var>pType</var> (Story 24.16), from the stored payload of <var>pContext</var> and
+/// the query <var>pQuery</var>: for a resubmit, a discard or a delete, one block for each id of the set <var>pId</var> names (<method>MessageSet</method>) that the payload's
+/// <code>Verdicts</code> does not read as another verdict, each failure kept in <code>tSC</code>; for an edit-and-resubmit, <method>MessageSnippet</method>'s lines ending in
+/// <code>ResubmitMessage</code>. Each block acts only on a header whose status still reads Suspended when the script runs, and a delete's block does what
+/// <method>DeleteHeaderHere</method> does: a body it cannot delete keeps the header, and a refused header delete is kept in <code>tSC</code>. An id that is not of the
+/// shape <parameter>MESSAGEIDPATTERN</parameter> makes <code>""</code> (no draft is rendered). Every id, name and value is a string literal, so nothing the payload carries
+/// runs as code.</p>
+ClassMethod SuspendedSnippet(pType As %String, pId As %String, ByRef pQuery, pContext As %DynamicObject) As %String [ Private ]
+{
+    Set tKind = ..SuspendedKind(pType)
+    If tKind = "edit" {
+        If '$Match(pId, ..#MESSAGEIDPATTERN) Quit ""
+        Quit ..MessageSnippet(..#TYPEEDITRESEND, pId, .pQuery, pContext, 1)
+    }
+    If '..MessageSet(pId, .tAll) Quit ""
+    Set tPayload = ""
+    If $IsObject(pContext) && (pContext.%GetTypeOf("payload") = "object") Set tPayload = pContext.%Get("payload")
+    Kill tReviewed
+    If $IsObject(tPayload) && (tPayload.%GetTypeOf("Verdicts") = "string") {
+        Set tVerdicts = tPayload.%Get("Verdicts")
+        For tI = 1:1:$Length(tVerdicts, ",") {
+            Set tPair = $Piece(tVerdicts, ",", tI)
+            If $Match($Piece(tPair, "=", 1), ..#MESSAGEIDPATTERN) && $ListFind($ListFromString(..#SUSPENDEDVERDICTS), $Piece(tPair, "=", 2)) Set tReviewed($Piece(tPair, "=", 1)) = $Piece(tPair, "=", 2)
+        }
+    }
+    ; An id the review read as another verdict is left out; one it did not read is in the set the target names, and every block checks the status itself.
+    Set tIds = ""
+    For tI = 1:1:$ListLength(tAll) {
+        If $Data(tReviewed($List(tAll, tI))) && (tReviewed($List(tAll, tI)) '= tKind) Continue
+        Set tIds = tIds _ $ListBuild($List(tAll, tI))
+    }
+    Set tNL = $Char(10)
+    Set tSuspended = "$IsObject(tHeader) && (tHeader.Status = " _ ..#STATUSSUSPENDEDVALUE _ ")"
+    Set tText = tNL _ " Set tSC = 1"
+    For tI = 1:1:$ListLength(tIds) {
+        Set tId = ..Literal($List(tIds, tI))
+        Set tText = tText _ tNL _ " Set tHeader = ##class(Ens.MessageHeader).%OpenId(" _ tId _ ")"
+        If tKind = "resubmit" {
+            Set tText = tText _ tNL _ " Set tGo = " _ tSuspended _ ", tHeader = """""
+            Set tText = tText _ tNL _ " If tGo Set tSC = $System.Status.AppendStatus(tSC, ##class(Ens.MessageHeader).ResubmitMessage(" _ tId _ "))"
+        } ElseIf tKind = "discard" {
+            Set tText = tText _ tNL _ " If " _ tSuspended _ " { Do tHeader.SetStatus(" _ ..#STATUSDISCARDEDVALUE _ ") Set tSC = $System.Status.AppendStatus(tSC, tHeader.%Save()) }"
+            Set tText = tText _ tNL _ " Set tHeader = """""
+        } Else {
+            Set tText = tText _ tNL _ " If " _ tSuspended _ " { Set tGo = 1, tBodyClass = tHeader.MessageBodyClassName, tBodyId = tHeader.MessageBodyId } Else { Set tGo = 0, tBodyClass = """", tBodyId = """" }"
+            Set tText = tText _ tNL _ " Set tHeader = """""
+            Set tText = tText _ tNL _ " Set tHolders = 0 If tBodyId '= """" { Set tResult = ##class(%SQL.Statement).%ExecDirect(, ""SELECT COUNT(*) FROM Ens.MessageHeader WHERE MessageBodyId = ? AND MessageBodyClassName = ?"", tBodyId, tBodyClass) If tResult.%Next() Set tHolders = tResult.%GetData(1) }"
+            Set tText = tText _ tNL _ " If (tHolders = 1) && (tBodyClass = """") && (tBodyId = +tBodyId) Set tBodyClass = ""Ens.MessageBody"""
+            Set tText = tText _ tNL _ " Set tBodySC = 1 If (tHolders = 1) && (tBodyClass '= """") && ##class(%Dictionary.CompiledClass).%ExistsId(tBodyClass) && ($ClassMethod(tBodyClass, ""%IsA"", ""%Library.Persistent"") || $ClassMethod(tBodyClass, ""%IsA"", ""%Stream.Object"")) && ($Parameter(tBodyClass, ""ENSPURGE"") '= 0) { Set tBodySC = $ClassMethod(tBodyClass, ""%DeleteId"", tBodyId) If $System.Status.IsOK(tBodySC) || $System.Status.Equals(tBodySC, " _ ..#DELETETOLERATEDCODES _ ") { Set tBodySC = 1 Do ##class(Ens.SearchTableBase).RemoveSearchTableEntries(tBodyClass, tBodyId, 1) } }"
+            Set tText = tText _ tNL _ " Set tSC = $System.Status.AppendStatus(tSC, tBodySC)"
+            Set tText = tText _ tNL _ " If tGo && $System.Status.IsOK(tBodySC) { Set tResult = ##class(%SQL.Statement).%ExecDirect(, ""DELETE FROM Ens.MessageHeader WHERE ID = ?"", " _ tId _ ") If tResult.%SQLCODE < 0 Set tSC = $System.Status.AppendStatus(tSC, $System.Error.FromSQLCode(tResult.%SQLCODE, tResult.%Message).Status) }"
+        }
+    }
+    Quit tText
+}
+
 /// <p><var>pValue</var> as an ObjectScript string literal, a control character spelled as a
 /// <code>$Char</code>.</p>
 ClassMethod Literal(pValue As %String) As %String [ Private ]
@@ -9639,6 +15969,1263 @@ ClassMethod Literal(pValue As %String) As %String [ Private ]
         If tText [ $Char(tCode) Set tText = $Replace(tText, $Char(tCode), """_$Char(" _ tCode _ ")_""")
     }
     Quit tText
+}
+
+/// <p>The Business rule log endpoint (Story 24.17 Batch 2): <code>LIST</code> (the namespace's <code>Ens_Rule.Log</code> rows, newest first), <code>RULELOGSTATE</code> (the entries counted, which
+/// a purge's review and fingerprint read) and the write <code>PURGERULELOG</code>, the vendor's <code>Ens.Purge.PurgeRuleLogsByDate</code> with the days to keep in <parameter>PURGEDAYSKEY</parameter>.</p>
+Parameter ENDPOINTRULELOG = "RuleLog";
+
+/// <p>The Business process log endpoint (Story 24.17 Batch 2): <code>LIST</code> (the namespace's <code>Ens.BusinessProcess</code> rows, newest first), <code>PROCESSLOGSTATE</code> and the write
+/// <code>PURGEPROCESSLOG</code>, the vendor's <code>Ens.Purge.PurgeBusinessProcessesByDate</code> with integrity kept.</p>
+Parameter ENDPOINTPROCESSLOG = "ProcessLog";
+
+/// <p>The pairs each log endpoint requires: the portal's and the classic page's own resource (<code>EnsPortal.RuleLog</code>'s <code>%Ens_RuleLog:USE</code>,
+/// <code>EnsPortal.BPInstances</code>'s <code>%Ens_Jobs:READ</code>). A purge adds <parameter>LOGPURGEPAIR</parameter>, both pages' edit resource, and the gate's WRITE on the namespace's
+/// globals database. Every read also needs the SQL SELECT privilege on the log's table (<method>LogSelectGate</method>).</p>
+Parameter RULELOGPAIRS = "%Ens_Portal:USE,%Ens_RuleLog:USE";
+
+Parameter PROCESSLOGPAIRS = "%Ens_Portal:USE,%Ens_Jobs:READ";
+
+Parameter LOGPURGEPAIR = "%Ens_Purge:USE";
+
+Parameter TYPERULELOGSTATE = "RULELOGSTATE";
+
+Parameter TYPEPURGERULELOG = "PURGERULELOG";
+
+Parameter TYPEPROCESSLOGSTATE = "PROCESSLOGSTATE";
+
+Parameter TYPEPURGEPROCESSLOG = "PURGEPROCESSLOG";
+
+/// <p>The most rows each log list answers to a call that names no cap of its own: the classic pages' largest page size, within the 5 seconds the read may take (measured, Task 0).</p>
+Parameter RULELOGMAX As INTEGER = 2000;
+
+Parameter PROCESSLOGMAX As INTEGER = 2000;
+
+/// <p>The two kinds of log, which <method>PurgeFrame</method> takes to run one log's purge.</p>
+Parameter LOGKINDRULE = "rulelog";
+
+Parameter LOGKINDPROCESS = "processlog";
+
+Parameter ENTITYRULELOG = "interop-rule-log";
+
+Parameter ENTITYPROCESSLOG = "interop-process-log";
+
+/// <p>The columns of a list row, in the order <method>RuleLogRow</method> and <method>ProcessLogRow</method> read them, and the tables they come from.</p>
+Parameter RULELOGCOLUMNS = "ID, TimeExecuted, SessionId, RuleName, ConfigName, IsError, ReturnValue, Reason";
+
+Parameter PROCESSLOGCOLUMNS = "ID, %TimeCreated, %TimeCompleted, %IsCompleted, %ConfigName, %SessionId";
+
+Parameter RULELOGTABLE = "Ens_Rule.Log";
+
+Parameter PROCESSLOGTABLE = "Ens.BusinessProcess";
+
+/// <p>The criteria of the two lists: <code>errors</code> and <code>completed</code>, each <code>yes</code> or <code>no</code>; absent lists all.</p>
+Parameter LOGERRORSCRITERION = "errors";
+
+Parameter LOGCOMPLETEDCRITERION = "completed";
+
+/// <p>Whether <var>pType</var> is one of the two log purges, which need WRITE on the namespace's globals database.</p>
+ClassMethod IsLogPurgeWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEPURGERULELOG) || (pType = ..#TYPEPURGEPROCESSLOG)
+}
+
+/// <p>The kind of log <var>pEndpoint</var> serves, <parameter>LOGKINDRULE</parameter> or <parameter>LOGKINDPROCESS</parameter>, or <code>""</code>. Pure.</p>
+ClassMethod LogKind(pEndpoint As %String) As %String
+{
+    Quit $Select(pEndpoint = ..#ENDPOINTRULELOG: ..#LOGKINDRULE, pEndpoint = ..#ENDPOINTPROCESSLOG: ..#LOGKINDPROCESS, 1: "")
+}
+
+/// <p>The SQL table the log of kind <var>pKind</var> lives in. Pure.</p>
+ClassMethod LogTable(pKind As %String) As %String [ Private ]
+{
+    Quit $Select(pKind = ..#LOGKINDRULE: ..#RULELOGTABLE, 1: ..#PROCESSLOGTABLE)
+}
+
+/// <p>The days a log purge hands the vendor for <var>pDays</var>: days past the instance's calendar are the calendar's own count, since the vendor reads a cut-off before the
+/// instance's first day as an error and the days past it keep every record. Reads the clock.</p>
+ClassMethod LogKeepDays(pDays As %String) As %Integer
+{
+    Quit $Select(+pDays > (+$Horolog - 2): +$Horolog - 2, 1: +pDays)
+}
+
+/// <p>A point inside each namespace-switched block of the privilege check and the state read, which does nothing. A fixture overrides it to raise a fault there, so a test reads that the fault is
+/// logged after the namespace is restored; production never overrides it.</p>
+ClassMethod LogHere() [ Private ]
+{
+}
+
+/// <p>A vendor exception <var>pException</var> of a log call in this port's own words, as <method>AlertMapped</method> answers one: the status it logs carries the vendor's error codes alone.</p>
+ClassMethod LogMapped(pException As %Exception.AbstractException, pMessage As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Statused(..VendorCodesStatus(pException.AsStatus(), "the log call"), pMessage, .pHttpStatus, .pFault)
+}
+
+/// <p>The vendor's purge of the log of kind <var>pKind</var> in the current namespace, which the caller has already switched, with <var>pDays</var> as <code>Ens.Purge</code> takes them:
+/// the business rule log's <code>PurgeRuleLogsByDate</code> or the business process purge <code>PurgeBusinessProcessesByDate</code> with integrity kept. <var>pDeleted</var> is the vendor's
+/// count. Overridable so a fixture can answer a fault; production never overrides it. Reached only through <method>PurgeFrame</method>.</p>
+ClassMethod VendorLogPurge(pKind As %String, pDays As %Integer, Output pDeleted) As %Status
+{
+    If pKind = ..#LOGKINDRULE Quit ##class(Ens.Purge).PurgeRuleLogsByDate(pDays, .pDeleted)
+    Quit ##class(Ens.Purge).PurgeBusinessProcessesByDate(pDays, .pDeleted, 1)
+}
+
+/// <p>The check that stands in for the classic pages' own query, which the vendor runs with the caller's SQL privileges: whether the caller's effective SQL SELECT privilege on the
+/// log of kind <var>pKind</var> is held in <var>pNamespace</var>, asked of the vendor (<code>$SYSTEM.SQL.Security.CheckPrivilege</code>) with the namespace switched, so roles, <code>%All</code> and
+/// grants through a role resolve as the vendor resolves them. 403 <code>AUTH.NOPRIVILEGE</code> naming the table and <code>SELECT</code> when it is not; the port's other reads run without it
+/// (<code>%ExecDirectNoPriv</code>), so this is what keeps a list from showing a caller what the classic page would refuse.</p>
+ClassMethod LogSelectGate(pNamespace As %String, pKind As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tTable = ..LogTable(pKind)
+    Set tHeld = 0
+    Set tCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..LogHere()
+        Set tAnswer = ##class(%SYSTEM.SQL.Security).CheckPrivilege($USERNAME, 1, tTable, "s", pNamespace)
+        Set $NAMESPACE = tOrigNS
+        Set tHeld = (tAnswer = 1)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..LogMapped(tCaught, "the log table privilege check failed", .pHttpStatus, .pFault)
+    If 'tHeld Quit ..Deny(tTable _ ":SELECT", .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>One list row of the columns <parameter>RULELOGCOLUMNS</parameter> read as <var>pLine</var>: <code>{ID, TimeExecuted, SessionId, RuleName, ConfigName, IsError, ReturnValue, Reason,
+/// Namespace}</code>, the time as the instance's local time as the other lists show it.</p>
+ClassMethod RuleLogRow(pLine As %List, pNamespace As %String) As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("ID", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("TimeExecuted", ..AlertLocal($List(pLine, 2)), "string")
+    Do tRow.%Set("SessionId", ..AlertText($List(pLine, 3)), "string")
+    Do tRow.%Set("RuleName", ..AlertText($List(pLine, 4)), "string")
+    Do tRow.%Set("ConfigName", ..AlertText($List(pLine, 5)), "string")
+    Do tRow.%Set("IsError", ''$List(pLine, 6), "boolean")
+    Do tRow.%Set("ReturnValue", ..AlertText($List(pLine, 7)), "string")
+    Do tRow.%Set("Reason", ..AlertText($List(pLine, 8)), "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>One list row of the columns <parameter>PROCESSLOGCOLUMNS</parameter> read as <var>pLine</var>: <code>{ID, TimeCreated, TimeCompleted, IsCompleted, ConfigName, SessionId, Namespace}</code>.</p>
+ClassMethod ProcessLogRow(pLine As %List, pNamespace As %String) As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("ID", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("TimeCreated", ..AlertLocal($List(pLine, 2)), "string")
+    Do tRow.%Set("TimeCompleted", ..AlertLocal($List(pLine, 3)), "string")
+    Do tRow.%Set("IsCompleted", ''$List(pLine, 4), "boolean")
+    Do tRow.%Set("ConfigName", ..AlertText($List(pLine, 5)), "string")
+    Do tRow.%Set("SessionId", ..AlertText($List(pLine, 6)), "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The log of kind <var>pKind</var> of <var>pNamespace</var>, newest first, at most <var>pMax</var> rows (the log's own maximum when that is not above zero). The criterion <code>errors</code>
+/// (the rule log) or <code>completed</code> (business processes) is <code>yes</code> or <code>no</code>; absent lists all. The caller's SQL SELECT privilege is judged first
+/// (<method>LogSelectGate</method>). Every value is bound. A longer list than the cap is the caller's truncation, which it reads from the one row it asked for beyond its own cap.</p>
+ClassMethod ListLog(pNamespace As %String, pKind As %String, ByRef pQuery, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..LogSelectGate(pNamespace, pKind, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tRule = (pKind = ..#LOGKINDRULE)
+    Set tCriterion = $Select(tRule: ..#LOGERRORSCRITERION, 1: ..#LOGCOMPLETEDCRITERION)
+    Set tValue = $Get(pQuery(tCriterion))
+    If (tValue '= "") && (tValue '= "yes") && (tValue '= "no") Quit ..RefuseCriterion(tCriterion, .pHttpStatus, .pFault)
+    Kill tArgs
+    Set tArgs = 1
+    Set tArgs(1) = ..AlertCap(pMax, $Select(tRule: ..#RULELOGMAX, 1: ..#PROCESSLOGMAX))
+    Set tSql = "SELECT TOP ? " _ $Select(tRule: ..#RULELOGCOLUMNS, 1: ..#PROCESSLOGCOLUMNS) _ " FROM " _ ..LogTable(pKind)
+    If tValue '= "" {
+        Set tSql = tSql _ " WHERE " _ $Select(tRule: "IsError", 1: "%IsCompleted") _ " = ?"
+        Set tArgs(2) = (tValue = "yes")
+        Set tArgs = 2
+    }
+    Set tSql = tSql _ " ORDER BY ID DESC"
+    Set tSC = ..SqlRows(pNamespace, tSql, .tFound, .tCaught, tArgs...)
+    If $IsObject(tCaught) Quit ..LogMapped(tCaught, $Select(tRule: "the business rule log list failed", 1: "the business process log list failed"), .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Do pRows.%Push($Select(tRule: ..RuleLogRow(tFound(tI), pNamespace), 1: ..ProcessLogRow(tFound(tI), pNamespace)))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The state row of the log of kind <var>pKind</var> (Story 24.17 Batch 2): <code>{Count, DaysToKeep, Namespace}</code>, <code>Count</code> the vendor's own count of the log's records
+/// (<code>Ens.Purge.RuleLogCount</code> or <code>BusinessProcessCount</code>) and <code>DaysToKeep</code> empty, since the days belong to the call that asks for the purge. It takes no SQL privilege check, as the classic page's
+/// count and purge take none (<method>LogSelectGate</method> gates the two lists only); it is the purges' fresh read, and the vendor's count is embedded SQL, which checks no SQL privilege of its own.</p>
+ClassMethod ReadLogState(pNamespace As %String, pKind As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Set tCount = 0
+    Set tCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..LogHere()
+        Set tCount = $Select(pKind = ..#LOGKINDRULE: ##class(Ens.Purge).RuleLogCount(), 1: ##class(Ens.Purge).BusinessProcessCount())
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..LogMapped(tCaught, "the log state read failed", .pHttpStatus, .pFault)
+    Set pRow = {}
+    Do pRow.%Set("Count", +tCount, "number")
+    Do pRow.%Set("DaysToKeep", "", "string")
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Purge the log of kind <var>pKind</var> of <var>pNamespace</var> as the classic page's <code>DoPurge</code> does, in this request (Story 24.17 Batch 2), and answer its state row, read again. The days are
+/// judged first (<method>PurgeDaysOK</method>), 422 <code>INTEROP.PURGE.DAYS</code>, before any vendor call. The vendor's purge runs in the namespace inside <method>PurgeFrame</method>, with no lock and no
+/// transaction, and the namespace is restored; OcuPilot's own audit row is recorded whatever the vendor answered, because the vendor records none: it names the namespace, the days, the count the vendor
+/// deleted and whether it completed. A vendor error status or a fault is 500 <code>INTERNAL</code>, never 200, even after a partial delete.</p>
+/// <p>A purge that outlasts the Web Gateway's response timeout runs to its end in this process, and its audit row is written then.</p>
+ClassMethod PerformLogPurge(pNamespace As %String, pKind As %String, pDays As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If '..PurgeDaysOK(pDays) {
+        Set tViolations = 1
+        Set tViolations(1) = $ListBuild("DaysToKeep", ##class(OcuPilot.Api.InteropError).#PURGEDAYS)
+        Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
+    Set tRule = (pKind = ..#LOGKINDRULE)
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Kill tDeleted
+    Set tKeepDays = ..LogKeepDays(pDays)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tVendorSC = ..PurgeFrame(tKeepDays, 1, 0, 0, .tDeleted, pKind)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("daysToKeep", +pDays, "number")
+    Do tEffects.%Set("deleted", +$Get(tDeleted), "number")
+    Do tEffects.%Set("completed", ($$$ISOK(tVendorSC) && '$IsObject(tCaught)), "boolean")
+    Do ..AuditRuntime(..#VERBPURGE, $Select(tRule: ..#ENTITYRULELOG, 1: ..#ENTITYPROCESSLOG), pNamespace, tEffects)
+    Set tMessage = $Select(tRule: "the business rule log purge failed", 1: "the business process purge failed")
+    If $IsObject(tCaught) Quit ..Statused(..VendorCodesStatus(tCaught.AsStatus(), "the purge"), tMessage, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the purge"), tMessage, .pHttpStatus, .pFault)
+    Set tReadSC = ..ReadLogState(pNamespace, pKind, .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) || '$IsObject(tRow) {
+        Set tRow = {}
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>Serve the RuleLog and ProcessLog endpoints after <method>Invoke</method>'s gate (Story 24.17 Batch 2): the list, the state read and the write, the purge of that log.</p>
+ClassMethod InvokeLog(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Set tKind = ..LogKind(pEndpoint)
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListLog(pNamespace, tKind, .pQuery, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tWrite = $Select(tKind = ..#LOGKINDRULE: ..#TYPEPURGERULELOG, 1: ..#TYPEPURGEPROCESSLOG)
+        Set tAction = $Select(..IsLogPurgeWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && (tAction '= tWrite) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = tWrite {
+            Set tSC = ..PerformLogPurge(pNamespace, tKind, $Get(pQuery(..#PURGEDAYSKEY)), .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadLogState(pNamespace, tKind, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..LogMapped(ex, "the log call failed inside the port", .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The lines <method>Snippet</method> adds for the purge of the log <var>pEndpoint</var> serves with the days <var>pDays</var> (Story 24.17 Batch 2): the vendor's call, with the days the port itself would
+/// pass (<method>LogKeepDays</method>). <code>""</code> for a namespace or days the port would refuse by shape, which renders no draft. Nothing here runs; a person runs it.</p>
+ClassMethod LogPurgeSnippet(pEndpoint As %String, pNamespace As %String, pDays As %String) As %String [ Private ]
+{
+    If '$Match(pNamespace, ##class(OcuPilot.Port.AtelierPort).#NAMESPACEPATTERN) || '..PurgeDaysOK(pDays) Quit ""
+    Set tNL = $Char(10)
+    Set tDaysText = $Select(+pDays > (+$Horolog - 2): "+$Horolog - 2", 1: +pDays)
+    If pEndpoint = ..#ENDPOINTRULELOG Quit tNL _ " Set tSC = ##class(Ens.Purge).PurgeRuleLogsByDate(" _ tDaysText _ ", .tDeleted)"
+    Quit tNL _ " Set tSC = ##class(Ens.Purge).PurgeBusinessProcessesByDate(" _ tDaysText _ ", .tDeleted, 1)"
+}
+
+/// <p>The pairs the four system monitor endpoints require (Story 24.17 Batch 5): the Production monitor's (<parameter>MONITORPAIRS</parameter>), which are the classic Interoperability
+/// System Monitor's resource, and READ on the system database, since the vendor call is made in <code>%SYS</code>. The read is instance-wide, so there is no namespace test.</p>
+Parameter SYSTEMMONITORPAIRS = "%Ens_Portal:USE,%Ens_Dashboard:USE,%DB_IRISSYS:READ";
+
+/// <p>The System monitor endpoint: <code>LIST</code> alone, one row of the vendor's scalar meters.</p>
+Parameter ENDPOINTSYSTEMMONITOR = "SystemMonitor";
+
+/// <p>The three drill-down endpoints: <code>LIST</code> alone, each one of the vendor's table meters as rows.</p>
+Parameter ENDPOINTSYSTEMMONITORPROCESSES = "SystemMonitorProcesses";
+
+Parameter ENDPOINTSYSTEMMONITORQUEUES = "SystemMonitorQueues";
+
+Parameter ENDPOINTSYSTEMMONITORTASKS = "SystemMonitorTasks";
+
+/// <p>The most rows a system monitor drill-down answers to a call that names no cap of its own: a named bound on the vendor's three tables, which measured at two, four and five rows with the probe production running (a bound none of them reaches).</p>
+Parameter SYSTEMMONITORROWSMAX As INTEGER = 100;
+
+/// <p>The kind <method>PurgeFrame</method> takes to run the system monitor's read.</p>
+Parameter LOGKINDMETRICS = "metrics";
+
+/// <p>The id of the unsaved session a caller without a web request gives the vendor's call (<method>VendorMetrics</method>); no session of this id is ever stored.</p>
+Parameter METRICSSESSIONID = "OcuPilotSystemMonitor";
+
+/// <p>The vendor's scalar meters the System monitor row carries, named as the vendor names them, in the classic page's order.</p>
+Parameter SYSTEMMONITORMETERS = "EnsNamespace,EnsProductionsRunning,EnsProductionsTroubled,EnsIncomingRequests,EnsLastIncomingRequest,EnsOutgoingRequests,EnsLastOutgoingRequest,Processes,EnsJobs,EnsVisitingJobs,UpTime,LastBackup,DatabaseSpace,DatabaseJournal,JournalSpace,JournalEntries,LockTable,WriteDaemon,EnsActiveQueues,SeriousAlerts,EnsAlerts,EnsErrors,LicenseLimit,LicenseUse,LicenseUseHigh";
+
+/// <p>The four system monitor endpoints as a <class>%List</class>.</p>
+ClassMethod SystemMonitorEndpoints() As %List
+{
+    Quit $ListBuild(..#ENDPOINTSYSTEMMONITOR, ..#ENDPOINTSYSTEMMONITORPROCESSES, ..#ENDPOINTSYSTEMMONITORQUEUES, ..#ENDPOINTSYSTEMMONITORTASKS)
+}
+
+/// <p>The vendor's meter that <var>pEndpoint</var> draws as a table and that table's columns, as <code>meter|Column,Column</code>; <code>""</code> for the System monitor row. Pure.</p>
+ClassMethod SystemMonitorTable(pEndpoint As %String) As %String [ Private ]
+{
+    If pEndpoint = ..#ENDPOINTSYSTEMMONITORPROCESSES Quit "EnsBusyProcesses|Namespace,Item,Pid,Commands"
+    If pEndpoint = ..#ENDPOINTSYSTEMMONITORQUEUES Quit "EnsBusyQueues|Namespace,Queue,Messages"
+    If pEndpoint = ..#ENDPOINTSYSTEMMONITORTASKS Quit "UpcomingTasks|Task,ScheduledFor,Status"
+    Quit ""
+}
+
+/// <p>The pairs gate of the four system monitor endpoints, before any vendor call and never cached (AD-8, AD-29): only the pairs, since the read takes no namespace.</p>
+ClassMethod AdmitInstance(pEndpoint As %String, pType As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tFailedPair = ""
+    If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(pEndpoint, pType), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The vendor's meters, read as the classic Interoperability System Monitor reads them: <code>%SYS.Ensemble.GetEnsMetrics</code> with no id, a count of 0 and the vendor's default interval, called in
+/// <code>%SYS</code>, where OcuPilot is not compiled, so nothing of OcuPilot's runs while switched. <var>pValues</var> is the vendor's value for each meter; the vendor's per-meter status and message
+/// are not carried. The vendor adds <code>%All</code> for itself in a frame of its own and drops it. Overridable so a fixture can answer a fault; production never overrides it. Reached only through
+/// <method>PurgeFrame</method>. It gives the vendor's locks back and restores the caller's namespace before it returns or rethrows a raise; the caller restores its own namespace as well, since an
+/// override may not.</p>
+ClassMethod VendorMetrics(Output pValues) As %Status
+{
+    ; With a production running the vendor builds links through the web request, response and session, which a background job (the agent's turn) does not have: the call then answers an error
+    ; status. Such a caller gets a minimal context of the vendor's own classes for the call, unsaved and given back when this method ends; a web request keeps its own.
+    If '$IsObject($Get(%request)) {
+        New %request, %response, %session
+        Set %request = ##class(%CSP.Request).%New()
+        Set %response = ##class(%CSP.Response).%New()
+        Set %session = ##class(%CSP.Session).%New(..#METRICSSESSIONID, 0)
+    }
+    Set tOrigNS = $NAMESPACE
+    Set tCaught = ""
+    Set $NAMESPACE = "%SYS"
+    Try {
+        Set tSC = ##class(%SYS.Ensemble).GetEnsMetrics("", 0, .tValues, .tStatus, .tMsg)
+    } Catch ex {
+        Set tCaught = ex
+    }
+    ; Each call leaves its locks on the vendor's metrics global held, which only the end of a web request lets go of, and while they are held every other process reads the instance as idle.
+    ; A background job lives for a whole turn, so the call's own locks are given back here, on every exit. OcuPilot takes no lock on that global of its own.
+    Lock -^SYS.EnsMetrics
+    Lock -^SYS.EnsMetrics#"S"
+    Set $NAMESPACE = tOrigNS
+    If $IsObject(tCaught) Throw tCaught
+    Merge pValues = tValues
+    Quit tSC
+}
+
+/// <p>The vendor's meters through the containment frame (<method>PurgeFrame</method>). The namespace is saved before the frame and restored first on every path, a raise included; a fault is logged after the
+/// restore, with a fixed message and the vendor's codes alone. A vendor error status is never a 200: 500 <code>INTERNAL</code>, or 403 <code>PORT.ACCESSDENIED</code> for a privilege refusal.</p>
+ClassMethod ReadMetrics(Output pValues, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tVendorSC = ..PurgeFrame(0, 0, 0, 0, .pValues, ..#LOGKINDMETRICS)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Statused(..VendorCodesStatus(tCaught.AsStatus(), "the system monitor read"), "the system monitor read failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the system monitor read"), "the system monitor read failed", .pHttpStatus, .pFault)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One cell of a vendor table as a value: a whole number the vendor writes with thousands separators is a number, any other text stays text. Pure.</p>
+ClassMethod MonitorCell(pText As %String, pNumeric As %Boolean) As %String [ Private ]
+{
+    Set tPlain = $Translate(pText, ",")
+    Quit $Select(pNumeric && $Match(tPlain, "^[0-9]+$"): +tPlain, 1: pText)
+}
+
+/// <p>The rows of the vendor's table meter text <var>pText</var>, which the classic table meter encodes with <code>^</code> between rows and <code>;</code> between columns, as an array of objects keyed by
+/// <var>pColumns</var>, in the vendor's order, at most <var>pMax</var> of them; a row whose columns are all empty is padding and is dropped. The columns named <code>Pid</code>, <code>Commands</code> and
+/// <code>Messages</code> are numbers where the vendor writes a whole number. Pure.</p>
+ClassMethod MonitorTableRows(pText As %String, pColumns As %List, pMax As %Integer) As %DynamicArray [ Private ]
+{
+    Set tRows = []
+    Set tCount = $ListLength(pColumns)
+    For tI = 1:1:$Length(pText, "^") {
+        Set tLine = $Piece(pText, "^", tI)
+        If $Translate(tLine, ";") = "" Continue
+        If tRows.%Size() '< pMax Quit
+        Set tRow = {}
+        For tJ = 1:1:tCount {
+            Set tName = $List(pColumns, tJ)
+            Set tCell = $Piece(tLine, ";", tJ)
+            Set tNumeric = (tName = "Pid") || (tName = "Commands") || (tName = "Messages")
+            Set tValue = ..MonitorCell(tCell, tNumeric)
+            Do tRow.%Set(tName, tValue, $Select($IsValidNum(tValue) && tNumeric && (tValue '= ""): "number", 1: "string"))
+        }
+        Do tRows.%Push(tRow)
+    }
+    Quit tRows
+}
+
+/// <p>The System monitor row: one object of <parameter>SYSTEMMONITORMETERS</parameter>, each the vendor's value as text, from <var>pValues</var>. Pure.</p>
+ClassMethod SystemMonitorRow(ByRef pValues) As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Set tNames = $ListFromString(..#SYSTEMMONITORMETERS)
+    For tI = 1:1:$ListLength(tNames) {
+        Set tName = $List(tNames, tI)
+        Do tRow.%Set(tName, $Get(pValues(tName)) _ "", "string")
+    }
+    Quit tRow
+}
+
+/// <p>Serve the four system monitor endpoints (Story 24.17 Batch 5): the pairs gate, then one vendor call (<method>ReadMetrics</method>), then the row or the table the endpoint draws from it. The list takes
+/// <parameter>MAXROWSKEY</parameter> alone; no criterion, no namespace. Nothing is written.</p>
+ClassMethod InvokeSystemMonitor(pEndpoint As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Set tSC = ..AdmitInstance(pEndpoint, pType, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+        If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tSC = ..ReadMetrics(.tValues, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tTable = ..SystemMonitorTable(pEndpoint)
+        If tTable = "" {
+            Set pResult = []
+            Do pResult.%Push(..SystemMonitorRow(.tValues))
+        } Else {
+            Set pResult = ..MonitorTableRows($Get(tValues($Piece(tTable, "|", 1))), $ListFromString($Piece(tTable, "|", 2)), ..AlertCap(+tMaxText, ..#SYSTEMMONITORROWSMAX))
+        }
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..LogMapped(ex, "the system monitor call failed inside the port", .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The HL7 schemas endpoint (Story 24.18 Batch 1): <code>LIST</code> (the namespace's HL7 schemas, standard first, from <code>EnsLib.HL7.Schema:TypeCategories</code>),
+/// <code>HL7SCHEMA</code> (one schema, fresh), <code>HL7IMPORTFILE</code> (the import file and the schema it holds, as it stands), and the writes <code>ADDHL7SCHEMA</code>,
+/// <code>IMPORTHL7SCHEMA</code>, <code>DELETEHL7SCHEMA</code> and the read-only <code>EXPORTHL7SCHEMA</code>. The vendor checks no privilege beyond the database for any of them
+/// (measured), so the gate is the whole gate. A write takes the vendor's own schema lock (<code>^EnsHL7.Schema(&lt;category&gt;)</code>), refuses a namespace under source control, and
+/// never changes a standard schema. A schema is named exactly (AD-13); only a name <method>Hl7NameOK</method> accepts is read or written.</p>
+Parameter ENDPOINTHL7SCHEMAS = "Hl7Schemas";
+
+Parameter TYPEHL7SCHEMA = "HL7SCHEMA";
+
+Parameter TYPEHL7IMPORTFILE = "HL7IMPORTFILE";
+
+Parameter TYPEADDHL7SCHEMA = "ADDHL7SCHEMA";
+
+Parameter TYPEIMPORTHL7SCHEMA = "IMPORTHL7SCHEMA";
+
+Parameter TYPEEXPORTHL7SCHEMA = "EXPORTHL7SCHEMA";
+
+Parameter TYPEDELETEHL7SCHEMA = "DELETEHL7SCHEMA";
+
+/// <p>The most schemas a list answers to a call that names no cap of its own: 2,000. The vendor's list ended in 1.3 seconds with 2,019 schemas held (measured); a call that names a cap
+/// gets that many (AD-36).</p>
+Parameter HL7SCHEMASMAX As INTEGER = 2000;
+
+/// <p>The most characters a schema's description holds (the published rule of Story 24.17 Batch 3b), its name, and the most a base name may be before it is judged held.</p>
+Parameter HL7DESCRIPTIONMAX As INTEGER = 2000;
+
+Parameter HL7NAMEMAX As INTEGER = 64;
+
+Parameter HL7BASEMAX As INTEGER = 255;
+
+/// <p>The pairs the endpoint requires: the portal's and the classic HL7 Schema Structures page's own resource (<code>EnsPortal.HL7.SchemaMain</code>, Story 24.18), and the pair an add, an
+/// import and a delete add: its <code>EDITRESOURCE</code>.</p>
+Parameter HL7PAIRS = "%Ens_Portal:USE,%Ens_EDISchema:READ";
+
+Parameter HL7WRITEPAIR = "%Ens_EDISchema:WRITE";
+
+/// <p>The extension of a schema's document, and what every HL7 schema refusal code begins with (<class>OcuPilot.Api.InteropError</class>).</p>
+Parameter HL7EXTENSION = ".HL7";
+
+Parameter HL7CODEPREFIX = "INTEROP.HL7.";
+
+/// <p>The query key of the reviewed <code>Present</code> value of an import.</p>
+Parameter PRESENTKEY = "present";
+
+Parameter ENTITYHL7SCHEMA = "interop-hl7-schema";
+
+/// <p>Whether <var>pType</var> is one of the HL7 schema writes this port carries: an add, an import or a delete. Each needs WRITE on the namespace's globals database. An export reads
+/// the schema and is not one.</p>
+ClassMethod IsHl7SchemaWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADDHL7SCHEMA) || (pType = ..#TYPEIMPORTHL7SCHEMA) || (pType = ..#TYPEDELETEHL7SCHEMA)
+}
+
+/// <p>Whether <var>pName</var> is a name this port reads or writes for an HL7 schema: 1 to <parameter>HL7NAMEMAX</parameter> letters, digits, <code>.</code>, <code>_</code> and
+/// <code>-</code>, beginning with a letter or digit. Pure.</p>
+ClassMethod Hl7NameOK(pName As %String) As %Boolean
+{
+    Quit $Match(pName, "^[A-Za-z0-9][A-Za-z0-9._-]*$") && ($Length(pName) '> ..#HL7NAMEMAX) && ($ZStrip(pName, "*C") = pName)
+}
+
+/// <p>Whether <var>pBase</var> is shaped so that it can be looked up as a schema name: empty, or at most <parameter>HL7BASEMAX</parameter> characters with no control character. Pure.</p>
+ClassMethod Hl7BaseShaped(pBase As %String) As %Boolean
+{
+    Quit ($Length(pBase) '> ..#HL7BASEMAX) && ($ZStrip(pBase, "*C") = pBase)
+}
+
+/// <p>The violations of a new schema's name and fields, as a <class>%List</class> of <code>$ListBuild(field, token)</code> where the token is <code>NAME</code>, <code>BASE</code>,
+/// <code>DESCRIPTION</code> or <code>SHAPE</code>, and <code>""</code> for none: a name <method>Hl7NameOK</method> refuses is <code>NAME</code> (judged only when <var>pJudgeName</var>); a
+/// base that is not a string, or is not shaped as a name, is <code>SHAPE</code> or <code>BASE</code>; a description over <parameter>HL7DESCRIPTIONMAX</parameter> characters is
+/// <code>DESCRIPTION</code> and one that is not a string <code>SHAPE</code>. Whether the base is held is judged where the namespace is read. Names no other class. Pure.</p>
+ClassMethod Hl7SchemaBad(pName As %String, pFields As %DynamicObject, pJudgeName As %Boolean = 1) As %List
+{
+    Set tBad = ""
+    If pJudgeName && '..Hl7NameOK(pName) Set tBad = tBad _ $ListBuild($ListBuild("Name", "NAME"))
+    If '$IsObject(pFields) || 'pFields.%IsA("%Library.DynamicObject") Set pFields = {}
+    Set tType = pFields.%GetTypeOf("Base")
+    If tType = "string" {
+        If '..Hl7BaseShaped(pFields.%Get("Base")) Set tBad = tBad _ $ListBuild($ListBuild("Base", "BASE"))
+    } ElseIf tType '= "unassigned" {
+        Set tBad = tBad _ $ListBuild($ListBuild("Base", "SHAPE"))
+    }
+    Set tType = pFields.%GetTypeOf("Description")
+    If tType = "string" {
+        If $Length(pFields.%Get("Description")) > ..#HL7DESCRIPTIONMAX Set tBad = tBad _ $ListBuild($ListBuild("Description", "DESCRIPTION"))
+    } ElseIf tType '= "unassigned" {
+        Set tBad = tBad _ $ListBuild($ListBuild("Description", "SHAPE"))
+    }
+    Quit tBad
+}
+
+/// <p>The code of the violation token <var>pToken</var> of <method>Hl7SchemaBad</method>.</p>
+ClassMethod Hl7ViolationCode(pToken As %String) As %String
+{
+    Quit $Case(pToken, "NAME": ##class(OcuPilot.Api.InteropError).#HL7NAME, "BASE": ##class(OcuPilot.Api.InteropError).#HL7BASE, "DESCRIPTION": ##class(OcuPilot.Api.InteropError).#HL7DESCRIPTION, : ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+}
+
+/// <p>The 422 violations of a new schema's name and fields, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field, code)</code> with the count in <code>pViolations</code>,
+/// from <method>Hl7SchemaBad</method>. With <var>pNamespace</var> a base that is shaped and not empty is also judged held there (<method>Hl7BaseHeld</method>), so a base the namespace does
+/// not hold is <code>BASE</code> too.</p>
+ClassMethod Hl7SchemaViolations(pName As %String, pFields As %DynamicObject, Output pViolations, pJudgeName As %Boolean = 1, pNamespace As %String = "") As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tBad = ..Hl7SchemaBad(pName, pFields, pJudgeName)
+    If (pNamespace '= "") && $IsObject(pFields) && pFields.%IsA("%Library.DynamicObject") && (pFields.%GetTypeOf("Base") = "string") {
+        Set tBase = pFields.%Get("Base")
+        If (tBase '= "") && ..Hl7BaseShaped(tBase) && '..Hl7BaseHeld(pNamespace, tBase) Set tBad = $ListBuild($ListBuild("Base", "BASE")) _ tBad
+    }
+    For tI = 1:1:$ListLength(tBad) {
+        Set tEntry = $List(tBad, tI)
+        Set pViolations($Increment(pViolations)) = $ListBuild($List(tEntry, 1), ..Hl7ViolationCode($List(tEntry, 2)))
+    }
+    Quit $$$OK
+}
+
+/// <p>Whether the namespace <var>pNamespace</var> holds the schema <var>pBase</var> under exactly that name. A fault answers 1: the write judges the base again where it runs.</p>
+ClassMethod Hl7BaseHeld(pNamespace As %String, pBase As %String) As %Boolean
+{
+    Set tHeld = 1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tHeld = ($Data(^EnsHL7.Schema(pBase)) > 0)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tHeld = 1
+    }
+    Quit tHeld
+}
+
+/// <p>The decision an HL7 schema add or delete <var>pType</var> is refused with, as a token, else <code>""</code>: an add of a name the namespace holds, in any letter case
+/// (<var>pExists</var>, or <var>pMatch</var> not empty), is <code>TAKEN</code>; a delete of a name not held exactly is <code>ABSENT</code>, and of a standard schema (<var>pStandard</var>)
+/// <code>STANDARD</code>. Pure.</p>
+ClassMethod Hl7WriteToken(pType As %String, pExists As %Boolean, pMatch As %String, pStandard As %Boolean) As %String
+{
+    If pType = ..#TYPEADDHL7SCHEMA Quit $Select(pExists || (pMatch '= ""): "TAKEN", 1: "")
+    If 'pExists Quit "ABSENT"
+    If pStandard Quit "STANDARD"
+    Quit ""
+}
+
+/// <p>Whether the namespace <var>pNamespace</var> carries the HL7 package, which the vendor answers for the current namespace. Overridable so a fixture can answer 0; production never
+/// overrides it.</p>
+ClassMethod Hl7Installed(pNamespace As %String) As %Boolean
+{
+    Set tInstalled = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tInstalled = ''##class(%Library.InteroperabilityMgr).IsPackageInstalled("HL7")
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tInstalled = 0
+    }
+    Quit tInstalled
+}
+
+/// <p>A point inside each namespace-switched block of the HL7 schema calls, which does nothing. A fixture overrides it to read the namespace or raise a fault there; production never
+/// overrides it.</p>
+ClassMethod Hl7Here() [ Private ]
+{
+}
+
+/// <p>Take the vendor's own lock on schema <var>pName</var> in the current namespace, as the vendor's import takes it, waiting at most <parameter>LOCKSECONDS</parameter>; 1 when it is held.
+/// Called while the schema's namespace is switched. Overridable so a fixture can answer 0; production never overrides it.</p>
+ClassMethod Hl7Lock(pName As %String) As %Boolean
+{
+    Set tWait = ..#LOCKSECONDS
+    Lock +^EnsHL7.Schema(pName):tWait
+    Quit $Test
+}
+
+/// <p>Release <method>Hl7Lock</method>'s lock. Called while the schema's namespace is switched.</p>
+ClassMethod Hl7Unlock(pName As %String)
+{
+    Lock -^EnsHL7.Schema(pName)
+}
+
+/// <p>The vendor's write of the HL7 schema write <var>pType</var> (an add or a delete) on <var>pName</var> in the current namespace, which the caller has already switched. A delete is
+/// <code>EnsLib.HL7.SchemaDocument.Delete</code>, which refuses a standard schema and records the vendor's audit row. An add sets the vendor's schema globals as the classic New HL7
+/// Schema dialog sets them (<code>EnsPortal.HL7.Dialog.CustomSchema.OnWizardCompletion</code>: the base, the description and the time), in one transaction that a fault rolls back,
+/// then records the vendor's audit row; no vendor method creates an empty schema. Overridable so a fixture can answer a status or a fault; production never overrides it.</p>
+ClassMethod Hl7VendorWrite(pType As %String, pName As %String, pBase As %String, pDescription As %String) As %Status
+{
+    If pType = ..#TYPEDELETEHL7SCHEMA Quit ##class(EnsLib.HL7.SchemaDocument).Delete(pName _ ..#HL7EXTENSION)
+    TSTART
+    Try {
+        If pBase '= "" Set ^EnsHL7.Schema(pName, "base") = pBase
+        If pDescription '= "" Set ^EnsHL7.Description(pName) = pDescription
+        Set ^EnsHL7.Schema(pName, "time") = $ZTimeStamp
+        TCOMMIT
+    } Catch ex {
+        TROLLBACK 1
+        Throw ex
+    }
+    Set tActions = "Created schema based on " _ pBase
+    Set tAuditSC = ##class(Ens.Util.Auditing).AuditModifySchema("HL7 " _ pName, tActions)
+    Quit $$$OK
+}
+
+/// <p>The vendor's load of the one document <var>pItem</var> of <var>pStream</var> (<method>DocumentLoad</method>) in the current namespace, which the caller has already switched. The vendor
+/// replaces the schema whole inside its own transaction. Overridable so a fixture can answer a status; production never overrides it.</p>
+ClassMethod Hl7VendorLoad(pStream As %Stream.Object, pItem As %String, Output pLoaded) As %Status
+{
+    Quit ..DocumentLoad(pStream, pItem, .pLoaded)
+}
+
+/// <p>The vendor's export of <var>pName</var>'s document (<method>DocumentExport</method>) in the current namespace, which the caller has already switched. Overridable so a fixture can answer
+/// a status; production never overrides it.</p>
+ClassMethod Hl7VendorExport(pName As %String, pToFile As %Boolean, pFile As %String, pMax As %Integer, Output pText As %String, Output pTooLarge As %Boolean) As %Status
+{
+    Quit ..DocumentExport(pName _ ..#HL7EXTENSION, pToFile, pFile, pMax, .pText, .pTooLarge)
+}
+
+/// <p>The facts about schema <var>pName</var> in the current namespace, which the caller has already switched, kept in <var>pFacts</var>: <code>exists</code> (held under exactly that
+/// name), <code>match</code> (the spelling it is held under in another letter case, else <code>""</code>), and for a held schema <code>standard</code> (the vendor's
+/// <code>std</code> mark), <code>base</code>, <code>description</code> and <code>modified</code> (<code>EnsLib.HL7.SchemaDocument.TimeStamp</code>). Writes nothing.</p>
+ClassMethod Hl7FactsHere(pName As %String, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("exists") = ''$Data(^EnsHL7.Schema(pName))
+    Set pFacts("match") = ""
+    Set pFacts("standard") = 0
+    Set pFacts("base") = ""
+    Set pFacts("description") = ""
+    Set pFacts("modified") = ""
+    Set tUpper = $ZConvert(pName, "U")
+    Set tKey = ""
+    For {
+        Set tKey = $Order(^EnsHL7.Schema(tKey))
+        If tKey = "" Quit
+        If (tKey '= pName) && ($ZConvert(tKey, "U") = tUpper) {
+            Set pFacts("match") = tKey
+            Quit
+        }
+    }
+    If pFacts("exists") {
+        Set pFacts("standard") = ''+$Get(^EnsHL7.Description(pName, "std"))
+        Set pFacts("base") = $Get(^EnsHL7.Schema(pName, "base"))
+        Set pFacts("description") = $Get(^EnsHL7.Description(pName))
+        Set pFacts("modified") = ##class(EnsLib.HL7.SchemaDocument).TimeStamp(pName _ ..#HL7EXTENSION)
+    }
+}
+
+/// <p><method>Hl7FactsHere</method> for <var>pName</var> read in <var>pNamespace</var>, switched by explicit save and restore. A fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod Hl7Facts(pNamespace As %String, pName As %String, Output pFacts, Output pCaught) As %Status [ Private ]
+{
+    Set pCaught = ""
+    Kill pFacts
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..Hl7Here()
+        Do ..Hl7FactsHere(pName, .pFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>A vendor exception <var>pException</var> of an HL7 schema call in this port's own words, the status it logs carrying the vendor's error codes alone (AD-39).</p>
+ClassMethod Hl7Mapped(pException As %Exception.AbstractException, pMessage As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Statused(..VendorCodesStatus(pException.AsStatus(), "the HL7 schema call"), pMessage, .pHttpStatus, .pFault)
+}
+
+/// <p>422 <code>INTEROP.HL7.NAME</code>: the name is not one an HL7 schema takes.</p>
+ClassMethod Hl7NameRefusal(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tViolations = 1
+    Set tViolations(1) = $ListBuild("Name", ##class(OcuPilot.Api.InteropError).#HL7NAME)
+    Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+}
+
+/// <p>One schema's row: <code>{Category, Base, Description, Standard, Modified, Namespace}</code>.</p>
+ClassMethod Hl7SchemaRow(pCategory As %String, pBase As %String, pDescription As %String, pStandard As %Boolean, pModified As %String, pNamespace As %String = "") As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    Do tRow.%Set("Category", pCategory, "string")
+    Do tRow.%Set("Base", pBase, "string")
+    Do tRow.%Set("Description", pDescription, "string")
+    Do tRow.%Set("Standard", ''pStandard, "boolean")
+    Do tRow.%Set("Modified", pModified, "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Quit tRow
+}
+
+/// <p>The HL7 schemas of <var>pNamespace</var>, standard first as the vendor's own query orders them, at most <var>pMax</var> (<parameter>HL7SCHEMASMAX</parameter> when that is not above
+/// zero): <code>{Category, Base, Description, Standard, Modified, Namespace}</code>. Nothing is written. A longer list than the cap is the caller's truncation, which it reads from the
+/// one row it asked for beyond its own cap (AD-36).</p>
+ClassMethod ListHl7Schemas(pNamespace As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tCap = ..WorkflowCap(pMax, ..#HL7SCHEMASMAX)
+    Set tCaught = ""
+    Set tStatusSC = $$$OK
+    Kill tFound
+    Set tFound = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..Hl7Here()
+        Set tResultSet = ##class(%ResultSet).%New("EnsLib.HL7.Schema:TypeCategories")
+        Set tStatusSC = tResultSet.Execute()
+        If $$$ISOK(tStatusSC) {
+            While tResultSet.Next() {
+                If tFound '< tCap Quit
+                Set tFound = tFound + 1
+                Set tCategory = tResultSet.GetData(1)
+                Set tFound(tFound) = $ListBuild(tCategory, tResultSet.GetData(4), tResultSet.GetData(2), ''+tResultSet.GetData(3), ##class(EnsLib.HL7.SchemaDocument).TimeStamp(tCategory _ ..#HL7EXTENSION))
+            }
+            Do tResultSet.Close()
+        }
+        Set tResultSet = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the HL7 schema list failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tStatusSC) Quit ..Statused(..VendorCodesStatus(tStatusSC, "the HL7 schema list"), "the HL7 schema list failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Set tLine = tFound(tI)
+        Do pRows.%Push(..Hl7SchemaRow($List(tLine, 1), $List(tLine, 2), $List(tLine, 3), $List(tLine, 4), $List(tLine, 5), pNamespace))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One HL7 schema, fresh: <code>{Category, Base, Description, Standard, Modified, Namespace, root, path}</code>, <code>root</code> and <code>path</code> being the file an export
+/// names, empty when none. A name <method>Hl7NameOK</method> refuses, or one the namespace does not hold exactly, is 404 <code>PORT.NOTFOUND</code>, unlogged. With a write as
+/// <var>pAction</var>, in this order: a namespace under source control is <code>INTEROP.HL7.SOURCECONTROL</code>; an add (AD-54, which inverts the read) refuses a name the namespace holds
+/// in any letter case with <code>TAKEN</code> and otherwise answers the 404 a create expects, and an add of a name that is not one is 422 <code>NAME</code>; a delete of a standard schema
+/// is <code>STANDARD</code>.</p>
+ClassMethod ReadHl7Schema(pNamespace As %String, pName As %String, pAction As %String, pRoot As %String, pPath As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If ..IsHl7SchemaWrite(pAction) && ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7SOURCECONTROL, .pHttpStatus, .pFault)
+    Set tAdd = (pAction = ..#TYPEADDHL7SCHEMA)
+    If '..Hl7NameOK(pName) Quit $Select(tAdd: ..Hl7NameRefusal(.pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
+    Set tSC = ..Hl7Facts(pNamespace, pName, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the HL7 schema read failed", .pHttpStatus, .pFault)
+    If tAdd {
+        If tFacts("exists") || (tFacts("match") '= "") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7TAKEN, .pHttpStatus, .pFault)
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    If (pAction = ..#TYPEDELETEHL7SCHEMA) && tFacts("standard") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7STANDARD, .pHttpStatus, .pFault)
+    Set pRow = ..Hl7SchemaRow(pName, tFacts("base"), tFacts("description"), tFacts("standard"), tFacts("modified"), pNamespace)
+    Do pRow.%Set(..#ROOTKEY, pRoot, "string")
+    Do pRow.%Set(..#PATHKEY, pPath, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Run HL7 schema write <var>pType</var> (an add or a delete) on the schema <var>pName</var> in <var>pNamespace</var> and answer what it leaves (Story 24.18 Batch 1). The sequence:</p>
+/// <ol>
+/// <li>A namespace under source control is <code>INTEROP.HL7.SOURCECONTROL</code>, before anything is read; an add's name that is not one is 422 <code>NAME</code>, and a delete's is 404.</li>
+/// <li>The vendor's schema lock is taken; a lock not got in <parameter>LOCKSECONDS</parameter> is <code>INTEROP.HL7.LOCKED</code>, with nothing written.</li>
+/// <li>Under the lock the schema is read again and judged by <method>Hl7WriteToken</method> (<code>TAKEN</code>, a 404, <code>STANDARD</code>), then an add's fields: a base the
+/// namespace does not hold and a description over its limit are 422.</li>
+/// <li>The vendor's write runs (<method>Hl7VendorWrite</method>), which records the vendor's own audit row; a write that failed after it was attempted also records OcuPilot's own, with
+/// <code>completed</code> false.</li>
+/// </ol>
+/// <p>A vendor error status or a fault is 500 <code>INTERNAL</code>, never 200, and reaches the log as its error codes alone. The answer is the schema's row read again; after a delete
+/// <code>{Category, Namespace}</code>.</p>
+ClassMethod PerformHl7Schema(pNamespace As %String, pType As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7SOURCECONTROL, .pHttpStatus, .pFault)
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+    Set tAdd = (pType = ..#TYPEADDHL7SCHEMA)
+    If '..Hl7NameOK(pName) Quit $Select(tAdd: ..Hl7NameRefusal(.pHttpStatus, .pFault), 1: ..Absent(.pHttpStatus, .pFault))
+    Set tBase = ""
+    Set tDescription = ""
+    If tAdd {
+        If pBody.%GetTypeOf("Base") = "string" Set tBase = pBody.%Get("Base")
+        If pBody.%GetTypeOf("Description") = "string" Set tDescription = pBody.%Get("Description")
+    }
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tAttempted = 0
+    Set tLocked = 0
+    Set tBad = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..Hl7Here()
+        Set tLocked = ..Hl7Lock(pName)
+        If 'tLocked {
+            Set tToken = "LOCKED"
+        } Else {
+            Do ..Hl7FactsHere(pName, .tFacts)
+            Set tToken = ..Hl7WriteToken(pType, tFacts("exists"), tFacts("match"), tFacts("standard"))
+            If (tToken = "") && tAdd {
+                Set tBad = ..Hl7SchemaBad(pName, pBody, 0)
+                If (tBase '= "") && ..Hl7BaseShaped(tBase) && ($Data(^EnsHL7.Schema(tBase)) = 0) Set tBad = $ListBuild($ListBuild("Base", "BASE")) _ tBad
+            }
+            If (tToken = "") && (tBad = "") {
+                Set tAttempted = 1
+                Set tVendorSC = ..Hl7VendorWrite(pType, pName, tBase, tDescription)
+            }
+            Do ..Hl7Unlock(pName)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+        If tLocked {
+            Try {
+                Set $NAMESPACE = pNamespace
+                Do ..Hl7Unlock(pName)
+            } Catch {
+            }
+            Set $NAMESPACE = tOrigNS
+        }
+    }
+    If tAttempted && ($$$ISERR(tVendorSC) || $IsObject(tCaught)) {
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        Do tEffects.%Set("completed", 0, "boolean")
+        Do ..AuditRuntime($Select(tAdd: ..#VERBADD, 1: ..#VERBDELETE), ..#ENTITYHL7SCHEMA, pName, tEffects)
+    }
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the HL7 schema write failed", .pHttpStatus, .pFault)
+    If tToken = "LOCKED" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7LOCKED, .pHttpStatus, .pFault)
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken = "TAKEN" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7TAKEN, .pHttpStatus, .pFault)
+    If tToken = "STANDARD" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7STANDARD, .pHttpStatus, .pFault)
+    If tBad '= "" {
+        Kill tViolations
+        Set tViolations = 0
+        For tI = 1:1:$ListLength(tBad) {
+            Set tEntry = $List(tBad, tI)
+            Set tViolations($Increment(tViolations)) = $ListBuild($List(tEntry, 1), ..Hl7ViolationCode($List(tEntry, 2)))
+        }
+        Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    }
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the HL7 schema write"), "the HL7 schema write failed", .pHttpStatus, .pFault)
+    If pType = ..#TYPEDELETEHL7SCHEMA {
+        Set pResult = {}
+        Do pResult.%Set("Category", pName, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tReadSC = ..ReadHl7Schema(pNamespace, pName, "", "", "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Category", pName, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The text of the import file a query names and the schema it holds, judged (Story 24.18 Batch 1): the file is read and cut as <method>ImportText</method> reads it
+/// (<code>INTEROP.HL7.TOOLARGE</code> past the cap), then <method>ImportShape</method> asks the vendor to list its documents without loading them. 409
+/// <code>INTEROP.HL7.IMPORTSHAPE</code> when the file is not exactly one <code>.HL7</code> document holding one <code>Category</code> of a name <method>Hl7NameOK</method> accepts, or
+/// holds another schema than <var>pId</var> names (<parameter>IMPORTID</parameter> names any). <var>pCategory</var> is the schema, <var>pDigest</var> the text's SHA-256 and
+/// <var>pFlagged</var> 1 when the file marks its <code>Category</code> standard, as the vendor reads the mark (<code>std</code> not empty, <code>0</code> or <code>false</code>).</p>
+ClassMethod Hl7ImportFile(pNamespace As %String, pId As %String, ByRef pQuery, Output pText As %String, Output pCategory As %String, Output pDigest As %String, Output pFlagged As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pCategory = ""
+    Set pDigest = ""
+    Set pFlagged = 0
+    Set tSC = ..ImportText(.pQuery, .pText, .tLabel, .pHttpStatus, .pFault, ##class(OcuPilot.Api.InteropError).#HL7TOOLARGE)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..ImportShape(pNamespace, pText, .pCategory, .tCount, .pDigest, .tCaught, ..#HL7EXTENSION, "Category", "std", .pFlagged)
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the import file could not be examined", .pHttpStatus, .pFault)
+    If (pCategory = "") || (tCount '= 1) || '..Hl7NameOK(pCategory) || ((pId '= ..#IMPORTID) && (pId '= pCategory)) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7IMPORTSHAPE, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The import row for the file <var>pQuery</var> names: <code>{Category, Digest, Present, Modified, Namespace, root, path, fileName, content}</code>, with <code>content</code> always
+/// empty (the row names the property a local file's text is set on and never holds the text). With <var>pAction</var>, in this order: a namespace under source control is
+/// <code>INTEROP.HL7.SOURCECONTROL</code>; then the file is judged (<method>Hl7ImportFile</method>); a file that marks its schema standard, or whose schema the namespace holds as
+/// standard, is <code>IMPORTSTANDARD</code>; a schema absent under exactly that name but held in another letter case is <code>CASE</code>.</p>
+ClassMethod ReadHl7Import(pNamespace As %String, pId As %String, pAction As %String, ByRef pQuery, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If (pAction '= "") && ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7SOURCECONTROL, .pHttpStatus, .pFault)
+    Set tSC = ..Hl7ImportFile(pNamespace, pId, .pQuery, .tText, .tCategory, .tDigest, .tFlagged, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..Hl7Facts(pNamespace, tCategory, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the HL7 schema read failed", .pHttpStatus, .pFault)
+    If pAction '= "" {
+        If tFlagged || tFacts("standard") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7IMPORTSTANDARD, .pHttpStatus, .pFault)
+        If 'tFacts("exists") && (tFacts("match") '= "") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7CASE, .pHttpStatus, .pFault)
+    }
+    Set pRow = {}
+    Do pRow.%Set("Category", tCategory, "string")
+    Do pRow.%Set("Digest", tDigest, "string")
+    Do pRow.%Set("Present", ''tFacts("exists"), "boolean")
+    Do pRow.%Set("Modified", tFacts("modified"), "string")
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    Do pRow.%Set(..#ROOTKEY, $Get(pQuery(..#ROOTKEY)), "string")
+    Do pRow.%Set(..#PATHKEY, $Get(pQuery(..#PATHKEY)), "string")
+    Do pRow.%Set(..#FILENAMEKEY, $Get(pQuery(..#FILENAMEKEY)), "string")
+    Do pRow.%Set(..#CONTENTKEY, "", "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Replace, or create, the schema the import file holds with the file's (Story 24.18 Batch 1). The sequence:</p>
+/// <ol>
+/// <li>A namespace under source control is <code>INTEROP.HL7.SOURCECONTROL</code>, before anything is read.</li>
+/// <li>The file is judged (<method>Hl7ImportFile</method>) and the schema read as it stands; a standard schema or a file that marks one is <code>IMPORTSTANDARD</code>, a name held only in
+/// another letter case <code>CASE</code>, and a reviewed digest, presence or stamp (<parameter>DIGESTKEY</parameter>, <parameter>PRESENTKEY</parameter>,
+/// <parameter>MODIFIEDKEY</parameter>) that moved <code>IMPORTCHANGED</code>, with nothing loaded.</li>
+/// <li>The vendor's schema lock is taken (<code>LOCKED</code> past <parameter>LOCKSECONDS</parameter>); under it the same judgments are made again and the file's one <code>.HL7</code>
+/// document is loaded by name (<method>Hl7VendorLoad</method>), which replaces the schema whole. A load that answers OK without loading that document is <code>IMPORTSHAPE</code>.</li>
+/// <li>OcuPilot's own audit row is recorded after the lock is released, naming the namespace, the schema, the file's kind and whether it completed, and never the text.</li>
+/// </ol>
+/// <p>The answer is the schema's row read again.</p>
+ClassMethod PerformHl7Import(pNamespace As %String, pId As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7SOURCECONTROL, .pHttpStatus, .pFault)
+    Set tSC = ..Hl7ImportFile(pNamespace, pId, .pQuery, .tText, .tCategory, .tDigest, .tFlagged, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..Hl7Facts(pNamespace, tCategory, .tPre, .tCaught)
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the HL7 schema read failed", .pHttpStatus, .pFault)
+    If tFlagged || tPre("standard") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7IMPORTSTANDARD, .pHttpStatus, .pFault)
+    If 'tPre("exists") && (tPre("match") '= "") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7CASE, .pHttpStatus, .pFault)
+    If '$Data(pQuery(..#DIGESTKEY)) || '$Data(pQuery(..#PRESENTKEY)) || '$Data(pQuery(..#MODIFIEDKEY)) || (pQuery(..#DIGESTKEY) '= tDigest) || (pQuery(..#PRESENTKEY) '= +tPre("exists")) || (pQuery(..#MODIFIEDKEY) '= tPre("modified")) {
+        Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7IMPORTCHANGED, .pHttpStatus, .pFault)
+    }
+    Set tItem = tCategory _ ..#HL7EXTENSION
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tLocked = 0
+    Set tAttempted = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tStream = ##class(%Stream.GlobalCharacter).%New()
+        Do tStream.Write(tText)
+        Do tStream.Rewind()
+        Set $NAMESPACE = pNamespace
+        Do ..Hl7Here()
+        Set tLocked = ..Hl7Lock(tCategory)
+        If 'tLocked {
+            Set tToken = "LOCKED"
+        } Else {
+            Do ..Hl7FactsHere(tCategory, .tNow)
+            If tNow("standard") {
+                Set tToken = "IMPORTSTANDARD"
+            } ElseIf 'tNow("exists") && (tNow("match") '= "") {
+                Set tToken = "CASE"
+            } ElseIf (tNow("modified") '= tPre("modified")) || (tNow("exists") '= tPre("exists")) {
+                Set tToken = "IMPORTCHANGED"
+            } Else {
+                Set tAttempted = 1
+                Set tVendorSC = ..Hl7VendorLoad(tStream, tItem, .tLoaded)
+                If $$$ISOK(tVendorSC) && '$Data(tLoaded(tItem)) Set tToken = "IMPORTSHAPE"
+            }
+            Do ..Hl7Unlock(tCategory)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+        If tLocked {
+            Try {
+                Set $NAMESPACE = pNamespace
+                Do ..Hl7Unlock(tCategory)
+            } Catch {
+            }
+            Set $NAMESPACE = tOrigNS
+        }
+    }
+    If tAttempted {
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        Do tEffects.%Set("schema", tCategory, "string")
+        Do tEffects.%Set("source", $Select($Get(pQuery(..#ROOTKEY)) '= "": "server file", 1: "local file"), "string")
+        Do tEffects.%Set("completed", ($$$ISOK(tVendorSC) && '$IsObject(tCaught) && (tToken = "")), "boolean")
+        Do ..AuditRuntime(..#VERBIMPORT, ..#ENTITYHL7SCHEMA, tCategory, tEffects)
+    }
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the HL7 schema import failed", .pHttpStatus, .pFault)
+    If tToken '= "" Quit ..Conflict(..#HL7CODEPREFIX _ tToken, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the HL7 schema import"), "the HL7 schema import failed", .pHttpStatus, .pFault)
+    Set tReadSC = ..ReadHl7Schema(pNamespace, tCategory, "", "", "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Category", tCategory, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>Export schema <var>pName</var>'s <code>.HL7</code> document, the vendor's own (Story 24.18 Batch 1): to the server file <parameter>ROOTKEY</parameter> and
+/// <parameter>PATHKEY</parameter> name, resolved and checked by <method>ExportFile</method> before the call (<code>$System.OBJ.Export</code>), the answer <code>{Category, Namespace, root,
+/// path}</code>; or, naming neither, as lines for the browser (<code>$System.OBJ.ExportToStream</code>), the answer <code>{Category, Namespace, lines}</code>, 409
+/// <code>INTEROP.HL7.TOOLARGE</code> past <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter> characters. A schema that is not held under exactly that name is 404. A
+/// standard schema may be exported. It writes nothing but the file, and records OcuPilot's own audit row, which carries no text.</p>
+ClassMethod ExportHl7Schema(pNamespace As %String, pName As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tRoot = $Get(pQuery(..#ROOTKEY))
+    Set tPath = $Get(pQuery(..#PATHKEY))
+    Set tToFile = (tRoot '= "") || (tPath '= "")
+    If '..Hl7NameOK(pName) Quit ..Absent(.pHttpStatus, .pFault)
+    Set tSC = ..Hl7Facts(pNamespace, pName, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the HL7 schema read failed", .pHttpStatus, .pFault)
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    Set tResolved = ""
+    If tToFile {
+        Set tSC = ..ExportFile(tRoot, tPath, .tResolved, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tText = ""
+    Set tTooLarge = 0
+    Set tMax = ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..Hl7Here()
+        Set tVendorSC = ..Hl7VendorExport(pName, tToFile, tResolved, tMax, .tText, .tTooLarge)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("schema", pName, "string")
+    Do tEffects.%Set("toFile", ''tToFile, "boolean")
+    Do tEffects.%Set("completed", ($$$ISOK(tVendorSC) && '$IsObject(tCaught) && 'tTooLarge), "boolean")
+    Do ..AuditRuntime(..#VERBEXPORT, ..#ENTITYHL7SCHEMA, pName, tEffects)
+    If $IsObject(tCaught) Quit ..Hl7Mapped(tCaught, "the HL7 schema export failed", .pHttpStatus, .pFault)
+    If tTooLarge Quit ..Conflict(##class(OcuPilot.Api.InteropError).#HL7TOOLARGE, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(..VendorCodesStatus(tVendorSC, "the HL7 schema export"), "the HL7 schema export failed", .pHttpStatus, .pFault)
+    Set pResult = {}
+    Do pResult.%Set("Category", pName, "string")
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    If tToFile {
+        Do pResult.%Set(..#ROOTKEY, tRoot, "string")
+        Do pResult.%Set(..#PATHKEY, tPath, "string")
+    } Else {
+        Do pResult.%Set("lines", ..ExportLines(tText))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the Hl7Schemas endpoint's <code>LIST</code> and typed types after <method>Invoke</method>'s gate (Story 24.18 Batch 1), for a namespace that carries the HL7 package (else
+/// 501 <code>PORT.NOTIMPLEMENTED</code>): the <code>HL7SCHEMA</code> read, the import file's read, the add, import and delete, and the export, the schema named under
+/// <parameter>IDKEY</parameter> by its name, kept exactly (AD-13). An <parameter>ACTIONKEY</parameter> names the write a read is composed for.</p>
+ClassMethod InvokeHl7Schema(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If '..Hl7Installed(pNamespace) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPELIST {
+            Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+            If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ListHl7Schemas(pNamespace, +tMaxText, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tId = $Get(pQuery(..#IDKEY))
+        If tId = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsHl7SchemaWrite(pType) || (pType = ..#TYPEEXPORTHL7SCHEMA): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '(..IsHl7SchemaWrite(tAction) || (tAction = ..#TYPEEXPORTHL7SCHEMA)) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPEEXPORTHL7SCHEMA {
+            Set tSC = ..ExportHl7Schema(pNamespace, tId, .pQuery, .pResult, .pHttpStatus, .pFault)
+        } ElseIf pType = ..#TYPEHL7IMPORTFILE {
+            Set tSC = ..ReadHl7Import(pNamespace, tId, tAction, .pQuery, .pResult, .pHttpStatus, .pFault)
+        } ElseIf pType = ..#TYPEIMPORTHL7SCHEMA {
+            Set tSC = ..PerformHl7Import(pNamespace, tId, .pQuery, .pResult, .pHttpStatus, .pFault)
+        } ElseIf ..IsHl7SchemaWrite(pType) {
+            Set tSC = ..PerformHl7Schema(pNamespace, pType, tId, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadHl7Schema(pNamespace, tId, tAction, $Get(pQuery(..#ROOTKEY)), $Get(pQuery(..#PATHKEY)), .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the HL7 schema call failed inside the port", ..VendorCodesStatus(ex.AsStatus(), "the HL7 schema call"), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The lines <method>Snippet</method> adds for the HL7 schema write <var>pType</var> of the schema named <var>pName</var> (Story 24.18 Batch 1): the source control guard, each refusal as
+/// one guard that stops the write (an add's name held in any letter case and a base the namespace does not hold; a delete's schema held and not standard), and the write itself: the classic
+/// dialog's sets and the vendor's audit call for an add, or <code>EnsLib.HL7.SchemaDocument.Delete</code>, each inside the vendor's schema lock; an import and an export are
+/// <method>Hl7TransferSnippet</method>'s. Names and values are string literals, so nothing the query carries runs as code. <code>""</code> for a name or a value the port would refuse by
+/// shape, which renders no draft. Nothing here runs; a person runs it.</p>
+ClassMethod Hl7SchemaSnippet(pType As %String, pName As %String, pBody As %DynamicAbstractObject, ByRef pQuery) As %String [ Private ]
+{
+    If '..Hl7NameOK(pName) Quit ""
+    If (pType = ..#TYPEIMPORTHL7SCHEMA) || (pType = ..#TYPEEXPORTHL7SCHEMA) Quit ..Hl7TransferSnippet(pType, pName, .pQuery)
+    Set tAdd = (pType = ..#TYPEADDHL7SCHEMA)
+    If tAdd {
+        Set tSC = ..Hl7SchemaViolations(pName, pBody, .tViolations, 1)
+        If tViolations Quit ""
+    }
+    Set tNL = $Char(10)
+    Set tName = ..Literal(pName)
+    Set tError = "$System.Status.Error(5001, "
+    Set tText = tNL _ " Set tGo = '##class(%CSP.Portal.SourceControl.Util).IsEnabled($Namespace), tSC = $System.Status.OK()"
+    Set tText = tText _ tNL _ " If 'tGo Set tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7SOURCECONTROL) _ ")"
+    If tAdd {
+        Set tBase = ""
+        Set tDescription = ""
+        If $IsObject(pBody) && (pBody.%GetTypeOf("Base") = "string") Set tBase = pBody.%Get("Base")
+        If $IsObject(pBody) && (pBody.%GetTypeOf("Description") = "string") Set tDescription = pBody.%Get("Description")
+        Set tText = tText _ tNL _ " Set tKey = """", tUpper = $ZConvert(" _ tName _ ", ""U"")"
+        Set tText = tText _ tNL _ " If tGo { For { Set tKey = $Order(^EnsHL7.Schema(tKey)) If tKey = """" { Quit } If $ZConvert(tKey, ""U"") = tUpper { Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7TAKEN) _ ") Quit } } }"
+        If tBase '= "" Set tText = tText _ tNL _ " If tGo, $Data(^EnsHL7.Schema(" _ ..Literal(tBase) _ ")) = 0 Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7BASE) _ ")"
+        Set tText = tText _ tNL _ " If tGo Lock +^EnsHL7.Schema(" _ tName _ "):" _ ..#LOCKSECONDS
+        Set tText = tText _ tNL _ " If tGo, '$Test Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7LOCKED) _ ")"
+        If tBase '= "" Set tText = tText _ tNL _ " If tGo Set ^EnsHL7.Schema(" _ tName _ ", ""base"") = " _ ..Literal(tBase)
+        If tDescription '= "" Set tText = tText _ tNL _ " If tGo Set ^EnsHL7.Description(" _ tName _ ") = " _ ..Literal(tDescription)
+        Set tText = tText _ tNL _ " If tGo Set ^EnsHL7.Schema(" _ tName _ ", ""time"") = $ZTimeStamp, tActions = " _ ..Literal("Created schema based on " _ tBase) _ ", tSC = ##class(Ens.Util.Auditing).AuditModifySchema(""HL7 "" _ " _ tName _ ", tActions)"
+        Quit tText _ tNL _ " Lock -^EnsHL7.Schema(" _ tName _ ")"
+    }
+    Set tText = tText _ tNL _ " If tGo, $Data(^EnsHL7.Schema(" _ tName _ ")) = 0 Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.Error).#PORTNOTFOUND) _ ")"
+    Set tText = tText _ tNL _ " If tGo, +$Get(^EnsHL7.Description(" _ tName _ ", ""std"")) Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7STANDARD) _ ")"
+    Set tText = tText _ tNL _ " If tGo Lock +^EnsHL7.Schema(" _ tName _ "):" _ ..#LOCKSECONDS
+    Set tText = tText _ tNL _ " If tGo, '$Test Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7LOCKED) _ ")"
+    Set tText = tText _ tNL _ " If tGo Set tSC = ##class(EnsLib.HL7.SchemaDocument).Delete(" _ ..Literal(pName _ ..#HL7EXTENSION) _ ")"
+    Quit tText _ tNL _ " Lock -^EnsHL7.Schema(" _ tName _ ")"
+}
+
+/// <p>The lines <method>Hl7SchemaSnippet</method> adds for an import or an export of the schema <var>pName</var> (Story 24.18 Batch 1): <method>TransferSnippet</method>'s, over the schema's one
+/// <code>.HL7</code> document and the vendor's schema lock, and for an import the guards the port judges before its load: source control; a file that does not hold exactly one
+/// <code>Category</code>, in any XML namespace, or marks one standard; a schema the namespace holds as standard; and one held only in another letter case. <code>""</code> for a file
+/// name the port refuses by shape (a control character, a <code>..</code> segment or a name longer than <parameter>OcuPilot.Port.AtelierPort.MAXFILENAME</parameter>), which renders no draft.</p>
+ClassMethod Hl7TransferSnippet(pType As %String, pName As %String, ByRef pQuery) As %String [ Private ]
+{
+    Set tRoot = $Get(pQuery(..#ROOTKEY))
+    Set tPath = $Get(pQuery(..#PATHKEY))
+    If ($ZStrip(tRoot, "*C") '= tRoot) || ($ZStrip(tPath, "*C") '= tPath) || ($Length(tPath) > ##class(OcuPilot.Port.AtelierPort).#MAXFILENAME) || ($Find("/" _ $Translate(tPath, "\", "/") _ "/", "/../") > 0) Quit ""
+    If pType = ..#TYPEEXPORTHL7SCHEMA Quit ..TransferSnippet(pType, pName, .pQuery, ..#HL7EXTENSION, "^EnsHL7.Schema")
+    Set tNL = $Char(10)
+    Set tName = ..Literal(pName)
+    Set tError = "$System.Status.Error(5001, "
+    Set tParse = $Select(tPath = "": "ParseStream(tStream, .tReader)", 1: "ParseFile(" _ ..Literal(tPath) _ ", .tReader)")
+    Set tText = tNL _ " Set tGo = '##class(%CSP.Portal.SourceControl.Util).IsEnabled($Namespace), tSC = $System.Status.OK()"
+    Set tText = tText _ tNL _ " If 'tGo Set tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7SOURCECONTROL) _ ")"
+    Set tText = tText _ tNL _ " If tGo { Set tCount = 0, tStd = 0, tRead = ##class(%XML.TextReader)." _ tParse _ " While $System.Status.IsOK(tRead) && tReader.Read() { If (tReader.NodeType = ""element"") && (tReader.LocalName = ""Category"") { Set tCount = tCount + 1 If tReader.MoveToAttributeName(""std"") && $Case($ZConvert(tReader.Value, ""L""), """": 0, ""0"": 0, ""false"": 0, : 1) { Set tStd = 1 } Do tReader.MoveToElement() } }"
+    Set tText = tText _ " If tCount '= 1 { Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7IMPORTSHAPE) _ ") } ElseIf tStd { Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7IMPORTSTANDARD) _ ") }" _ $Select(tPath = "": " Do tStream.Rewind()", 1: "") _ " }"
+    Set tText = tText _ tNL _ " If tGo, +$Get(^EnsHL7.Description(" _ tName _ ", ""std"")) Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7IMPORTSTANDARD) _ ")"
+    Set tText = tText _ tNL _ " If tGo && ($Data(^EnsHL7.Schema(" _ tName _ ")) = 0) { Set tKey = """", tUpper = $ZConvert(" _ tName _ ", ""U"") For { Set tKey = $Order(^EnsHL7.Schema(tKey)) If tKey = """" { Quit } If $ZConvert(tKey, ""U"") = tUpper { Set tGo = 0, tSC = " _ tError _ ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7CASE) _ ") Quit } } }"
+    Quit ..TransferSnippet(pType, pName, .pQuery, ..#HL7EXTENSION, "^EnsHL7.Schema", tText, ..Literal(##class(OcuPilot.Api.InteropError).#REASONHL7LOCKED))
 }
 
 }

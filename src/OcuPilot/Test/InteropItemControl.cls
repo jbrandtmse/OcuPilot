@@ -237,8 +237,10 @@ ClassMethod Recompile() As %Status
     Quit tSC
 }
 
-/// <p>The probe items' running jobs, the configuration names comma-separated and sorted.</p>
-ClassMethod Jobs() As %String
+/// <p>The probe items' running jobs, the configuration names comma-separated and sorted. With <var>pAll</var>, every job row the
+/// vendor lists, each as <code>name (job, state)</code>. A row the query cannot read, and a query that cannot be opened, is listed as
+/// <code>unread ...</code> with the vendor's error, never left out.</p>
+ClassMethod Jobs(pAll As %Boolean = 0) As %String
 {
     Kill tNames
     Set tOrigNS = $NAMESPACE
@@ -246,15 +248,33 @@ ClassMethod Jobs() As %String
         Set $NAMESPACE = ..#NAMESPACE
         Set tRS = ##class(%ResultSet).%New("Ens.Job:Enumerate")
         Set tSC = tRS.Execute()
-        While tRS.Next() {
-            Set tName = tRS.Get("ConfigName")
-            If $Extract(tName, 1, 13) = "OcuPilotProbe" Set tNames(tName) = ""
+        If $$$ISERR(tSC) Set tNames("unread query: " _ $System.Status.GetErrorText(tSC)) = ""
+        If $$$ISOK(tSC) {
+            Set tEnded = 0
+            For tGuard = 1:1:2000 {
+                Set tMore = tRS.Next(.tRowSC)
+                If $$$ISERR($Get(tRowSC, 1)) {
+                    Set tNames("unread row: " _ $System.Status.GetErrorText(tRowSC)) = ""
+                    Continue
+                }
+                If 'tMore {
+                    Set tEnded = 1
+                    Quit
+                }
+                Set tName = tRS.Get("ConfigName")
+                If pAll {
+                    Set tNames(tName _ " (" _ tRS.Get("Job") _ ", " _ tRS.Get("State") _ ")") = ""
+                } ElseIf $Extract(tName, 1, 13) = "OcuPilotProbe" {
+                    Set tNames(tName) = ""
+                }
+            }
+            If 'tEnded Set tNames("unread: more than 2000 rows") = ""
         }
         Set tRS = ""
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
-        Quit
+        Set tNames("unread: " _ ex.DisplayString()) = ""
     }
     Set tText = ""
     Set tName = ""
@@ -266,25 +286,96 @@ ClassMethod Jobs() As %String
     Quit tText
 }
 
-/// <p>Start the probe production through the port, as the Productions screen's Start does, and wait until the plain operation holds
-/// a job (fifteen seconds at most) and the scheduler's own startup update of the production has run
-/// (<method>OcuPilot.Test.InteropJobEnd.StartUpdated</method>, twenty seconds at most). A failing status when the port refuses or
-/// either wait runs out. The scheduler applies any update pending at that moment, so a caller that reads or changes the
-/// update-pending flag right after this returns meets a settled flag.</p>
+/// <p>The runtime facts of <var>pName</var> as the port's <code>ITEMRUN</code> reads them, <code>enabled stopped own jobs
+/// needs</code> as <code>name=value</code> pairs; the refusal's HTTP status and code when the read is refused.</p>
+ClassMethod ItemFacts(pName As %String = {..#OPNAME}) As %String
+{
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("id") = ..IdOf(pName)
+    Set tSC = $ClassMethod(..#PORT, "Invoke", "Items", "ITEMRUN", .tQuery, "", .tRow, .tHttp, .tFault)
+    If '$IsObject($Get(tRow)) Quit +$Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "")
+    Quit "enabled=" _ +tRow.Enabled _ " stopped=" _ +tRow.TemporarilyStopped _ " own=" _ +tRow.OwnJobs _ " jobs=" _ tRow.Jobs _ " needs=" _ +tRow.NeedsUpdate
+}
+
+/// <p>Start the probe production through the port, as the Productions screen's Start does, and wait until the port's
+/// <method>ItemFacts</method> read the plain operation as running a job of its own (fifteen seconds at most) and the scheduler's own
+/// startup update of the production has run (<method>OcuPilot.Test.InteropJobEnd.StartUpdated</method>, twenty seconds at most). A
+/// failing status when the port's start did not answer 200 with the state <code>Running</code>, naming the HTTP status, the code
+/// and the state, or when the operation reads no job, naming the start's answer, the production's state, the facts and every job row
+/// the vendor lists. The scheduler applies any update pending at that moment, so a caller that reads or changes the update-pending
+/// flag right after this returns meets a settled flag.</p>
 ClassMethod StartProduction() As %Status
 {
     Kill tQuery
     Set tQuery("namespace") = ..#NAMESPACE
     Set tQuery("id") = ..#PRODUCTION
     Set tSC = $ClassMethod(..#PORT, "Invoke", "Productions", "START", .tQuery, "", .tResult, .tHttp, .tFault)
-    If $$$ISERR(tSC) Quit tSC
+    Set tAnswer = "HTTP " _ +$Get(tHttp) _ ", code '" _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "") _ "', state '" _ $Select($IsObject($Get(tResult)): tResult.%Get("State"), 1: "") _ "'"
+    If $$$ISERR(tSC) || (+$Get(tHttp) '= 200) || '$IsObject($Get(tResult)) || (tResult.%Get("State") '= "Running") {
+        Quit $$$ERROR($$$GeneralError, "the probe production's start was refused or did not read Running: " _ tAnswer _ $Select($$$ISERR(tSC): "; " _ $System.Status.GetErrorText(tSC), 1: ""))
+    }
     For tTry = 1:1:30 {
-        If $ListFind($ListFromString(..Jobs()), ..#OPNAME) Quit
+        Set tFacts = ..ItemFacts()
+        If tFacts [ " own=1 jobs=1 needs=" Quit
         Hang 0.5
     }
-    If '$ListFind($ListFromString(..Jobs()), ..#OPNAME) Quit $$$ERROR($$$GeneralError, "the probe production's operation holds no job after the start")
+    If tFacts '[ " own=1 jobs=1 needs=" Quit $$$ERROR($$$GeneralError, ..NoJobText(tAnswer))
     If '$ClassMethod(..#STARTUPDATE, "StartUpdated", .tWhy) Quit $$$ERROR($$$GeneralError, tWhy)
     Quit $$$OK
+}
+
+/// <p>The failure text of a start whose operation reads no job of its own: <var>pAnswer</var> (the port's start answer as
+/// <method>StartProduction</method> words it), the production's state, the operation's <method>ItemFacts</method> and every job row
+/// the vendor lists (<method>Jobs</method> with <var>pAll</var>).</p>
+ClassMethod NoJobText(pAnswer As %String) As %String
+{
+    Quit "the probe production's operation reads no job of its own after the start (" _ pAnswer _ "); the production reads " _ $ClassMethod(..#PRODUCTIONS, "State") _ ", the item " _ ..ItemFacts() _ ", the job rows: " _ ..Jobs(1)
+}
+
+/// <p>Store a job-status row that carries no configuration name, with process id 1 so the vendor's job list reads it before every
+/// real job, as a job that died while registering leaves one. <method>RemoveNamelessJob</method> removes it.</p>
+ClassMethod PlantNamelessJob()
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set ^IRIS.Temp.EnsJobStatus(..#NAMESPACE, "sys", 1, "%Status") = "planted"
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+}
+
+/// <p>Remove the row <method>PlantNamelessJob</method> stored, the ghost rows the vendor's dead-job sweep copies from it, and the
+/// log lines the sweep and the vendor's job list wrote for them. The number of rows left under process id 1 and its ghosts, or -1
+/// when the log lines could not be removed.</p>
+ClassMethod RemoveNamelessJob() As %Integer
+{
+    Set tLeft = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tId = ""
+        For {
+            Set tId = $Order(^IRIS.Temp.EnsJobStatus(..#NAMESPACE, "sys", tId))
+            If tId = "" Quit
+            If (tId = 1) || ($Extract(tId, 1, 3) = "Z1_") Kill ^IRIS.Temp.EnsJobStatus(..#NAMESPACE, "sys", tId)
+        }
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM Ens_Util.Log WHERE Text LIKE 'Marking job 1 %' OR (SourceClass = 'Ens.Job' AND SourceMethod = 'EnumerateFetch' AND (Text [ '""sys"",1,' OR Text [ '""sys"",""Z1_'))")
+        Set tId = ""
+        For {
+            Set tId = $Order(^IRIS.Temp.EnsJobStatus(..#NAMESPACE, "sys", tId))
+            If tId = "" Quit
+            If (tId = 1) || ($Extract(tId, 1, 3) = "Z1_") Set tLeft = tLeft + 1
+        }
+        If tRS.%SQLCODE < 0 Set tLeft = -1
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tLeft = -1
+    }
+    Quit tLeft
 }
 
 /// <p>The vendor's <code>ModifyConfiguration</code> audit rows since <var>pSince</var> that name the probe
@@ -331,13 +422,13 @@ ClassMethod ArgsFor(pName As %String) As %DynamicObject
 }
 
 /// <p>Confirm proposal <var>pProposalId</var> over the wire as the HTTP test account, scoped to
-/// <parameter>NAMESPACE</parameter>: the status, the raw body and the parsed answer (<code>""</code> when
-/// the body is not one JSON document).</p>
-ClassMethod ConfirmHttp(pProposalId As %String, Output pStatus As %Integer, Output pRaw As %String, Output pAnswer) As %Status
+/// <parameter>NAMESPACE</parameter>, or to <var>pNamespace</var> when it is not empty: the status, the raw body and the parsed
+/// answer (<code>""</code> when the body is not one JSON document).</p>
+ClassMethod ConfirmHttp(pProposalId As %String, Output pStatus As %Integer, Output pRaw As %String, Output pAnswer, pNamespace As %String = "") As %Status
 {
     Set pAnswer = ""
     Kill tExtra
-    Set tUrl = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/proposal/" _ pProposalId _ "/confirm?ns=" _ ..#NAMESPACE
+    Set tUrl = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/proposal/" _ pProposalId _ "/confirm?ns=" _ $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tUrl, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .pRaw, .tHeaders, "", "application/json", .tExtra, 180)
     Try { Set pAnswer = ##class(%DynamicObject).%FromJSON(pRaw) } Catch { Set pAnswer = "" }
     Quit tSC

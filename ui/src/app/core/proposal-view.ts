@@ -22,6 +22,7 @@
  */
 
 import type { Impact } from './impact.ts';
+import { actionSentence, actionsText, parseActionRow, screenTitleOf } from './page-resource-actions.ts';
 import { STRINGS } from './strings.ts';
 import type { TurnProposal, TurnProposalPrivilege, TurnProposalUnchangedRow } from './turn.ts';
 
@@ -211,6 +212,81 @@ export const CONSEQUENCE_SYSTEMGLOBAL = 'MAPPING.SYSTEMGLOBAL';
 
 /** Story 20.18: an agent change to a screen's permissions that drops a pair the screen required (AD-64). */
 export const CONSEQUENCE_SCREENACCESSLOWERED = 'SCREENACCESS.LOWERED';
+
+/**
+ * Story 21.37: an agent change or clear of the custom resource of a classic page an OcuPilot screen follows (AD-10, AD-64). The sentence names
+ * the screens, so `consequenceSentence` answers `''` for both codes and the card states them through `pageResourceSentence`.
+ */
+export const CONSEQUENCE_PAGERESOURCECHANGED = 'PAGERESOURCE.CHANGED';
+export const CONSEQUENCE_PAGERESOURCECLEARED = 'PAGERESOURCE.CLEARED';
+
+/** The field a page resource proposal names the screens that follow the page under, a changed row's after value or an unchanged row's. */
+const PAGE_RESOURCE_SCREEN_FIELD = 'Screen';
+
+/** The field a page resource proposal names the writes the page's resource gates under, and the screens that open the page beside them. */
+const PAGE_RESOURCE_ACTION_FIELD = 'Action';
+
+/** The entity type a page resource proposal targets. */
+const PAGE_RESOURCE_ENTITY_TYPE = 'page-resource';
+
+/** The `field` row's value from the changed rows (its after value) or, failing that, the unchanged rows. */
+function contextValue(view: Pick<ProposalCardView, 'changed' | 'unchanged'>, field: string): string {
+  const changed = view.changed.find((row) => row.field === field);
+  if (changed !== undefined) return changed.after;
+  return (view.unchanged ?? []).find((row) => row.field === field)?.value ?? '';
+}
+
+/**
+ * The card's consequence sentences for a page resource proposal, or `''` for any other consequence or where no `Screen` or `Action` value is carried.
+ * The screen-open sentence names the screens that open the page: the `Screen` row's titles where no write is named, and otherwise the screens the
+ * `Action` row lists as opening it. The action sentence names the writes the `Action` row lists, each by its label and screen. Each value is inserted
+ * through a replacer so a title holding a placeholder is shown as written.
+ */
+export function pageResourceSentence(view: Pick<ProposalCardView, 'consequence' | 'changed' | 'unchanged'>): string {
+  let template = '';
+  let actionTemplate = '';
+  if (view.consequence === CONSEQUENCE_PAGERESOURCECHANGED) {
+    template = STRINGS.pageResourcesConsequenceChanged;
+    actionTemplate = STRINGS.pageResourcesActionConsequenceChanged;
+  }
+  if (view.consequence === CONSEQUENCE_PAGERESOURCECLEARED) {
+    template = STRINGS.pageResourcesConsequenceCleared;
+    actionTemplate = STRINGS.pageResourcesActionConsequenceCleared;
+  }
+  if (template === '') return '';
+  const row = parseActionRow(contextValue(view, PAGE_RESOURCE_ACTION_FIELD));
+  const opening =
+    row.actions.length === 0
+      ? contextValue(view, PAGE_RESOURCE_SCREEN_FIELD)
+      : row.opens
+          .map(screenTitleOf)
+          .filter((title) => title !== '')
+          .join(', ');
+  const sentences: string[] = [];
+  if (opening !== '') sentences.push(template.replace('<screen>', () => opening));
+  if (actionsText(row.actions) !== '') sentences.push(actionSentence(actionTemplate, row.actions));
+  return sentences.join(' ');
+}
+
+/**
+ * A page resource proposal's changed rows as the card draws them: the `Action` row's value as the phrases it stands for, never a descriptor class
+ * or an action id. Any other proposal's rows are returned as they are.
+ */
+export function shownChangedRows(view: Pick<ProposalCardView, 'targetType' | 'changed'>): readonly ProposalDiffRow[] {
+  if (view.targetType !== PAGE_RESOURCE_ENTITY_TYPE) return view.changed;
+  return view.changed.map((row) =>
+    row.field === PAGE_RESOURCE_ACTION_FIELD
+      ? { ...row, before: actionsText(parseActionRow(row.before).actions), after: actionsText(parseActionRow(row.after).actions) }
+      : row
+  );
+}
+
+/** The unchanged rows of a page resource proposal as the card draws them, the `Action` row's value as its phrases; any other proposal's as they are. */
+export function shownUnchangedRows(view: Pick<ProposalCardView, 'targetType' | 'unchanged'>): readonly ProposalUnchangedRow[] {
+  const rows = view.unchanged ?? [];
+  if (view.targetType !== PAGE_RESOURCE_ENTITY_TYPE) return rows;
+  return rows.map((row) => (row.field === PAGE_RESOURCE_ACTION_FIELD ? { ...row, value: actionsText(parseActionRow(row.value).actions) } : row));
+}
 
 /** Story 18.14: a copy of mappings, which replaces the destination's same-named mappings. */
 export const CONSEQUENCE_COPYMAPPINGS = 'NAMESPACE.COPYMAPPINGS';
@@ -411,6 +487,34 @@ export const CONSEQUENCE_ANALYTICSCUBESYNCHRONIZE = 'ANALYTICS.CUBE.SYNCHRONIZE'
 /** Story 21.2: a backup run's and a freeze's cards; each is one published sentence. */
 export const CONSEQUENCE_BACKUPRUN = 'BACKUP.RUN';
 export const CONSEQUENCE_BACKUPFREEZE = 'BACKUP.FREEZE';
+/** Story 21.6: the SQL statement writes' and the cached-query purges' cards; each is one published sentence. */
+export const CONSEQUENCE_SQLSTATEMENTFREEZE = 'SQL.STATEMENT.FREEZE';
+export const CONSEQUENCE_SQLSTATEMENTUNFREEZE = 'SQL.STATEMENT.UNFREEZE';
+export const CONSEQUENCE_SQLSTATEMENTCLEARSTATISTICS = 'SQL.STATEMENT.CLEARSTATISTICS';
+export const CONSEQUENCE_SQLSTATEMENTCLEARERROR = 'SQL.STATEMENT.CLEARERROR';
+export const CONSEQUENCE_SQLSTATEMENTCLEAN = 'SQL.STATEMENT.CLEAN';
+export const CONSEQUENCE_SQLCACHEDQUERYPURGE = 'SQL.CACHEDQUERY.PURGE';
+/** Story 21.26: the runtime statistics purge's and the collection setting's cards; each is one published sentence. */
+export const CONSEQUENCE_SQLRUNTIMESTATSPURGE = 'SQL.RUNTIMESTATS.PURGE';
+export const CONSEQUENCE_SQLRUNTIMESTATSSET = 'SQL.RUNTIMESTATS.SET';
+/** Story 21.27: the index analyzer's gather (with and without system classes), run and purge cards; each is one published sentence. */
+export const CONSEQUENCE_SQLINDEXANALYSISGATHER = 'SQL.INDEXANALYSIS.GATHER';
+export const CONSEQUENCE_SQLINDEXANALYSISGATHERSYSTEM = 'SQL.INDEXANALYSIS.GATHERSYSTEM';
+export const CONSEQUENCE_SQLINDEXANALYSISRUN = 'SQL.INDEXANALYSIS.RUN';
+export const CONSEQUENCE_SQLINDEXANALYSISPURGE = 'SQL.INDEXANALYSIS.PURGE';
+/** Story 21.29: the troubleshooting reports' save, delete and generate (to a server file) cards; each is one published sentence. */
+export const CONSEQUENCE_SQLREPORTSAVE = 'EXPLORER.SQLREPORT.SAVE';
+export const CONSEQUENCE_SQLREPORTDELETE = 'EXPLORER.SQLREPORT.DELETE';
+export const CONSEQUENCE_SQLREPORTGENERATE = 'EXPLORER.SQLREPORT.GENERATE';
+/** Story 21.25: the table maintenance rebuilds' and statistics writes' cards; each is one published sentence. */
+export const CONSEQUENCE_SQLTABLEREBUILD = 'SQL.TABLE.REBUILD';
+export const CONSEQUENCE_SQLTABLEREBUILDALL = 'SQL.TABLE.REBUILDALL';
+export const CONSEQUENCE_SQLTABLETUNE = 'SQL.TABLE.TUNE';
+export const CONSEQUENCE_SQLTABLECLEARSTATISTICS = 'SQL.TABLE.CLEARSTATISTICS';
+export const CONSEQUENCE_SQLTABLETUNESCHEMA = 'SQL.TABLE.TUNESCHEMA';
+export const CONSEQUENCE_SQLTABLESETEXTENTSIZE = 'SQL.TABLE.SETEXTENTSIZE';
+export const CONSEQUENCE_SQLTABLESETSELECTIVITY = 'SQL.TABLE.SETSELECTIVITY';
+export const CONSEQUENCE_SQLTABLESETMAPSIZE = 'SQL.TABLE.SETMAPSIZE';
 /** Story 24.2: the term list editor's delete and entry remove; each is one published sentence. */
 export const CONSEQUENCE_ANALYTICSTERMLISTDELETE = 'ANALYTICS.TERMLIST.DELETE';
 export const CONSEQUENCE_ANALYTICSTERMLISTREMOVE = 'ANALYTICS.TERMLIST.REMOVE';
@@ -426,6 +530,10 @@ export const CONSEQUENCE_ANALYTICSQUALITYMEASUREDELETE = 'ANALYTICS.QUALITYMEASU
 /** Story 24.12 Batch 3: the removal of a group, an element or a documentation item; one published sentence. */
 export const CONSEQUENCE_ANALYTICSQUALITYMEASUREREMOVE = 'ANALYTICS.QUALITYMEASURE.REMOVE';
 export const CONSEQUENCE_ANALYTICSQUALITYMEASURESAVE = 'ANALYTICS.QUALITYMEASURE.SAVE';
+/** Story 24.14 Batch 3: the PMML definition create saves and compiles a class and makes the classes it generates in its package; one published sentence. */
+export const CONSEQUENCE_ANALYTICSPMMLSAVE = 'ANALYTICS.PMML.SAVE';
+/** Story 24.14 Batch 4: the PMML export runs the model's test again, copies its results into a new class and makes a cube class that reads them; one published sentence. */
+export const CONSEQUENCE_ANALYTICSPMMLEXPORT = 'ANALYTICS.PMML.EXPORT';
 /** Story 24.13 Batch 2: a General setting's write stores every general setting, as the classic page's Save does; one published sentence. */
 export const CONSEQUENCE_ANALYTICSSETTINGSAVE = 'ANALYTICS.SETTING.SAVE';
 /** Story 24.13 Batch 3: a run-time variable's expression is code, and the removal of a variable and of an icon; each is one published sentence. */
@@ -462,6 +570,39 @@ export const CONSEQUENCE_INTEROPLOOKUPDELETE = 'INTEROP.LOOKUP.DELETE';
 export const CONSEQUENCE_INTEROPLOOKUPIMPORT = 'INTEROP.LOOKUP.IMPORT';
 /** Story 20.26: a business partner's removal. */
 export const CONSEQUENCE_INTEROPPARTNERREMOVE = 'INTEROP.PARTNER.REMOVE';
+/** Story 24.15: a system default setting's removal, and an added or changed default's reach into a running production. */
+export const CONSEQUENCE_INTEROPDEFAULTSETTINGREMOVE = 'INTEROP.DEFAULTSETTING.REMOVE';
+export const CONSEQUENCE_INTEROPDEFAULTSETTINGPENDING = 'INTEROP.DEFAULTSETTING.PENDING';
+/** Story 24.15: a credential's removal, and a changed credential's or password's reach into what signs in with it. */
+export const CONSEQUENCE_INTEROPCREDENTIALREMOVE = 'INTEROP.CREDENTIAL.REMOVE';
+export const CONSEQUENCE_INTEROPCREDENTIALCHANGE = 'INTEROP.CREDENTIAL.CHANGE';
+/** Story 24.15: a schedule spec's removal, and a changed schedule spec's reach into a running production. */
+export const CONSEQUENCE_INTEROPSCHEDULEREMOVE = 'INTEROP.SCHEDULE.REMOVE';
+export const CONSEQUENCE_INTEROPSCHEDULECHANGE = 'INTEROP.SCHEDULE.CHANGE';
+/** Story 24.17 Batch 3a: a workflow user's removal, and a workflow user made inactive. */
+export const CONSEQUENCE_INTEROPWORKFLOWUSERREMOVE = 'INTEROP.WORKFLOW.USERREMOVE';
+export const CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE = 'INTEROP.WORKFLOW.USERINACTIVE';
+/** Story 24.17 Batch 3b: a workflow role's removal, a member added to a role, and a member removed from it. */
+export const CONSEQUENCE_INTEROPWORKFLOWROLEREMOVE = 'INTEROP.WORKFLOW.ROLEREMOVE';
+export const CONSEQUENCE_INTEROPWORKFLOWMEMBERADD = 'INTEROP.WORKFLOW.MEMBERADD';
+export const CONSEQUENCE_INTEROPWORKFLOWMEMBERREMOVE = 'INTEROP.WORKFLOW.MEMBERREMOVE';
+/** Story 24.17 Batch 4: a workflow task assigned to a user, sent back to its role, and canceled. */
+export const CONSEQUENCE_INTEROPWORKFLOWTASKASSIGN = 'INTEROP.WORKFLOW.TASKASSIGN';
+export const CONSEQUENCE_INTEROPWORKFLOWTASKUNASSIGN = 'INTEROP.WORKFLOW.TASKUNASSIGN';
+export const CONSEQUENCE_INTEROPWORKFLOWTASKCANCEL = 'INTEROP.WORKFLOW.TASKCANCEL';
+/** Story 24.18 Batch 1: an HL7 schema's deletion and its import. */
+export const CONSEQUENCE_INTEROPHL7DELETE = 'INTEROP.HL7.DELETE';
+export const CONSEQUENCE_INTEROPHL7IMPORT = 'INTEROP.HL7.IMPORT';
+/** Story 24.16: a purge of management data, and one whose bitmap cleanup is on. */
+export const CONSEQUENCE_INTEROPPURGERUN = 'INTEROP.PURGE.RUN';
+export const CONSEQUENCE_INTEROPPURGEBITMAP = 'INTEROP.PURGE.BITMAP';
+/** Story 24.16 Batch 4: a local archive run. */
+export const CONSEQUENCE_INTEROPARCHIVERUN = 'INTEROP.ARCHIVE.RUN';
+/** Story 24.17 Batch 1: a managed alert update. */
+export const CONSEQUENCE_INTEROPALERTUPDATE = 'INTEROP.ALERT.UPDATE';
+/** Story 24.17 Batch 2: a business rule log purge and a business process log purge. */
+export const CONSEQUENCE_INTEROPRULELOGPURGE = 'INTEROP.RULELOG.PURGE';
+export const CONSEQUENCE_INTEROPPROCESSLOGPURGE = 'INTEROP.PROCESSLOG.PURGE';
 /** Story 20.6: a host test, which sends a real message through the running production. */
 export const CONSEQUENCE_INTEROPTESTSENDS = 'INTEROP.TEST.SENDS';
 /** Story 20.27: a data transformation test, which runs the transformation's code on this instance as the person. */
@@ -469,6 +610,13 @@ export const CONSEQUENCE_INTEROPTRANSFORMRUNS = 'INTEROP.TRANSFORM.RUNS';
 /** Story 20.31: a message resend, and an edit and resend, each of which delivers a copy that cannot be recalled. */
 export const CONSEQUENCE_INTEROPMESSAGERESEND = 'INTEROP.MESSAGE.RESEND';
 export const CONSEQUENCE_INTEROPMESSAGEEDITRESEND = 'INTEROP.MESSAGE.EDITRESEND';
+/** Story 24.16: a suspended message's resubmit, edit and resubmit, discard and delete. */
+export const CONSEQUENCE_INTEROPSUSPENDEDRESUBMIT = 'INTEROP.SUSPENDED.RESUBMIT';
+export const CONSEQUENCE_INTEROPSUSPENDEDEDIT = 'INTEROP.SUSPENDED.EDIT';
+export const CONSEQUENCE_INTEROPSUSPENDEDDISCARD = 'INTEROP.SUSPENDED.DISCARD';
+export const CONSEQUENCE_INTEROPSUSPENDEDDELETE = 'INTEROP.SUSPENDED.DELETE';
+/** Story 24.16 Batch 3: a message export, which saves the bodies of the messages marked to one file in the confirming browser. */
+export const CONSEQUENCE_INTEROPMESSAGEEXPORT = 'INTEROP.MESSAGE.EXPORT';
 /** Story 20.22: a set of a setting that is a location on the server (AD-21's ninth case). */
 export const CONSEQUENCE_INTEROPSETTINGLOCATION = 'INTEROP.SETTING.LOCATION';
 /** The field a setting set's diff names the value under. */
@@ -508,6 +656,8 @@ export function journalSentence(view: Pick<ProposalCardView, 'consequence' | 'ch
     if (stored === '') return STRINGS.interopItemPendingConsequence;
     return STRINGS.interopSettingLocationConsequence.replace('<value>', () => stored);
   }
+  // Story 21.37: a page resource change or clear names the screens that follow the page, from the proposal's `Screen` value.
+  if (view.consequence === CONSEQUENCE_PAGERESOURCECHANGED || view.consequence === CONSEQUENCE_PAGERESOURCECLEARED) return pageResourceSentence(view);
   return '';
 }
 
@@ -657,6 +807,31 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 21.2: a backup run's note and a freeze's warning, each published once.
   if (code === CONSEQUENCE_BACKUPRUN) return STRINGS.backupRunNote;
   if (code === CONSEQUENCE_BACKUPFREEZE) return STRINGS.backupFreezeConsequence;
+  // Story 21.6: the statement writes' and the purges' sentences, each published once.
+  if (code === CONSEQUENCE_SQLSTATEMENTFREEZE) return STRINGS.sqlStatementFreezeConsequence;
+  if (code === CONSEQUENCE_SQLSTATEMENTUNFREEZE) return STRINGS.sqlStatementUnfreezeConsequence;
+  if (code === CONSEQUENCE_SQLSTATEMENTCLEARSTATISTICS) return STRINGS.sqlStatementClearStatisticsConsequence;
+  if (code === CONSEQUENCE_SQLSTATEMENTCLEARERROR) return STRINGS.sqlStatementClearErrorConsequence;
+  if (code === CONSEQUENCE_SQLSTATEMENTCLEAN) return STRINGS.sqlStatementCleanConsequence;
+  if (code === CONSEQUENCE_SQLCACHEDQUERYPURGE) return STRINGS.sqlCachedQueryPurgeConsequence;
+  if (code === CONSEQUENCE_SQLRUNTIMESTATSPURGE) return STRINGS.sqlRuntimeStatsPurgeConsequence;
+  if (code === CONSEQUENCE_SQLRUNTIMESTATSSET) return STRINGS.sqlRuntimeStatsSetConsequence;
+  if (code === CONSEQUENCE_SQLINDEXANALYSISGATHER) return STRINGS.sqlIndexAnalysisGatherConsequence;
+  if (code === CONSEQUENCE_SQLINDEXANALYSISGATHERSYSTEM) return STRINGS.sqlIndexAnalysisGatherSystemConsequence;
+  if (code === CONSEQUENCE_SQLINDEXANALYSISRUN) return STRINGS.sqlIndexAnalysisRunConsequence;
+  if (code === CONSEQUENCE_SQLINDEXANALYSISPURGE) return STRINGS.sqlIndexAnalysisPurgeConsequence;
+  if (code === CONSEQUENCE_SQLREPORTSAVE) return STRINGS.sqlReportsSaveConsequence;
+  if (code === CONSEQUENCE_SQLREPORTDELETE) return STRINGS.sqlReportsDeleteConsequence;
+  if (code === CONSEQUENCE_SQLREPORTGENERATE) return STRINGS.sqlReportsGenerateConsequence;
+  if (code === CONSEQUENCE_SQLTABLEREBUILD) return STRINGS.sqlTableRebuildConsequence;
+  if (code === CONSEQUENCE_SQLTABLEREBUILDALL) return STRINGS.sqlTableRebuildAllConsequence;
+  if (code === CONSEQUENCE_SQLTABLETUNE) return STRINGS.sqlTableTuneConsequence;
+  if (code === CONSEQUENCE_SQLTABLECLEARSTATISTICS) return STRINGS.sqlTableClearStatisticsConsequence;
+  if (code === CONSEQUENCE_SQLTABLETUNESCHEMA) return STRINGS.sqlSchemaTuneConsequence;
+  // Story 21.31: the three fixed-statistics setters share one sentence.
+  if (code === CONSEQUENCE_SQLTABLESETEXTENTSIZE || code === CONSEQUENCE_SQLTABLESETSELECTIVITY || code === CONSEQUENCE_SQLTABLESETMAPSIZE) {
+    return STRINGS.sqlTableSetConsequence;
+  }
   // Story 24.2: the term list editor's delete and entry remove sentences, each published once.
   if (code === CONSEQUENCE_ANALYTICSTERMLISTDELETE) return STRINGS.analyticsTermListDeleteConsequence;
   if (code === CONSEQUENCE_ANALYTICSFOLDERITEMDELETE) return STRINGS.analyticsFolderItemDeleteConsequence;
@@ -670,6 +845,10 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_ANALYTICSQUALITYMEASUREDELETE) return STRINGS.analyticsQualityMeasureDeleteConsequence;
   if (code === CONSEQUENCE_ANALYTICSQUALITYMEASUREREMOVE) return STRINGS.analyticsQualityMeasureRemoveConsequence;
   if (code === CONSEQUENCE_ANALYTICSQUALITYMEASURESAVE) return STRINGS.analyticsQualityMeasureSaveConsequence;
+  // Story 24.14 Batch 3: the PMML definition create, published once.
+  if (code === CONSEQUENCE_ANALYTICSPMMLSAVE) return STRINGS.analyticsPmmlSaveConsequence;
+  // Story 24.14 Batch 4: the PMML export to a cube, published once.
+  if (code === CONSEQUENCE_ANALYTICSPMMLEXPORT) return STRINGS.analyticsPmmlExportConsequence;
   // Story 24.13 Batch 2: the General settings' save, published once.
   if (code === CONSEQUENCE_ANALYTICSSETTINGSAVE) return STRINGS.analyticsSettingSaveConsequence;
   // Story 24.13 Batch 3: a variable's expression is code, and the two removals, each published once.
@@ -682,6 +861,39 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_INTEROPLOOKUPIMPORT) return STRINGS.interopLookupImportConsequence;
   // Story 20.26: a business partner's removal, published once.
   if (code === CONSEQUENCE_INTEROPPARTNERREMOVE) return STRINGS.interopPartnerRemoveConsequence;
+  // Story 24.15: a system default setting's removal and its reach into a running production, each published once.
+  if (code === CONSEQUENCE_INTEROPDEFAULTSETTINGREMOVE) return STRINGS.interopDefaultSettingRemoveConsequence;
+  if (code === CONSEQUENCE_INTEROPDEFAULTSETTINGPENDING) return STRINGS.interopDefaultSettingPendingConsequence;
+  // Story 24.15: a credential's removal and its change, each published once.
+  if (code === CONSEQUENCE_INTEROPCREDENTIALREMOVE) return STRINGS.x509DeleteConsequence;
+  if (code === CONSEQUENCE_INTEROPCREDENTIALCHANGE) return STRINGS.interopCredentialChangeConsequence;
+  // Story 24.15: a schedule spec's removal and its change, each published once.
+  if (code === CONSEQUENCE_INTEROPSCHEDULEREMOVE) return STRINGS.interopScheduleRemoveConsequence;
+  if (code === CONSEQUENCE_INTEROPSCHEDULECHANGE) return STRINGS.interopScheduleChangeConsequence;
+  // Story 24.17 Batch 3a: a workflow user's removal and its deactivation, each published once.
+  if (code === CONSEQUENCE_INTEROPWORKFLOWUSERREMOVE) return STRINGS.interopWorkflowUserRemoveConsequence;
+  if (code === CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE) return STRINGS.interopWorkflowUserInactiveConsequence;
+  // Story 24.17 Batch 3b: a workflow role's removal, a member's addition and a member's removal, each published once.
+  if (code === CONSEQUENCE_INTEROPWORKFLOWROLEREMOVE) return STRINGS.interopWorkflowRoleRemoveConsequence;
+  if (code === CONSEQUENCE_INTEROPWORKFLOWMEMBERADD) return STRINGS.interopWorkflowMemberAddConsequence;
+  if (code === CONSEQUENCE_INTEROPWORKFLOWMEMBERREMOVE) return STRINGS.interopWorkflowMemberRemoveConsequence;
+  // Story 24.17 Batch 4: a workflow task's assignment, its return to its role and its cancel, each published once.
+  if (code === CONSEQUENCE_INTEROPWORKFLOWTASKASSIGN) return STRINGS.interopWorkflowTaskAssignConsequence;
+  if (code === CONSEQUENCE_INTEROPWORKFLOWTASKUNASSIGN) return STRINGS.interopWorkflowTaskUnassignConsequence;
+  if (code === CONSEQUENCE_INTEROPWORKFLOWTASKCANCEL) return STRINGS.interopWorkflowTaskCancelConsequence;
+  // Story 24.18 Batch 1: an HL7 schema's deletion and its import, each published once.
+  if (code === CONSEQUENCE_INTEROPHL7DELETE) return STRINGS.interopHl7DeleteConsequence;
+  if (code === CONSEQUENCE_INTEROPHL7IMPORT) return STRINGS.interopHl7ImportConsequence;
+  // Story 24.16: a purge's sentence, the one its own dialog shows, and the bitmap cleanup's.
+  if (code === CONSEQUENCE_INTEROPPURGERUN) return STRINGS.interopPurgeRunConsequence;
+  if (code === CONSEQUENCE_INTEROPPURGEBITMAP) return STRINGS.interopPurgeBitmapConsequence;
+  // Story 24.16 Batch 4: a local archive run's sentence, the one its own dialog shows.
+  if (code === CONSEQUENCE_INTEROPARCHIVERUN) return STRINGS.interopArchiveRunConsequence;
+  // Story 24.17 Batch 1: a managed alert update's sentence, the one its own dialog shows.
+  if (code === CONSEQUENCE_INTEROPALERTUPDATE) return STRINGS.interopManagedAlertUpdateConsequence;
+  // Story 24.17 Batch 2: the two log purges' sentences, the ones their own dialog shows.
+  if (code === CONSEQUENCE_INTEROPRULELOGPURGE) return STRINGS.interopRuleLogPurgeConsequence;
+  if (code === CONSEQUENCE_INTEROPPROCESSLOGPURGE) return STRINGS.interopProcessLogPurgeConsequence;
   // Story 20.6: a host test's sentence, the one its own dialog shows.
   if (code === CONSEQUENCE_INTEROPTESTSENDS) return STRINGS.interopTestSendsConsequence;
   // Story 20.27: a data transformation test's sentence, the one its own dialog shows.
@@ -689,6 +901,13 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 20.31: a message resend's and an edit and resend's sentences, each published once.
   if (code === CONSEQUENCE_INTEROPMESSAGERESEND) return STRINGS.interopMessageResendConsequence;
   if (code === CONSEQUENCE_INTEROPMESSAGEEDITRESEND) return STRINGS.interopMessageEditResendConsequence;
+  // Story 24.16: a suspended message's four sentences, the ones its own dialogs show.
+  if (code === CONSEQUENCE_INTEROPSUSPENDEDRESUBMIT) return STRINGS.interopSuspendedResubmitConsequence;
+  if (code === CONSEQUENCE_INTEROPSUSPENDEDEDIT) return STRINGS.interopSuspendedEditConsequence;
+  if (code === CONSEQUENCE_INTEROPSUSPENDEDDISCARD) return STRINGS.interopSuspendedDiscardConsequence;
+  if (code === CONSEQUENCE_INTEROPSUSPENDEDDELETE) return STRINGS.interopSuspendedDeleteConsequence;
+  // Story 24.16 Batch 3: a message export's sentence, the one its own dialog shows.
+  if (code === CONSEQUENCE_INTEROPMESSAGEEXPORT) return STRINGS.interopMessageExportConsequence;
   return '';
 }
 

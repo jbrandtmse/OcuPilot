@@ -34,7 +34,20 @@ ClassMethod Code(pEndpoint As %String, pRow As %DynamicObject, pValue As %String
     If tLimits = "" Quit ##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND
     If pEndpoint = ##class(OcuPilot.Port.ConfigPort).#TASKMAILENDPOINT Quit ..TaskMailCode(pRow.%Get("Name"), tLimits, pValue)
     If '..ValueHolds(tLimits, pValue) Quit ##class(OcuPilot.Api.ConfigError).#SETTINGVALUE
+    If (pEndpoint = ##class(OcuPilot.Port.ConfigPort).#SQLSTATSENDPOINT) && ..StopRefused(pRow.%Get("Name")) Quit ##class(OcuPilot.Api.ConfigError).#SQLSTATSNOSTOP
     Quit ""
+}
+
+/// <p>Whether <var>pName</var> is a stop row of the runtime statistics collection (the stop in minutes, the level after it) while collection
+/// is off or off with collection code, read now through the production port. A level that cannot be read refuses, since a stop is never set
+/// without one (Story 21.26).</p>
+ClassMethod StopRefused(pName As %String) As %Boolean
+{
+    If (pName '= "StopAfterMinutes") && (pName '= "LevelAfterStop") Quit 0
+    Set tPort = "OcuPilot.Port.ConfigPort"
+    Set tSC = $ClassMethod(tPort, "Row", $Parameter(tPort, "SQLSTATSENDPOINT"), "CollectionLevel", .tLevelRow, .tHttp, .tFault)
+    If $$$ISERR(tSC) || '$IsObject($Get(tLevelRow)) Quit 1
+    Quit ''$ListFind($ListBuild("Off", "Off with collection code"), tLevelRow.%Get("Value"))
 }
 
 /// <p>The code of the refusal the set of the Task Manager email setting <var>pName</var>, whose limits are <var>pLimits</var>, to

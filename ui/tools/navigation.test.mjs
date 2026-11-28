@@ -271,6 +271,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
+      // Story 21.36: the unlisted Task output viewer, reached from Task details' Open output file.
+      'tasks/schedule/output',
       'tasks/schedule/history',
       'tasks/schedule',
       'tasks/on-demand',
@@ -293,6 +295,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'permissions/roles',
       'permissions/resources',
       'permissions/services',
+      // Story 21.37: Page resources, the fifth Permissions entry.
+      'permissions/pageresources',
       // Story 18.30: the unlisted Doc DB application editor, reached from Doc DB applications.
       'web-applications/docdb-applications/edit',
       'web-applications/rest-apis/document',
@@ -384,6 +388,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // two, by descriptor class name.
       'system-explorer/sql-tables/cached-queries',
       'system-explorer/sql-tables/constraints',
+      'system-explorer/sql-tables/field-statistics',
       'system-explorer/sql-tables/fields',
       'system-explorer/sql-tables/indices',
       'system-explorer/sql-tables/partition-mappings',
@@ -431,6 +436,14 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 24.6: Command console and Class method console, after Unit tests.
       'system-explorer/command',
       'system-explorer/class-method',
+      // Story 21.6: SQL statements, after Class method console.
+      'system-explorer/sql-statements',
+      // Story 21.26: SQL runtime statistics and Runtime statistics collection, after SQL statements.
+      'system-explorer/sql-runtime-stats',
+      'system-explorer/sql-runtime-stats-settings',
+      // Story 21.27: SQL index analyzer, after Runtime statistics collection.
+      'system-explorer/sql-index-analysis',
+      'system-explorer/sql-reports',
       // Story 20.3: the unlisted Production items list, reached from a Productions row, ahead of its area's listed lists.
       // Story 20.4: the item's tabs around it -- Jobs, Log, Messages, Queue, Item settings (Story 20.22) and the Status
       // head -- and Queue messages after them, all unlisted, in the descriptors' class order.
@@ -447,6 +460,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'interoperability/productions/items/test',
       // Story 20.5: a lookup table's entries, unlisted and reached from a Lookup tables name cell, among the unlisted ones.
       'interoperability/lookup-tables/entries',
+      // Story 24.17 Batch 1: Alert history, a managed alert's child list, which no side bar lists.
+      'interoperability/managed-alerts/history',
       // Story 20.9: a message's Contents and Header tabs, unlisted, between the entries and the BPL editor by class name; Story 20.30's
       // Trace tab follows them (InteropMessageTraceTab sorts after InteropMessageHeaderTab).
       'interoperability/messages/contents',
@@ -458,7 +473,13 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'interoperability/productions/diagram',
       'interoperability/queues/messages',
       'interoperability/rules/document',
+      // Story 24.17 Batch 5: System monitor's three drill-downs, unlisted, by class name after the rule editor.
+      'interoperability/system-monitor/processes',
+      'interoperability/system-monitor/queues',
+      'interoperability/system-monitor/tasks',
       'interoperability/transforms/document',
+      // Story 24.17 Batch 3b: Role members, unlisted, reached from a Workflow roles row, after the editors by class name.
+      'interoperability/workflow-roles/members',
       // Story 20.2: Interoperability's four lists, in the classic List menu's order.
       'interoperability/productions',
       'interoperability/processes',
@@ -473,8 +494,40 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'interoperability/business-partners',
       // Story 20.8: the Schema viewer, listed after them.
       'interoperability/schema-viewer',
-      // Story 20.9: Messages, listed last.
+      // Story 20.9: Messages, listed after them.
       'interoperability/messages',
+      // Story 24.15: System default settings and Compare default settings, listed last.
+      'interoperability/default-settings',
+      'interoperability/default-settings-diff',
+      // Story 24.15: Credentials, listed after them.
+      'interoperability/credentials',
+      // Story 24.15: Schedule specs, listed after them.
+      'interoperability/schedules',
+      // Story 24.16: Purge management data and Purge data settings, listed after them.
+      'interoperability/purge',
+      'interoperability/purge-settings',
+      // Story 24.16 Batch 2: Suspended messages, listed after them.
+      'interoperability/suspended-messages',
+      // Story 24.16 Batch 4: Archive manager, Archive settings and Archive errors, listed after them.
+      'interoperability/archive',
+      'interoperability/archive-settings',
+      'interoperability/archive-errors',
+      // Story 24.17 Batch 1: Managed alerts, listed after them.
+      'interoperability/managed-alerts',
+      // Story 24.17 Batch 2: Business rule log and Business process log, listed after it.
+      'interoperability/rule-log',
+      'interoperability/process-log',
+      // Story 24.17 Batch 3a: Workflow users, listed after them.
+      'interoperability/workflow-users',
+      // Story 24.17 Batch 3b: Workflow roles, listed after Workflow users.
+      'interoperability/workflow-roles',
+      // Story 24.17 Batch 4: Workflow tasks and Workflow worklist, listed after Workflow roles.
+      'interoperability/workflow-tasks',
+      'interoperability/workflow-worklist',
+      // Story 24.17 Batch 5: System monitor, listed after Workflow worklist.
+      'interoperability/system-monitor',
+      // Story 24.18 Batch 1: HL7 schemas, listed after System monitor.
+      'interoperability/hl7-schemas',
       // Story 20.11: Analytics' four unlisted screens (a cube's three tabs and a term list's entries), then Cubes, Term lists and Folder items.
       'analytics/cubes/dimensions',
       'analytics/cubes/document',
@@ -484,6 +537,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'analytics/folder-items/document',
       // Story 24.11: a listing group's Listings, unlisted, sorts with the other unlisted screens by class name.
       'analytics/listing-groups/listings',
+      // Story 24.14 Batch 2: a PMML model's Test screen, unlisted, sorts after them by class name.
+      'analytics/pmml-models/test',
       // Story 24.12: a quality measure's Documentation and Groups and elements (the first tab of the pair), unlisted, sort with them by class name.
       'analytics/quality-measures/document',
       'analytics/quality-measures/documentation',
@@ -509,6 +564,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'analytics/quality-measures',
       // Story 24.13: Settings, the first tab of its group, listed after it at position 11.
       'analytics/settings',
+      // Story 24.14 Batch 2: PMML models, listed after it at position 12.
+      'analytics/pmml-models',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
@@ -519,7 +576,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/transcripts',
       'agent/screenpermissions',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Check integrity flow, Volume files, device editor, the global mapping form and list, the unlisted Journal file databases, Journal file details and Journal records, the unlisted language server Activity log and editor, the three unlisted License usage tabs, the license server form, the local database form, the namespace editor, the package mapping form and list, process details, the remote database form, the routine mapping form and list, processes, Locks, System usage, Databases, Integrity log, Devices, Namespaces, License usage, Dashboard, External language servers, Local databases, Remote databases, Journals, License key, License servers, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, System Explorer\'s two unlisted viewers, Classes and Routines, its SQL query and Data browser, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger, Transcripts list and Screen permissions list, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Check integrity flow, Volume files, device editor, the global mapping form and list, the unlisted Journal file databases, Journal file details and Journal records, the unlisted language server Activity log and editor, the three unlisted License usage tabs, the license server form, the local database form, the namespace editor, the package mapping form and list, process details, the remote database form, the routine mapping form and list, processes, Locks, System usage, Databases, Integrity log, Devices, Namespaces, License usage, Dashboard, External language servers, Local databases, Remote databases, Journals, License key, License servers, the unlisted task details, New Task wizard, task output and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, System Explorer\'s two unlisted viewers, Classes and Routines, its SQL query and Data browser, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger, Transcripts list and Screen permissions list, in area rail order'
   );
 });
 
@@ -1122,8 +1179,33 @@ test('Story 20.8: the Productions name cell still opens Production items, the di
   assert.equal(screenForUrl(`/${viewer.route}?ns=USER`)?.route, viewer.route);
   assert.equal(screenForUrl(`/${viewer.route}/x?ns=USER`), null, 'a route id after it names no screen');
   const listed = listedScreensForArea('interoperability').map((screen) => screen.route);
-  assert.equal(listed.at(-2), viewer.route, 'listed before Messages (Story 20.9), the last of the area\'s side bar');
-  assert.equal(listed.at(-1), 'interoperability/messages', 'which closes the area\'s side bar');
+  assert.equal(listed.at(-21), viewer.route, 'listed before Messages (Story 20.9), the two default settings screens, Credentials and Schedule specs (Story 24.15), the two purge screens, Suspended messages and the three archive screens (Story 24.16), Managed alerts, Business rule log, Business process log, Workflow users, Workflow roles, Workflow tasks, Workflow worklist and System monitor (Story 24.17) and HL7 schemas (Story 24.18), which close the area\'s side bar');
+  assert.equal(listed.at(-20), 'interoperability/messages', 'Messages follows it');
+  assert.deepEqual(
+    listed.slice(-19),
+    [
+      'interoperability/default-settings',
+      'interoperability/default-settings-diff',
+      'interoperability/credentials',
+      'interoperability/schedules',
+      'interoperability/purge',
+      'interoperability/purge-settings',
+      'interoperability/suspended-messages',
+      'interoperability/archive',
+      'interoperability/archive-settings',
+      'interoperability/archive-errors',
+      'interoperability/managed-alerts',
+      'interoperability/rule-log',
+      'interoperability/process-log',
+      'interoperability/workflow-users',
+      'interoperability/workflow-roles',
+      'interoperability/workflow-tasks',
+      'interoperability/workflow-worklist',
+      'interoperability/system-monitor',
+      'interoperability/hl7-schemas',
+    ],
+    'and System default settings, Compare default settings, Credentials, Schedule specs, Purge management data, Purge data settings, Suspended messages, Archive manager, Archive settings, Archive errors, Managed alerts, Business rule log, Business process log, Workflow users, Workflow roles, Workflow tasks, Workflow worklist, System monitor and HL7 schemas close the side bar'
+  );
 });
 
 test('parentIdSegment reads a parent-scoped screen\'s route id, encoded twice, and answers \'\' for any screen that is not', () => {
@@ -1347,7 +1429,8 @@ test('Story 20.38 QA: a schema tab\'s URL resolves to that tab and reads the dec
     }
     assert.deepEqual(parentCriteria(tab, `/${route}?ns=USER`), {}, `${route} with no id reads no schema, which the port refuses`);
     assert.equal(screenForToolName(`${identifier}.read`), tab, `${identifier}.read opens ${route}`);
-    assert.deepEqual(tab.rowActions, [], `${route} adds no row action`);
+    // Story 21.25: the Tables tab carries the schema's Tune all tables, a page action; the other two tabs add none.
+    assert.deepEqual(tab.rowActions, route === 'system-explorer/sql-schemas/document' ? [{ id: 'tune', selfProtection: '' }] : [], `${route} adds no row action beyond the Tables tab's tune`);
     assert.equal(tab.primaryAction.id, '', `${route} adds no primary action`);
     assert.equal(tab.refreshes, false, `${route} does not refresh`);
     assert.deepEqual(tab.read.criteria.fields.map((field) => field.param), ['schema'], `${route} declares the schema as its one criterion`);
@@ -2181,4 +2264,77 @@ test('Story 20.15: a screen-permission change event of any action re-reads the m
   bus.publish({ kind: 'changed', type: 'role', scope: 'instance', id: 'ProbeRole', action: 'updated' });
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(api.calls.length, 3, 'an unrelated entity is not a re-read');
+});
+
+test("Story 21.37: a page-resource change event of either verb re-reads the map, since a page's resource moves a screen's verdict", async () => {
+  // Mutation (Rule 19): drop the page-resource type from onChange -> both legs go red.
+  const bus = new ChangeBus();
+  const api = stubApi([ok(featureMap([])), ok(featureMap([])), ok(featureMap([])), ok(featureMap([]))]);
+  const service = new NavigationService({ api, namespace: () => 'HSCUSTOM', bus });
+  await service.load();
+  assert.equal(api.calls.length, 1);
+
+  bus.publish({ kind: 'changed', type: 'page-resource', scope: 'instance', id: '%CSP.UI.Portal.Resources', action: 'updated' });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(api.calls.length, 2, 'an assign or a change re-reads the verdicts');
+
+  bus.publish({ kind: 'changed', type: 'page-resource', scope: 'instance', id: '%CSP.UI.Portal.Resources', action: 'deleted' });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(api.calls.length, 3, 'and so does a clear');
+});
+
+// Story 24.17 Batch 3b: a workflow role's name opens its members, whose route id is the role, and a member's change opens the role's members.
+//
+// Mutation (Rule 19): drop `parentScope` from the Role members descriptor -> the pairing leg goes red; make `routeIdFor` keep the whole id ->
+// the change leg reads the composite [role, user] as the route id and goes red.
+test("Story 24.17 Batch 3b: Workflow roles opens Role members on the role, and a member change opens that role's members", () => {
+  const roles = screenForRoute('interoperability/workflow-roles');
+  const members = screenForRoute('interoperability/workflow-roles/members');
+  assert.ok(roles && members, 'both screens are declared');
+  assert.equal(childListFor(roles)?.route, members.route, 'the role name cell opens the members');
+  assert.equal(parentListFor(members)?.route, roles.route, 'and the members pair back to the roles');
+  assert.equal(members.sideBarPosition, 0, 'Role members is listed by no side bar');
+  assert.deepEqual(members.read.criteria.fields.map((field) => field.param), ['role'], 'its one criterion is the role');
+  const role = 'OcuP2417r A/B';
+  assert.deepEqual(
+    parentCriteria(members, `/${members.route}/${encodeEntityId(role)}`),
+    { role },
+    'the route id is read into the role criterion'
+  );
+  assert.deepEqual(parentCriteria(members, `/${members.route}`), {}, 'and a route with no id reads for none');
+  const sep = '\u0001';
+  assert.equal(
+    screenForChange({ type: 'interop-workflow-member', id: `${role}${sep}OcuP2417w`, tool: 'interop.workflowmembers.add' })?.route,
+    `${members.route}/${encodeEntityId(role)}`,
+    'a member change opens its role'
+  );
+  assert.equal(
+    screenForChange({ type: 'interop-workflow-role', id: role, tool: 'interop.workflowroles.add' })?.route,
+    `${roles.route}/${encodeEntityId(role)}`,
+    'a role change opens the roles list on that role'
+  );
+});
+
+// Mutation (Rule 19): empty the Workflow users descriptor's `secondaryEntityTypes` -> the users row goes red.
+test('Story 24.17 Batch 3b: each workflow list re-reads on the other two lists\' changes, which move its counts and rows', () => {
+  const users = screenForRoute('interoperability/workflow-users');
+  const roles = screenForRoute('interoperability/workflow-roles');
+  const members = screenForRoute('interoperability/workflow-roles/members');
+  assert.ok(users && roles && members, 'the three screens are declared');
+  const shows = (screen, type) => screenShowsEntity(screen, { type, scope: 'USER' }, 'USER');
+  assert.deepEqual(
+    [shows(users, 'interop-workflow-role'), shows(users, 'interop-workflow-member')],
+    [true, true],
+    'a role or member change moves a workflow user\'s Roles'
+  );
+  assert.deepEqual(
+    [shows(roles, 'interop-workflow-member'), shows(roles, 'interop-workflow-user')],
+    [true, true],
+    'a member or workflow user change moves a role\'s Members'
+  );
+  assert.deepEqual(
+    [shows(members, 'interop-workflow-role'), shows(members, 'interop-workflow-user')],
+    [true, true],
+    'a role or workflow user change moves the members rows'
+  );
 });

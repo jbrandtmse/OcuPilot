@@ -57,6 +57,40 @@ ClassMethod Text(pBody As %DynamicObject, pName As %String) As %String
     Quit pBody.%Get(pName) _ ""
 }
 
+/// <p>Whether the read of a target found it, in <var>pTaken</var>, from the read's status <var>pSC</var>, HTTP status
+/// <var>pHttp</var> and answer <var>pFresh</var>. A failed read with HTTP 404 is a target that does not exist and
+/// answers <code>$$$OK</code>; any other failed read answers its status. A successful read is taken when it answered an
+/// object.</p>
+ClassMethod ReadTaken(pSC As %Status, pHttp As %Integer, pFresh As %DynamicObject, Output pTaken As %Boolean) As %Status
+{
+    Set pTaken = 0
+    If $$$ISERR(pSC) {
+        If +$Get(pHttp) = 404 Quit $$$OK
+        Quit pSC
+    }
+    Set pTaken = ($IsObject($Get(pFresh)) && pFresh.%IsA("%Library.DynamicObject"))
+    Quit $$$OK
+}
+
+/// <p>Whether the SSL/TLS configuration <var>pName</var> exists and is of an accepted type, in <var>pValid</var>,
+/// read through <var>pPortClass</var> as the caller with <var>pEndpoint</var>. <var>pAccept</var> is the list of
+/// accepted values of the answer's <var>pTypeField</var>, compared in lower case. A 404 is a configuration that does
+/// not exist; any other failed read is an error status.</p>
+ClassMethod SslConfiguration(pPortClass As %String, pEndpoint As %String, pTypeField As %String, pName As %String, pAccept As %List, Output pValid As %Boolean) As %Status
+{
+    Set pValid = 0
+    Kill tQuery
+    Set tQuery("name") = pName
+    Set tSC = $ClassMethod(pPortClass, "Invoke", pEndpoint, "GET", .tQuery, "", .tRead, .tHttp, .tFault)
+    If $$$ISERR(tSC) {
+        If +$Get(tHttp) = 404 Quit $$$OK
+        Quit tSC
+    }
+    If '$IsObject($Get(tRead)) || 'tRead.%IsA("%Library.DynamicObject") Quit $$$OK
+    Set pValid = ''$ListFind(pAccept, $ZConvert(..Text(tRead, pTypeField), "L"))
+    Quit $$$OK
+}
+
 /// <p>Append one violation.</p>
 ClassMethod Add(ByRef pViolations, pField As %String, pCode As %String) [ Private ]
 {

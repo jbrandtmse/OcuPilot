@@ -11,6 +11,8 @@ import { AgentStatus } from './app/core/agent-status';
 import { ApiService } from './app/core/api';
 import { ChangeBus } from './app/core/change-bus';
 import { ConnectivityService } from './app/core/connectivity';
+import { saveText } from './app/core/csv';
+import { EXPORT_FILE_TYPE } from './app/core/message-export';
 import { ExplainEntry } from './app/core/explain-entry';
 import { Findings } from './app/core/findings';
 import { Guardrails } from './app/core/guardrails';
@@ -185,6 +187,8 @@ const turn = new TurnStore({
   navigationType: readNavigationKind,
   bus,
   hidden: () => document.visibilityState === 'hidden',
+  // Story 24.16 Batch 3: a confirmed message export's file is saved by this browser, the card getting the status line alone.
+  saveFile: (bytes, name) => saveText(document, bytes, name, EXPORT_FILE_TYPE),
 });
 void turn.restore();
 const screenStores = new ScreenStores({ account: accountPreferences });

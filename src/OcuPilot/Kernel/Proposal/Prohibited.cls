@@ -190,6 +190,43 @@ Parameter TYPEGLOBAL = "global";
 
 Parameter TYPEGLOBALNODE = "global-node";
 
+/// <p>One statement of a namespace's statement index, keyed by its hash, and one cached query, a table's or the namespace's, which the SQL tuning
+/// track writes (AD-13, Story 21.6). The statement is judged by the tables the instance records for it (<method>StatementEntry</method>); a
+/// cached-query purge is judged by the reviewed-few sweep alone.</p>
+Parameter TYPESTATEMENTENTRY = "statement-index-entry";
+
+Parameter TYPECACHEDQUERY = "cached-query";
+
+/// <p>The namespace's SQL runtime statistics, which a purge removes (target <code>*</code>), and the instance-wide collection setting's rows
+/// (Story 21.26). Neither reaches OcuPilot's self-protection (AD-10), so each passes the reviewed-few sweep alone.</p>
+Parameter TYPESQLRUNTIMESTAT = "sql-runtime-stat";
+
+Parameter TYPESQLRUNTIMESTATSSETTING = "sql-runtime-stats-setting";
+
+/// <p>The namespace's SQL index analysis, which a gathering, a report and a purge change (target <code>*</code>, Story 21.27). AD-10 names no effect on
+/// the vendor's diagnostic rows, so each passes the reviewed-few sweep alone.</p>
+Parameter TYPESQLINDEXANALYSIS = "sql-index-analysis";
+
+/// <p>One query saved for a support case, which a save adds, a delete removes and a generate reads (target <code>*</code> or the saved query's id, Story
+/// 21.29). Saving takes the console's own-statement check at its read, and AD-10 names no effect on the vendor's saved rows, so each write passes the
+/// reviewed-few sweep alone.</p>
+Parameter TYPESQLSAVEDQUERY = "sql-saved-query";
+
+/// <p>One SQL table, keyed by <code>Schema.Table</code>, and one of its indices, keyed by the composite <code>[Table, Map]</code>, which the table
+/// maintenance writes act on (AD-13, Story 21.25). Each is judged by the schema and the class the instance resolves for the table
+/// (<method>TableEntry</method>).</p>
+Parameter TYPESQLTABLE = "sql-table";
+
+Parameter TYPESQLINDEX = "sql-index";
+
+/// <p>One field of a SQL table, keyed by the composite <code>[Table, Field]</code>, which the selectivity edit acts on (Story 21.31). It is judged by the
+/// table its <code>Table</code> part names, as an index is (<method>TableEntry</method>).</p>
+Parameter TYPESQLFIELD = "sql-field";
+
+/// <p>One SQL schema, keyed by its name, which the schema tune acts on (Story 21.25). It is judged by the name the instance resolves for it
+/// (<method>SchemaEntry</method>).</p>
+Parameter TYPESQLSCHEMA = "sql-schema";
+
 /// <p>The extension a global's document carries in an import (Story 19.13).</p>
 Parameter GLOBALEXTENSION = ".gbl";
 
@@ -291,6 +328,15 @@ Parameter PROVIDERSSL = "PROHIBITED.PROVIDERSSL";
 /// <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
 Parameter PROVIDERSSLREASON = "Provider calls are made through this SSL/TLS configuration, so while Switches names it, or while it is OcuPilot's own, it cannot be deleted, created, or have its type, peer verification, trusted certificates, minimum TLS version, cipher list or enablement changed.";
 
+/// <p>The agent's remove or password change of a credential an enabled agent definition of the <code>creds</code> rung names in its
+/// <code>CredentialName</code>, in OcuPilot's own namespace, where that rung opens it (<method>ProviderCredential</method>): proposed, it is refused
+/// and nothing is stored. A person's change on the Credentials screen is not refused, and neither is the agent's add or its edit of another field
+/// (Story 24.15, AD-10).</p>
+Parameter PROVIDERCREDENTIAL = "PROHIBITED.PROVIDERCREDENTIAL";
+
+/// <p>The one sentence <parameter>PROVIDERCREDENTIAL</parameter> carries, published and pinned as <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
+Parameter PROVIDERCREDENTIALREASON = "An enabled agent definition reads its provider key from this credential, so only a person can remove it or change its password, on the Credentials screen.";
+
 /// <p>The effect <method>WeakensByEffect</method> answers for an SSL/TLS configuration that is not
 /// OcuPilot's own whose peer verification a write turns off: the server's certificate is no longer
 /// checked. It is also the proposal's consequence code.</p>
@@ -308,7 +354,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,analytics-setting,analytics-worklist,security-recommendation,task-mail-setting,analytics-runtime-variable,analytics-user-icon,sql-statement,system-alerts";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,analytics-setting,analytics-worklist,security-recommendation,task-mail-setting,analytics-runtime-variable,analytics-user-icon,sql-statement,system-alerts,pmml-definition,pmml-model,page-resource,default-setting,interop-credential,interop-schedule,statement-index-entry,cached-query,interop-purge,interop-purge-setting,sql-table,sql-index,sql-schema,interop-archive,interop-archive-setting,sql-field,interop-managed-alert,sql-runtime-stat,sql-runtime-stats-setting,interop-rule-log,interop-process-log,interop-workflow-user,interop-workflow-role,interop-workflow-member,sql-index-analysis,interop-workflow-task,interop-hl7-schema,sql-saved-query";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -696,6 +742,12 @@ Parameter TYPESUPERSERVER = "superserver";
 /// <code>toolIdentifier</code>. <method>ScreenPermission</method> judges it by that identifier alone.</p>
 Parameter TYPESCREENPERMISSION = "screen-permission";
 
+/// <p>One classic page's custom resource (Story 21.37), keyed by the page's class name. <method>PageResource</method> judges an assignment to it by the
+/// page alone: a page a screen that cannot be adjusted declares is refused <parameter>OCUPILOTSCREEN</parameter>. A clear or a change of a page an
+/// OcuPilot screen declares is not refused but marked destructive by effect (<parameter>EFFECTPAGERESOURCECHANGED</parameter>,
+/// <parameter>EFFECTPAGERESOURCECLEARED</parameter>).</p>
+Parameter TYPEPAGERESOURCE = "page-resource";
+
 /// <p>A managed file transfer connection (Story 18.26), whose create, change, delete and token revoke the
 /// reviewed-few sweep alone judges (<method>MftConnectionFields</method>): AD-10 names no effect on one.</p>
 Parameter TYPEMFTCONNECTION = "mft-connection";
@@ -814,6 +866,12 @@ Parameter TYPEQUALITYMEASUREELEMENT = "quality-measure-element";
 
 Parameter TYPEQUALITYMEASUREMETA = "quality-measure-meta";
 
+/// <p>A PMML definition class, created by the PMML models screen's New PMML definition (AD-65, Story 24.14 Batch 3). AD-10's one effect, a class of OcuPilot's own, is
+/// <class>OcuPilot.Port.AnalyticsPort</class>'s to refuse, so a write passes the reviewed-few sweep and nothing else. The create's target is named by the screen's own type, <code>pmml-model</code>, whose id is the class.</p>
+Parameter TYPEPMMLDEFINITION = "pmml-definition";
+
+Parameter TYPEPMMLMODEL = "pmml-model";
+
 /// <p>An analytics General setting and a Worklists option (Story 24.13). AD-10 names no effect on either: OcuPilot stores nothing in <code>^DeepSee.UserPortalSettings</code>, so a write
 /// passes the reviewed-few sweep -- a setting moves its value (or its key), an option whether it is shown -- and nothing else.</p>
 Parameter TYPEANALYTICSSETTING = "analytics-setting";
@@ -837,6 +895,64 @@ Parameter TYPELOOKUPENTRY = "lookup-entry";
 /// OcuPilot stores nothing in. A create sets its name and thirteen fields, a change the thirteen, and a write passes the
 /// reviewed-few sweep and nothing else.</p>
 Parameter TYPEBUSINESSPARTNER = "business-partner";
+
+/// <p>A system default setting of a namespace (AD-62, Story 24.15). AD-10 names no effect on one: a default gives a setting its value in
+/// the productions it matches and OcuPilot stores nothing in it. A create sets its name and three fields, a change the three, and a write
+/// passes the reviewed-few sweep and nothing else.</p>
+Parameter TYPEDEFAULTSETTING = "default-setting";
+
+/// <p>A credential of a namespace (AD-62, Story 24.15). AD-10 names one effect on it: the remove and password change of the credential an enabled
+/// agent definition reads its provider key from, which the tools refuse when proposed (<parameter>PROVIDERCREDENTIAL</parameter>). A create sets its
+/// name, user name and business partner, a change the user name and business partner, and a write passes the reviewed-few sweep and nothing else;
+/// the password is never a field of a payload.</p>
+Parameter TYPEINTEROPCREDENTIAL = "interop-credential";
+
+/// <p>A schedule spec of a namespace (AD-62, Story 24.15). AD-10 names no effect on it: OcuPilot owns no schedule spec, and the port neither runs a
+/// spec nor starts, stops or updates a production. A create sets its name, spec, description and deployable flag, a change the spec, description and
+/// flag, and a write passes the reviewed-few sweep and nothing else.</p>
+Parameter TYPEINTEROPSCHEDULE = "interop-schedule";
+
+/// <p>A namespace's management data purge and one of its purge data settings (AD-62, Story 24.16). AD-10 names no effect on either: OcuPilot keeps
+/// none of the records a purge deletes in a table of its own, a purge deletes what the namespace's own tables hold, and a setting is the classic page's
+/// own node. A write passes the reviewed-few sweep and nothing else.</p>
+Parameter TYPEINTEROPPURGE = "interop-purge";
+
+Parameter TYPEINTEROPPURGESETTING = "interop-purge-setting";
+
+/// <p>A namespace's local archive run and one of its archive settings (AD-62, Story 24.16 Batch 4). AD-10 names no effect on either: OcuPilot keeps none of the messages a run moves
+/// in a table of its own, and a setting is the classic page's own node. A write passes the reviewed-few sweep and nothing else.</p>
+Parameter TYPEINTEROPARCHIVE = "interop-archive";
+
+Parameter TYPEINTEROPARCHIVESETTING = "interop-archive-setting";
+
+Parameter TYPEINTEROPMANAGEDALERT = "interop-managed-alert";
+
+/// <p>A namespace's business rule log and its business process log (AD-62, Story 24.17 Batch 2). AD-10 names no effect on either: OcuPilot keeps none of the entries or records a
+/// purge deletes in a table of its own. A write passes the reviewed-few sweep and nothing else.</p>
+Parameter TYPEINTEROPRULELOG = "interop-rule-log";
+
+Parameter TYPEINTEROPPROCESSLOG = "interop-process-log";
+
+/// <p>A workflow user of a namespace (AD-62, Story 24.17 Batch 3a). AD-10 names no effect on it: OcuPilot owns no workflow user, and adding one grants no privilege. A write passes the
+/// reviewed-few sweep and nothing else.</p>
+Parameter TYPEINTEROPWORKFLOWUSER = "interop-workflow-user";
+
+/// <p>A workflow role of a namespace and one member of it (AD-62, Story 24.17 Batch 3b). AD-10 names no effect on either: OcuPilot owns no workflow role, and a workflow role is not an instance role
+/// and grants no privilege. A write passes the reviewed-few sweep and nothing else.</p>
+Parameter TYPEINTEROPWORKFLOWROLE = "interop-workflow-role";
+
+Parameter TYPEINTEROPWORKFLOWMEMBER = "interop-workflow-member";
+
+/// <p>A workflow task of a namespace (AD-62, Story 24.17 Batch 4), which is not the instance's <code>task</code>. AD-10 names no effect on it: OcuPilot owns no workflow task, and an assign or
+/// a cancel grants no privilege. A write passes the reviewed-few sweep and nothing else.</p>
+Parameter TYPEINTEROPWORKFLOWTASK = "interop-workflow-task";
+
+/// <p>An HL7 schema of a namespace (AD-62, Story 24.18 Batch 1). AD-10 names no effect on it: OcuPilot owns no HL7 schema, and a schema adds message types and tables, never a privilege. A
+/// write passes the reviewed-few sweep and nothing else.</p>
+Parameter TYPEINTEROPHL7SCHEMA = "interop-hl7-schema";
+
+/// <p>The write type of the HL7 schema import, which the prohibited set judges without reading a target (Story 24.18 Batch 1).</p>
+Parameter HL7IMPORTWRITETYPE = "IMPORTHL7SCHEMA";
 
 /// <p>A backup task and a database on the backup database list (Story 21.2). AD-10 names no effect on either, and the freeze's bound is the
 /// port's: OcuPilot owns no backup, so a write passes the reviewed-few sweep and nothing else.</p>
@@ -984,6 +1100,15 @@ Parameter OCUPILOTSQLPRIVILEGE = "PROHIBITED.OCUPILOTSQLPRIVILEGE";
 /// EXPERIENCE.md's Fixed strings and pinned by <file>ui/tools/self-protection.test.mjs</file>.</p>
 Parameter OCUPILOTSQLPRIVILEGEREASON = "OcuPilot's own SQL tables keep the privileges its installer grants, so a grant or revoke on them is not offered.";
 
+/// <p>An index rebuild, a table or schema tune, or a statistics change on a table whose schema lies in one of OcuPilot's own schemas or whose class
+/// name begins with OcuPilot's, or a tune of one of OcuPilot's own schemas, by either caller (AD-10 as amended 2026-11-16, Story 21.25): a rebuild
+/// locks OcuPilot's protected tables (AD-9). The target is read at the write; a read that resolves no table refuses.</p>
+Parameter OCUPILOTTABLE = "PROHIBITED.OCUPILOTTABLE";
+
+/// <p>The one sentence <parameter>OCUPILOTTABLE</parameter> carries, caller-neutral, published in EXPERIENCE.md's Fixed strings and pinned by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTTABLEREASON = "This table is one of OcuPilot's own, so OcuPilot does not rebuild or tune it.";
+
 /// <p>The write would remove from a key file a key that encrypts OcuPilot's own database, the install
 /// namespace's globals or routines database, one of <parameter>SYSTEMDATABASES</parameter>, or the
 /// journal, read at the write; a read that fails refuses (AD-10 as amended 2026-10-04, Story 18.7).</p>
@@ -1083,6 +1208,13 @@ Parameter EFFECTSYSTEMGLOBAL = "MAPPING.SYSTEMGLOBAL";
 /// set lacks a pair the stored set holds, compared without regard to case (AD-64). It is also the
 /// proposal's consequence code.</p>
 Parameter EFFECTSCREENLOWERED = "SCREENACCESS.LOWERED";
+
+/// <p>The effects <method>WeakensByEffect</method> answers for a page's custom resource that some OcuPilot screen declares and that the write
+/// changes to another resource (<parameter>EFFECTPAGERESOURCECHANGED</parameter>) or clears (<parameter>EFFECTPAGERESOURCECLEARED</parameter>)
+/// (AD-10, AD-64, Story 21.37). Each is also the proposal's consequence code.</p>
+Parameter EFFECTPAGERESOURCECHANGED = "PAGERESOURCE.CHANGED";
+
+Parameter EFFECTPAGERESOURCECLEARED = "PAGERESOURCE.CLEARED";
 
 /// <p>The request type a copy of mappings is issued with, which the namespace predicate branches on
 /// (<method>Namespace</method>).</p>
@@ -1230,10 +1362,10 @@ Parameter READTYPE = "GET";
 /// <method>Mapping</method> adds, the one <method>Database</method> adds, and the one
 /// <method>Lock</method> adds, and the one <method>Code</method> adds, and the one
 /// <method>SqlStatement</method> adds, the key arm's and the encryption start arm's, and the two
-/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last, and the one <method>OwnRoutineApplication</method> arm adds after it, and the one <method>AgentReachable</method> judges, and the one <method>ProviderSsl</method> judges, and the start arm's journal and KMIP codes, and the one <method>Mirror</method> judges, and the one <parameter>PERSONONLY</parameter> adds, and the one <parameter>PROTECTEDGLOBAL</parameter> adds last -- forty-one in all.</p>
+/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last, and the one <method>OwnRoutineApplication</method> arm adds after it, and the one <method>AgentReachable</method> judges, and the one <method>ProviderSsl</method> judges, and the start arm's journal and KMIP codes, and the one <method>Mirror</method> judges, and the one <parameter>PERSONONLY</parameter> adds, and the one <parameter>PROTECTEDGLOBAL</parameter> adds, and the one <parameter>PROVIDERCREDENTIAL</parameter> adds last -- forty-two in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP, ..#ALLOWLISTAGENT, ..#PROVIDERSSL, ..#STARTUPJOURNAL, ..#STARTUPKMIP, ..#MIRRORDATABASES, ..#PERSONONLY, ..#PROTECTEDGLOBAL)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP, ..#ALLOWLISTAGENT, ..#PROVIDERSSL, ..#STARTUPJOURNAL, ..#STARTUPKMIP, ..#MIRRORDATABASES, ..#PERSONONLY, ..#PROTECTEDGLOBAL, ..#PROVIDERCREDENTIAL, ..#OCUPILOTTABLE)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -1277,6 +1409,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTSTART Quit ..#OCUPILOTSTARTREASON
     If pCode = ..#SERVINGSUPERSERVER Quit ..#SERVINGSUPERSERVERREASON
     If pCode = ..#OCUPILOTSQLPRIVILEGE Quit ..#OCUPILOTSQLPRIVILEGEREASON
+    If pCode = ..#OCUPILOTTABLE Quit ..#OCUPILOTTABLEREASON
     If pCode = ..#OCUPILOTSCREEN Quit ..#OCUPILOTSCREENREASON
     If pCode = ..#OCUPILOTROUTINEAPP Quit ..#OCUPILOTROUTINEAPPREASON
     If pCode = ..#ALLOWLISTAGENT Quit ..#ALLOWLISTAGENTREASON
@@ -1286,6 +1419,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#MIRRORDATABASES Quit ..#MIRRORDATABASESREASON
     If pCode = ..#PERSONONLY Quit ..#PERSONONLYREASON
     If pCode = ..#PROTECTEDGLOBAL Quit ..#PROTECTEDGLOBALREASON
+    If pCode = ..#PROVIDERCREDENTIAL Quit ..#PROVIDERCREDENTIALREASON
     Quit ""
 }
 
@@ -1299,6 +1433,12 @@ ClassMethod IsListingGroupType(pType As %String) As %Boolean
 ClassMethod IsQualityMeasureType(pType As %String) As %Boolean
 {
     Quit (pType = ..#TYPEQUALITYMEASURE) || (pType = ..#TYPEQUALITYMEASUREELEMENT) || (pType = ..#TYPEQUALITYMEASUREMETA)
+}
+
+/// <p>Whether <var>pType</var> is the PMML definition create's (Story 24.14, Batch 3): the definition class the add creates, or the PMML model screen's own type, which names the create's target. Pure.</p>
+ClassMethod IsPmmlDefinitionType(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEPMMLDEFINITION) || (pType = ..#TYPEPMMLMODEL)
 }
 
 /// <p>Whether <var>pType</var> is an analytics General setting, a Worklists option, a run-time variable or a user-defined icon (Story 24.13). Pure.</p>
@@ -1412,16 +1552,32 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEQUALITYMEASURE Quit $ListFromString("Caption,Description,SubjectArea,Expression,LinkedTo,Published,Format,Href")
     If pType = ..#TYPEQUALITYMEASUREELEMENT Quit $ListFromString("Caption,MDX,Disabled,GroupCaption,GroupDescription,GroupDisabled")
     If pType = ..#TYPEQUALITYMEASUREMETA Quit $ListFromString("Caption,Content,Disabled")
+    ; Story 24.14 Batch 4: a PMML model's export to a cube moves the test's source and the names of what it makes.
+    If pType = ..#TYPEPMMLMODEL Quit $ListFromString("Source,DataSource,SQL,ResultClass,CubeClass,Cube,SourceClass")
     ; Story 24.13: a General setting moves its value (its key is a declared secret the card names); a worklist option whether it is shown.
     If pType = ..#TYPEANALYTICSSETTING Quit $ListBuild("Value")
     If pType = ..#TYPEANALYTICSWORKLIST Quit $ListBuild("Shown")
     ; Story 24.13 Batch 3: a run-time variable change moves its expression, comment and context; an icon change its path.
     If pType = ..#TYPEANALYTICSRUNTIMEVARIABLE Quit $ListBuild("Value", "Comment", "Context")
     If pType = ..#TYPEANALYTICSUSERICON Quit $ListBuild("Path")
-    If (pType = ..#TYPESTARTUPSETTING) || (pType = ..#TYPEMEMORYSETTING) || (pType = ..#TYPECOMPATIBILITYSETTING) || (pType = ..#TYPESQLSETTING) || (pType = ..#TYPESQLSHELLSETTING) || (pType = ..#TYPETSQLSETTING) || (pType = ..#TYPEISQLSETTING) || (pType = ..#TYPESYSTEMDDLMAPPING) || (pType = ..#TYPEUSERDDLMAPPING) || (pType = ..#TYPENLSDEFAULT) Quit $ListBuild("Value")
+    If (pType = ..#TYPESQLRUNTIMESTATSSETTING) || (pType = ..#TYPESTARTUPSETTING) || (pType = ..#TYPEMEMORYSETTING) || (pType = ..#TYPECOMPATIBILITYSETTING) || (pType = ..#TYPESQLSETTING) || (pType = ..#TYPESQLSHELLSETTING) || (pType = ..#TYPETSQLSETTING) || (pType = ..#TYPEISQLSETTING) || (pType = ..#TYPESYSTEMDDLMAPPING) || (pType = ..#TYPEUSERDDLMAPPING) || (pType = ..#TYPENLSDEFAULT) Quit $ListBuild("Value")
     If (pType = ..#TYPESYSTEMSECURITYSETTING) || (pType = ..#TYPETASKMAILSETTING) Quit $ListBuild("Value")
     If pType = ..#TYPEPHONEPROVIDER Quit $ListBuild("SMSGateway")
     If pType = ..#TYPEBUSINESSPARTNER Quit $ListFromString("Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes")
+    ; Story 24.15: a system default setting change sets its value, description and deployable flag.
+    If pType = ..#TYPEDEFAULTSETTING Quit $ListFromString("Value,Description,Deployable")
+    ; Story 24.15: a credential change sets its user name and business partner; its password is a declared secret and never a payload field.
+    If pType = ..#TYPEINTEROPCREDENTIAL Quit $ListFromString("Username,BusinessPartner")
+    ; Story 24.15: a schedule spec change sets its spec, description and deployable flag.
+    If pType = ..#TYPEINTEROPSCHEDULE Quit $ListFromString("ScheduleSpec,Description,Deployable")
+    ; Story 24.17 Batch 3a: a workflow user change sets its full name and active state.
+    If pType = ..#TYPEINTEROPWORKFLOWUSER Quit $ListFromString("FullName,IsActive")
+    ; Story 24.17 Batch 3b: a workflow role change sets its description and capacity; a member has no change.
+    If pType = ..#TYPEINTEROPWORKFLOWROLE Quit $ListFromString("Description,Capacity")
+    ; Story 24.16: a purge setting change sets its value. A purge sets no field of its type: its one value, the days to keep, travels in the port's query.
+    If pType = ..#TYPEINTEROPPURGESETTING Quit $ListBuild("Value")
+    ; Story 24.16 Batch 4: an archive setting change sets its value; a run sets no field of its type.
+    If pType = ..#TYPEINTEROPARCHIVESETTING Quit $ListBuild("Value")
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDESCALATIONONLY, ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
     If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames")
     If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
@@ -1598,6 +1754,8 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPELISTINGGROUPLISTING Quit $ListFromString("Name,DisplayName,Type,Fields,OrderBy,Joins,Formats,Source,Resource,SelectMode,Disabled,Description,SQL")
     ; Story 24.12: a quality measure add sets its name, class and header.
     If pType = ..#TYPEQUALITYMEASURE Quit $ListFromString("Name,Class,Caption,Description,SubjectArea")
+    ; Story 24.14 Batch 3: a PMML definition add sets its class and PMML text.
+    If ..IsPmmlDefinitionType(pType) Quit $ListFromString("Class,PMML")
     If pType = ..#TYPEQUALITYMEASUREELEMENT Quit $ListFromString("Name,Caption,MDX,Disabled,GroupCaption,GroupDescription,GroupDisabled")
     If pType = ..#TYPEQUALITYMEASUREMETA Quit $ListFromString("Name,Caption,Content,Disabled")
     ; Story 24.13 Batch 3: a run-time variable add sets its name, expression, comment and context; an icon add its name and path.
@@ -1605,6 +1763,19 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPEANALYTICSUSERICON Quit $ListBuild("Name", "Path")
     ; Story 20.26: a partner add sets its name and thirteen fields; its namespace is the payload's.
     If pType = ..#TYPEBUSINESSPARTNER Quit $ListFromString("Name,Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes")
+    ; Story 24.15: a system default setting add sets its name and three fields; its production, item and host class are the id's and its namespace the payload's.
+    If pType = ..#TYPEDEFAULTSETTING Quit $ListFromString("Setting,Value,Description,Deployable")
+    ; Story 24.15: a credential add sets its name, user name and business partner; its password is a declared secret, supplied at the confirm, and its namespace is the payload's.
+    If pType = ..#TYPEINTEROPCREDENTIAL Quit $ListFromString("Name,Username,BusinessPartner,Password")
+    ; Story 24.15: a schedule spec add sets its name, spec, description and deployable flag; its namespace is the payload's.
+    If pType = ..#TYPEINTEROPSCHEDULE Quit $ListFromString("Name,ScheduleSpec,Description,Deployable")
+    ; Story 24.17 Batch 3a: a workflow user add sets its name, full name and active state; its namespace is the payload's.
+    If pType = ..#TYPEINTEROPWORKFLOWUSER Quit $ListFromString("Name,FullName,IsActive")
+    ; Story 24.17 Batch 3b: a workflow role add sets its name, description and capacity, and a member add its user, rank and title (its role is the id's first part); the namespace is the payload's.
+    If pType = ..#TYPEINTEROPWORKFLOWROLE Quit $ListFromString("Name,Description,Capacity")
+    If pType = ..#TYPEINTEROPWORKFLOWMEMBER Quit $ListFromString("User,Ranking,Title")
+    ; Story 24.18 Batch 1: an HL7 schema add sets its name, base and description; its namespace is the payload's.
+    If pType = ..#TYPEINTEROPHL7SCHEMA Quit $ListFromString("Name,Base,Description")
     Quit ""
 }
 
@@ -1689,7 +1860,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPEFOLDERITEM) && '..IsListingGroupType(tType) && '..IsQualityMeasureType(tType) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) && (tType '= ..#TYPENLSDEFAULT) && (tType '= ..#TYPELOCALE) && (tType '= ..#TYPELOCALEPROPERTY) && (tType '= ..#TYPEGLOBAL) && (tType '= ..#TYPEGLOBALNODE) && (tType '= ..#TYPESYSTEMSECURITYSETTING) && (tType '= ..#TYPEPHONEPROVIDER) && (tType '= ..#TYPESECURITYRECOMMENDATION) && (tType '= ..#TYPETASKMAILSETTING) && (tType '= ..#TYPESQLSTATEMENT) && (tType '= ..#TYPESYSTEMALERTS) && '..IsAnalyticsSettingType(tType) {
+        If (tType '= ..#TYPESQLINDEXANALYSIS) && (tType '= ..#TYPESQLRUNTIMESTAT) && (tType '= ..#TYPESQLRUNTIMESTATSSETTING) && (tType '= ..#TYPESQLFIELD) && (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) && (tType '= ..#TYPEBACKUPTASK) && (tType '= ..#TYPEBACKUPDATABASE) && (tType '= ..#TYPETERMLIST) && (tType '= ..#TYPETERMLISTENTRY) && (tType '= ..#TYPEFOLDERITEM) && '..IsListingGroupType(tType) && '..IsQualityMeasureType(tType) && (tType '= ..#TYPESTARTUPSETTING) && (tType '= ..#TYPEMEMORYSETTING) && (tType '= ..#TYPECOMPATIBILITYSETTING) && (tType '= ..#TYPESQLSETTING) && (tType '= ..#TYPESQLSHELLSETTING) && (tType '= ..#TYPETSQLSETTING) && (tType '= ..#TYPEISQLSETTING) && (tType '= ..#TYPEMIRROR) && (tType '= ..#TYPESYSTEMDDLMAPPING) && (tType '= ..#TYPEUSERDDLMAPPING) && (tType '= ..#TYPENLSDEFAULT) && (tType '= ..#TYPELOCALE) && (tType '= ..#TYPELOCALEPROPERTY) && (tType '= ..#TYPEGLOBAL) && (tType '= ..#TYPEGLOBALNODE) && (tType '= ..#TYPESYSTEMSECURITYSETTING) && (tType '= ..#TYPEPHONEPROVIDER) && (tType '= ..#TYPESECURITYRECOMMENDATION) && (tType '= ..#TYPETASKMAILSETTING) && (tType '= ..#TYPESQLSTATEMENT) && (tType '= ..#TYPESYSTEMALERTS) && (tType '= ..#TYPEDEFAULTSETTING) && (tType '= ..#TYPEINTEROPCREDENTIAL) && (tType '= ..#TYPEINTEROPSCHEDULE) && (tType '= ..#TYPEINTEROPPURGE) && (tType '= ..#TYPEINTEROPPURGESETTING) && '..IsAnalyticsSettingType(tType) && '..IsPmmlDefinitionType(tType) && (tType '= ..#TYPEPAGERESOURCE) && (tType '= ..#TYPESTATEMENTENTRY) && (tType '= ..#TYPECACHEDQUERY) && (tType '= ..#TYPESQLTABLE) && (tType '= ..#TYPESQLINDEX) && (tType '= ..#TYPESQLSCHEMA) && (tType '= ..#TYPEINTEROPARCHIVE) && (tType '= ..#TYPEINTEROPARCHIVESETTING) && (tType '= ..#TYPEINTEROPMANAGEDALERT) && (tType '= ..#TYPEINTEROPRULELOG) && (tType '= ..#TYPEINTEROPPROCESSLOG) && (tType '= ..#TYPEINTEROPWORKFLOWUSER) && (tType '= ..#TYPEINTEROPWORKFLOWROLE) && (tType '= ..#TYPEINTEROPWORKFLOWMEMBER) && (tType '= ..#TYPEINTEROPWORKFLOWTASK) && (tType '= ..#TYPEINTEROPHL7SCHEMA) && (tType '= ..#TYPESQLSAVEDQUERY) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1707,6 +1878,27 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         If tType = ..#TYPESCREENPERMISSION {
             Do ..ScreenPermission(tId, .pProhibits, .pCode)
             Quit
+        }
+
+        ; Story 21.37: a classic page's custom resource is judged by the page and the tool alone, so the arm reads no target.
+        If tType = ..#TYPEPAGERESOURCE {
+            Do ..PageResource(tId, ..ToolClassNamed(pToolName), .pProhibits, .pCode)
+            Quit
+        }
+
+        ; Story 21.6: a statement is judged by the tables the instance records for it, read again here through the tool's port in the
+        ; namespace the stored payload names, so a confirm sent from another namespace cannot judge another statement. The write then
+        ; passes the reviewed-few sweep below.
+        If tType = ..#TYPESTATEMENTENTRY {
+            Set tSC = ..StatementEntry(pToolName, tId, pPayload, .pProhibits, .pCode)
+            If $$$ISERR(tSC) || pProhibits Quit
+        }
+
+        ; Story 21.25: a table or an index is judged by the schema and the class the instance resolves for the table now, read again here
+        ; through the tool's port in the namespace the stored payload names. The write then passes the reviewed-few sweep below.
+        If (tType = ..#TYPESQLFIELD) || (tType = ..#TYPESQLTABLE) || (tType = ..#TYPESQLINDEX) || (tType = ..#TYPESQLSCHEMA) {
+            Set tSC = ..TableEntry(pToolName, tId, pPayload, .pProhibits, .pCode, (tType = ..#TYPESQLSCHEMA))
+            If $$$ISERR(tSC) || pProhibits Quit
         }
 
         ; Story 21.12: a mirror is judged by its stored payload alone, so the arm reads no target and no port.
@@ -1824,6 +2016,9 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; browser never reads, and AD-10 names no effect on a lookup table, so the arm reads no target; the port refuses a file
         ; that is not exactly one lookup table, or holds another table than the one named, before any load.
         If (tType = ..#TYPELOOKUPTABLE) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#LOOKUPIMPORTWRITETYPE) Quit
+        ; Story 24.18: an HL7 schema import is judged as a lookup table import is: its target read needs the reviewed file, which the id does not name, and AD-10
+        ; names no effect on an HL7 schema, so the arm reads no target; the port refuses a file that is not exactly one HL7 schema, or marks one standard.
+        If (tType = ..#TYPEINTEROPHL7SCHEMA) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#HL7IMPORTWRITETYPE) Quit
         ; Story 24.10: a term list import names the list its file holds, or the literal import id for a server file the browser never
         ; reads, and AD-10 names no effect on a term list, so the arm reads no target; the port refuses a file that is not a term list
         ; export, or holds another list than the one named, and a name already held, before any write. An export and a copy read the
@@ -1893,7 +2088,49 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
                 Quit
             }
             ; Story 24.12: a quality measure add carries the namespace it was composed in beside its fields, as a listing group add does.
-            If ..IsQualityMeasureType(tType) {
+            If ..IsQualityMeasureType(tType) || ..IsPmmlDefinitionType(tType) {
+                Set tEntryPayload = ..ParsedObject(pPayload)
+                If tEntryPayload.%GetTypeOf("Namespace") '= "unassigned" Do tEntryPayload.%Remove("Namespace")
+                Set tSC = ..Created(tType, 0, tEntryPayload, .pProhibits, .pCode, tId)
+                Quit
+            }
+            ; Story 24.15: a system default setting add carries the namespace it was composed in beside its fields, as an entry add does.
+            If tType = ..#TYPEDEFAULTSETTING {
+                Set tEntryPayload = ..ParsedObject(pPayload)
+                If tEntryPayload.%GetTypeOf("Namespace") '= "unassigned" Do tEntryPayload.%Remove("Namespace")
+                Set tSC = ..Created(tType, 0, tEntryPayload, .pProhibits, .pCode, tId)
+                Quit
+            }
+            ; Story 24.15: a credential add carries the namespace it was composed in beside its fields, as a default setting add does.
+            If tType = ..#TYPEINTEROPCREDENTIAL {
+                Set tEntryPayload = ..ParsedObject(pPayload)
+                If tEntryPayload.%GetTypeOf("Namespace") '= "unassigned" Do tEntryPayload.%Remove("Namespace")
+                Set tSC = ..Created(tType, 0, tEntryPayload, .pProhibits, .pCode, tId)
+                Quit
+            }
+            ; Story 24.15: a schedule spec add carries the namespace it was composed in beside its fields, as a credential add does.
+            If tType = ..#TYPEINTEROPSCHEDULE {
+                Set tEntryPayload = ..ParsedObject(pPayload)
+                If tEntryPayload.%GetTypeOf("Namespace") '= "unassigned" Do tEntryPayload.%Remove("Namespace")
+                Set tSC = ..Created(tType, 0, tEntryPayload, .pProhibits, .pCode, tId)
+                Quit
+            }
+            ; Story 24.17 Batch 3a: a workflow user add carries the namespace it was composed in beside its fields, as a schedule spec add does.
+            If tType = ..#TYPEINTEROPWORKFLOWUSER {
+                Set tEntryPayload = ..ParsedObject(pPayload)
+                If tEntryPayload.%GetTypeOf("Namespace") '= "unassigned" Do tEntryPayload.%Remove("Namespace")
+                Set tSC = ..Created(tType, 0, tEntryPayload, .pProhibits, .pCode, tId)
+                Quit
+            }
+            ; Story 24.17 Batch 3b: a workflow role add and a member add carry the namespace they were composed in beside their fields, as a workflow user add does.
+            If (tType = ..#TYPEINTEROPWORKFLOWROLE) || (tType = ..#TYPEINTEROPWORKFLOWMEMBER) {
+                Set tEntryPayload = ..ParsedObject(pPayload)
+                If tEntryPayload.%GetTypeOf("Namespace") '= "unassigned" Do tEntryPayload.%Remove("Namespace")
+                Set tSC = ..Created(tType, 0, tEntryPayload, .pProhibits, .pCode, tId)
+                Quit
+            }
+            ; Story 24.18 Batch 1: an HL7 schema add carries the namespace it was composed in beside its fields, as a workflow role add does.
+            If tType = ..#TYPEINTEROPHL7SCHEMA {
                 Set tEntryPayload = ..ParsedObject(pPayload)
                 If tEntryPayload.%GetTypeOf("Namespace") '= "unassigned" Do tEntryPayload.%Remove("Namespace")
                 Set tSC = ..Created(tType, 0, tEntryPayload, .pProhibits, .pCode, tId)
@@ -2021,6 +2258,12 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Set tSC = ..LanguageServer($Get(tToolClass), .tChanged, .pProhibits, .pCode)
             Quit
         }
+        ; Story 21.6: a statement or a cached-query purge sets no field and AD-10 names no effect on a purge, so a write passes the
+        ; reviewed-few sweep and nothing else.
+        If (tType = ..#TYPESQLSAVEDQUERY) || (tType = ..#TYPESQLINDEXANALYSIS) || (tType = ..#TYPESQLRUNTIMESTAT) || (tType = ..#TYPESQLFIELD) || (tType = ..#TYPESTATEMENTENTRY) || (tType = ..#TYPECACHEDQUERY) || (tType = ..#TYPESQLTABLE) || (tType = ..#TYPESQLINDEX) || (tType = ..#TYPESQLSCHEMA) {
+            Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
         ; A lock (Story 16.12): OcuPilot's own locks are refused, alone or among an owner's.
         If tType = ..#TYPELOCK {
             Set tSC = ..Lock(tTarget, .tChanged, .pProhibits, .pCode)
@@ -2103,6 +2346,56 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Set tSC = ..ReviewedFewOnly(..#TYPEINTEROPJOB, .tChanged, .pProhibits, .pCode)
             Quit
         }
+        ; A management data purge and a purge setting (Story 24.16): AD-10 names no effect on either, so a write passes the reviewed-few sweep and
+        ; nothing else here.
+        If tType = ..#TYPEINTEROPPURGE {
+            Set tSC = ..ReviewedFewOnly(..#TYPEINTEROPPURGE, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEINTEROPPURGESETTING {
+            Set tSC = ..ReviewedFewOnly(..#TYPEINTEROPPURGESETTING, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A local archive run and an archive setting (Story 24.16 Batch 4): AD-10 names no effect on either, so a write passes the reviewed-few sweep and
+        ; nothing else here.
+        If tType = ..#TYPEINTEROPARCHIVE {
+            Set tSC = ..ReviewedFewOnly(..#TYPEINTEROPARCHIVE, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEINTEROPARCHIVESETTING {
+            Set tSC = ..ReviewedFewOnly(..#TYPEINTEROPARCHIVESETTING, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A managed alert update (Story 24.17 Batch 1): AD-10 names no effect on a managed alert, so a write passes the reviewed-few sweep and nothing else.
+        If tType = ..#TYPEINTEROPMANAGEDALERT {
+            Set tSC = ..ReviewedFewOnly(..#TYPEINTEROPMANAGEDALERT, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A business rule log or business process log purge (Story 24.17 Batch 2): AD-10 names no effect on either, so a write passes the reviewed-few sweep and nothing else.
+        If (tType = ..#TYPEINTEROPRULELOG) || (tType = ..#TYPEINTEROPPROCESSLOG) {
+            Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A workflow user write (Story 24.17 Batch 3a): AD-10 names no effect on a workflow user, so a write passes the reviewed-few sweep and nothing else.
+        If tType = ..#TYPEINTEROPWORKFLOWUSER {
+            Set tSC = ..ReviewedFewOnly(..#TYPEINTEROPWORKFLOWUSER, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A workflow role or member write (Story 24.17 Batch 3b): AD-10 names no effect on either, so a write passes the reviewed-few sweep and nothing else.
+        If (tType = ..#TYPEINTEROPWORKFLOWROLE) || (tType = ..#TYPEINTEROPWORKFLOWMEMBER) {
+            Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A workflow task write (Story 24.17 Batch 4): AD-10 names no effect on one, so an assign or a cancel passes the reviewed-few sweep and nothing else. Its values travel in the port's query.
+        If tType = ..#TYPEINTEROPWORKFLOWTASK {
+            Set tSC = ..ReviewedFewOnly(..#TYPEINTEROPWORKFLOWTASK, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; An HL7 schema write (Story 24.18 Batch 1): AD-10 names no effect on one, so an add, an import, an export or a delete passes the reviewed-few sweep and nothing else.
+        If tType = ..#TYPEINTEROPHL7SCHEMA {
+            Set tSC = ..ReviewedFewOnly(..#TYPEINTEROPHL7SCHEMA, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
         ; A cube (Story 20.34): AD-10 names no effect on one, because OcuPilot owns none, so a write passes the reviewed-few sweep and
         ; nothing else.
         If tType = ..#TYPECUBE {
@@ -2121,7 +2414,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Quit
         }
         ; A quality measure (Story 24.12): AD-10's one effect, a class of OcuPilot's own, is AnalyticsPort's to refuse, so a write passes the reviewed-few sweep and nothing else.
-        If ..IsQualityMeasureType(tType) {
+        If ..IsQualityMeasureType(tType) || ..IsPmmlDefinitionType(tType) {
             Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }
@@ -2143,7 +2436,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         ; A startup, memory, compatibility, SQL, SQL Shell, TSQL or ISQL setting (Stories 21.3 and 21.4): AD-10 names no effect on any of them,
         ; so a write passes the reviewed-few sweep and nothing else.
-        If (tType = ..#TYPESTARTUPSETTING) || (tType = ..#TYPEMEMORYSETTING) || (tType = ..#TYPECOMPATIBILITYSETTING) || (tType = ..#TYPESQLSETTING) || (tType = ..#TYPESQLSHELLSETTING) || (tType = ..#TYPETSQLSETTING) || (tType = ..#TYPEISQLSETTING) || (tType = ..#TYPESYSTEMDDLMAPPING) || (tType = ..#TYPEUSERDDLMAPPING) || (tType = ..#TYPENLSDEFAULT) {
+        If (tType = ..#TYPESQLRUNTIMESTATSSETTING) || (tType = ..#TYPESTARTUPSETTING) || (tType = ..#TYPEMEMORYSETTING) || (tType = ..#TYPECOMPATIBILITYSETTING) || (tType = ..#TYPESQLSETTING) || (tType = ..#TYPESQLSHELLSETTING) || (tType = ..#TYPETSQLSETTING) || (tType = ..#TYPEISQLSETTING) || (tType = ..#TYPESYSTEMDDLMAPPING) || (tType = ..#TYPEUSERDDLMAPPING) || (tType = ..#TYPENLSDEFAULT) {
             Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }
@@ -2184,6 +2477,22 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; reviewed-few sweep and nothing else.
         If tType = ..#TYPEBUSINESSPARTNER {
             Set tSC = ..ReviewedFewOnly(..#TYPEBUSINESSPARTNER, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A system default setting (Story 24.15): AD-10 names no effect on one, so a write passes the reviewed-few sweep and nothing else.
+        If tType = ..#TYPEDEFAULTSETTING {
+            Set tSC = ..ReviewedFewOnly(..#TYPEDEFAULTSETTING, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A credential (Story 24.15): the agent's remove and password change of the provider's own are refused when proposed, so a write passes the
+        ; reviewed-few sweep and nothing else here.
+        If tType = ..#TYPEINTEROPCREDENTIAL {
+            Set tSC = ..ReviewedFewOnly(..#TYPEINTEROPCREDENTIAL, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A schedule spec (Story 24.15): AD-10 names no effect on it, so a write passes the reviewed-few sweep and nothing else here.
+        If tType = ..#TYPEINTEROPSCHEDULE {
+            Set tSC = ..ReviewedFewOnly(..#TYPEINTEROPSCHEDULE, .tChanged, .pProhibits, .pCode)
             Quit
         }
         ; The authentication and web session options (Story 18.8): OcuPilot's own sign-in and start are not cut.
@@ -2506,6 +2815,8 @@ ClassMethod LowersScreenPermission(pTarget As %DynamicObject) As %Boolean
 /// <code>%</code>) or <code>*</code> reaches the <code>%</code> globals too, and answers the same effect.</p>
 /// <p>For a screen permission, <parameter>EFFECTSCREENLOWERED</parameter> when <method>LowersScreenPermission</method>
 /// answers true over <var>pTarget</var>.</p>
+/// <p>For a page resource, <method>PageResourceEffect</method>'s answer over <var>pTarget</var>'s <code>Page</code> and <code>Current</code> and the
+/// payload's <code>Resource</code>.</p>
 /// <p>For the active database encryption keys, <parameter>EFFECTFIRSTKEY</parameter> for a write that removes nothing
 /// while <var>pTarget</var> lists no active key.</p>
 ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String, pId As %String = "", pRemoves As %Boolean = 0) As %Status
@@ -2515,6 +2826,13 @@ ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarge
     Try {
         If pType = ..#TYPESCREENPERMISSION {
             If ..LowersScreenPermission(pTarget) Set pEffect = ..#EFFECTSCREENLOWERED
+            Quit
+        }
+        If pType = ..#TYPEPAGERESOURCE {
+            If '$IsObject(pTarget) Quit
+            Set tPage = $Select(pTarget.%GetTypeOf("Page") = "string": pTarget.%Get("Page"), 1: pId)
+            Set tNew = $Select($IsObject(pPayload) && (pPayload.%GetTypeOf("Resource") = "string"): pPayload.%Get("Resource"), 1: "")
+            Set pEffect = ..PageResourceEffect(tPage, $Select(pTarget.%GetTypeOf("Current") = "string": pTarget.%Get("Current"), 1: ""), tNew, pRemoves)
             Quit
         }
         If pType = ..#TYPEGLOBALMAPPING {
@@ -3105,6 +3423,55 @@ ClassMethod ScreenPermission(pId As %String, Output pProhibits As %Boolean, Outp
     If '##class(OcuPilot.Screen.Gate).Adjustable(tDescriptor) Do ..Refuse(..#OCUPILOTSCREEN, .pProhibits, .pCode)
 }
 
+/// <p>The page resource arm (AD-10, AD-64, Story 21.37): an assignment to a classic page that a screen which cannot be adjusted
+/// (<method>OcuPilot.Screen.Gate.Adjustable</method>) declares is refused <parameter>OCUPILOTSCREEN</parameter>, whoever sends it. A clear is
+/// never refused here, and a page no screen declares, or that the tool's port does not resolve, is permitted: the port refuses it.</p>
+ClassMethod PageResource(pId As %String, pToolClass As %String, Output pProhibits As %Boolean, Output pCode As %String) [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    If ..RefusesPageAssignment(pId, pToolClass, .pCode) Set pProhibits = 1
+}
+
+/// <p>Whether the write <var>pToolClass</var> makes to the page <var>pId</var> is refused before its precondition is read: an assignment to a page a
+/// screen that cannot be adjusted declares (<method>PageResource</method>), with <var>pCode</var> <parameter>OCUPILOTSCREEN</parameter>, else 0 and
+/// <code>""</code>. The declaring screens are read from the registry on every call (AD-64), and a registry that could not be read refuses, the
+/// fail-closed direction <method>PageResourceEffect</method> also takes; the page is resolved by the tool's own port.</p>
+/// <p><b>Caller contract:</b> <var>pId</var> is the target's id as the caller holds it. A class whose write removes its target is never refused.</p>
+ClassMethod RefusesPageAssignment(pId As %String, pToolClass As %String, Output pCode As %String) As %Boolean
+{
+    Set pCode = ""
+    If (pToolClass = "") || ..RemovesOf(pToolClass) Quit 0
+    Set tNormalized = ""
+    Set tPortSC = $ClassMethod($ClassMethod(pToolClass, "PortClass"), "Normalized", pId, .tNormalized)
+    If $$$ISERR(tPortSC) || (tNormalized = "") Quit 0
+    Set tScreens = ##class(OcuPilot.Screen.Registry).ScreensDeclaringPage(tNormalized, .tResolved)
+    If 'tResolved {
+        Set pCode = ..#OCUPILOTSCREEN
+        Quit 1
+    }
+    For tI = 1:1:$ListLength(tScreens) {
+        If '##class(OcuPilot.Screen.Gate).Adjustable($List(tScreens, tI)) {
+            Set pCode = ..#OCUPILOTSCREEN
+            Quit
+        }
+    }
+    Quit (pCode '= "")
+}
+
+/// <p>The effect of changing the page <var>pPage</var> from the resource it holds, <var>pCurrent</var>, to <var>pNew</var>, or clearing it
+/// (<var>pRemoves</var>): <parameter>EFFECTPAGERESOURCECLEARED</parameter> or <parameter>EFFECTPAGERESOURCECHANGED</parameter> when the page holds a
+/// resource and an OcuPilot screen declares it, <code>""</code> otherwise, including an assignment of the resource the page already holds. A registry
+/// that could not be read is read as declaring it, the fail-closed direction.</p>
+ClassMethod PageResourceEffect(pPage As %String, pCurrent As %String, pNew As %String, pRemoves As %Boolean) As %String
+{
+    If pCurrent = "" Quit ""
+    If 'pRemoves && (pNew = pCurrent) Quit ""
+    Set tScreens = ##class(OcuPilot.Screen.Registry).ScreensDeclaringPage(pPage, .tResolved)
+    If tResolved && ($ListLength(tScreens) = 0) Quit ""
+    Quit $Select(pRemoves: ..#EFFECTPAGERESOURCECLEARED, 1: ..#EFFECTPAGERESOURCECHANGED)
+}
+
 /// <p>The mirror arm (AD-10, Story 21.12): a write on a mirror whose stored payload sets <code>DeleteDB</code> or <code>DeleteDBs</code>
 /// (<parameter>MIRRORDATABASEFIELDS</parameter>) true is refused <parameter>MIRRORDATABASES</parameter>, and every other write on a mirror,
 /// an unreadable payload included, is refused <parameter>UNCOVERED</parameter>: no mirroring write is reviewed, so none passes. A flag is
@@ -3413,6 +3780,101 @@ ClassMethod SqlStatement(pText As %String, pTables As %List, pRecordsTables As %
     Quit $$$OK
 }
 
+/// <p>The statement arm of the SQL tuning track (AD-10 as amended 2026-11-16, Story 21.6): a freeze, an unfreeze, or a clear of the statistics or
+/// the plan error of the statement <var>pId</var> is refused <parameter>OCUPILOTSQL</parameter> when any of the tables the instance records for
+/// it lies in a schema that <method>IsOcuPilotCode</method> reads as OcuPilot's. The tables are read now, through the tool's port with the stored
+/// payload <var>pPayload</var>, so they are those of the namespace the proposal read; a read that fails is an error status, and a read whose answer
+/// holds no list of tables is refused. A statement the instance no longer holds is not judged: the fingerprint re-read closes the proposal
+/// target-changed. The index's own id, a clean's target, names no statement and is not judged.</p>
+ClassMethod StatementEntry(pToolName As %String, pId As %String, pPayload As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If pId = ##class(OcuPilot.Port.SqlPort).#ALLID Quit
+        Set tClass = ..ToolClassNamed(pToolName)
+        If tClass = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "the prohibited set was asked about a tool this instance does not carry: '" _ pToolName _ "'")
+            Quit
+        }
+        Do ##class(OcuPilot.Kernel.Proposal.Operation).Query(tClass, $ClassMethod(tClass, "IdParam"), pId, pPayload, .tQuery)
+        Set tReadSC = ##class(OcuPilot.Kernel.Proposal.Operation).ReadTarget(tClass, ..PortClassOf(tClass), $ClassMethod(tClass, "Endpoint"), .tQuery, pId, .tStatement, .tHttp, .tFault)
+        If $$$ISERR(tReadSC) {
+            If +$Get(tHttp) '= 404 Set tSC = tReadSC
+            Quit
+        }
+        If '$IsObject($Get(tStatement)) || 'tStatement.%IsA("%Library.DynamicObject") || (tStatement.%GetTypeOf("Tables") '= "array") {
+            Do ..Refuse(..#OCUPILOTSQL, .pProhibits, .pCode)
+            Quit
+        }
+        Set tIterator = tStatement.%Get("Tables").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tTable) {
+            If $IsObject(tTable) || ..IsOcuPilotCode($Piece(tTable, ".", 1)) {
+                Do ..Refuse(..#OCUPILOTSQL, .pProhibits, .pCode)
+                Quit
+            }
+        }
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether the SQL table <var>pName</var> (<code>Schema.Table</code>), or with <var>pIsSchema</var> the schema it names, lies in one of OcuPilot's own
+/// schemas by its name alone, with <parameter>OCUPILOTTABLE</parameter> as <var>pCode</var>. The table tools answer it before their state precondition is
+/// read, so the screen's action and the agent's mint refuse such a table with the AD-10 code and not the precondition's (Story 21.25); the write still
+/// judges the table the instance resolves (<method>TableEntry</method>).</p>
+ClassMethod RefusesOwnSqlName(pName As %String, pIsSchema As %Boolean, Output pCode As %String) As %Boolean
+{
+    Set pCode = ""
+    Set tSchema = $Select(pIsSchema: pName, 1: $Piece(pName, ".", 1))
+    If (tSchema = "") || '..IsOcuPilotCode(tSchema) Quit 0
+    Set pCode = ..#OCUPILOTTABLE
+    Quit 1
+}
+
+/// <p>The table arm of the table maintenance writes (AD-10 as amended 2026-11-16, Story 21.25): a rebuild, a tune or a statistics change on the table
+/// or index <var>pId</var> is refused <parameter>OCUPILOTTABLE</parameter> when the table's schema or its class lies in OcuPilot's own
+/// (<method>IsOcuPilotCode</method>). Both are read now, through the tool's port with the stored payload <var>pPayload</var>, so they are those of
+/// the namespace the proposal read. A read that fails, answers no table or answers no schema and class is refused: a table nobody resolved is not
+/// one to write. With <var>pSchema</var>, <var>pId</var> names a schema and only the schema's name, as the read answers it, is judged.</p>
+ClassMethod TableEntry(pToolName As %String, pId As %String, pPayload As %String, Output pProhibits As %Boolean, Output pCode As %String, pSchema As %Boolean = 0) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tClass = ..ToolClassNamed(pToolName)
+        If tClass = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "the prohibited set was asked about a tool this instance does not carry: '" _ pToolName _ "'")
+            Quit
+        }
+        Do ##class(OcuPilot.Kernel.Proposal.Operation).Query(tClass, $ClassMethod(tClass, "IdParam"), pId, pPayload, .tQuery)
+        Set tReadSC = ##class(OcuPilot.Kernel.Proposal.Operation).ReadTarget(tClass, ..PortClassOf(tClass), $ClassMethod(tClass, "Endpoint"), .tQuery, pId, .tTable, .tHttp, .tFault)
+        If pSchema {
+            If $$$ISERR(tReadSC) || '$IsObject($Get(tTable)) || 'tTable.%IsA("%Library.DynamicObject") || (tTable.%GetTypeOf("Schema") '= "string") || (tTable.%Get("Schema") = "") || ..IsOcuPilotCode(tTable.%Get("Schema")) {
+                Do ..Refuse(..#OCUPILOTTABLE, .pProhibits, .pCode)
+            }
+            Quit
+        }
+        If $$$ISERR(tReadSC) || '$IsObject($Get(tTable)) || 'tTable.%IsA("%Library.DynamicObject") || (tTable.%GetTypeOf("Table") '= "string") || (tTable.%GetTypeOf("Class") '= "string") || (tTable.%Get("Table") = "") || (tTable.%Get("Class") = "") {
+            Do ..Refuse(..#OCUPILOTTABLE, .pProhibits, .pCode)
+            Quit
+        }
+        If ..IsOcuPilotCode($Piece(tTable.%Get("Table"), ".", 1)) || ..IsOcuPilotCode(tTable.%Get("Class")) {
+            Do ..Refuse(..#OCUPILOTTABLE, .pProhibits, .pCode)
+        }
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>The SQL console's confirmed run (Story 19.6): its stored payload's <code>statement</code> is
 /// judged by <method>SqlStatement</method>, first by its text alone and then with the guard the
 /// tool's port answers for the payload now -- the statement classified again, in the namespace the
@@ -3669,7 +4131,9 @@ ClassMethod NamespaceFields() As %List [ Private ]
 /// <var>pTarget</var> answers is one of those databases' directories
 /// (<method>OwnDatabaseDirectories</method>, compared by
 /// <method>OcuPilot.Port.DatabasePort.SameDirectory</method>) is refused
-/// <parameter>OCUPILOTDATABASE</parameter>, and a read that fails refuses; every other operation is
+/// <parameter>OCUPILOTDATABASE</parameter>, and a read that fails refuses. Both reads go through the
+/// port's configuration classes under the caller's own privilege (AD-27's named case), so the arm needs
+/// no admin API route; every other operation is
 /// permitted, its one argument being its fingerprint subject's (<method>SkippedFields</method>).</p>
 ClassMethod Database(pId As %String, pToolClass As %String, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String, pType As %String = {..#TYPEDATABASECONFIG}) As %Status [ Private ]
 {
@@ -3680,8 +4144,8 @@ ClassMethod Database(pId As %String, pToolClass As %String, pTarget As %DynamicO
         If pType = ..#TYPEDATABASE {
             If ..WriteTypeOf(pToolClass) = ..#DISMOUNTWRITETYPE {
                 Set tPort = ..PortClassOf(pToolClass)
-                Set tNamesSC = ..OwnDatabaseNames(tPort, .tOwn)
-                If $$$ISOK(tNamesSC) Set tDirsSC = ..OwnDatabaseDirectories(tPort, tOwn, .tDirectories)
+                Set tNamesSC = ..OwnDatabaseNames(tPort, .tOwn, 1)
+                If $$$ISOK(tNamesSC) Set tDirsSC = ..OwnDatabaseDirectories(tPort, tOwn, .tDirectories, 1)
                 Set tDirectory = ..Rendered(pTarget, "Directory")
                 If $$$ISERR(tNamesSC) || $$$ISERR(tDirsSC) || (tDirectory = "") {
                     Do ..Refuse(..#OCUPILOTDATABASE, .pProhibits, .pCode)
@@ -3751,10 +4215,21 @@ ClassMethod Database(pId As %String, pToolClass As %String, pTarget As %DynamicO
 /// <parameter>SYSTEMDATABASES</parameter>, and the globals and routines databases of the namespace
 /// this process runs in, read at each call through <var>pPort</var>'s <code>Namespace.Namespace</code>
 /// <code>GET</code> as the caller. A read that fails is an error status, which the caller refuses on.
+/// When <var>pFromConfig</var> is 1 (a dismount, AD-27's named case) the namespace's two databases are
+/// read instead through <method>OcuPilot.Port.DatabasePort.ProtectedNamespaceDatabases</method>, which
+/// needs no admin API route and ignores <var>pPort</var>; the outputs and the error contract are the same.
 /// Overridable so a fixture can add a probe database; production never overrides it.</p>
-ClassMethod OwnDatabaseNames(pPort As %String, Output pNames As %List) As %Status
+ClassMethod OwnDatabaseNames(pPort As %String, Output pNames As %List, pFromConfig As %Boolean = 0) As %Status
 {
     Set pNames = $ListBuild($ZConvert(##class(OcuPilot.Kernel.State.Base).#DATABASENAME, "U")) _ $ListFromString(..#SYSTEMDATABASES)
+    If pFromConfig {
+        Set tSC = ##class(OcuPilot.Port.DatabasePort).ProtectedNamespaceDatabases($NAMESPACE, .tNamespaceNames)
+        If $$$ISERR(tSC) Quit tSC
+        For tI = 1:1:$ListLength(tNamespaceNames) {
+            If '$ListFind(pNames, $List(tNamespaceNames, tI)) Set pNames = pNames _ $ListBuild($List(tNamespaceNames, tI))
+        }
+        Quit $$$OK
+    }
     Kill tQuery
     Set tQuery("name") = $NAMESPACE
     Set tSC = $ClassMethod(pPort, "Invoke", "Namespace.Namespace", ..#READTYPE, .tQuery, "", .tNamespace, .tHttp, .tFault)
@@ -3771,10 +4246,13 @@ ClassMethod OwnDatabaseNames(pPort As %String, Output pNames As %List) As %Statu
 
 /// <p>The directories of the configurations <var>pOwn</var> names, from one
 /// <code>Database.ConfigCRUD</code> <code>LIST</code> through <var>pPort</var> as the caller. A list
-/// that cannot be read is an error status.</p>
-ClassMethod OwnDatabaseDirectories(pPort As %String, pOwn As %List, Output pDirectories As %List) As %Status [ Private ]
+/// that cannot be read is an error status. When <var>pFromConfig</var> is 1 (a dismount) each name's
+/// directory is read instead through <method>OcuPilot.Port.DatabasePort.ConfigDirectories</method>,
+/// which ignores <var>pPort</var>; a name with no configuration contributes none.</p>
+ClassMethod OwnDatabaseDirectories(pPort As %String, pOwn As %List, Output pDirectories As %List, pFromConfig As %Boolean = 0) As %Status [ Private ]
 {
     Set pDirectories = ""
+    If pFromConfig Quit ##class(OcuPilot.Port.DatabasePort).ConfigDirectories(pOwn, .pDirectories)
     Kill tQuery
     Set tSC = $ClassMethod(pPort, "Invoke", "Database.ConfigCRUD", "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
     If $$$ISERR(tSC) Quit tSC
@@ -6983,6 +7461,29 @@ ClassMethod AgentReachable(pToolName As %String) As %Boolean
         Set tReachable = 1
     }
     Quit tReachable
+}
+
+/// <p>Whether the credential <var>pName</var> is one an enabled agent definition of the <code>creds</code> rung names (Story 24.15): the stored
+/// definitions are read at each call, and the name is matched exactly. <b>A read that fails answers 1</b>, so a question the instance cannot answer is
+/// refused rather than passed.</p>
+ClassMethod ProviderCredential(pName As %String) As %Boolean
+{
+    Set tNamed = 1
+    Try {
+        Set tSC = $ClassMethod(..AgentStateClass(), "GuardedCredentialNamedByEnabled", pName, .tFound)
+        If $$$ISERR(tSC) Quit
+        Set tNamed = ''tFound
+    } Catch {
+        Set tNamed = 1
+    }
+    Quit tNamed
+}
+
+/// <p>The class whose guarded reads answer the stored agent definitions, which <method>ProviderCredential</method> reads. Overridable so a test
+/// can arm a read that fails; production never overrides it.</p>
+ClassMethod AgentStateClass() As %String
+{
+    Quit "OcuPilot.Kernel.State.Agent"
 }
 
 /// <p>The class whose <code>Resolve</code> answers the instance's outbound settings, which

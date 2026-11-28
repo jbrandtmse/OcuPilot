@@ -48,7 +48,8 @@
 /// <parameter>SECURITYPAIRS</parameter>.</p>
 /// <p><b>The Task Manager email settings</b> (<code>TaskMail</code>, Story 21.19) are twelve roster rows read through
 /// <code>%SYS.Task.Config.EmailGet</code> and set through <code>EmailSet</code> (<parameter>TASKMAILROSTER</parameter>); the mail password
-/// is never a row, and no read or write names it (AD-35).</p>
+/// is never a row, and no read names it (AD-35). Its own write type <code>PASSWORD</code> (Story 21.36) sets it through <code>EmailSet</code> with the
+/// secret the caller supplies at the write and nothing else: the port never stores, reads, compares or logs it, and renders its script with a placeholder.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
 /// <method>SendProperties</method>, <method>ReadEntry</method>, <method>CollectNamed</method>, <method>SendEntry</method>,
 /// <method>CreateEntry</method>, <method>DeleteEntry</method>, <method>ReadMail</method>,
@@ -81,7 +82,7 @@ Parameter SECURITYPAIRS = "%Admin_Secure:USE";
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
 /// <p>The endpoints a screen's read lists, in <code>LIST</code>.</p>
-Parameter ENDPOINTS = "Startup,Memory,Compatibility,SQL,SQLShell,TSQL,ISQL,SystemDDL,UserDDL,NLSDefaults,Security,TaskMail";
+Parameter ENDPOINTS = "Startup,Memory,Compatibility,SQL,SQLShell,TSQL,ISQL,SystemDDL,UserDDL,NLSDefaults,Security,TaskMail,SQLStats";
 
 Parameter STARTUPENDPOINT = "Startup";
 
@@ -106,6 +107,29 @@ Parameter NLSENDPOINT = "NLSDefaults";
 Parameter SECURITYENDPOINT = "Security";
 
 Parameter TASKMAILENDPOINT = "TaskMail";
+
+/// <p>The SQL runtime statistics collection endpoint (Story 21.26): the system-wide collection level, the stop that ends it and the level after the
+/// stop, and when the stop falls, as four roster rows read from <code>%SYS.PTools.StatsSQL.GetSQLStatsFlag</code>. A set is one
+/// <code>SetSQLStats</code> call built by <method>SqlStatsTarget</method>. Its pairs replace <parameter>PAIRS</parameter> and
+/// <parameter>WRITEPAIRS</parameter>: the classic page's <code>%Development:USE</code> and the reads and writes of the system database
+/// its settings live in.</p>
+Parameter SQLSTATSENDPOINT = "SQLStats";
+
+Parameter SQLSTATSPAIRS = "%Development:USE,%DB_IRISSYS:READ";
+
+Parameter SQLSTATSWRITEPAIRS = "%Development:USE,%DB_IRISSYS:READ,%DB_IRISSYS:WRITE";
+
+/// <p>The four rows, in <parameter>SHELLROSTER</parameter>'s grammar: the level as the classic page's four options (stored 0 to 3), the stop in
+/// whole minutes, the level after the stop (stored 0 or 1), and when the stop falls, which is shown and never changed.</p>
+Parameter SQLSTATSROSTER = "CollectionLevel|choice|Off=0,Off with collection code=1,On for open and close=2,On for all modules=3|0|1;StopAfterMinutes|integer|1:99999||1;LevelAfterStop|choice|Off=0,Off with collection code=1|0|1;StopsAt|text|||0";
+
+/// <p>The vendor class whose <code>GetSQLStatsFlag</code> and <code>SetSQLStats</code> the endpoint calls.</p>
+Parameter SQLSTATSCLASS = "%SYS.PTools.StatsSQL";
+
+/// <p>The stop in minutes, and the level after it, a level of 2 or 3 takes while no stop is held, as the classic page's defaults.</p>
+Parameter SQLSTATSDEFAULTMINUTES As INTEGER = 50;
+
+Parameter SQLSTATSDEFAULTRESET As INTEGER = 0;
 
 /// <p>The vendor class each endpoint lists and sets.</p>
 Parameter STARTUPCLASS = "Config.Startup";
@@ -201,8 +225,17 @@ Parameter TYPECREATE = "CREATE";
 
 Parameter TYPEDELETE = "DELETE";
 
+/// <p>The write that sets the Task Manager mail password, served by the <code>TaskMail</code> endpoint alone.</p>
+Parameter TYPEPASSWORD = "PASSWORD";
+
 /// <p>The write request types.</p>
-Parameter WRITETYPES = "SET,CREATE,DELETE";
+Parameter WRITETYPES = "SET,CREATE,DELETE,PASSWORD";
+
+/// <p>The one target a <code>PASSWORD</code> write names (the sign-in name the password belongs with), and the vendor's name for the password and the
+/// body key that carries it.</p>
+Parameter PASSWORDTARGET = "AuthUser";
+
+Parameter PASSWORDNAME = "AuthPassword";
 
 /// <p>The query key a <code>GET</code> carries to ask for the absence read of a create (<code>CREATE</code> is its only value).</p>
 Parameter ACTIONKEY = "action";
@@ -268,6 +301,8 @@ Parameter REASONBODY = "a set takes the new value as text in Value.";
 
 Parameter REASONCREATEBODY = "a create takes the datatype as text in Value.";
 
+Parameter REASONPASSWORDBODY = "a password set takes the password as text in AuthPassword.";
+
 /// <p>The class the pair sets are evaluated through. Overridable so a fixture can drive a denial in process;
 /// production never overrides it.</p>
 ClassMethod GateClass() As %String
@@ -295,10 +330,12 @@ ClassMethod IsWrite(pType As %String) As %Boolean
 }
 
 /// <p>Whether <var>pEndpoint</var> serves request type <var>pType</var>: every endpoint answers <code>LIST</code>, <code>GET</code> and
-/// <code>SET</code>; <code>CREATE</code> only the user DDL mappings, and <code>DELETE</code> only the two DDL mappings.</p>
+/// <code>SET</code>; <code>CREATE</code> only the user DDL mappings, <code>DELETE</code> only the two DDL mappings, and <code>PASSWORD</code> only the Task Manager email
+/// settings.</p>
 ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
 {
     If '$ListFind($ListFromString(..#ENDPOINTS), pEndpoint) Quit 0
+    If pType = ..#TYPEPASSWORD Quit pEndpoint = ..#TASKMAILENDPOINT
     If pType = ..#TYPECREATE Quit pEndpoint = ..#USERDDLENDPOINT
     If pType = ..#TYPEDELETE Quit ..IsNamed(pEndpoint)
     Quit (pType = ..#TYPELIST) || (pType = ..#TYPEGET) || (pType = ..#TYPESET)
@@ -327,7 +364,7 @@ ClassMethod IsNamed(pEndpoint As %String) As %Boolean
 /// email settings.</p>
 ClassMethod IsRoster(pEndpoint As %String) As %Boolean
 {
-    Quit (pEndpoint = ..#SHELLENDPOINT) || (pEndpoint = ..#TSQLENDPOINT) || (pEndpoint = ..#ISQLENDPOINT) || (pEndpoint = ..#TASKMAILENDPOINT)
+    Quit (pEndpoint = ..#SHELLENDPOINT) || (pEndpoint = ..#TSQLENDPOINT) || (pEndpoint = ..#ISQLENDPOINT) || (pEndpoint = ..#TASKMAILENDPOINT) || (pEndpoint = ..#SQLSTATSENDPOINT)
 }
 
 /// <p>Whether <var>pEndpoint</var> lists the NLS configured defaults and the locale-format switch.</p>
@@ -380,6 +417,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If pType = ..#TYPECREATE {
             Set tSC = ..CreateValue(pEndpoint, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pType = ..#TYPEPASSWORD {
+            Set tSC = ..SetPassword(.pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         If $IsObject(pBody) || (pBody '= "") {
@@ -440,6 +481,7 @@ ClassMethod Admit(pEndpoint As %String, pType As %String, Output pHttpStatus As 
 {
     Set tFailedPair = ""
     Set tSpec = $Select(..IsWrite(pType): ..#WRITEPAIRS, 1: ..#PAIRS)
+    If pEndpoint = ..#SQLSTATSENDPOINT Set tSpec = $Select(..IsWrite(pType): ..#SQLSTATSWRITEPAIRS, 1: ..#SQLSTATSPAIRS)
     If pEndpoint = ..#COMPATIBILITYENDPOINT Set tSpec = tSpec _ "," _ ..#COMPATIBILITYPAIRS
     If pEndpoint = ..#SECURITYENDPOINT Set tSpec = tSpec _ "," _ ..#SECURITYPAIRS
     ; EvaluateRequired, not EvaluatePairs: a pair parameter mis-edited to empty fails closed.
@@ -810,6 +852,48 @@ ClassMethod SetValue(pEndpoint As %String, ByRef pQuery, pBody As %DynamicAbstra
     Quit $$$OK
 }
 
+/// <p>Set the Task Manager mail password to the text <var>pBody</var>'s <code>AuthPassword</code> carries; an empty text clears it. The target
+/// <var>pQuery</var> names must be <parameter>PASSWORDTARGET</parameter>, which is read first as every set reads its row (an unlisted name is 404
+/// <code>CONFIG.SETTING.NOTFOUND</code>). The password reaches <method>SendPassword</method> as an argument and no local of this method holds it; a vendor
+/// refusal is logged without it and answered 400 <code>CONFIG.SETTING.VALUE</code>. Answers <code>{Name}</code>, the target.</p>
+ClassMethod SetPassword(ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tName = $Get(pQuery(..#NAMEKEY))
+    If tName '= ..#PASSWORDTARGET Quit ..Refused(##class(OcuPilot.Api.ConfigError).#SETTINGNOTFOUND, .pHttpStatus, .pFault)
+    Set tSC = ..Row(..#TASKMAILENDPOINT, tName, .tRow, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") || (pBody.%GetTypeOf(..#PASSWORDNAME) '= "string") {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONPASSWORDBODY, .pHttpStatus, .pFault)
+    }
+    Set tVendor = ..SendPassword(pBody.%Get(..#PASSWORDNAME))
+    If $$$ISERR(tVendor) {
+        Do ..LogFault("the Task Manager mail password was refused by the vendor", tVendor, ##class(OcuPilot.Api.ConfigError).#SETTINGVALUE)
+        Quit ..Refused(##class(OcuPilot.Api.ConfigError).#SETTINGVALUE, .pHttpStatus, .pFault)
+    }
+    Set pResult = {}
+    Do pResult.%Set("Name", tName, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The one call that sets the Task Manager mail password: <code>%SYS.Task.Config.EmailSet</code> with the vendor's name for it and <var>pValue</var>, in
+/// <code>%SYS</code> by save and restore. The status is the vendor's own store status, and nothing here keeps, compares or logs the value. Overridable so a
+/// fixture can record that a write was made without the value; production never overrides it.</p>
+ClassMethod SendPassword(pValue As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = $ClassMethod(..#TASKMAILCLASS, "EmailSet", ..#PASSWORDNAME, pValue)
+    } Catch ex {
+        Set tSC = $$$ERROR($$$GeneralError, "the Task Manager mail password could not be stored: " _ ex.Name)
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
 /// <p>Create the named entry <var>pQuery</var> names with the datatype <var>pBody</var>'s <code>Value</code> carries, on a user DDL
 /// mapping endpoint: a name the endpoint holds is 409 <code>CONFIG.MAPPING.TAKEN</code>; then
 /// <class>OcuPilot.Area.OsMgmt.ConfigSettingRules</class> judge the name and the datatype
@@ -871,6 +955,7 @@ ClassMethod Apply(pEndpoint As %String, pName As %String, pValue As %String) As 
         Set tDialect = ..StoredDialect()
         Quit ..SendTsql(pName, $Select(tDialect = "": ..#TSQLDEFAULTDIALECT, 1: tDialect), pValue)
     }
+    If pEndpoint = ..#SQLSTATSENDPOINT Quit ..SendSqlStats(pName, ..StoredFor(..RosterEntry(pEndpoint, pName), pValue))
     If ..IsRoster(pEndpoint) Quit ..SendNode(pEndpoint, pName, ..StoredFor(..RosterEntry(pEndpoint, pName), pValue))
     If ..IsNls(pEndpoint) Quit ..SendNlsNode(pValue)
     If ..IsSecurity(pEndpoint) Quit ..ModifySecurity(pName, pValue)
@@ -882,7 +967,7 @@ ClassMethod Apply(pEndpoint As %String, pName As %String, pValue As %String) As 
 /// <code>""</code> for an endpoint that has none.</p>
 ClassMethod RosterOf(pEndpoint As %String) As %List
 {
-    Set tSpec = $Case(pEndpoint, ..#SHELLENDPOINT: ..#SHELLROSTER, ..#ISQLENDPOINT: ..#ISQLROSTER, ..#TSQLENDPOINT: ..#TSQLROSTER, ..#SECURITYENDPOINT: ..#SECURITYROSTER, ..#TASKMAILENDPOINT: ..#TASKMAILROSTER, : "")
+    Set tSpec = $Case(pEndpoint, ..#SHELLENDPOINT: ..#SHELLROSTER, ..#ISQLENDPOINT: ..#ISQLROSTER, ..#TSQLENDPOINT: ..#TSQLROSTER, ..#SECURITYENDPOINT: ..#SECURITYROSTER, ..#TASKMAILENDPOINT: ..#TASKMAILROSTER, ..#SQLSTATSENDPOINT: ..#SQLSTATSROSTER, : "")
     Set tRoster = ""
     For tI = 1:1:$Length(tSpec, ";") {
         Set tEntry = $Piece(tSpec, ";", tI)
@@ -955,6 +1040,10 @@ ClassMethod CollectRoster(pEndpoint As %String, pName As %String, ByRef pData) A
 {
     Set tSC = $$$OK
     Set tRoster = ..RosterOf(pEndpoint)
+    If pEndpoint = ..#SQLSTATSENDPOINT {
+        Set tSC = ..SqlStatsState(.tLevel, .tMinutes, .tReset, .tStopsAt)
+        If $$$ISERR(tSC) Quit tSC
+    }
     For tI = 1:1:$ListLength(tRoster) {
         Set tEntry = $List(tRoster, tI)
         Set tKey = $List(tEntry, 1)
@@ -963,6 +1052,11 @@ ClassMethod CollectRoster(pEndpoint As %String, pName As %String, ByRef pData) A
             Set tSC = ..ReadMail(tKey, .tMail)
             If $$$ISERR(tSC) Quit
             Set pData(tKey) = $ListBuild(tMail, ..EntryLimits(tEntry), '$List(tEntry, 5), 0, 0)
+            Continue
+        }
+        If pEndpoint = ..#SQLSTATSENDPOINT {
+            Set tShown = $Case(tKey, "CollectionLevel": ..ShownFor(tEntry, tLevel), "StopAfterMinutes": tMinutes, "LevelAfterStop": $Select(tMinutes = "": "", 1: ..ShownFor(tEntry, tReset)), : tStopsAt)
+            Set pData(tKey) = $ListBuild(tShown, ..EntryLimits(tEntry), '$List(tEntry, 5), 0, 0)
             Continue
         }
         Set pData(tKey) = $ListBuild(..RosterValue(pEndpoint, tEntry), ..EntryLimits(tEntry), '$List(tEntry, 5), 0, 0)
@@ -1037,6 +1131,107 @@ ClassMethod StoredDialect() As %String
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
     Quit tDialect
+}
+
+/// <p>The collection state <code>GetSQLStatsFlag</code> reports, in <code>%SYS</code> or any namespace: <var>pLevel</var>, the action level 0 to 3;
+/// and, while a level of 2 or 3 holds a stop, <var>pMinutes</var> (the stop in whole minutes), <var>pReset</var> (the level after the stop, 0 or 1)
+/// and <var>pStopsAt</var> (when the stop falls, ISO-8601 UTC). Each of the three is <code>""</code> while no stop is held. A flag the vendor
+/// reports in another shape is an error status.</p>
+ClassMethod SqlStatsState(Output pLevel As %String, Output pMinutes As %String, Output pReset As %String, Output pStopsAt As %String) As %Status [ Private ]
+{
+    Set pLevel = ""
+    Set pMinutes = ""
+    Set pReset = ""
+    Set pStopsAt = ""
+    Set tSC = $$$OK
+    Try {
+        Kill tInfo
+        Set tFlag = $ClassMethod(..#SQLSTATSCLASS, "GetSQLStatsFlag", 0, 0, .tInfo)
+        Set pLevel = $Piece(tFlag, ":", 1)
+        If '$Match(pLevel, "^[0-3]$") {
+            Set pLevel = ""
+            Set tSC = $$$ERROR($$$GeneralError, "the runtime statistics flag is not in the shape the vendor documents")
+            Quit
+        }
+        Set tMinutes = $Get(tInfo("terminate", "mins"))
+        If (pLevel >= 2) && $Match(tMinutes, "^[1-9][0-9]*$") {
+            Set pMinutes = tMinutes
+            Set pReset = $Select($Get(tInfo("terminate", "resetActionFlag")) = 1: 1, 1: 0)
+            Set tStop = $Get(tInfo("terminate", "stopHDate"))
+            If tStop '= "" Set pStopsAt = $Translate($ZDateTime($System.Util.LocalWithZTIMEZONEtoUTC(tStop), 3, 1), " ", "T") _ "Z"
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p><method>SqlStatsState</method> read in <code>%SYS</code> by save and restore.</p>
+ClassMethod SqlStatsRead(Output pLevel As %String, Output pMinutes As %String, Output pReset As %String, Output pStopsAt As %String) As %Status [ Private ]
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ..SqlStatsState(.pLevel, .pMinutes, .pReset, .pStopsAt)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The level <var>pLevel</var> and the stop text <var>pTerminate</var> a set of the row <var>pName</var> to the stored code
+/// <var>pStored</var> sends: the other rows keep the values the instance holds now, a level of 2 or 3 takes
+/// <parameter>SQLSTATSDEFAULTMINUTES</parameter> and <parameter>SQLSTATSDEFAULTRESET</parameter> while no stop is held, and a level below 2
+/// sends no stop. The text is built from whole numbers alone as <code>M:&lt;minutes&gt;:&lt;level after the stop&gt;</code>. A stop row set
+/// while the level is below 2, and any name outside the three settable rows, is an error status.</p>
+ClassMethod SqlStatsTarget(pName As %String, pStored As %String, Output pLevel As %Integer, Output pTerminate As %String) As %Status
+{
+    Set pLevel = ""
+    Set pTerminate = ""
+    Set tSC = ..SqlStatsRead(.tLevel, .tMinutes, .tReset, .tStopsAt)
+    If $$$ISERR(tSC) Quit tSC
+    If (pName '= "CollectionLevel") && (pName '= "StopAfterMinutes") && (pName '= "LevelAfterStop") Quit $$$ERROR($$$GeneralError, "no runtime statistics call is built for " _ pName)
+    If (pName '= "CollectionLevel") && (tLevel < 2) Quit $$$ERROR($$$GeneralError, "the stop of runtime statistics collection is set while collection is off")
+    If tMinutes = "" {
+        Set tMinutes = ..#SQLSTATSDEFAULTMINUTES
+        Set tReset = ..#SQLSTATSDEFAULTRESET
+    }
+    If pName = "CollectionLevel" Set tLevel = pStored
+    If pName = "StopAfterMinutes" Set tMinutes = pStored
+    If pName = "LevelAfterStop" Set tReset = pStored
+    If '$Match(tLevel, "^[0-3]$") Quit $$$ERROR($$$GeneralError, "the runtime statistics call would carry a value outside its range")
+    If (tLevel >= 2) && ('$Match(tMinutes, "^[1-9][0-9]{0,4}$") || '$Match(tReset, "^[01]$")) Quit $$$ERROR($$$GeneralError, "the runtime statistics call would carry a value outside its range")
+    Set pLevel = +tLevel
+    Set pTerminate = $Select(pLevel < 2: "", 1: "M:" _ +tMinutes _ ":" _ +tReset)
+    Quit $$$OK
+}
+
+/// <p>The set of the row <var>pName</var> to the stored code <var>pStored</var>: the call <method>SqlStatsTarget</method> builds, made by
+/// <method>SqlStatsCall</method>.</p>
+ClassMethod SendSqlStats(pName As %String, pStored As %String) As %Status [ Private ]
+{
+    Set tSC = ..SqlStatsTarget(pName, pStored, .tLevel, .tTerminate)
+    If $$$ISERR(tSC) Quit tSC
+    Quit ..SqlStatsCall(tLevel, tTerminate)
+}
+
+/// <p>The one call that changes the collection: <code>SetSQLStats(</code><var>pLevel</var><code>, 1, "", </code><var>pTerminate</var><code>)</code>
+/// in <code>%SYS</code> by save and restore. The vendor answers the level it replaced, 0 to 3, and an error status when it refuses an argument;
+/// anything else is an error status here. Overridable so a fixture can record the call; production never overrides it.</p>
+ClassMethod SqlStatsCall(pLevel As %Integer, pTerminate As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tResult = $ClassMethod(..#SQLSTATSCLASS, "SetSQLStats", pLevel, 1, "", pTerminate)
+        If '$Match(tResult, "^[0-3]$") Set tSC = $Select($System.Status.IsError(tResult): tResult, 1: $$$ERROR($$$GeneralError, "the runtime statistics call answered no level"))
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
+    Quit tSC
 }
 
 /// <p>The one call that changes a SQL Shell or ISQL node, or a Task Manager email setting: <var>pName</var>'s node of <var>pEndpoint</var>
@@ -1160,16 +1355,21 @@ ClassMethod PurgeSteps(pEndpoint As %String, pName As %String) As %DynamicArray
     Quit [(##class(OcuPilot.Port.AdminPort).ObjectScriptStep($ListBuild("Set tSC = $SYSTEM.SQL.PurgeQueries({""allNamespace"": 1})")))]
 }
 
-/// <p>Purge the cached queries of every namespace, as the classic SQL page does after one of the settings it names changes. A
-/// failed purge is the returned status. Overridable so a fixture can record the call or feed a failure; production never
-/// overrides it.</p>
-ClassMethod PurgeCachedQueries() As %Status
+/// <p>Purge cached queries with <var>pQualifiers</var>, <code>$SYSTEM.SQL.PurgeQueries</code>' qualifiers as a
+/// <class>%DynamicObject</class> and run in <var>pNamespace</var> when it is named, else in the current namespace;
+/// <code>""</code> purges the cached queries of every namespace (<code>{"allNamespace": 1}</code>), as the classic SQL page does
+/// after one of the settings it names changes. The namespace is switched by save and restore around the vendor call alone, since
+/// OcuPilot's own classes are not visible from another namespace. A failed purge is the returned status. Overridable so a fixture
+/// can record the call or feed a failure; production never overrides it.</p>
+ClassMethod PurgeCachedQueries(pQualifiers As %DynamicObject = "", pNamespace As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
-        Set tSC = $SYSTEM.SQL.PurgeQueries({"allNamespace": 1})
+        If pNamespace '= "" Set $NAMESPACE = pNamespace
+        Set tSC = $SYSTEM.SQL.PurgeQueries($Select($IsObject(pQualifiers): pQualifiers, 1: {"allNamespace": 1}))
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
@@ -1429,11 +1629,13 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <code>Modify</code>, the same call the port makes (the purge a key that purges owes is the set tool's step,
 /// <method>PurgeSteps</method>); for a roster endpoint, the one node set to the stored code with literal subscripts, or the TSQL setter; for the
 /// NLS defaults, the locale-format node set with literal subscripts (the reload it owes is the set tool's step, <method>ReloadSteps</method>). The name and the value are string
-/// literals, so nothing the query or the body carries runs as code. A roster name or an NLS name that is not settable renders no script.</p>
+/// literals, so nothing the query or the body carries runs as code. A roster name or an NLS name that is not settable renders no script. The mail password's
+/// script is <code>EmailSet</code> with the placeholder <code>&lt;AuthPassword&gt;</code> for any target and never reads the body.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tAdmin = "OcuPilot.Port.AdminPort"
+    If pType = ..#TYPEPASSWORD Quit [($ClassMethod(tAdmin, "ObjectScriptStep", $ListBuild("Set tSC = ##class(" _ ..#TASKMAILCLASS _ ").EmailSet(" _ $ClassMethod(tAdmin, "Literal", ..#PASSWORDNAME) _ ", " _ $ClassMethod(tAdmin, "Literal", "<" _ ..#PASSWORDNAME _ ">") _ ")")))]
     Set tName = $Get(pQuery(..#NAMEKEY))
     Set tValue = $Select($IsObject(pBody) && (pBody.%GetTypeOf("Value") = "string"): pBody.%Get("Value"), 1: "")
     If ..IsNamed(pEndpoint) Quit [($ClassMethod(tAdmin, "ObjectScriptStep", ..EntryLines(pEndpoint, pType, tName, tValue)))]
@@ -1447,6 +1649,13 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     If ..IsNls(pEndpoint) {
         If tName '= ..#NLSFORMATNAME Quit []
         Quit [($ClassMethod(tAdmin, "ObjectScriptStep", $ListBuild("Set ^SYS(""NLS"", ""Config"", ""LocaleFormat"") = " _ $ClassMethod(tAdmin, "Literal", tValue))))]
+    }
+    If pEndpoint = ..#SQLSTATSENDPOINT {
+        Set tEntry = ..RosterEntry(pEndpoint, tName)
+        If (tEntry = "") || '$List(tEntry, 5) Quit []
+        Set tTargetSC = ..SqlStatsTarget(tName, ..StoredFor(tEntry, tValue), .tLevel, .tTerminate)
+        If $$$ISERR(tTargetSC) Quit []
+        Quit [($ClassMethod(tAdmin, "ObjectScriptStep", $ListBuild("Set tPrevious = ##class(" _ ..#SQLSTATSCLASS _ ").SetSQLStats(" _ tLevel _ ", 1, """", " _ $ClassMethod(tAdmin, "Literal", tTerminate) _ ")")))]
     }
     If ..IsRoster(pEndpoint) {
         Set tEntry = ..RosterEntry(pEndpoint, tName)

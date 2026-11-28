@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ownIdSegment, screenForRoute } from '../core/navigation';
 import { ScreenArrivals } from '../core/screen-arrival';
-import { NAV_REFUSED_UNSAVED_CODE, type TurnNavigation } from '../core/turn';
+import { NAV_LOAD_FAILED_CODE, NAV_REFUSED_UNSAVED_CODE, type TurnNavigation } from '../core/turn';
 import { ShellState } from '../core/shell-state';
 import { TurnStore } from '../core/turn';
 import { AgentNavigator, NAVIGATIONDELAYMS } from './agent-navigator';
@@ -191,6 +191,26 @@ describe('the agent navigator', () => {
     expect(turn.settleCalls).toEqual([{ outcome: 'refused', code: NAV_REFUSED_UNSAVED_CODE }]);
     // No arrival is announced for a navigation that never happened.
     expect(shell.arrivals).toHaveLength(0);
+  });
+
+  it('AC1: a router whose navigation rejects (the page code failed to load) reports "refused" with the load-failure code', async () => {
+    // Mutation (Rule 19): make the `catch` in `act()` leave `loadFailed` false -> this reads
+    // NAV_REFUSED_UNSAVED_CODE and goes red.
+    vi.spyOn(router, 'navigateByUrl').mockRejectedValue(new Error('Loading chunk failed'));
+    turn.setNavigation({ seq: 1, route: 'permissions/users', entityId: '', criterion: '', criteria: {} });
+    await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS);
+
+    expect(turn.settleCalls).toEqual([{ outcome: 'refused', code: NAV_LOAD_FAILED_CODE }]);
+    expect(shell.arrivals).toHaveLength(0);
+    expect(arrivals.take('permissions/users')).toBeNull();
+  });
+
+  it('AC1: a router that answers false (a guard declined) still reports the unsaved code, never the load-failure code', async () => {
+    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
+    turn.setNavigation({ seq: 1, route: 'permissions/users', entityId: '', criterion: '', criteria: {} });
+    await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS);
+
+    expect(turn.settleCalls).toEqual([{ outcome: 'refused', code: NAV_REFUSED_UNSAVED_CODE }]);
   });
 
   it('never re-schedules the same directive while a poll re-notifies before the delay elapses', async () => {

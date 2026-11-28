@@ -191,6 +191,18 @@ scrub_data() {
     docker run --rm --user 0:0 --entrypoint sh -v "$DIR:/scratch" "$IMAGE" -c 'rm -rf /scratch/data'
 }
 
+# A start the restart policy retried comes back healthy, so `up --wait` exits 0 over a start that failed first. The container's
+# restart count is the sign: anything but 0 (a count that cannot be read included) prints the start's failure lines and fails.
+# The container is the one the compose file at $COMPOSE_FILE names, since an action given only `--dir` keeps the default project.
+refuse_restarted_start() {
+    CONTAINER=$(sed -n 's/^ *container_name: *//p' "$COMPOSE_FILE" 2>/dev/null | head -n 1)
+    RESTARTS=$(docker inspect --format '{{.RestartCount}}' "${CONTAINER:-$PROJECT}" 2>&1) || RESTARTS="unreadable: $RESTARTS"
+    if [ "$RESTARTS" = "0" ]; then return 0; fi
+    echo "ci-throwaway: the throwaway's start did not hold: its restart count reads '$RESTARTS' where 0 is expected; the failed start's lines:"
+    docker logs "${CONTAINER:-$PROJECT}" 2>&1 | grep 'container-start:' | grep -E 'LOAD-FAILED|STARTPATH-FAILED' || echo "ci-throwaway: the container log holds no LOAD-FAILED or STARTPATH-FAILED line"
+    exit 1
+}
+
 case "$ACTION" in
     up)
         # A project Compose already knows from a DIFFERENT config file is someone else's throwaway
@@ -547,6 +559,63 @@ services:
       # a probe production that is not running among them, and the gate class signs in as probe principals each missing one pair a
       # partner write requires.
       # classes: InteropPartnerControl, InteropPartnerGate, InteropPartnerRefusals
+      # The system default setting classes write probe default settings in USER and HSCUSTOM and remove them (Story 24.15): the control
+      # class drives the add, edit and remove from both callers and reads the vendor's audit rows each leaves, the refusals class
+      # meets every refusal and signs in as probe principals each missing one pair or rule a write requires, and the diff class
+      # compares probe settings between the two namespaces. The edges class refuses an empty value for PoolSize and reads
+      # the vendor's audit rows of a secret-named setting through the Logs audit screen.
+      # classes: InteropDefaultSettingControl, InteropDefaultSettingDiff, InteropDefaultSettingEdges, InteropDefaultSettingRefusals
+      # The confirm namespace class holds a probe business partner, lookup entry and lookup table in USER and in HSCUSTOM and confirms
+      # the agent's remove of each from a request scoped to HSCUSTOM, so each acts in USER, where its proposal read (Story 24.15).
+      # classes: InteropConfirmNamespace
+      # The credential classes write probe credentials and password nodes in USER and HSCUSTOM and remove them (Story 24.15): the control
+      # class drives the add, edit, set password and remove from both callers and reads OcuPilot's own audit rows, the refusals class
+      # meets every refusal and signs in as probe principals each missing one pair a write requires, and the provider class creates
+      # probe agent definitions that name a credential and meets the agent's refusal of the provider's own.
+      # classes: InteropCredentialControl, InteropCredentialProvider, InteropCredentialRefusals
+      # The schedule spec classes write probe schedule specs in USER and HSCUSTOM and remove them (Story 24.15): the control class drives the
+      # add, edit and remove from both callers and reads OcuPilot's own audit rows, the refusals class meets every refusal and signs in as probe
+      # principals each missing one pair a write requires, and the elsewhere class confirms the agent's three writes from another namespace.
+      # classes: InteropScheduleControl, InteropScheduleElsewhere, InteropScheduleRefusals
+      # The purge classes write purge settings in USER and HSCUSTOM and delete back-dated probe records from them (Story 24.16): the control
+      # classes drive the purge and each setting from both callers and read OcuPilot's own audit rows, the refusals class meets every refusal,
+      # holds the classic page's lock from a child job and signs in as probe principals each missing one pair, and the elsewhere class confirms
+      # the agent's set and purge from another namespace.
+      # classes: InteropPurgeControl, InteropPurgeElsewhere, InteropPurgeRefusals, InteropPurgeSettingControl
+      # The suspended message classes compile and run the probe production in USER and store suspended probe headers in it and in HSCUSTOM, where
+      # no production runs (Story 24.16): the list class reads them through the port, the screen and the agent's read tool, the resubmit class
+      # resubmits and edits and resubmits from both callers and renders each draft, the remove class discards and deletes from both callers and
+      # reads OcuPilot's own audit row, and the refusals class meets every verdict, refusal and missing pair. The elsewhere class confirms the
+      # agent's four writes from another namespace. The probe production's own class refuses to start one anywhere this variable is not set.
+      # classes: InteropSuspendedElsewhere, InteropSuspendedList, InteropSuspendedRefusals, InteropSuspendedRemove, InteropSuspendedResubmit, ProductionProbe
+      # The system monitor classes start the probe production in USER, read the vendor's metrics with it running and stopped and create four principals
+      # (Story 24.17 Batch 5); the case class shared by the read, frame and gate classes refuses to start where this variable is not set.
+      # classes: InteropSystemMonitorCase
+      # The message export classes store probe messages of four body kinds in USER and HSCUSTOM and remove them (Story 24.16 Batch 3), and start no
+      # production: the main class exports from both callers and compares the bytes with the classic export's, the refusals class meets every verdict,
+      # refusal, the size cap and missing pair, and the elsewhere class confirms the agent's export from another namespace and checks nothing is left.
+      # classes: InteropMessageExport, InteropMessageExportElsewhere, InteropMessageExportRefusals
+      # The archive classes store probe messages in HSCUSTOM, archive them into USER and write both namespaces' archive settings (Story 24.16 Batch 4),
+      # and start no production: the settings class sets each setting from both callers, the control class runs the archive from both callers and
+      # reads what lands in USER, the refusals class meets every refusal, holds the vendor's lock from a child job and signs in as probe principals each
+      # missing one pair, and the elsewhere class confirms the agent's set and run from another namespace. The four extend one case class, which declares
+      # the variable they all refuse on.
+      # classes: InteropArchiveCase
+      # The managed alert classes store probe alerts in USER and HSCUSTOM and update them (Story 24.17 Batch 1), and start no production: the list
+      # class reads the alerts and their history through the port, the screen's route and the agent's tool, the update class updates from both
+      # callers, the refusals class meets every refusal and signs in as probe principals each holding its own set of pairs, and the elsewhere class confirms the
+      # agent's update from another namespace. The four extend one case class, which declares the variable they all refuse on.
+      # classes: InteropAlertCase
+      # The business rule log and business process log classes store probe rule log entries and business processes in USER and HSCUSTOM and purge them (Story 24.17 Batch 2), and start no
+      # production: the list class reads both logs through the port, the screen's route and the agent's tool, the control class purges from both callers, the refusals class meets every
+      # refusal, the gate class signs in as probe principals each missing one pair or the SQL grant, and the elsewhere class confirms the agent's purge from another namespace. The five extend one
+      # case class, which declares the variable they all refuse on.
+      # classes: InteropLogPurgeCase
+      # The workflow user classes store probe workflow users, roles, memberships, worklist items and tasks in USER and HSCUSTOM, create instance users and principals, and change and remove them
+      # (Story 24.17 Batch 3a), and start no production: the list class reads the users through the port, the screen's route and the agent's tool, the control class adds, edits and removes from both
+      # callers, the refusals class meets every refusal and failure, the gate class signs in as probe principals each missing one pair, and the elsewhere class confirms the agent's writes from another
+      # namespace. The five extend one case class, which declares the variable they all refuse on.
+      # classes: InteropWorkflowCase
       # The host test classes compile and run the same probe production in USER, with a request class of their own and an
       # operation that echoes it (Story 20.6): the test class reads an item's Test tab and sends a request from both callers,
       # the refusals class meets every refusal and violation, a production started without testing and a disabled item, and
@@ -657,6 +726,9 @@ services:
       # The folder item viewer classes (Story 24.14) turn analytics on in USER and save pivots and a dashboard there through the vendor's classes: the view class reads the two tabs at the port,
       # over HTTP and as the agent's tools, and the pivot run class runs a saved pivot over the three routes and as the agent's read, with three probe principals.
       # classes: AnalyticsFolderItemView, AnalyticsPivotRun
+      # The PMML model tester classes (Story 24.14 Batch 2) turn analytics on in USER and compile a PMML definition and a source table there: the model class reads the two screens at the port, over HTTP and as the
+      # agent's tools, the run class runs each model against each source over the three routes, and the edge class refuses, bounds, cancels and compares owners, with two probe principals.
+      # classes: AnalyticsPmmlModels, AnalyticsPmmlRun, AnalyticsPmmlRunCancel, AnalyticsPmmlRunEdge
       # The settings edge class (Story 24.13) rewrites the same three globals from its own snapshot, and drives the agent's four read tools at their caps and in a namespace without analytics.
       # classes: AnalyticsSettingsEdge
       # The settings write classes (Story 24.13 Batch 2) rewrite the same three globals from their own snapshots, over HTTP as the person and as the agent, and the edge class takes the namespace's
@@ -665,6 +737,14 @@ services:
       # The run-time variable and icon write classes (Story 24.13 Batch 3) rewrite the same three globals from their own snapshots, over HTTP as the person and as the agent; they start a
       # second process that holds the namespace's settings lock, and the edge class takes it from this process.
       # classes: AnalyticsSettingsEntryWrite, AnalyticsSettingsEntryWriteEdge
+      # PageResourceRead plants a custom resource on a probe classic page to read it back through the list, and restores the page (Story 21.37). PageResourceWrite
+      # assigns and clears custom resources on a probe page and on the Resources list's page, creates two resources and three accounts, and restores every page.
+      # classes: PageResourceFixture, PageResourceRead, PageResourceWrite
+      # SourceControlFollowUp signs one account in to prove the answer's WRITE gate, and removes it (Story 21.38).
+      # classes: SourceControlFollowUp
+      # SqlSelectPrivilege signs in as an account without the SQL SELECT privilege on the tables the SQL tuning reads name, grants it and revokes it, and
+      # creates and drops one probe table (Story 21.27).
+      # classes: SqlSelectPrivilege
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -845,7 +925,10 @@ services:
       # name, writing %SYS security objects, tasks and ^%SYS nodes directly to do so.
       # classes: NamespaceInterop, NamespaceInteropGate
       # The source-control classes enable a probe source-control class on USER and remove it again.
-      # classes: SourceControlProbe, SourceControlSave
+      # classes: SourceControlProbe, SourceControlSave, SourceControlFollowUp
+      # The schedule spec source-control class puts USER under the same probe class and meets each schedule spec write's refusal on the
+      # shipped paths, writing and removing probe schedule specs (Story 24.15).
+      # classes: InteropScheduleSourceControl
       OCUPILOT_ALLOW_NAMESPACE_CONFIG: "1"
       # Creates, edits and deletes database configurations and database files in this instance's own
       # configuration, with the %DB_* resources and directories a create makes, through the shipped
@@ -957,7 +1040,11 @@ services:
       # AuditExportWrite starts the audit export task for new files under the first allowed directory, each bounded to a day no record predates, and removes them (Story 21.10).
       # TaskMailSettingWrite sets the Task Manager's mail port and subjects on both callers and restores every email setting it read, removing a stored row it created (Story 21.19).
       # ResourceTransferWrite creates, exports, deletes and imports one probe resource and writes files under the first allowed directory, removing each (Story 21.19).
-      # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask, LocaleWrite, LocaleEditWrite, LocaleTransferWrite, SystemSecuritySettingWrite, PhoneProviderWrite, AuditExportWrite, TaskMailSettingWrite, ResourceTransferWrite
+      # TaskMailPasswordWrite sets and clears the Task Manager's mail password on both callers with a generated probe and restores the stored value, never printing either (Story 21.36).
+      # SqlTuningWrite purges the cached queries of a whole namespace and cleans its statement index on both callers, asserting on its own probe objects alone (Story 21.6).
+      # SqlRuntimeStatsWrite sets the instance-wide runtime statistics collection and purges a whole namespace's runtime statistics on both callers, restoring the flag it read first (Story 21.26).
+      # SqlIndexAnalysisWrite gathers the statements of two namespaces again and purges their index analysis on both callers, clearing both when each test ends (Story 21.27).
+      # classes: ConfigSettingWrite, SqlSettingWrite, DdlMappingWrite, TaskMailAuditMask, LocaleWrite, LocaleEditWrite, LocaleTransferWrite, SystemSecuritySettingWrite, PhoneProviderWrite, AuditExportWrite, TaskMailSettingWrite, ResourceTransferWrite, TaskMailPasswordWrite, SqlTuningWrite, SqlRuntimeStatsWrite, SqlIndexAnalysisWrite
       OCUPILOT_ALLOW_CONFIG_SETTINGS: "1"
       # Sets the instance's system state to Alert and resets its system alerts, through the shipped screen-action and confirm paths, and
       # reads alerts.log to show that no line is lost (Story 21.20). The reset is not undoable; the throwaway's own monitor raises the state again.
@@ -1054,6 +1141,7 @@ EOF
             ATTEMPT=$((ATTEMPT + 1))
         done
         docker compose -f "$COMPOSE_FILE" ps
+        refuse_restarted_start
         ;;
     logs)
         # The failure-path capture, run before the teardown and only when something already
@@ -1155,6 +1243,7 @@ EOF
         fi
         echo "ci-throwaway: compiled OcuPilot.Test.PlantedProbe and OcuPilot.Test.Planted.Probe; starting the throwaway again over the same volume"
         docker compose -f "$COMPOSE_FILE" up -d --wait --force-recreate --no-deps iris || { echo "ci-throwaway: the throwaway did not come back healthy over the reused volume"; exit 1; }
+        refuse_restarted_start
         LOG=$(docker compose -f "$COMPOSE_FILE" logs --no-color iris 2>&1) || { echo "ci-throwaway: could not read the log of the start over the reused volume"; exit 1; }
         if ! printf '%s\n' "$LOG" | grep -F -q "$DELETED_LINE 2 class(es) of the roster's test-scope package"; then
             echo "ci-throwaway: the start over the reused volume did not log deleting the two classes compiled into the test package"

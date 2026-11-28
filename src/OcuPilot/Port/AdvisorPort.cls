@@ -333,42 +333,7 @@ ClassMethod PublicRoles() As %String [ Private ]
 /// a raise included.</p>
 ClassMethod SetFlag(pType As %String, pElement As %String, pCode As %String, pFlag As %Boolean) As %Status [ Private ]
 {
-    Set tSC = $$$OK
-    Set tOrigNS = $NAMESPACE
-    Set tDevice = $IO
-    Set tMnemonic = ##class(%Library.Device).GetMnemonicRoutine()
-    Set tNull = ##class(%Library.Device).GetNullDevice()
-    Set (tOpened, tSwitched) = 0
-    Set tRedirected = ##class(%Library.Device).ReDirectIO(0)
-    Try {
-        If $Piece(tDevice, ":", 1) '= tNull {
-            If '##class(OcuPilot.Kernel.Utils).DeviceIsOpen(tNull) {
-                Open tNull::1
-                If '$Test {
-                    Set tSC = $$$ERROR($$$GeneralError, "the null device could not be opened")
-                    Quit
-                }
-                Set tOpened = 1
-            }
-            Use tNull
-            Set tSwitched = 1
-        }
-        Set $NAMESPACE = "%SYS"
-        Do $ClassMethod(..#PANECLASS, "SetIgnoreFlag", pType, pElement, pCode, $Select(pFlag: 1, 1: 0), "")
-    } Catch ex {
-        Set tSC = ex.AsStatus()
-    }
-    If $NAMESPACE '= tOrigNS Set $NAMESPACE = tOrigNS
-    If tSwitched {
-        If tMnemonic '= "" {
-            Use tDevice::("^" _ tMnemonic)
-        } Else {
-            Use tDevice
-        }
-    }
-    If tOpened Close tNull
-    Do ##class(%Library.Device).ReDirectIO(tRedirected)
-    Quit tSC
+    Quit ##class(OcuPilot.Kernel.Utils).CallWithNullDevice("%SYS", ..#PANECLASS, "SetIgnoreFlag", 0, , pType, pElement, pCode, $Select(pFlag: 1, 1: 0), "")
 }
 
 /// <p>The kind of script step <method>Snippet</method> renders: <code>objectscript</code> for a write type of

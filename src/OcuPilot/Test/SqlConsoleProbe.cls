@@ -122,6 +122,7 @@ ClassMethod Remove() As %Status
     Set tSC = $$$OK
     Set tHome = $NAMESPACE
     Set tOrigNS = $NAMESPACE
+    Do ..RemoveStats()
     Try {
         For tNamespace = tHome, ..#NAMESPACE {
             Set $NAMESPACE = tNamespace
@@ -142,6 +143,20 @@ ClassMethod Remove() As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The routines of <parameter>NAMESPACE</parameter>'s runtime statistics whose statement names <parameter>SCHEMA</parameter>, comma-joined (a Plan
+/// with statistics records them).</p>
+ClassMethod StatsRoutines() As %String
+{
+    Quit ##class(OcuPilot.Test.SqlTuningProbe).StatsRoutines(..#NAMESPACE, ..#SCHEMA)
+}
+
+/// <p>Remove those routines' runtime statistics by routine, never the namespace's other rows, and answer how many rows went, <code>-1</code> when a
+/// removal failed.</p>
+ClassMethod RemoveStats() As %Integer
+{
+    Quit ##class(OcuPilot.Test.SqlTuningProbe).RemoveStats(..#NAMESPACE, ..#SCHEMA)
 }
 
 /// <p>The rows <parameter>GRANTED</parameter> holds and the sum of their <code>Num</code>, as

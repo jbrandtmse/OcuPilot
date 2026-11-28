@@ -176,6 +176,99 @@ Parameter PIVOTCUBE = "ANALYTICS.PIVOT.CUBE";
 
 Parameter REASONPIVOTCUBE = "This folder item is not a pivot on a cube this namespace holds, so it runs only in the classic portal.";
 
+/// <p>The PMML model tester's refusals (Story 24.14): 400, the body or the data source is not one this model offers; 404, the model is not there; 422, the SQL data source is not a query; 409, a cube
+/// data source's cube is not one the caller may read, and the caller's own run is still going; 503, the instance's runs are all busy, and a run that ended without an answer; 404, no run of the caller has the id.</p>
+Parameter PMMLINPUT = "ANALYTICS.PMML.INPUT";
+
+Parameter REASONPMMLINPUT = "Choose one of this model's data sources; a custom data source is one SQL query.";
+
+Parameter PMMLABSENT = "ANALYTICS.PMML.ABSENT";
+
+Parameter REASONPMMLABSENT = "This PMML model no longer exists.";
+
+Parameter PMMLQUERYONLY = "ANALYTICS.PMML.QUERYONLY";
+
+Parameter REASONPMMLQUERYONLY = "A model is tested here only against an SQL query; this data source is not one.";
+
+Parameter PMMLCUBE = "ANALYTICS.PMML.CUBE";
+
+Parameter REASONPMMLCUBE = "This data source's cube is not one this namespace holds, or you cannot read it.";
+
+Parameter PMMLBUSY = "ANALYTICS.PMML.BUSY";
+
+Parameter REASONPMMLBUSY = "A PMML test you started is still running; cancel it or wait for it to end.";
+
+Parameter PMMLFULL = "ANALYTICS.PMML.FULL";
+
+Parameter REASONPMMLFULL = "As many background runs as this instance allows are running; try again when one ends.";
+
+Parameter PMMLNOTFOUND = "ANALYTICS.PMML.NOTFOUND";
+
+Parameter REASONPMMLNOTFOUND = "No PMML test of yours has this id; an ended run is kept for 15 minutes.";
+
+Parameter PMMLLOST = "ANALYTICS.PMML.LOST";
+
+Parameter REASONPMMLLOST = "The PMML test ended without an answer; run it again.";
+
+/// <p>The PMML definition create's refusals (Story 24.14, Batch 3): 422, the class name is not one a definition can take; 409, the class or a class of its package is held; 422, the text is empty, too long, or holds
+/// a document type declaration or a <code>}</code>; 422, the instance refused to compile the definition; 409, the database that holds the namespace's classes is read-only. <code>PMMLSAVE</code> is the create's
+/// consequence code.</p>
+Parameter PMMLCLASS = "ANALYTICS.PMML.CLASS";
+
+Parameter REASONPMMLCLASS = "Name the class with letters, digits and dots, outside the % and OcuPilot packages.";
+
+Parameter PMMLTAKEN = "ANALYTICS.PMML.TAKEN";
+
+Parameter REASONPMMLTAKEN = "This namespace already holds this class, or classes in its package.";
+
+Parameter PMMLTEXT = "ANALYTICS.PMML.TEXT";
+
+Parameter REASONPMMLTEXT = "Paste one PMML document of at most 3,000,000 characters, with no document type declaration and no } character.";
+
+Parameter PMMLCOMPILE = "ANALYTICS.PMML.COMPILE";
+
+Parameter REASONPMMLCOMPILE = "The instance refused to compile the PMML definition, so nothing was changed.";
+
+Parameter PMMLREADONLY = "ANALYTICS.PMML.READONLY";
+
+Parameter REASONPMMLREADONLY = "The database that holds this namespace's classes is read-only.";
+
+Parameter PMMLSAVE = "ANALYTICS.PMML.SAVE";
+
+/// <p>The PMML export to a cube's refusals (Story 24.14, Batch 4): 422, the result class and the cube class are one class or one is in the other's package; 409, the namespace holds a cube of that name; 422, the cube name
+/// is outside 1 to 250 characters or holds a control character or a <code>}</code>; 422, the class to link to is not one the namespace holds; 422, the export's own test did not finish; 422, the instance refused
+/// the export's classes or rows; 409, the namespace holds data stored under the result class's name. <code>PMMLEXPORT</code> is the export's consequence code.</p>
+Parameter PMMLSAME = "ANALYTICS.PMML.SAME";
+
+Parameter REASONPMMLSAME = "The result class and the cube class must be two classes, neither in the other's package.";
+
+Parameter PMMLCUBETAKEN = "ANALYTICS.PMML.CUBETAKEN";
+
+Parameter REASONPMMLCUBETAKEN = "This namespace already holds a cube with this name.";
+
+Parameter PMMLCUBENAME = "ANALYTICS.PMML.CUBENAME";
+
+Parameter REASONPMMLCUBENAME = "A cube name is 1 to 250 characters, with no control character and no } character.";
+
+Parameter PMMLSOURCECLASS = "ANALYTICS.PMML.SOURCECLASS";
+
+Parameter REASONPMMLSOURCECLASS = "The class to link to is not one this namespace holds.";
+
+Parameter PMMLEXPORTRUN = "ANALYTICS.PMML.EXPORTRUN";
+
+Parameter REASONPMMLEXPORTRUN = "The test did not finish, so nothing was exported.";
+
+Parameter PMMLEXPORTCOMPILE = "ANALYTICS.PMML.EXPORTCOMPILE";
+
+Parameter REASONPMMLEXPORTCOMPILE = "The instance refused the export's classes or rows, so nothing was changed.";
+
+/// <p>409: the namespace already holds data stored under the result class's name, so nothing was saved.</p>
+Parameter PMMLDATAHELD = "ANALYTICS.PMML.DATAHELD";
+
+Parameter REASONPMMLDATAHELD = "This namespace already holds data stored under this class name. Choose another name.";
+
+Parameter PMMLEXPORT = "ANALYTICS.PMML.EXPORT";
+
 /// <p>409: a delete of a locked folder item.</p>
 Parameter FOLDERITEMLOCKED = "ANALYTICS.FOLDERITEM.LOCKED";
 
@@ -436,6 +529,26 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#FOLDERITEMTAKEN Quit ..#REASONFOLDERITEMTAKEN
     If pCode = ..#FOLDERITEMABSENT Quit ..#REASONFOLDERITEMABSENT
     If pCode = ..#PIVOTCUBE Quit ..#REASONPIVOTCUBE
+    If pCode = ..#PMMLINPUT Quit ..#REASONPMMLINPUT
+    If pCode = ..#PMMLABSENT Quit ..#REASONPMMLABSENT
+    If pCode = ..#PMMLQUERYONLY Quit ..#REASONPMMLQUERYONLY
+    If pCode = ..#PMMLCUBE Quit ..#REASONPMMLCUBE
+    If pCode = ..#PMMLBUSY Quit ..#REASONPMMLBUSY
+    If pCode = ..#PMMLFULL Quit ..#REASONPMMLFULL
+    If pCode = ..#PMMLNOTFOUND Quit ..#REASONPMMLNOTFOUND
+    If pCode = ..#PMMLLOST Quit ..#REASONPMMLLOST
+    If pCode = ..#PMMLCLASS Quit ..#REASONPMMLCLASS
+    If pCode = ..#PMMLTAKEN Quit ..#REASONPMMLTAKEN
+    If pCode = ..#PMMLTEXT Quit ..#REASONPMMLTEXT
+    If pCode = ..#PMMLCOMPILE Quit ..#REASONPMMLCOMPILE
+    If pCode = ..#PMMLREADONLY Quit ..#REASONPMMLREADONLY
+    If pCode = ..#PMMLSAME Quit ..#REASONPMMLSAME
+    If pCode = ..#PMMLCUBETAKEN Quit ..#REASONPMMLCUBETAKEN
+    If pCode = ..#PMMLCUBENAME Quit ..#REASONPMMLCUBENAME
+    If pCode = ..#PMMLSOURCECLASS Quit ..#REASONPMMLSOURCECLASS
+    If pCode = ..#PMMLEXPORTRUN Quit ..#REASONPMMLEXPORTRUN
+    If pCode = ..#PMMLEXPORTCOMPILE Quit ..#REASONPMMLEXPORTCOMPILE
+    If pCode = ..#PMMLDATAHELD Quit ..#REASONPMMLDATAHELD
     If pCode = ..#FOLDERITEMLOCKED Quit ..#REASONFOLDERITEMLOCKED
     If pCode = ..#FOLDERITEMREADONLY Quit ..#REASONFOLDERITEMREADONLY
     If pCode = ..#FOLDERITEMNOTJOURNALED Quit ..#REASONFOLDERITEMNOTJOURNALED
@@ -518,6 +631,18 @@ ClassMethod TermListCodes() As %List
 ClassMethod FolderItemCodes() As %List
 {
     Quit $ListBuild(..#FOLDERITEMTAKEN, ..#FOLDERITEMABSENT, ..#FOLDERITEMLOCKED, ..#FOLDERITEMREADONLY, ..#FOLDERITEMNOTJOURNALED, ..#FOLDERITEMTOOLARGE, ..#FOLDERITEMIMPORTSHAPE, ..#FOLDERITEMIMPORTCHANGED, ..#PIVOTCUBE)
+}
+
+/// <p>The PMML model tester's eight refusal codes (Story 24.14), then the five of the definition create (Batch 3) and the seven of the export to a cube (Batch 4), as a <class>%List</class>.</p>
+ClassMethod PmmlCodes() As %List
+{
+    Quit $ListBuild(..#PMMLINPUT, ..#PMMLABSENT, ..#PMMLQUERYONLY, ..#PMMLCUBE, ..#PMMLBUSY, ..#PMMLFULL, ..#PMMLNOTFOUND, ..#PMMLLOST, ..#PMMLCLASS, ..#PMMLTAKEN, ..#PMMLTEXT, ..#PMMLCOMPILE, ..#PMMLREADONLY, ..#PMMLSAME, ..#PMMLCUBETAKEN, ..#PMMLCUBENAME, ..#PMMLSOURCECLASS, ..#PMMLEXPORTRUN, ..#PMMLEXPORTCOMPILE, ..#PMMLDATAHELD)
+}
+
+/// <p>The consequence codes of the PMML definition create (Story 24.14, Batch 3) and of the export to a cube (Batch 4), as a <class>%List</class>.</p>
+ClassMethod PmmlConsequenceCodes() As %List
+{
+    Quit $ListBuild(..#PMMLSAVE, ..#PMMLEXPORT)
 }
 
 /// <p>The listing group writes' eight refusal codes (Story 24.11), as a <class>%List</class>.</p>

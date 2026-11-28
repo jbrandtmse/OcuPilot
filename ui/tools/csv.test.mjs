@@ -160,3 +160,25 @@ test('Story 21.14: a file written for the NLS defaults holds the source words th
   assert.deepEqual(csv.tableCsvRows(rows, columns, stringFor, [], 'OcuPilot.Screen.Descriptor.NlsDefaultList'), [[STRINGS.nlsDefaultSourceConfig], [STRINGS.nlsDefaultSourceLocale]]);
   assert.deepEqual(csv.tableCsvRows(rows, columns, stringFor), [['config'], ['locale']], 'a screen that declares no words writes the values');
 });
+
+// Mutation (Rule 19): have `saveText` decode bytes as UTF-8 text before it saves them -> this goes red.
+test('Story 24.16 Batch 3: saveText saves bytes exactly as given, bytes above 127 included', async () => {
+  const doc = { createElement: () => ({ href: '', download: '', hidden: false, click() {}, remove() {} }), body: { appendChild() {} } };
+  const made = [];
+  const realCreate = URL.createObjectURL;
+  const realRevoke = URL.revokeObjectURL;
+  URL.createObjectURL = (blob) => {
+    made.push(blob);
+    return 'blob:probe';
+  };
+  URL.revokeObjectURL = () => undefined;
+  try {
+    const bytes = Uint8Array.from([0xff, 0xfe, 0xe9, 0x00, 0x0d, 0x0a, 0x80]);
+    csv.saveText(doc, bytes, 'USER-messages.txt', 'text/plain');
+    assert.deepEqual([...new Uint8Array(await made[0].arrayBuffer())], [...bytes]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  } finally {
+    URL.createObjectURL = realCreate;
+    URL.revokeObjectURL = realRevoke;
+  }
+});

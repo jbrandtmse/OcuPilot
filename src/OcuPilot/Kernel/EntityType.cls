@@ -112,6 +112,29 @@
 /// <code>lookup-entry</code> is one entry of a lookup table, keyed by the composite <code>[Table, Key]</code>, each part kept
 /// exactly. <code>business-partner</code> is one business partner of a namespace, keyed by its name, kept exactly. Each is
 /// namespace-scoped and has no <code>IDRULES</code> row.</p>
+/// <p><code>default-setting</code> is one system default setting of a namespace, keyed by the composite
+/// <code>[Production, Item, HostClass, Setting]</code>, each part kept exactly (AD-13, AD-62, Story 24.15). It is namespace-scoped and has no
+/// <code>IDRULES</code> row.</p>
+/// <p><code>interop-credential</code> is one credential of a namespace, keyed by its name, kept exactly (AD-13, AD-62, Story 24.15). It is
+/// namespace-scoped and has no <code>IDRULES</code> row.</p>
+/// <p><code>interop-schedule</code> is one schedule spec of a namespace, keyed by its name, kept exactly (AD-13, AD-62, Story 24.15). It is
+/// namespace-scoped and has no <code>IDRULES</code> row.</p>
+/// <p><code>interop-purge</code> is a namespace's management data purge and <code>interop-purge-setting</code> one of its four purge data settings, keyed by
+/// its name, kept exactly (AD-13, AD-62, Story 24.16). Both are namespace-scoped and have no <code>IDRULES</code> row.</p>
+/// <p><code>interop-archive</code> is a namespace's local archive run and <code>interop-archive-setting</code> one of its archive settings, keyed by its name, kept exactly (AD-13, AD-62,
+/// Story 24.16 Batch 4). Both are namespace-scoped and have no <code>IDRULES</code> row.</p>
+/// <p><code>interop-managed-alert</code> is one managed alert of a namespace, keyed by its numeric id (AD-13, AD-62, Story 24.17 Batch 1). It is namespace-scoped and has no
+/// <code>IDRULES</code> row.</p>
+/// <p><code>interop-rule-log</code> is a namespace's business rule log and <code>interop-process-log</code> its business process log, each keyed by the namespace's name, kept exactly, as
+/// <code>interop-purge</code> is (AD-13, AD-62, Story 24.17 Batch 2). Both are namespace-scoped and have no <code>IDRULES</code> row.</p>
+/// <p><code>interop-workflow-user</code> is one workflow user of a namespace, keyed by its name, kept exactly (AD-13, AD-62, Story 24.17 Batch 3a). It is namespace-scoped and has no
+/// <code>IDRULES</code> row.</p>
+/// <p><code>interop-workflow-role</code> is one workflow role of a namespace, keyed by its name, and <code>interop-workflow-member</code> one member of a role, keyed by the composite
+/// <code>[Role, User]</code>, each part kept exactly (AD-13, AD-62, Story 24.17 Batch 3b). Both are namespace-scoped and have no <code>IDRULES</code> row.</p>
+/// <p><code>interop-workflow-task</code> is one workflow task of a namespace, keyed by its numeric task id (AD-13, AD-62, Story 24.17 Batch 4). It is namespace-scoped and has no
+/// <code>IDRULES</code> row, and it is not the instance's <code>task</code>.</p>
+/// <p><code>interop-hl7-schema</code> is one HL7 schema of a namespace, keyed by its name, kept exactly (AD-13, AD-62, Story 24.18 Batch 1). It is namespace-scoped and has no
+/// <code>IDRULES</code> row.</p>
 /// <p><code>cube</code> is one analytics cube of a namespace, keyed by its logical name, kept exactly (AD-13, AD-65, Story 20.11), and
 /// <code>term-list</code> is one term list, keyed by its name. <code>term-list-entry</code> is one entry of a term list, keyed by the
 /// composite <code>[TermList, Key]</code>, each part kept exactly. <code>folder-item</code> is one pivot, dashboard or other folder
@@ -119,7 +142,7 @@
 /// name, and <code>listing-group-listing</code> is one listing of a group, keyed by the composite <code>[ListingGroup, Name]</code>, each part kept
 /// exactly (Story 24.11). <code>quality-measure</code> is one quality measure, keyed by its name, <code>quality-measure-element</code> is one element of a measure's group, keyed by the composite
 /// <code>[QualityMeasure, Group, Name]</code>, and <code>quality-measure-meta</code> is one documentation item of a measure, keyed by <code>[QualityMeasure, Name]</code>, each part kept exactly (Story 24.12). <code>analytics-setting</code> is one analytics setting, keyed by its name, <code>analytics-worklist</code> is one worklist option, keyed by the composite <code>[Page, Panel, Class]</code>,
-/// <code>analytics-runtime-variable</code> is one run-time variable and <code>analytics-user-icon</code> one user-defined icon, each keyed by its name, kept exactly (Story 24.13). <code>dashboard-widget</code> is one widget of a dashboard, keyed by the composite <code>[Dashboard, Position]</code> (Story 24.14). Each is namespace-scoped and has no <code>IDRULES</code> row.</p>
+/// <code>analytics-runtime-variable</code> is one run-time variable and <code>analytics-user-icon</code> one user-defined icon, each keyed by its name, kept exactly (Story 24.13). <code>dashboard-widget</code> is one widget of a dashboard, keyed by the composite <code>[Dashboard, Position]</code>, and <code>pmml-model</code> one PMML model, keyed by the composite <code>[Class, Model]</code> (Story 24.14), and <code>pmml-definition</code> is one class that defines PMML models, keyed by its name, kept exactly (Story 24.14 Batch 3). Each is namespace-scoped and has no <code>IDRULES</code> row.</p>
 /// <p><code>backup-task</code> is one backup task of the instance, keyed by its name, kept exactly (AD-13, Story 21.2); the instance's database
 /// writes, which a freeze and a thaw act on, are the literal <code>SYSTEM</code> under it. <code>backup-database</code> is one database on the
 /// backup database list, keyed by its name without regard to case. Each is instance-scoped.</p>
@@ -144,16 +167,34 @@
 /// <p><code>task-mail-setting</code> is one Task Manager email setting of the instance, keyed by its name, kept exactly (AD-13, Story 21.19). It is
 /// instance-scoped and has no <code>IDRULES</code> row.</p>
 /// <p><code>system-alerts</code> is the instance's system alert state, the singleton (AD-13, Story 21.20).</p>
+/// <p><code>page-resource</code> is the custom resource of one classic portal page, keyed by the page's normalized class name, kept exactly (AD-13,
+/// Story 21.37). It is instance-scoped and has no <code>IDRULES</code> row.</p>
 /// <p><code>global</code> is one global of a namespace, keyed by its name without <code>^</code>, and <code>global-node</code> is one node of a
 /// global, keyed by its canonical reference without an environment, each kept exactly (AD-13, Story 21.5). Each is namespace-scoped and has no
 /// <code>IDRULES</code> row.</p>
+/// <p><code>statement-index-entry</code> is one statement in a namespace's statement index, keyed by its hash, kept exactly (AD-13, Story 21.6); the
+/// id <code>*</code> names the whole index. <code>sql-statement</code> is a statement that is running. <code>cached-query</code> is one cached
+/// query, keyed by its class, <code>%sqlcq.&lt;namespace&gt;.cls&lt;n&gt;</code>, a table's cached queries by <code>Schema.Table</code>, or the
+/// namespace's by <code>*</code>, each kept exactly. Each is namespace-scoped and has no <code>IDRULES</code> row.</p>
+/// <p><code>sql-table</code> is one SQL table of a namespace, keyed by <code>Schema.Table</code>, and <code>sql-index</code> is one of its indices,
+/// keyed by the composite <code>[Table, Map]</code>, each part kept exactly (AD-13, Story 21.25). <code>sql-schema</code> is one SQL schema,
+/// keyed by its name, kept exactly. Each is namespace-scoped and has no <code>IDRULES</code> row.</p>
+/// <p><code>sql-runtime-stat</code> is one module of a statement's SQL runtime statistics, keyed by the composite <code>[Routine, Cursor, Module]</code>,
+/// each part kept exactly; the id <code>*</code> names the namespace's statistics. <code>sql-runtime-stats-setting</code> is one row of the
+/// instance-wide collection setting, keyed by its name (AD-13, Story 21.26). The first is namespace-scoped, the second instance-scoped, and neither
+/// has an <code>IDRULES</code> row.</p>
+/// <p><code>sql-index-analysis</code> is one row of the SQL index analyzer's reports, keyed by the composite <code>[Report, Counter]</code>, each part kept
+/// exactly; the id <code>*</code> names the namespace's analysis, which its three writes act on. It is namespace-scoped and has no <code>IDRULES</code> row
+/// (AD-13, Story 21.27).</p>
+/// <p><code>sql-field</code> is one field of a SQL table, keyed by the composite <code>[Table, Field]</code>, each part kept exactly; it is
+/// namespace-scoped and has no <code>IDRULES</code> row (AD-13, Story 21.31).</p>
 Class OcuPilot.Kernel.EntityType Extends %RegisteredObject
 {
 
 /// <p>The vocabulary, comma-separated and in no significant order. Lower-case with hyphens,
 /// the same spelling shape route and area keys use, so a key is never confused with a class
 /// name.</p>
-Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,screen-permission,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server,class,routine,journal-file,journal-file-database,journal-settings,journal-record,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,sql-statement,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,lookup-table,lookup-entry,business-partner,cube,term-list,term-list-entry,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,analytics-setting,analytics-worklist,analytics-runtime-variable,analytics-user-icon,dashboard-widget,backup-task,backup-database,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,security-recommendation,task-mail-setting,system-alerts";
+Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,screen-permission,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server,class,routine,journal-file,journal-file-database,journal-settings,journal-record,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,sql-statement,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,lookup-table,lookup-entry,business-partner,cube,term-list,term-list-entry,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,analytics-setting,analytics-worklist,analytics-runtime-variable,analytics-user-icon,dashboard-widget,pmml-model,pmml-definition,backup-task,backup-database,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,security-recommendation,task-mail-setting,system-alerts,page-resource,default-setting,interop-credential,interop-schedule,interop-purge,interop-purge-setting,statement-index-entry,cached-query,sql-table,sql-index,sql-schema,interop-archive,interop-archive-setting,sql-field,interop-managed-alert,sql-runtime-stat,sql-runtime-stats-setting,interop-rule-log,interop-process-log,interop-workflow-user,interop-workflow-role,interop-workflow-member,sql-index-analysis,interop-workflow-task,interop-hl7-schema,sql-saved-query";
 
 /// <p>Whether <var>pType</var> is one of the declared values. An empty string is <b>not</b>
 /// known: a screen with no entity type declares the empty string and its descriptor is

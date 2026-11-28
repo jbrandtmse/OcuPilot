@@ -417,12 +417,7 @@ ClassMethod Taken(pName As %String, Output pTaken As %Boolean) As %Status
     Set pTaken = 0
     If '$Match(pName, ..#NAMEPATTERN) Quit $$$OK
     Set tSC = ..Read(..#CREATETOOL, pName, .tFresh, .tHttp, .tFault)
-    If $$$ISERR(tSC) {
-        If +$Get(tHttp) = 404 Quit $$$OK
-        Quit tSC
-    }
-    Set pTaken = ($IsObject(tFresh) && tFresh.%IsA("%Library.DynamicObject"))
-    Quit $$$OK
+    Quit ##class(OcuPilot.Kernel.Proposal.ScreenSaveRules).ReadTaken(tSC, $Get(tHttp), $Get(tFresh), .pTaken)
 }
 
 /// <p>The present server <var>pName</var>, read through the edit tool's own port, endpoint and read
@@ -490,12 +485,7 @@ ClassMethod FieldOf(pCode As %String) As %String
 /// sentence, for a tool's <code>ArgumentProblem</code>; <code>""</code> for none.</p>
 ClassMethod Problem(ByRef pViolations) As %String
 {
-    Set tProblem = ""
-    For tI = 1:1:+$Get(pViolations) {
-        Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation($List(pViolations(tI), 2))
-        Set tProblem = tProblem _ $Select(tProblem = "": "", 1: " ") _ "'" _ $List(pViolations(tI), 1) _ "': " _ tReason
-    }
-    Quit tProblem
+    Quit ##class(OcuPilot.Kernel.AgentRules).ViolationsSentence(.pViolations)
 }
 
 /// <p>The one-line problem a <code>Custom</code> member <var>pField</var> that a type does not take is

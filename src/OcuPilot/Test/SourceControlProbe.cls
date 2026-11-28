@@ -144,6 +144,20 @@ ClassMethod Action(pNamespace As %String, pAction As %Integer)
     Set @tLog@("action") = +pAction
 }
 
+/// <p>Make the hooks class's <code>UserAction</code> (<var>pAnswer</var> 0) or <code>AfterUserAction</code>
+/// (<var>pAnswer</var> 1) fail with an error whose text is <var>pText</var>, and succeed again when <var>pText</var> is
+/// empty.</p>
+ClassMethod Error(pNamespace As %String, pAnswer As %Boolean, pText As %String)
+{
+    Set tLog = ..Global(pNamespace)
+    Set tKey = $Select(pAnswer: "answererror", 1: "usererror")
+    If pText '= "" {
+        Set @tLog@(tKey) = pText
+    } Else {
+        Kill @tLog@(tKey)
+    }
+}
+
 /// <p>Every hook call logged in <var>pNamespace</var>, oldest first, as <code>{hook, name, user, job, extra}</code>.
 /// <code>Login</code> is not logged, and <code>extra</code> is <code>Type|Name</code> for a user action and
 /// <code>Type|Name|Answer</code> after one.</p>
@@ -210,10 +224,14 @@ ClassMethod HooksText() As %String
     Set tText = tText _ "    Set Action = +$Get(^@LOG@(""action""))" _ tNL
     Set tText = tText _ "    Set Target = """ _ ..#QUESTION _ """" _ tNL
     Set tText = tText _ "    Set Reload = 0" _ tNL
+    Set tText = tText _ "    Set tError = $Get(^@LOG@(""usererror""))" _ tNL
+    Set tText = tText _ "    If tError '= """" Quit $$$ERROR($$$GeneralError, tError)" _ tNL
     Set tText = tText _ "    Quit $$$OK" _ tNL _ "}" _ tNL _ tNL
     Set tText = tText _ "Method AfterUserAction(Type As %Integer, Name As %String, InternalName As %String, Answer As %Integer, Msg As %String = """", ByRef Reload As %Boolean) As %Status" _ tNL _ "{" _ tNL
     Set tText = tText _ "    Do ..Note(""AfterUserAction"", InternalName, Type _ ""|"" _ Name _ ""|"" _ Answer)" _ tNL
     Set tText = tText _ "    Set Reload = 0" _ tNL
+    Set tText = tText _ "    Set tError = $Get(^@LOG@(""answererror""))" _ tNL
+    Set tText = tText _ "    If tError '= """" Quit $$$ERROR($$$GeneralError, tError)" _ tNL
     Set tText = tText _ "    Quit $$$OK" _ tNL _ "}" _ tNL _ tNL _ "}" _ tNL
     Quit $Replace(tText, "@LOG@", ..#LOG)
 }

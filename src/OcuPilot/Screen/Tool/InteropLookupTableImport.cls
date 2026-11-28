@@ -117,9 +117,11 @@ ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, p
         If $IsObject(pValues) && (pValues.%GetTypeOf(tField) = "string") Do pArgs.%Set(tField, pValues.%Get(tField), "string")
     }
     If $IsObject(pFresh) {
-        If pFresh.%GetTypeOf("Digest") = "string" Do pArgs.%Set("Digest", pFresh.%Get("Digest"), "string")
-        If pFresh.%GetTypeOf("Entries") = "number" Do pArgs.%Set("Entries", pFresh.%Get("Entries"), "number")
-        If pFresh.%GetTypeOf("Modified") = "string" Do pArgs.%Set("Modified", pFresh.%Get("Modified"), "string")
+        For tI = 1:1:$Length(..#REVIEWED, ",") {
+            Set tField = $Piece($Piece(..#REVIEWED, ",", tI), "=", 1)
+            Set tType = pFresh.%GetTypeOf(tField)
+            If (tType = "string") || (tType = "number") || (tType = "boolean") Do pArgs.%Set(tField, pFresh.%Get(tField), tType)
+        }
     }
     Quit $$$OK
 }
@@ -138,7 +140,7 @@ ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
     For tI = 1:1:$Length(..#REVIEWED, ",") {
         Set tField = $Piece($Piece(..#REVIEWED, ",", tI), "=", 1)
         Set tType = pPayload.%GetTypeOf(tField)
-        If (tType = "string") || (tType = "number") Set pQuery($Piece($Piece(..#REVIEWED, ",", tI), "=", 2)) = pPayload.%Get(tField)
+        If (tType = "string") || (tType = "number") || (tType = "boolean") Set pQuery($Piece($Piece(..#REVIEWED, ",", tI), "=", 2)) = $Select(tType = "boolean": +pPayload.%Get(tField), 1: pPayload.%Get(tField))
     }
 }
 

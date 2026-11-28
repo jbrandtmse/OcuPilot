@@ -1,11 +1,20 @@
 /**
  * The Governance policy screen in a real browser, against the throwaway instance (Story 14.2, AC1).
  *
- * One claim, on rendered DOM and the instance's own read: a key set to Disabled under the
- * Read-only preset and saved in the browser reaches the instance, the row reads "Disabled" beside
- * "by this setting", a reload shows the same, and the route reads it back.
+ * Two claims, on rendered DOM and the instance's own read.
  *
- * **It refuses the live container**: it writes the instance's governance policy, and puts it back
+ * AC1: a key set to Disabled under the Read-only preset and saved in the browser reaches the
+ * instance, the row reads "Disabled" beside "by this setting", a reload shows the same, and the
+ * route reads it back.
+ *
+ * AC2 (Story 21.40): at 1280 px light, with the renderer's CPU throttled 4x and the read's keys
+ * doubled inside the test's own browser, the page opened from the shell settles within a bound,
+ * draws twice the instance's keys, and runs no single task longer than a bound. The doubling is a
+ * `.x2` copy of every row added to the GET answer by the browser's own network layer; the instance
+ * never holds those keys and the test saves nothing. AC2 needs the rebuilt bundle deployed and an
+ * instance answering at least one governance key.
+ *
+ * **It refuses the live container**: AC1 writes the instance's governance policy, and puts it back
  * to the default in `finally` through the shipped route, so no later spec starts from a disabled
  * key.
  *
@@ -20,8 +29,9 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
-import { authHeader as sharedAuthHeader, saveAndSettle } from './panel-spec.mjs';
+import { authHeader as sharedAuthHeader, saveAndSettle, signedInAt as walkSignedInAt } from './panel-spec.mjs';
 import { governanceRowVersion, resetGovernancePolicy, resetRememberedState } from './preferences-reset.mjs';
+import { VIEWPORTS, goInApp, settle, trackRequests } from './structural-walk.mjs';
 import { clearGovernancePolicy } from './turnprobe-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -111,5 +121,95 @@ test('AC1: a key disabled under Read-only in the browser is stored, shown by its
   } finally {
     await context.close();
     await resetGovernancePolicy();
+  }
+});
+
+/** The CPU throttle AC2 runs under, which covers the CI runner's measured slowdown. */
+const THROTTLE_RATE = 4;
+/**
+ * How long AC2 lets the page take to settle, in ms: the worst of twelve cold local runs (1,818 ms),
+ * times the CI runner's measured slowdown (1.6), times 1.5, rounded up to a whole second.
+ */
+const SETTLE_BOUND_MS = 5000;
+/** The longest single task AC2 allows after the throttle starts, in ms. */
+const LONGEST_TASK_BOUND_MS = 1000;
+/** What a doubled row's key ends in. */
+const DOUBLED_SUFFIX = '.x2';
+
+/**
+ * Answer every GET of the governance read on `page` with a `DOUBLED_SUFFIX` copy of each row added,
+ * in name order, and everything else untouched. Answers the CDP session, which the caller throttles,
+ * and `failures`, the errors the handler met.
+ */
+async function doubleGovernanceAnswer(page) {
+  const cdp = await page.createCDPSession();
+  const failures = [];
+  cdp.on('Fetch.requestPaused', async (event) => {
+    const { requestId, request, responseStatusCode } = event;
+    try {
+      if (request.method !== 'GET' || responseStatusCode !== 200) {
+        await cdp.send('Fetch.continueRequest', { requestId });
+        return;
+      }
+      const { body, base64Encoded } = await cdp.send('Fetch.getResponseBody', { requestId });
+      const answer = JSON.parse(base64Encoded ? Buffer.from(body, 'base64').toString('utf8') : body);
+      answer.keys = [...answer.keys, ...answer.keys.map((row) => ({ ...row, key: row.key + DOUBLED_SUFFIX }))].sort((a, b) =>
+        a.key < b.key ? -1 : a.key > b.key ? 1 : 0
+      );
+      const headers = (event.responseHeaders ?? []).filter((header) => !['content-length', 'content-encoding'].includes(header.name.toLowerCase()));
+      await cdp.send('Fetch.fulfillRequest', {
+        requestId,
+        responseCode: 200,
+        responseHeaders: headers,
+        body: Buffer.from(JSON.stringify(answer), 'utf8').toString('base64'),
+      });
+    } catch (error) {
+      failures.push(error);
+      await cdp.send('Fetch.continueRequest', { requestId }).catch(() => {});
+    }
+  });
+  await cdp.send('Fetch.enable', { patterns: [{ urlPattern: `*${GOVERNANCE_PATH}*`, requestStage: 'Response' }] });
+  return { cdp, failures };
+}
+
+test('AC2 (Story 21.40): the page opened under a 4x CPU throttle with its keys doubled settles within its bound and draws every key', async () => {
+  const read = await fetch(`${config.origin}${GOVERNANCE_PATH}`, { headers: { Authorization: sharedAuthHeader(config) } });
+  assert.equal(read.status, 200, 'the instance answers the governance read');
+  const unmodified = await read.json();
+  assert.ok(unmodified.keys.length > 0, 'the instance answers governance keys');
+  const { context, page } = await walkSignedInAt(browser, config, '/ocupilot/?ns=HSCUSTOM', VIEWPORTS.wide, [
+    { name: 'prefers-reduced-motion', value: 'reduce' },
+    { name: 'prefers-color-scheme', value: 'light' },
+  ]);
+  let cdp = null;
+  try {
+    const requests = trackRequests(page);
+    const home = await settle(page, requests, 'home');
+    assert.equal(home.settled, true, `home settles before the throttle starts: ${home.why}`);
+    const doubling = await doubleGovernanceAnswer(page);
+    cdp = doubling.cdp;
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: THROTTLE_RATE });
+    await page.evaluate(() => {
+      window.__ocuLongTasks = [];
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) window.__ocuLongTasks.push({ start: entry.startTime, duration: entry.duration });
+      }).observe({ type: 'longtask' });
+      window.__ocuLongTaskMark = performance.now();
+    });
+
+    const visit = await goInApp(page, requests, GOVERNANCE_URL, config.navigationTimeoutMs);
+
+    assert.deepEqual(doubling.failures, [], 'the answer was doubled without an error');
+    assert.equal(visit.settled, true, `the page settles: ${visit.why}`);
+    assert.ok(visit.ms <= SETTLE_BOUND_MS, `the page settled in ${visit.ms} ms, over ${SETTLE_BOUND_MS} ms`);
+    const drawn = await page.$$eval('.ocu-governance-key', (cells) => cells.length);
+    assert.equal(drawn, 2 * unmodified.keys.length, 'the page draws twice the instance\'s keys');
+    const durations = await page.evaluate(() => window.__ocuLongTasks.filter((task) => task.start >= window.__ocuLongTaskMark).map((task) => task.duration));
+    const longest = Math.round(Math.max(0, ...durations));
+    assert.ok(longest <= LONGEST_TASK_BOUND_MS, `the longest task ran ${longest} ms, over ${LONGEST_TASK_BOUND_MS} ms`);
+    console.log(`governance AC2: ${drawn} keys, settled in ${visit.ms} ms, ${durations.length} long task(s), longest ${longest} ms`);
+  } finally {
+    if (cdp !== null) await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 }).catch(() => {});
+    await context.close();
   }
 });

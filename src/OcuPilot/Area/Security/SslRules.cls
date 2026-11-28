@@ -193,12 +193,7 @@ ClassMethod Changed(pArgs As %DynamicObject, pFresh As %DynamicObject = "") As %
 /// or <code>""</code> for none: what a tool's <code>ArgumentProblem</code> answers.</p>
 ClassMethod Problem(ByRef pViolations) As %String
 {
-    Set tProblem = ""
-    For tI = 1:1:$Get(pViolations) {
-        Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation($List(pViolations(tI), 2))
-        Set tProblem = tProblem _ $Select(tProblem = "": "", 1: " ") _ "'" _ $List(pViolations(tI), 1) _ "': " _ tReason
-    }
-    Quit tProblem
+    Quit ##class(OcuPilot.Kernel.AgentRules).ViolationsSentence(.pViolations)
 }
 
 /// <p>Add the name's own violation to <var>pViolations</var>, or none: an absent name, and one longer
@@ -442,12 +437,7 @@ ClassMethod Taken(pName As %String, Output pTaken As %Boolean) As %Status
 {
     Set pTaken = 0
     Set tSC = ..Read(..#CREATETOOL, pName, .tFresh, .tHttp, .tFault)
-    If $$$ISERR(tSC) {
-        If +$Get(tHttp) = 404 Quit $$$OK
-        Quit tSC
-    }
-    Set pTaken = ($IsObject(tFresh) && tFresh.%IsA("%Library.DynamicObject"))
-    Quit $$$OK
+    Quit ##class(OcuPilot.Kernel.Proposal.ScreenSaveRules).ReadTaken(tSC, $Get(tHttp), $Get(tFresh), .pTaken)
 }
 
 /// <p>The present configuration <var>pName</var>, read through the change tool's own port, endpoint

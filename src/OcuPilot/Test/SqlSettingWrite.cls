@@ -373,6 +373,7 @@ Method TestAFailedPurgeAnswersInternalWithTheSettingChangedOnBothCallers()
     Set tNew = ##class(OcuPilot.Test.ConfigSettingRead).Unlike("SQL", "FastDistinct", tFound) _ ""
     Set tStatus = ..SeamAct("FastDistinct", tNew, .tAnswer)
     Do $$$AssertEquals(tStatus _ "|" _ $ClassMethod(..#WRITE, "ValueOf", "SQL", "FastDistinct") _ "|" _ $ClassMethod(..#SEAM, "Purges"), "500|INTERNAL|" _ tNew _ "|1", "the person's Set value is answered 500 INTERNAL, the setting stays changed and one purge was tried: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: ""))
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "PurgeQualifiers"), "{""allNamespace"":1}", "the purge a changed setting owes is the every-namespace one")
     Do $$$AssertStatusOK($ClassMethod(..#WRITE, "Restore", ##class(%DynamicObject).%FromJSON(..PreparedSettings), "Config.SQL"), "the setting is put back")
     Set tRefused = ..FailedPurgeConfirm(tNew, .tTurnKey, .tHttp, .tCode)
     Do $$$AssertEquals(tRefused _ "|" _ $Get(tHttp) _ "|" _ $Get(tCode) _ "|" _ $ClassMethod(..#WRITE, "ValueOf", "SQL", "FastDistinct") _ "|" _ $ClassMethod(..#SEAM, "Purges"), "1|500|INTERNAL|" _ tNew _ "|1", "the agent's confirm is answered 500 INTERNAL, the setting stays changed and one purge was tried")

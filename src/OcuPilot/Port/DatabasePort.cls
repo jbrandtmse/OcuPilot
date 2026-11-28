@@ -894,6 +894,78 @@ ClassMethod SameDirectory(pA As %String, pB As %String) As %Boolean
     Quit (tA = tB)
 }
 
+/// <p>The pair the two configuration reads below need beyond the caller's screen pairs (AD-29, AD-27's
+/// named case); the vendor's own check on the <code>%SYS</code> database.</p>
+Parameter CONFIGREADPAIR = "%DB_IRISSYS:READ";
+
+/// <p>The vendor's code for a configuration that does not exist (<code>$$$CPFNameDoesNotExist</code>).</p>
+Parameter NOCONFIGCODE = 420;
+
+/// <p>The names, upper-cased, of the globals and routines databases of namespace <var>pNamespace</var>,
+/// from <code>Config.Namespaces.Get</code> in <code>%SYS</code> under the caller's own privilege
+/// (AD-27's named case, not the admin API). The caller must hold <parameter>CONFIGREADPAIR</parameter>;
+/// without it, an unreadable namespace or one naming no globals or routines database, the answer is an
+/// error status. <code>$NAMESPACE</code> is restored on every path (AD-16).</p>
+ClassMethod ProtectedNamespaceDatabases(pNamespace As %String, Output pNames As %List) As %Status
+{
+    Set pNames = ""
+    Set tSC = $$$OK
+    If '..HoldsPair(..#CONFIGREADPAIR) Quit $$$ERROR($$$GeneralError, "the caller does not hold " _ ..#CONFIGREADPAIR)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ##class(Config.Namespaces).Get(pNamespace, .tProps)
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Quit
+        For tField = "Globals", "Routines" {
+            Set tName = $ZConvert($Get(tProps(tField)), "U")
+            If tName = "" {
+                Set tSC = $$$ERROR($$$GeneralError, "the namespace names no " _ $ZConvert(tField, "L") _ " database")
+                Quit
+            }
+            If '$ListFind(pNames, tName) Set pNames = pNames _ $ListBuild(tName)
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pNames = ""
+    Quit tSC
+}
+
+/// <p>The directories of the configurations <var>pNames</var> names, from <code>Config.Databases.Get</code>
+/// in <code>%SYS</code> under the caller's own privilege, as <method>ProtectedNamespaceDatabases</method>
+/// reads. A name with no configuration is skipped; any other vendor error, or a caller without
+/// <parameter>CONFIGREADPAIR</parameter>, is an error status. <code>$NAMESPACE</code> is restored on every
+/// path (AD-16).</p>
+ClassMethod ConfigDirectories(pNames As %List, Output pDirectories As %List) As %Status
+{
+    Set pDirectories = ""
+    Set tSC = $$$OK
+    If '..HoldsPair(..#CONFIGREADPAIR) Quit $$$ERROR($$$GeneralError, "the caller does not hold " _ ..#CONFIGREADPAIR)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        For tI = 1:1:$ListLength(pNames) {
+            Kill tProps
+            Set tGet = ##class(Config.Databases).Get($List(pNames, tI), .tProps)
+            If $$$ISERR(tGet) {
+                If $System.Status.GetErrorCodes(tGet) = ..#NOCONFIGCODE Continue
+                Set tSC = tGet
+                Quit
+            }
+            Set tDirectory = $Get(tProps("Directory"))
+            If tDirectory '= "" Set pDirectories = pDirectories _ $ListBuild(tDirectory)
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    If $$$ISERR(tSC) Set pDirectories = ""
+    Quit tSC
+}
+
 /// <p>A copy of <var>pBody</var> without the keys of <var>pNames</var>; a body that is not an object
 /// is answered as it is.</p>
 ClassMethod Without(pBody As %DynamicAbstractObject, pNames As %List) As %DynamicAbstractObject

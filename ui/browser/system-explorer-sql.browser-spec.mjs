@@ -259,7 +259,7 @@ async function assertTabsWrap(page, count) {
       });
       assert.ok(pagination.every((display) => display === 'none'), `${where}: no pagination control is displayed (${JSON.stringify(pagination)})`);
       const rows = new Set(tabs.map((tab) => Math.round(tab.top))).size;
-      if (width === 1024) assert.ok(rows > 1, `${where}: nine tabs do not fit one row`);
+      if (width === 1024) assert.ok(rows > 1, `${where}: ten tabs do not fit one row`);
     }
   }
   await setDarkTheme(page, false);
@@ -296,12 +296,13 @@ test('AC2, AC8: the probe table opens to its tabs, and Fields then Triggers keep
         STRINGS.explorerSqlTabConstraints,
         STRINGS.explorerSqlTabCachedQueries,
         STRINGS.explorerSqlTabStatements,
+        STRINGS.explorerSqlTabFieldStatistics,
       ],
-      'the nine tabs, in the classic order'
+      'the ten tabs, in the classic order and the Tune Table window\'s last'
     );
     await rowShowing(page, 'OcuProbe195.Visible');
     assert.equal(await currentEntry(page), STRINGS.explorerSqlTablesLabel, 'the side bar marks SQL tables');
-    await assertTabsWrap(page, 9);
+    await assertTabsWrap(page, 10);
 
     await openTab(page, `${TABS_ROUTE}/fields`);
     await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${TABS_ROUTE}/fields/${id}`);

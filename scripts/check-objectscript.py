@@ -9,8 +9,9 @@ prose into one checker.
    Includes any `IRIS_*` environment variable and the vendor's `%Atelier` package (a
    forbidden-token guard standing in for a coupling `OcuPilot.Kernel.Utils` never had to
    drop — see that story's Design Notes).
-   The vendor's `^UnitTestRoot` is the one admitted token, in `src/OcuPilot/Port/DevToolPort.cls`
-   only, where a unit-test run sets and restores it (Story 24.5).
+   The vendor's `^UnitTestRoot` is admitted in `src/OcuPilot/Port/DevToolPort.cls` only, where a
+   unit-test run sets and restores it (Story 24.5), and `%Atelier` in `src/OcuPilot/Port/AtelierPort.cls`
+   only, where the source-control answer's fixed statement names the vendor's query (Story 21.38).
 
 2. **Naming.** No `%` or `_` in a declared class or property name; no `_` in a declared
    class parameter or method name (`.claude/rules/objectscript-basics.md` — the `%` ban is
@@ -31,6 +32,11 @@ prose into one checker.
    through this tree's own classes; a class extending a **vendor** persistent class this
    scanner never reads is not recognized, which is this line-oriented checker's scope rather
    than a claim about every storage class.
+
+   The same rule reads each column-0 `Parameter X = {...}` expression: a project class it names
+   through `##class(...)` or `$Parameter("...")` must appear in the class's `DependsOn` or
+   `Extends`, so the load order cannot decide whether the value is empty. A `..#NAME` argument
+   is read through the class's own and inherited parameter values.
 
 3. **Write discipline (AD-12).** A bare `Write` command may appear only in
    `OcuPilot/Api/Response.cls` and `OcuPilot/Api/Error.cls` — the tree's one response
@@ -243,9 +249,14 @@ FORBIDDEN_LITERALS = (
 )
 ENV_VAR_RE = re.compile(r"\bIRIS_[A-Z0-9_]*\b")
 
-# The vendor's own root global, which `%UnitTest.Manager` reads and which is never renamed. It is
-# admitted in one file only: the unit-test port sets it for a run and puts it back (Story 24.5).
-VENDOR_ROOT_ADMITTED = {"^UnitTestRoot": "src/OcuPilot/Port/DevToolPort.cls"}
+# Vendor names that are never renamed, each admitted in one file only. `^UnitTestRoot` is the root
+# global `%UnitTest.Manager` reads, which the unit-test port sets for a run and puts back (Story
+# 24.5). `%Atelier` is the vendor's source-control follow-up query, which the source-code port's
+# one fixed answer statement names (Story 21.38).
+VENDOR_ROOT_ADMITTED = {
+    "^UnitTestRoot": "src/OcuPilot/Port/DevToolPort.cls",
+    "%Atelier": "src/OcuPilot/Port/AtelierPort.cls",
+}
 
 # --- ObjectScript declaration shapes --------------------------------------------------
 
@@ -450,6 +461,8 @@ def check_naming(problems: list[str]) -> None:
                 if not pname.startswith("p"):
                     problems.append(f"{rel}:{ln}: method {name!r} parameter {pname!r} does not start with p")
 
+    check_parameter_dependencies(problems)
+
 
 def read_fixed_packages(problems: list[str]) -> set[str] | None:
     """The fixed package folders the roster declares, or None with a problem recorded.
@@ -641,15 +654,22 @@ ESCALATION_RE = re.compile(
     re.IGNORECASE,
 )
 
-# AD-9's one use of `New $ROLES` outside Base: the installer's `AsAdministrator` adds the administrative role
-# to its own process around one install step. The exception is the token `New $ROLES` in that one method of that
-# one file; `AddRoles` is refused there as everywhere else.
+# AD-9's two uses of `New $ROLES` outside Base, each the token `New $ROLES` in one method of one file; `AddRoles`
+# is refused there as everywhere else. Any other class member ends the method, so a trigger or a computed
+# property after an admitted method is not admitted with it.
 ESCALATION_METHOD_ALLOWED = {
+    # The installer's `AsAdministrator` adds the administrative role to its own process around one install step.
     "src/OcuPilot/Install/Installer.cls": "AsAdministrator",
+    # Story 24.16: the interoperability port's purge frame gives the process's roles back on every exit of the vendor
+    # purge, a raised error included. It contains an escalation it does not make.
+    "src/OcuPilot/Port/InteropPort.cls": "PurgeFrame",
 }
 NEW_ROLES_RE = re.compile(r"\bn(?:ew)?\s+\$roles\b", re.IGNORECASE)
 ADD_ROLES_RE = re.compile(r"[$%]system\.security\)?\.addroles", re.IGNORECASE)
 METHOD_DECLARATION_RE = re.compile(r"^(?:Class)?Method\s+([A-Za-z0-9_%]+)", re.IGNORECASE)
+MEMBER_DECLARATION_RE = re.compile(
+    r"^(?:Property|Parameter|Query|Index|ForeignKey|Trigger|XData|Storage|Relationship|Projection)\s", re.IGNORECASE
+)
 
 # The one OcuPilot package folder that must never contain a storage class escalating outside
 # the two files above; kept as its own constant so this rule cannot silently drift from the
@@ -813,6 +833,8 @@ def check_escalation_containment(problems: list[str]) -> None:
             declaration = METHOD_DECLARATION_RE.match(raw)
             if declaration:
                 method = declaration.group(1)
+            elif MEMBER_DECLARATION_RE.match(raw):
+                method = ""
             if not ESCALATION_RE.search(raw) or rel in ESCALATION_ALLOWED:
                 continue
             is_new_roles_only = NEW_ROLES_RE.search(raw) is not None and ADD_ROLES_RE.search(raw) is None
@@ -2137,6 +2159,129 @@ def check_route_ordering(problems: list[str]) -> None:
                                 f"follows the shorter route Url={url_i!r} at line {line_i} that "
                                 f"matches its leading segments; declare the longer route first"
                             )
+
+
+# --- Compile-time parameter expressions (rule 2) ---------------------------------------------------
+#
+# A column-0 `Parameter X = {...}` is evaluated while its class compiles, so a project class it
+# reads through `##class(...)` or `$Parameter("...")` has to be compiled first: the class names it
+# in `DependsOn` (or in `Extends`, which compiles first anyway). Without that, a clean compile
+# depends on the order the load happens to run in. A `..#NAME` argument is read through the
+# class's own parameter values, then its superclasses' in declared order.
+
+PARAMETER_EXPRESSION_RE = re.compile(r"^Parameter\s+([A-Za-z0-9_%]+)\b[^=\n]*=\s*\{", re.MULTILINE)
+PARAMETER_LITERAL_RE = re.compile(r'^Parameter\s+([A-Za-z0-9_%]+)\b[^=\n]*=\s*"((?:[^"]|"")*)"\s*;', re.MULTILINE)
+DEPENDS_ON_RE = re.compile(r"\bDependsOn\s*=\s*(\([^)]*\)|[A-Za-z0-9_.%]+)", re.IGNORECASE)
+PARAMETER_CLASS_REF_RE = re.compile(
+    r'##class\(\s*(?:([A-Za-z0-9_.%]+)|\.\.#([A-Za-z0-9]+))\s*\)'
+    r'|\$Parameter\(\s*(?:"([A-Za-z0-9_.%]+)"|\.\.#([A-Za-z0-9]+))\s*,',
+    re.IGNORECASE,
+)
+
+
+def read_parameter_classes() -> dict[str, dict]:
+    """Every class declared in this tree: its file, text, superclasses, `DependsOn` names and the
+    parameters it declares as a plain string literal."""
+    classes: dict[str, dict] = {}
+    for p in iter_objectscript_files():
+        if p.suffix != ".cls":
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        rel = p.relative_to(ROOT).as_posix()
+        for m in CLASS_RE.finditer(text):
+            keywords = CLASS_KEYWORDS_RE.match(text, m.start())
+            keyword_list = keywords.group(2) if keywords and keywords.group(2) else ""
+            depends = DEPENDS_ON_RE.search(keyword_list)
+            classes[m.group(1)] = {
+                "rel": rel,
+                "text": text,
+                "supers": parse_superclasses(m.group(2)),
+                "depends": set(parse_superclasses(depends.group(1))) if depends else set(),
+                "values": {n: v.replace('""', '"') for n, v in PARAMETER_LITERAL_RE.findall(text)},
+            }
+    return classes
+
+
+def inherited_parameter_value(name: str, parameter: str, classes: dict[str, dict]) -> str | None:
+    """The string literal `parameter` holds on `name`, else on the first superclass in declared
+    order that declares one; None when no class in the chain does."""
+    seen: set[str] = set()
+
+    def walk(current: str) -> str | None:
+        if current in seen or current not in classes:
+            return None
+        seen.add(current)
+        if parameter in classes[current]["values"]:
+            return classes[current]["values"][parameter]
+        for parent in classes[current]["supers"]:
+            found = walk(parent)
+            if found is not None:
+                return found
+        return None
+
+    return walk(name)
+
+
+def expression_end(text: str, start: int) -> int | None:
+    """The offset of the `}` closing the expression whose body starts at `start`, skipping quoted
+    strings (`""` escapes included) and nested braces."""
+    depth = 1
+    in_string = False
+    i = start
+    while i < len(text):
+        c = text[i]
+        if in_string:
+            if c == '"':
+                if text[i + 1 : i + 2] == '"':
+                    i += 2
+                    continue
+                in_string = False
+        elif c == '"':
+            in_string = True
+        elif c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    return None
+
+
+def check_parameter_dependencies(problems: list[str]) -> None:
+    classes = read_parameter_classes()
+    for name, info in sorted(classes.items()):
+        text = info["text"]
+        allowed = info["depends"] | set(info["supers"]) | {name}
+        for m in PARAMETER_EXPRESSION_RE.finditer(text):
+            end = expression_end(text, m.end())
+            if end is None:
+                continue
+            expression = text[m.end() : end]
+            strings = [s.span() for s in STRING_LITERAL_RE.finditer(expression)]
+            for ref in PARAMETER_CLASS_REF_RE.finditer(expression):
+                if any(a <= ref.start() < b for a, b in strings):
+                    continue
+                target = ref.group(1) or ref.group(3)
+                held = ref.group(2) or ref.group(4)
+                where = f"{info['rel']}:{line_of(text, m.start())}: parameter {m.group(1)!r} of {name}"
+                if held:
+                    target = inherited_parameter_value(name, held, classes)
+                    if target is None:
+                        problems.append(
+                            f"{where} names its class through ..#{held}, which no class in its Extends "
+                            f"chain declares as a string literal"
+                        )
+                        continue
+                if not target.startswith("OcuPilot.") or target in allowed:
+                    continue
+                via = f" (through ..#{held})" if held else ""
+                problems.append(
+                    f"{where} reads {target!r}{via} in a compile-time expression, but the class names it "
+                    f"in neither DependsOn nor Extends"
+                )
 
 
 CHECKS = (

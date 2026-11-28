@@ -74,6 +74,12 @@ export const BACKUP_FREEZE_ACTION_ID = 'backup-freeze';
 export const BACKUP_THAW_ACTION_ID = 'thaw';
 
 /**
+ * Run report on SQL index analyzer (Story 21.27): screen-level like Freeze writes. A report is run over the namespace's gathered statements, not a
+ * row, so it is not held back for want of a selection. It is the page's own id, since the declared `run` would be drawn as a row action.
+ */
+export const SQL_INDEX_ANALYSIS_RUN_ACTION_ID = 'index-analysis-run';
+
+/**
  * The declared actions `screen`'s banner cases offer (Story 16.11, AD-5), in case order. Each is
  * screen-level: it names no row, so the command bar draws none of them as a row action -- the strip
  * does -- and the command box lists them beside the screen's other screen-level actions.
@@ -126,6 +132,7 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   [JOURNAL_SWITCH_DIRECTORY_ACTION_ID]: STRINGS.journalSwitchDirectoryAction,
   [BACKUP_FREEZE_ACTION_ID]: STRINGS.backupFreezeAction,
   [BACKUP_THAW_ACTION_ID]: STRINGS.backupThawAction,
+  [SQL_INDEX_ANALYSIS_RUN_ACTION_ID]: STRINGS.sqlIndexAnalysisRunAction,
   create: STRINGS.actionCreate,
   enable: STRINGS.agentDefinitionEnable,
   disable: STRINGS.agentDefinitionDisable,
@@ -157,6 +164,10 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   // Story 20.31: Resend, on Messages' checked rows and a message's Header tab, and Edit and resend, on the Header tab.
   resend: STRINGS.interopMessagesResendAction,
   editresend: STRINGS.interopMessagesEditResendAction,
+  // Story 24.16: Suspended messages' Resubmit, Edit and resubmit and Discard; its Delete is every delete's word.
+  resubmit: STRINGS.interopSuspendedResubmitAction,
+  editresubmit: STRINGS.interopSuspendedEditResubmitAction,
+  discard: STRINGS.interopSuspendedDiscardAction,
   // Story 21.19: a security recommendation's Ignore and Stop ignoring, on the Security advisor.
   ignore: STRINGS.securityAdvisorIgnoreAction,
   unignore: STRINGS.securityAdvisorUnignoreAction,
@@ -171,6 +182,12 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
  * elsewhere, which is the whole reason this map is keyed by descriptor.
  */
 const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  // Story 21.37: Page resources' Assign resource, Change resource and Clear resource, each also the title of what it opens.
+  'OcuPilot.Screen.Descriptor.PageResourceList': {
+    assign: STRINGS.pageResourcesAssignAction,
+    change: STRINGS.pageResourcesChangeAction,
+    clear: STRINGS.pageResourcesClearAction,
+  },
   // Story 24.3: Productions' Start with the instance and Shutdown group each open a dialog that sets one production's startup setting.
   'OcuPilot.Screen.Descriptor.InteropProductionList': { autostart: STRINGS.interopProductionAutoStartAction, shutdowngroup: STRINGS.interopProductionColumnShutdownGroup },
   // Story 20.3: Production items' Add opens the dialog that adds one item, and its Remove deletes one; Copy (Story 20.40) opens the dialog that copies the selected item; Change class (Story 20.41) opens the one that picks its new class.
@@ -183,6 +200,42 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   // Story 21.2: Backup tasks' Run starts one backup, and Backup database list's Add database and Remove change the list the list backups use.
   'OcuPilot.Screen.Descriptor.BackupTaskList': { run: STRINGS.actionRun, freeze: STRINGS.backupFreezeAction, thaw: STRINGS.backupThawAction },
   'OcuPilot.Screen.Descriptor.BackupDatabaseList': { add: STRINGS.backupAddDatabaseAction, removedatabase: STRINGS.actionRemove },
+  // Story 21.6: the SQL statements list's five plan and statistics actions, and the Cached queries tab's three purges.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlStatementList': {
+    freeze: STRINGS.sqlStatementFreezeAction,
+    unfreeze: STRINGS.sqlStatementUnfreezeAction,
+    'clear-statistics': STRINGS.sqlStatementClearStatisticsAction,
+    'clear-error': STRINGS.sqlStatementClearErrorAction,
+    clean: STRINGS.sqlStatementCleanAction,
+  },
+  'OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries': {
+    purge: STRINGS.auditDatabasePurgeConfirm,
+    'purge-table': STRINGS.sqlCachedQueryPurgeTableAction,
+    'purge-namespace': STRINGS.sqlCachedQueryPurgeAllAction,
+  },
+  // Story 21.26: SQL runtime statistics' Purge statistics, and Runtime statistics collection's Set value, which opens the settings page's dialog.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStats': { purge: STRINGS.sqlRuntimeStatsPurgeAction },
+  'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStatsSettings': { set: STRINGS.interopItemSettingSetAction },
+  // Story 21.27: SQL index analyzer's Gather statements, Run report and Purge analysis, each also the title of the dialog it opens.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlIndexAnalysis': {
+    gather: STRINGS.sqlIndexAnalysisGatherAction,
+    run: STRINGS.sqlIndexAnalysisRunAction,
+    purge: STRINGS.sqlIndexAnalysisPurgeAction,
+  },
+  // Story 21.29: SQL troubleshooting reports' Save query, which opens the page's dialog, Generate report on the selected row's case, and Delete.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlReports': { save: STRINGS.sqlReportsSaveAction, generate: STRINGS.sqlReportsGenerateAction, delete: STRINGS.actionDelete },
+  // Story 21.25: a table's Rebuild all indices, and one index's Rebuild index.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlTable': {
+    'rebuild-indices': STRINGS.sqlTableRebuildAllAction,
+    tune: STRINGS.sqlTableTuneAction,
+    'clear-statistics': STRINGS.sqlTableClearStatisticsAction,
+    'set-extent-size': STRINGS.sqlTableSetExtentSizeAction,
+  },
+  // Story 21.25: a schema's Tune all tables.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlSchema': { tune: STRINGS.sqlSchemaTuneAction },
+  'OcuPilot.Screen.Descriptor.ExplorerSqlIndices': { rebuild: STRINGS.sqlIndexRebuildAction, 'set-map-size': STRINGS.sqlIndexSetMapSizeAction },
+  // Story 21.31: the Field statistics tab's Set selectivity.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlFieldStatistics': { 'set-selectivity': STRINGS.sqlFieldSetSelectivityAction },
   // Story 21.20: SQL activity's Cancel query and System alerts' Reset alerts.
   'OcuPilot.Screen.Descriptor.SqlActivityList': { cancel: STRINGS.sqlActivityCancelAction },
   'OcuPilot.Screen.Descriptor.SystemAlertsList': { reset: STRINGS.systemAlertsResetAction },
@@ -211,8 +264,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.IsqlSettingList': { set: STRINGS.interopItemSettingSetAction },
   // Story 21.10: System-wide security's Set value, which opens the same page's dialog.
   'OcuPilot.Screen.Descriptor.SystemSecuritySettingList': { set: STRINGS.interopItemSettingSetAction },
-  // Story 21.19: Task Manager email's Set value, which opens the same page's dialog.
-  'OcuPilot.Screen.Descriptor.TaskMailSettingList': { set: STRINGS.interopItemSettingSetAction },
+  // Story 21.19: Task Manager email's Set value, which opens the same page's dialog; Story 21.36: its Set mail password, also that dialog's title.
+  'OcuPilot.Screen.Descriptor.TaskMailSettingList': { set: STRINGS.interopItemSettingSetAction, password: STRINGS.taskMailPasswordAction },
   // Story 21.13: the DDL mapping screens' Set value and Delete, and the user list's New mapping, which opens the page's dialog.
   'OcuPilot.Screen.Descriptor.DdlSystemMappingList': { set: STRINGS.interopItemSettingSetAction, delete: STRINGS.actionDelete },
   'OcuPilot.Screen.Descriptor.DdlUserMappingList': { add: STRINGS.ddlMappingNewAction, set: STRINGS.interopItemSettingSetAction, delete: STRINGS.actionDelete },
@@ -267,6 +320,10 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     copy: STRINGS.auditDatabaseCopyConfirm,
     delete: STRINGS.actionDelete,
   },
+  // Story 24.14 Batch 3: PMML models' New PMML definition opens the dialog that creates a definition class from PMML text.
+  'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelList': { add: STRINGS.analyticsPmmlNewAction },
+  // Story 24.14 Batch 4: the Test screen's Export to cube opens the dialog that exports the model's test to a new cube.
+  'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelTest': { export: STRINGS.analyticsPmmlExportAction },
   // Story 24.10: Folder items' Export opens the export dialog, and its Delete removes an item for every user.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': { export: STRINGS.taskExportAction, delete: STRINGS.actionDelete },
   'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList': {
@@ -276,6 +333,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   },
   // Story 20.6: an item's Test tab's Send test opens the dialog that builds and sends one test request.
   'OcuPilot.Screen.Descriptor.InteropItemTestTab': { test: STRINGS.interopItemTestAction },
+  // Story 24.16 Batch 3: Messages' Export opens the dialog that saves the checked messages' bodies as one file.
+  'OcuPilot.Screen.Descriptor.InteropMessageList': { export: STRINGS.taskExportAction },
   // Story 20.27: Data transformations' Test opens the dialog that runs the selected transformation once on a pasted message.
   'OcuPilot.Screen.Descriptor.InteropTransformList': { test: STRINGS.serverFlagTest },
   // Story 20.22: Item settings' Set value opens its dialog, and its Reset to default returns a setting to its default.
@@ -296,6 +355,61 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     edit: STRINGS.agentPanelSecretWarningEdit,
     remove: STRINGS.actionRemove,
   },
+  // Story 24.15: System default settings' New default setting opens the dialog that adds one, its Edit opens the dialog that changes one and its
+  // Remove deletes one.
+  'OcuPilot.Screen.Descriptor.InteropDefaultSettingList': {
+    add: STRINGS.interopDefaultSettingAddAction,
+    edit: STRINGS.agentPanelSecretWarningEdit,
+    remove: STRINGS.actionRemove,
+  },
+  // Story 24.15: Credentials' New credential opens the dialog that adds one, its Edit the dialog that changes one, its Set password the dialog that
+  // gives one a password and its Remove deletes one.
+  'OcuPilot.Screen.Descriptor.InteropCredentialList': {
+    add: STRINGS.interopCredentialAddAction,
+    edit: STRINGS.agentPanelSecretWarningEdit,
+    password: STRINGS.userActionSetPassword,
+    remove: STRINGS.actionRemove,
+  },
+  // Story 24.15: Schedule specs' New schedule spec opens the dialog that adds one, its Edit the dialog that changes one and its Remove deletes one.
+  'OcuPilot.Screen.Descriptor.InteropScheduleList': {
+    add: STRINGS.interopScheduleAddAction,
+    edit: STRINGS.agentPanelSecretWarningEdit,
+    remove: STRINGS.actionRemove,
+  },
+  // Story 24.17 Batch 3a: Workflow users' New workflow user opens the dialog that adds one, its Edit the dialog that changes one and its Remove deletes one.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': {
+    add: STRINGS.interopWorkflowUserAddAction,
+    edit: STRINGS.agentPanelSecretWarningEdit,
+    remove: STRINGS.actionRemove,
+  },
+  // Story 24.17 Batch 3b: Workflow roles' New workflow role opens the dialog that adds one, its Edit the dialog that changes one and its Remove deletes one; Role members' Add member opens the dialog that adds one and its Remove takes one out.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList': {
+    add: STRINGS.interopWorkflowRoleAddAction,
+    edit: STRINGS.agentPanelSecretWarningEdit,
+    remove: STRINGS.actionRemove,
+  },
+  'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList': {
+    add: STRINGS.interopWorkflowMemberAddAction,
+    remove: STRINGS.actionRemove,
+  },
+  // Story 24.17 Batch 4: Workflow tasks' Assign opens the dialog that assigns or unassigns a task and sets its priority, and its Cancel task cancels one.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': {
+    assign: STRINGS.webAppRoleAssign,
+    cancel: STRINGS.backgroundTaskCancelAction,
+  },
+  // Story 24.18 Batch 1: HL7 schemas' New HL7 schema opens the dialog that adds a custom schema, its Delete removes one and its Export writes the selected one.
+  'OcuPilot.Screen.Descriptor.InteropHl7SchemaList': { add: STRINGS.interopHl7SchemaAddAction, delete: STRINGS.actionDelete, export: STRINGS.taskExportAction },
+  // Story 24.16: Purge management data's Purge, which opens the dialog that takes the days, and Purge data settings' Set value.
+  'OcuPilot.Screen.Descriptor.InteropPurgeList': { purge: STRINGS.auditDatabasePurgeConfirm },
+  'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': { set: STRINGS.interopItemSettingSetAction },
+  // Story 24.16 Batch 4: Archive manager's Run archive, which opens the dialog that shows what the run moves, and Archive settings' Set value.
+  'OcuPilot.Screen.Descriptor.InteropArchiveList': { archive: STRINGS.interopArchiveAction },
+  'OcuPilot.Screen.Descriptor.InteropArchiveSettingList': { set: STRINGS.interopItemSettingSetAction },
+  // Story 24.17 Batch 1: Managed alerts' Update alert, which opens the dialog that takes the changes and the reason.
+  'OcuPilot.Screen.Descriptor.InteropManagedAlertList': { update: STRINGS.interopManagedAlertUpdateAction },
+  // Story 24.17 Batch 2: the two logs' Purge, which opens the dialog that takes the days and the namespace's name.
+  'OcuPilot.Screen.Descriptor.InteropRuleLogList': { purge: STRINGS.auditDatabasePurgeConfirm },
+  'OcuPilot.Screen.Descriptor.InteropProcessLogList': { purge: STRINGS.auditDatabasePurgeConfirm },
   // Story 8.5: the X.509 list's Create imports a credential rather than typing one in.
   'OcuPilot.Screen.Descriptor.X509CredentialList': { create: STRINGS.actionImport },
   'OcuPilot.Screen.Descriptor.AgentSwitches': {

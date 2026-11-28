@@ -1639,6 +1639,7 @@ test('the throwaway prepares a durable directory IRIS can write, and leaves none
     // next line: the scrub removes the tree as root, so `rm -rf "$DIR"` after it can succeed.
     writeStub(bin, 'docker', [
       'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
+      'case "$1" in inspect) echo 0; exit 0 ;; esac',
       'for arg in "$@"; do',
       '  case "$arg" in',
       '    *:/scratch) target="${arg%:/scratch}"; chmod -R u+rwx "$target/data" 2>/dev/null; rm -rf "$target/data" ;;',
@@ -2241,7 +2242,7 @@ function hookDeletedLine(count) {
  * Run `ci-throwaway.sh product-reuse` against a stub docker whose session prints `session`, whose
  * first log read prints `firstLog` and whose later log reads print `log`.
  */
-function runProductReuse({ session, firstLog, log, composeText = 'name: ocupilot-images-ci\n' }) {
+function runProductReuse({ session, firstLog, log, composeText = 'name: ocupilot-images-ci\nservices:\n  iris:\n    container_name: ocupilot-images-ci\n', restartCount = '0' }) {
   const dir = mkdtempSync(join(tmpdir(), 'ocupilot-product-reuse-'));
   try {
     const bin = join(dir, 'bin');
@@ -2252,6 +2253,7 @@ function runProductReuse({ session, firstLog, log, composeText = 'name: ocupilot
     writeStub(bin, 'docker', [
       'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
       'case "$*" in',
+      '  inspect*) printf \'%s\\n\' "${OCUPILOT_RESTART_COUNT:-0}" ;;',
       '  *" exec "*) cat > /dev/null; printf \'%s\\n\' "$OCUPILOT_SESSION_ANSWER" ;;',
       '  *" logs "*) if [ -f "$OCUPILOT_DOCKER_CAPTURE.read" ]; then printf \'%s\\n\' "$OCUPILOT_LOG_ANSWER"; else : > "$OCUPILOT_DOCKER_CAPTURE.read"; printf \'%s\\n\' "$OCUPILOT_FIRST_LOG_ANSWER"; fi ;;',
       'esac',
@@ -2265,6 +2267,7 @@ function runProductReuse({ session, firstLog, log, composeText = 'name: ocupilot
         OCUPILOT_SESSION_ANSWER: session,
         OCUPILOT_FIRST_LOG_ANSWER: firstLog,
         OCUPILOT_LOG_ANSWER: log,
+        OCUPILOT_RESTART_COUNT: restartCount,
       }),
     });
     const argv = existsSync(capture) ? readFileSync(capture, 'utf8').split(scratch).join('<scratch>') : '';
@@ -2311,9 +2314,10 @@ test('the images job starts its product throwaway again over a volume holding te
       'compose -f <scratch>/compose.yml logs --no-color iris',
       'compose -f <scratch>/compose.yml exec -T iris iris session iris -U %SYS',
       'compose -f <scratch>/compose.yml up -d --wait --force-recreate --no-deps iris',
+      'inspect --format {{.RestartCount}} ocupilot-images-ci',
       'compose -f <scratch>/compose.yml logs --no-color iris',
     ],
-    'reading the first start\'s log, compiling, then starting again, then reading that start\'s log'
+    'reading the first start\'s log, compiling, then starting again, reading its restart count, then reading that start\'s log'
   );
 
   const one = runProductReuse({ session: plantAnswer('OK:2'), firstLog: startLog(0), log: startLog(1) });
@@ -2723,7 +2727,7 @@ test('DW-432: the section the runner hint cites is the paragraph of docs/DEVELOP
 // --- The bind retry and its time budget (DW-439, DW-2123) ------------------------------------
 
 /** Run `ci-throwaway.sh up` against a stub docker that fails `up` a given number of times. */
-function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30', stubSleep = false, stubSs = false, firstUpSeconds = '0', steppedClock = false }) {
+function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30', stubSleep = false, stubSs = false, firstUpSeconds = '0', steppedClock = false, restartCount = '0', containerLog = '' }) {
   const dir = mkdtempSync(join(tmpdir(), 'ocupilot-throwaway-bind-'));
   const bin = join(dir, 'bin');
   const scratch = join(dir, 'scratch');
@@ -2749,6 +2753,8 @@ function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30'
   writeStub(bin, 'docker', [
     'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
     'case "$*" in',
+    '  inspect*) printf \'%s\\n\' "${OCUPILOT_RESTART_COUNT:-0}"; exit 0 ;;',
+    '  logs*) printf \'%s\\n\' "$OCUPILOT_CONTAINER_LOG"; exit 0 ;;',
     '  *"up -d --wait"*)',
     '    n=$(cat "$OCUPILOT_UP_COUNT" 2>/dev/null || echo 0)',
     '    n=$((n + 1))',
@@ -2783,6 +2789,9 @@ function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30'
         OCUPILOT_UP_COUNT: counter,
         OCUPILOT_UP_FAILS: String(fails),
         OCUPILOT_UP_MESSAGE: message,
+        // What `docker inspect` answers for the container's restart count, and what `docker logs` prints.
+        OCUPILOT_RESTART_COUNT: restartCount,
+        OCUPILOT_CONTAINER_LOG: containerLog,
         // The retry's growing wait. Callers that only care about the retry count or the final
         // status pass the default '0' to keep the run fast; the backoff test below overrides it
         // to observe the wait actually elapsing.
@@ -2918,6 +2927,38 @@ test('DW-2501: the gates job fetches the release branch tips before it runs the 
   assert.ok(testAt > fetchAt, 'and does so before npm test');
 });
 
+// The longest green gates leg observed, in minutes (completedAt - startedAt): run 44794079238's
+// node 22.22.3 leg, the largest of the last 30 successful runs' legs across all three bands.
+// Re-measure it whenever the floor is raised, and read the value from a run, never from memory.
+const LARGEST_OBSERVED_GATES_MINUTES = 19.9;
+
+// Mutation (Rule 19): set the gates job's `timeout-minutes` to 29 -> red here alone.
+test('the gates job is bounded at no less than 1.5x its longest observed green leg', () => {
+  const jobTimeout = Number(/^ {4}timeout-minutes:\s*(\d+)\s*$/m.exec(jobSlice(workflow, 'gates'))?.[1]);
+  const floor = Math.ceil(1.5 * LARGEST_OBSERVED_GATES_MINUTES);
+  assert.ok(
+    Number.isInteger(jobTimeout) && jobTimeout >= floor,
+    `the gates job's ${jobTimeout} minutes must be at least ${floor} (1.5 x ${LARGEST_OBSERVED_GATES_MINUTES}), so a uniformly slow runner does not time a green leg out; the one job definition bounds every Node band`
+  );
+});
+
+// The longest successful client suite step observed on node 22, in seconds: run 45062235807's `client suite` step.
+// Re-measure it whenever the suite grows past it, and read the value from a run, never from memory.
+const LARGEST_OBSERVED_CLIENT_SUITE_SECONDS = 705;
+
+// Mutation (Rule 19): set the client suite step's `timeout-minutes` to 17 -> red here alone; to 30 or more -> red in the next test alone.
+test('the client suite step is bounded at no less than 1.5x its longest observed green run', () => {
+  const steps = jobSteps(workflow, 'gates');
+  const at = steps.findIndex((step) => step.run === CLIENT_SUITE_RUN);
+  assert.ok(at >= 0, `the gates job runs the client suite through the sampler: ${CLIENT_SUITE_RUN}`);
+  const stepTimeout = Number(/^ {8}timeout-minutes:\s*(\d+)\s*$/m.exec(steps[at].text)?.[1]);
+  const floor = Math.ceil((1.5 * LARGEST_OBSERVED_CLIENT_SUITE_SECONDS) / 60);
+  assert.ok(
+    Number.isInteger(stepTimeout) && stepTimeout >= floor,
+    `the client suite step's ${stepTimeout} minutes must be at least ${floor} (1.5 x ${LARGEST_OBSERVED_CLIENT_SUITE_SECONDS} s), so a slow runner does not time a green suite out`
+  );
+});
+
 // Mutation (Rule 19): drop the client suite step's `timeout-minutes`, or the report step's
 // `cancelled()` -> red; run `npm test` without the sampler -> red.
 test('the client suite step is bounded under the job, sampled, and followed by the resource report on failure or cancel', () => {
@@ -2975,6 +3016,37 @@ test('DW-439: a failure that is not a host-port bind exits at once, unretried', 
   assert.match(run.output, /not a host-port bind/, 'saying which of the two it is');
 });
 
+// Mutation (Rule 19): delete `refuse_restarted_start`'s call after the `up` loop, or its count test -> the restart-count-1 row goes red.
+test('DW-2761: a throwaway that restarted after a failed start fails `up`, printing the start\'s failure lines', () => {
+  const containerLog = [
+    'ocupilot-ci | container-start: STARTPATH-FAILED step=install namespace=HSCUSTOM',
+    'ocupilot-ci | container-start: LOAD-FAILED OcuPilot.Test.Example',
+    'ocupilot-ci | container-start: a line that is not a failure',
+    'ocupilot-ci | an unrelated LOAD-FAILED without the prefix',
+  ].join('\n');
+  const healthy = runThrowawayUp({ fails: 0, message: BIND_MESSAGE, containerLog });
+  assert.equal(healthy.status, 0, `a restart count of 0 passes: ${healthy.output}`);
+  assert.doesNotMatch(healthy.output, /restart count/, 'and says nothing about restarts');
+
+  const restarted = runThrowawayUp({ fails: 0, message: BIND_MESSAGE, restartCount: '1', containerLog });
+  assert.equal(restarted.status, 1, `a restart count of 1 fails the bring-up: ${restarted.output}`);
+  assert.match(restarted.output, /restart count reads '1'/, 'naming the count');
+  assert.match(restarted.output, /container-start: STARTPATH-FAILED step=install/, 'printing the STARTPATH-FAILED line');
+  assert.match(restarted.output, /container-start: LOAD-FAILED OcuPilot\.Test\.Example/, 'and the LOAD-FAILED line');
+  assert.doesNotMatch(restarted.output, /a line that is not a failure|an unrelated LOAD-FAILED/, 'and no other log line');
+
+  const unreadable = runThrowawayUp({ fails: 0, message: BIND_MESSAGE, restartCount: 'Error: No such object', containerLog });
+  assert.equal(unreadable.status, 1, `a count that cannot be read is not read as 0: ${unreadable.output}`);
+});
+
+test('DW-2761: the start over a reused volume fails when the restarted service came back after a failed start', () => {
+  const passed = runProductReuse({ session: plantAnswer('OK:2'), firstLog: startLog(0), log: startLog(2) });
+  assert.equal(passed.status, 0, `a restart count of 0 passes: ${passed.output}`);
+  const restarted = runProductReuse({ session: plantAnswer('OK:2'), firstLog: startLog(0), log: startLog(2), restartCount: '2' });
+  assert.equal(restarted.status, 1, `a restart count of 2 after the recreate fails: ${restarted.output}`);
+  assert.match(restarted.output, /restart count reads '2'/, 'naming the count');
+});
+
 test('DW-439: the retry actually waits on a real clock', () => {
   // The source-text test above pins the SHAPE of the backoff, and the wait-sequence test reads the
   // waits (and so their growth) through a stub `sleep`. Neither watches a real clock. This drives
@@ -3013,6 +3085,7 @@ test('DW-439: the bring-up streams output as it happens, never only at exit', ()
   mkdirSync(bin);
   writeStub(bin, 'docker', [
     'case "$*" in',
+    '  inspect*) echo 0; exit 0 ;;',
     `  *"up -d --wait"*)`,
     `    printf '%s\\n' '${MARKER}'`,
     `    sleep ${SLEEP_MS / 1000}`,
@@ -3393,6 +3466,22 @@ test('each shard job reports every leg, and each roll-up checks its records and 
     assert.equal(/ --records (.+?) --result /.exec(check ?? '')?.[1], downloadPath, `${rollUp} checks the directory it downloaded into`);
     assert.ok(check.endsWith(` --result \${{ needs.${shard}.result }}`), `${rollUp} passes ${shard}'s own result, since a skipped roll-up reads as no failure`);
   }
+});
+
+// Mutation (Rule 19): rename the upload step's `path` folder -> this goes red.
+test("a failed browser leg uploads the folder the structural walk saves its stalled visit's CPU profile in", () => {
+  const steps = jobSteps(workflow, 'browser-shard');
+  const runner = steps.find((step) => step.run?.startsWith('npm run test:browser:shard'));
+  const folder = /\n {10}OCUPILOT_WALK_PROFILE_DIR: (.+)/.exec(runner?.text ?? '')?.[1];
+  assert.equal(folder, '${{ runner.temp }}/walk-profiles', 'the leg points the walk at a folder under runner.temp');
+  const uploads = steps.filter((step) => /uses:\s*actions\/upload-artifact@/.test(step.text) && step.text.includes('walk-profiles'));
+  assert.equal(uploads.length, 1, 'one upload step carries the profiles');
+  const [upload] = uploads;
+  assert.equal(upload.condition, '${{ failure() }}', 'it runs on a failed leg only');
+  assert.ok(upload.text.includes(`\n          path: ${folder}\n`), 'it uploads the folder the walk was pointed at');
+  assert.match(upload.text, /\n {10}retention-days: [1-7](\n|$)/, 'and keeps it for a week at most');
+  assert.match(upload.text, /\n {10}if-no-files-found: ignore(\n|$)/, 'a leg without a stall has no file to upload and does not fail for it');
+  assert.ok(steps.indexOf(upload) > steps.indexOf(runner), 'after the leg ran');
 });
 
 // Mutation (Rule 19): remove `if: ${{ matrix.shard == 1 }}` from the smoke step -> this goes red.

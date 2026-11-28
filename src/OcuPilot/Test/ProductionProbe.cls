@@ -167,10 +167,15 @@ ClassMethod AwaitRunning(pSeconds As %Integer = 30) As %Status
     Quit $$$ERROR($$$GeneralError, "the probe production did not read running within " _ pSeconds _ " seconds; USER read '" _ tCurrent _ "' in state " _ tState)
 }
 
+/// <p>The environment variable that arms the probe, set by <file>scripts/ci-throwaway.sh</file> alone: the probe compiles classes in <code>USER</code>, starts a production
+/// there and stores and deletes message headers, and runs on a throwaway container only.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
+
 /// <p>A failing status naming the foreign production when <code>USER</code>'s current production is
-/// neither empty nor one the probe owns.</p>
+/// neither empty nor one the probe owns, and a failing status, touching nothing, when <parameter>ARMINGVARIABLE</parameter> does not read 1.</p>
 ClassMethod CheckOwn() As %Status
 {
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.ProductionProbe starts a production in USER and stores and deletes message headers there, and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was changed.")
     Set tCurrent = ..Current()
     If (tCurrent '= "") && (tCurrent '= ..#PRODUCTION) && (tCurrent '= ..#OTHER) Quit $$$ERROR($$$GeneralError, "USER's current production is not the probe's own: " _ tCurrent)
     Quit $$$OK
@@ -857,7 +862,8 @@ ClassMethod Gone() As %Boolean
 
 /// <p>Leave <code>USER</code> holding no probe state: settle the current production, delete the probe
 /// classes, their configuration rows, their activity and last-production records, and the message
-/// headers and event-log rows whose configuration names begin with <parameter>CONFIGPREFIX</parameter>.
+/// headers and event-log rows whose configuration names begin with <parameter>CONFIGPREFIX</parameter>, and the schedule handler's
+/// business process rows (<method>RemoveScheduleHandler</method>).
 /// It refuses, touching nothing, when <code>USER</code>'s current production is not one of its own. One
 /// of its own that cannot be settled is removed all the same, and the failure is the status returned.</p>
 ClassMethod Remove() As %Status
@@ -883,12 +889,30 @@ ClassMethod Remove() As %Status
         Do $System.OBJ.DeletePackage("OcuPilotProbe", "-d")
         Set tRS = ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM Ens.MessageHeader WHERE SourceConfigName %STARTSWITH ? OR TargetConfigName %STARTSWITH ?", ..#CONFIGPREFIX, ..#CONFIGPREFIX)
         Set tRS = ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM Ens_Util.Log WHERE ConfigName %STARTSWITH ?", ..#CONFIGPREFIX)
+        If ..Current() = "" Do ..RemoveScheduleHandler()
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Delete the business process rows of the vendor's schedule handler, which every production start adds to <code>USER</code> beside the
+/// probe's own items and which nothing else removes. Called only inside <code>USER</code>, with no production current.</p>
+ClassMethod RemoveScheduleHandler() [ Private ]
+{
+    Kill tIds
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT ID FROM Ens.BusinessProcess WHERE %ConfigName = 'Ens.ScheduleHandler'")
+    While tRS.%Next() {
+        Set tIds(tRS.%GetData(1)) = ""
+    }
+    Set tId = ""
+    For {
+        Set tId = $Order(tIds(tId))
+        If tId = "" Quit
+        Do ##class(Ens.BusinessProcess).%DeleteId(tId)
+    }
 }
 
 }

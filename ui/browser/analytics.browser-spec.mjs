@@ -27,6 +27,12 @@
  * Story 24.14 adds one test: a dashboard opens from Folder items to its Definition and Widgets tabs, only the pivot widget links, and the pivot's Definition runs to the vendor's cells;
  * the dashboard's Definition, Widgets and the pivot's Definition with its grid pass the structural and contrast checks.
  *
+ * Story 24.14 Batch 2 adds one test: PMML models lists the probe definition's three models, a model's name opens its Test screen, and a run against the model's verification records answers the
+ * count and the metrics the vendor's own run computes; the list and the Test screen with its answer pass the structural and contrast checks.
+ *
+ * Story 24.14 Batch 3 adds one test: New PMML definition loads a PMML file into its text field, a class name and a confirm make the class, and PMML models lists the file's two models; the screen passes
+ * the structural and contrast checks.
+ *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
  *   node --test --test-concurrency=1 browser/analytics.browser-spec.mjs` (after `npm run build` and the bundle copied into the
  * throwaway).
@@ -76,6 +82,11 @@ const SETTINGS_VARIABLES = `${SETTINGS}/variables`;
 const SETTINGS_ICONS = `${SETTINGS}/icons`;
 const FOLDER_ITEM_DEFINITION = `${FOLDER_ITEMS}/document`;
 const FOLDER_ITEM_WIDGETS = `${FOLDER_ITEMS}/widgets`;
+const PMML_MODELS = 'analytics/pmml-models';
+const PMML_MODEL_TEST = `${PMML_MODELS}/test`;
+const PMML_PROBE = 'OcuPilot.Test.PmmlProbe';
+const PMML_RUN = 'OcuPilot.Test.AnalyticsPmmlRun';
+const PMML_DEFINITION = 'OcuPilotProbe.Pmml.Definition';
 const FOLDER_PROBE = 'OcuPilot.Test.AnalyticsFolderItemTransfer';
 const FOLDER_ITEM = 'OcuProbeFI2410/Browse.dashboard';
 const TABS = [
@@ -253,6 +264,7 @@ test('AC1: the side bar lists Cubes, Term lists, Folder items, the three links, 
         STRINGS.analyticsListingGroupsLabel,
         STRINGS.analyticsQualityMeasuresLabel,
         STRINGS.interopItemTabSettings,
+        STRINGS.analyticsPmmlModelsLabel,
       ],
       'the Analytics side bar lists Cubes, Term lists and Folder items, then the Architect, Analyzer and User Portal links (Story 20.32), then MDX query (Story 20.33), the Cube manager (Story 20.34), Listing groups (Story 24.11), Quality measures (Story 24.12) and Settings (Story 24.13)'
     );
@@ -1285,5 +1297,221 @@ test('Story 24.14: a person opens a dashboard from Folder items, sees its three 
     assert.deepEqual(await structural(page, FOLDER_ITEM_DEFINITION), [], `${FOLDER_ITEM_DEFINITION}: no violation beyond the baseline's entries, with the run's grid drawn`);
   } finally {
     await context.close();
+  }
+});
+
+// Story 24.14 Batch 2 AC5. Mutation (Rule 19): send the model's name in place of its composite id from `pmml-test.store.ts` (rebuild and redeploy first) -> the run answers a refusal and the answer
+// leg goes red; make `AnalyticsPort.PmmlAnswer` answer 0 records -> the count leg goes red.
+test('Story 24.14 Batch 2: a person opens PMML models, opens a model and runs it against its verification records, and the answer is the vendor\'s own', async () => {
+  const { joinCompositeId } = await import(join(uiRoot, 'src', 'app', 'core', 'entity-id.ts'));
+  const made = probe('PMMLMADE', `$System.Status.IsOK(##class(${PMML_PROBE}).Create())`);
+  assert.equal(made.value, '1', `the PMML probe is compiled: ${made.output}`);
+  try {
+    const { context, page } = await signedInAt(browser, config, url(PMML_MODELS), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(page);
+      const rows = await allRows(page);
+      assert.deepEqual(rows.map((row) => row[0]).sort(), ['Colors', 'Heights', 'Plain'], 'the list holds the probe definition\'s three models');
+      const colors = rows.find((row) => row[0] === 'Colors');
+      assert.deepEqual([colors[1], colors[2], colors[3], colors[4]], [PMML_DEFINITION, 'Tree', 'Color', 'categorical'], 'a row reads the model\'s class, type, target and target type');
+      assert.deepEqual(await structural(page, PMML_MODELS), [], `${PMML_MODELS}: no violation beyond the baseline's entries`);
+      await clickRowCentre(page, { text: 'Colors', link: true });
+      await pathHolds(page, `/${PMML_MODEL_TEST}/${encodeEntityId(joinCompositeId([PMML_DEFINITION, 'Colors']))}`);
+      await answered(page);
+      assert.equal((await allRows(page))[0][0], 'Colors', 'the Test screen reads the model\'s own row');
+      await page.waitForSelector('[data-ocu-pmml="source"]', { visible: true, timeout: config.navigationTimeoutMs });
+      await page.select('[data-ocu-pmml="source"]', 'verification');
+      await (await page.waitForSelector('[data-ocu-pmml="run"]', { visible: true, timeout: config.navigationTimeoutMs })).click();
+      await page.waitForSelector('[data-ocu-pmml="records"]', { visible: true, timeout: config.navigationTimeoutMs });
+      const drawn = await page.evaluate(() => ({
+        records: document.querySelector('[data-ocu-pmml="records"]')?.textContent ?? '',
+        metrics: [...document.querySelectorAll('[data-ocu-pmml="metrics"] tbody tr')].map((tr) => [...tr.children].map((cell) => cell.textContent.trim())),
+        values: [...document.querySelectorAll('[data-ocu-pmml="values"] tbody tr')].map((tr) => [...tr.children].map((cell) => cell.textContent.trim())),
+      }));
+      const vendor = probe('PMMLVENDOR', `##class(${PMML_RUN}).Oracle("Colors","verification").%ToJSON()`);
+      const expected = JSON.parse(vendor.value);
+      assert.equal(drawn.records, String(expected.records), `the count is the vendor's own: ${vendor.output}`);
+      assert.deepEqual(
+        drawn.metrics.map((row) => row.slice(1)),
+        [expected.precision, expected.recall, expected.fMeasure].map((pair) => [String(pair.micro), String(pair.macro)]),
+        'the metrics are the vendor\'s own',
+      );
+      assert.deepEqual(
+        drawn.values,
+        expected.values.map((value) => [value.actual, String(value.records), String(value.correct), String(value.incorrect)]),
+        'and so are the per-value counts',
+      );
+      assert.deepEqual(await structural(page, PMML_MODEL_TEST), [], `${PMML_MODEL_TEST}: no violation beyond the baseline's entries, with the answer drawn`);
+    } finally {
+      await context.close();
+    }
+  } finally {
+    const gone = probe('PMMLGONE', `$System.Status.IsOK(##class(${PMML_PROBE}).Remove())_##class(${PMML_PROBE}).Gone()`);
+    assert.equal(gone.value, '11', `the PMML probe is removed: ${gone.output}`);
+  }
+});
+
+const PMML_NEW_CLASS = 'ProbePmml.NewBrowse';
+
+/** A two-model PMML document the New PMML definition dialog loads from a file: a tree `Hue` and a regression `Span`, which compile with no table behind them. */
+const PMML_NEW_TEXT = [
+  "<PMML version='4.1' xmlns='http://www.intersystems.com/deepsee/pmml'>",
+  "<Header description='Made in a browser'/>",
+  '<DataDictionary>',
+  "<DataField name='X' optype='continuous' dataType='double'/>",
+  "<DataField name='Color' optype='categorical' dataType='string'><Value value='low'/><Value value='high'/></DataField>",
+  "<DataField name='Y' optype='continuous' dataType='double'/>",
+  '</DataDictionary>',
+  "<TreeModel modelName='Hue' functionName='classification' splitCharacteristic='binarySplit'>",
+  "<MiningSchema><MiningField name='X' usageType='active'/><MiningField name='Color' usageType='predicted'/></MiningSchema>",
+  "<Node score='low'><True/><Node score='low'><SimplePredicate field='X' operator='lessOrEqual' value='4.5'/></Node><Node score='high'><True/></Node></Node>",
+  '</TreeModel>',
+  "<RegressionModel modelName='Span' functionName='regression'>",
+  "<MiningSchema><MiningField name='X' usageType='active'/><MiningField name='Y' usageType='predicted'/></MiningSchema>",
+  "<RegressionTable intercept='1'><NumericPredictor name='X' coefficient='2'/></RegressionTable>",
+  '</RegressionModel>',
+  '</PMML>',
+  '',
+].join('\n');
+
+// Story 24.14 Batch 3 AC6. Mutation (Rule 19): post the dialog's text to the listing groups' route from `pmml-model.store.ts` (rebuild and redeploy first) -> the class never appears and the first
+// leg goes red; read the picked file into the class field in `pmml-definition-dialog.ts` -> the confirm stays disabled and the click leg goes red.
+test('Story 24.14 Batch 3: a person opens New PMML definition, loads a PMML file, names the class and confirms, and the list shows the file\'s two models', async () => {
+  const left = probe('PMMLNEWPRE', `##class(${PMML_PROBE}).Left()`);
+  assert.equal(left.value, '', `no PMML probe class is left before the test: ${left.output}`);
+  const directory = mkdtempSync(join(tmpdir(), 'ocupilot-pmml-new-'));
+  const file = join(directory, 'browser-model.pmml');
+  writeFileSync(file, PMML_NEW_TEXT);
+  try {
+    const { context, page } = await signedInAt(browser, config, url(PMML_MODELS), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await waitForMapAnswered(page, config.navigationTimeoutMs);
+      await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
+      await page.waitForSelector('app-pmml-definition-dialog [data-pmml-definition-confirm]', { timeout: config.navigationTimeoutMs });
+      assert.equal(await page.$eval('[role="dialog"] .ocu-dialog-title', (node) => node.textContent.trim()), STRINGS.analyticsPmmlNewAction, 'the primary action opens New PMML definition');
+      await page.type('[data-pmml-definition-class]', PMML_NEW_CLASS);
+      assert.equal(await page.$eval('[data-pmml-definition-confirm]', (node) => node.getAttribute('aria-disabled')), 'true', 'the action waits for the text');
+      await (await page.$('[data-pmml-definition-file]')).uploadFile(file);
+      await page.waitForFunction((wanted) => document.querySelector('[data-pmml-definition-text]')?.value === wanted, { timeout: config.navigationTimeoutMs }, PMML_NEW_TEXT);
+      await page.click('[data-pmml-definition-confirm]');
+      await page.waitForFunction(() => document.querySelector('app-pmml-definition-dialog') === null, { timeout: config.navigationTimeoutMs });
+      await page.waitForFunction(
+        (rowSelector, wanted) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.textContent.includes(wanted)),
+        { timeout: config.navigationTimeoutMs },
+        ROW_SELECTOR,
+        PMML_NEW_CLASS
+      );
+      const mine = (await allRows(page)).filter((row) => row[1] === PMML_NEW_CLASS);
+      assert.deepEqual(mine.map((row) => row[0]).sort(), ['Hue', 'Span'], 'PMML models lists the file\'s two models under the new class');
+      const stored = inUser('PMMLNEWXDATA', [`Set out=##class(%Dictionary.CompiledClass).%ExistsId("${PMML_NEW_CLASS}")`]);
+      assert.equal(stored.value, '1', `and the instance holds the compiled class: ${stored.output}`);
+      assert.deepEqual(await structural(page, PMML_MODELS), [], `${PMML_MODELS}: no violation beyond the baseline's entries, with the new rows`);
+    } finally {
+      await context.close();
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+    const removed = probe('PMMLNEWGONE', `$System.Status.IsOK(##class(${PMML_PROBE}).RemoveNew("${PMML_NEW_CLASS}"))_(##class(${PMML_PROBE}).Left()="")`);
+    assert.equal(removed.value, '11', `the new classes are removed: ${removed.output}`);
+  }
+});
+
+const PMML_EXPORT_BASE = 'OcuPilot.Test.AnalyticsPmmlCreateBase';
+
+// Story 24.14 Batch 4 AC6. Mutation (Rule 19): send the model's name in place of its composite id from `pmml-model-test.page.ts` (rebuild and redeploy first) -> the export is refused, the dialog stays open and
+// the first leg goes red; send the default result class in place of the typed one -> the instance holds no class under the typed name and the second leg goes red.
+test('Story 24.14 Batch 4: a person tests a model, exports the result to a new cube from the dialog, and the instance holds the result class, its rows and the cube class', async () => {
+  const made = probe('PMMLEXPMADE', `$System.Status.IsOK(##class(${PMML_PROBE}).Create())`);
+  assert.equal(made.value, '1', `the PMML probe is compiled: ${made.output}`);
+  const result = probe('PMMLEXPNAMES', `##class(${PMML_EXPORT_BASE}).ExportClass("Browse")_"|"_##class(${PMML_EXPORT_BASE}).ExportCubeClass("Browse")_"|"_##class(${PMML_EXPORT_BASE}).ExportCube("Browse")`);
+  const [resultClass, cubeClass, cube] = result.value.split('|');
+  assert.ok(resultClass && cubeClass && cube, `the export names are read: ${result.output}`);
+  try {
+    const { joinCompositeId } = await import(join(uiRoot, 'src', 'app', 'core', 'entity-id.ts'));
+    const { context, page } = await signedInAt(browser, config, url(`${PMML_MODEL_TEST}/${encodeEntityId(joinCompositeId([PMML_DEFINITION, 'Colors']))}`), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(page);
+      await page.waitForSelector('[data-ocu-pmml="source"]', { visible: true, timeout: config.navigationTimeoutMs });
+      await page.select('[data-ocu-pmml="source"]', 'verification');
+      await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
+      await page.waitForSelector('app-pmml-export-dialog [data-pmml-export-confirm]', { timeout: config.navigationTimeoutMs });
+      assert.equal(await page.$eval('[role="dialog"] .ocu-dialog-title', (node) => node.textContent.trim()), STRINGS.analyticsPmmlExportAction, 'the primary action opens Export to cube');
+      assert.equal(await page.$eval('[data-pmml-export-source]', (node) => node.textContent.trim()), STRINGS.analyticsPmmlSourceVerification, 'the dialog names the source chosen on the screen');
+      for (const [field, value] of [['result', resultClass], ['cube-class', cubeClass], ['cube', cube]]) {
+        await page.$eval(`[data-pmml-export-${field}]`, (node) => { node.value = ''; });
+        await page.type(`[data-pmml-export-${field}]`, value);
+      }
+      await page.click('[data-pmml-export-confirm]');
+      await page.waitForSelector('[data-ocu-pmml="export-line"]', { visible: true, timeout: config.navigationTimeoutMs });
+      assert.equal(await page.$('app-pmml-export-dialog'), null, 'the dialog closes once the export is made');
+      const line = await page.$eval('[data-ocu-pmml="export-line"]', (node) => node.textContent.trim());
+      assert.ok(line.includes(resultClass) && line.includes(cube), `the line names the result class and the cube: ${line}`);
+      const oracle = probe('PMMLEXPORACLE', `##class(${PMML_EXPORT_BASE}).OracleAnswer("verification").records`);
+      const rows = probe('PMMLEXPROWS', `##class(${PMML_EXPORT_BASE}).ResultRows("${resultClass}")`);
+      assert.equal(rows.value, oracle.value, `the result class holds one row per record the vendor's own test read: ${rows.output} / ${oracle.output}`);
+      const held = probe('PMMLEXPCUBE', `##class(${PMML_EXPORT_BASE}).CubeHeld("${cube}")`);
+      assert.equal(held.value, '1', `the instance holds the cube: ${held.output}`);
+      const compiled = inUser('PMMLEXPCLASS', [`Set out=##class(%Dictionary.CompiledClass).%ExistsId("${cubeClass}")`]);
+      assert.equal(compiled.value, '1', `and the cube class is compiled: ${compiled.output}`);
+      assert.deepEqual(await structural(page, PMML_MODEL_TEST), [], `${PMML_MODEL_TEST}: no violation beyond the baseline's entries, with the export line drawn`);
+    } finally {
+      await context.close();
+    }
+  } finally {
+    const gone = probe('PMMLEXPGONE', `$System.Status.IsOK(##class(${PMML_PROBE}).Remove())_(##class(${PMML_PROBE}).Left()="")`);
+    assert.equal(gone.value, '11', `the export and the probe are removed: ${gone.output}`);
+  }
+});
+
+// Story 24.14 Batch 4 QA: the dialog's own sentences are the ruled ones, the result line states the count, class and cube, and a second export under the same names is refused in the dialog with the
+// published sentence while the first export's rows and cube stay. Mutation (Rule 19): draw `analyticsPmmlExportAction` in place of the consequence in `pmml-export-dialog.ts` (rebuild and redeploy first) -> the
+// consequence leg goes red; draw no refusal sentence there -> the refusal leg goes red.
+test('Story 24.14 Batch 4: the export dialog shows the ruled sentences, and a second export under the same names is refused with the first export left as it was', async () => {
+  const made = probe('PMMLEXQMADE', `$System.Status.IsOK(##class(${PMML_PROBE}).Create())`);
+  assert.equal(made.value, '1', `the PMML probe is compiled: ${made.output}`);
+  const result = probe('PMMLEXQNAMES', `##class(${PMML_EXPORT_BASE}).ExportClass("Twice")_"|"_##class(${PMML_EXPORT_BASE}).ExportCubeClass("Twice")_"|"_##class(${PMML_EXPORT_BASE}).ExportCube("Twice")`);
+  const [resultClass, cubeClass, cube] = result.value.split('|');
+  assert.ok(resultClass && cubeClass && cube, `the export names are read: ${result.output}`);
+  const type = async (page, names) => {
+    for (const [field, value] of [['result', names[0]], ['cube-class', names[1]], ['cube', names[2]]]) {
+      await page.$eval(`[data-pmml-export-${field}]`, (node) => { node.value = ''; });
+      await page.type(`[data-pmml-export-${field}]`, value);
+    }
+  };
+  try {
+    const { joinCompositeId } = await import(join(uiRoot, 'src', 'app', 'core', 'entity-id.ts'));
+    const { context, page } = await signedInAt(browser, config, url(`${PMML_MODEL_TEST}/${encodeEntityId(joinCompositeId([PMML_DEFINITION, 'Colors']))}`), VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await answered(page);
+      await page.waitForSelector('[data-ocu-pmml="source"]', { visible: true, timeout: config.navigationTimeoutMs });
+      await page.select('[data-ocu-pmml="source"]', 'verification');
+      await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
+      await page.waitForSelector('app-pmml-export-dialog [data-pmml-export-confirm]', { timeout: config.navigationTimeoutMs });
+      assert.equal(await page.$eval('[data-pmml-export-consequence]', (node) => node.textContent.trim()), STRINGS.analyticsPmmlExportConsequence, 'the dialog states the ruled consequence');
+      const labels = await page.$$eval('app-pmml-export-dialog .ocu-field-label', (nodes) => nodes.map((node) => node.textContent.trim()));
+      assert.deepEqual(labels, [STRINGS.analyticsColumnDataSource, STRINGS.analyticsPmmlResultClassLabel, STRINGS.analyticsPmmlCubeNameLabel, STRINGS.analyticsPmmlCubeClassLabel, STRINGS.analyticsPmmlSourceClassLabel], 'the dialog labels its fields with the ruled names');
+      await type(page, [resultClass, cubeClass, cube]);
+      await page.click('[data-pmml-export-confirm]');
+      await page.waitForSelector('[data-ocu-pmml="export-line"]', { visible: true, timeout: config.navigationTimeoutMs });
+      const records = probe('PMMLEXQORACLE', `##class(${PMML_EXPORT_BASE}).OracleAnswer("verification").records`).value;
+      const line = await page.$eval('[data-ocu-pmml="export-line"]', (node) => node.textContent.trim());
+      assert.equal(line, STRINGS.analyticsPmmlExportedLine.replace('{count}', records).replace('{class}', resultClass).replace('{cube}', cube), 'the result line is the ruled sentence with the count, the class and the cube');
+      const before = probe('PMMLEXQBEFORE', `##class(${PMML_EXPORT_BASE}).ResultRows("${resultClass}")_"|"_##class(${PMML_EXPORT_BASE}).CubeHeld("${cube}")_"|"_##class(${PMML_PROBE}).Rows()`);
+      assert.equal(before.value, `${records}|1|0`, `the first export holds its rows and its cube and leaves no vendor result row: ${before.output}`);
+      await (await page.waitForSelector('.ocu-command-bar button.ocu-command-bar-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
+      await page.waitForSelector('app-pmml-export-dialog [data-pmml-export-confirm]', { timeout: config.navigationTimeoutMs });
+      await type(page, [resultClass, cubeClass, cube]);
+      await page.click('[data-pmml-export-confirm]');
+      await page.waitForSelector('[data-pmml-export-reason]', { visible: true, timeout: config.navigationTimeoutMs });
+      assert.equal(await page.$eval('[data-pmml-export-reason]', (node) => node.textContent.trim()), STRINGS.analyticsRefusalPmmlTaken, 'the second export is refused with the published sentence');
+      assert.notEqual(await page.$('app-pmml-export-dialog'), null, 'and the dialog stays open');
+      const after = probe('PMMLEXQAFTER', `##class(${PMML_EXPORT_BASE}).ResultRows("${resultClass}")_"|"_##class(${PMML_EXPORT_BASE}).CubeHeld("${cube}")_"|"_##class(${PMML_PROBE}).Rows()`);
+      assert.equal(after.value, before.value, `and the first export is as it was: ${after.output}`);
+    } finally {
+      await context.close();
+    }
+  } finally {
+    const gone = probe('PMMLEXQGONE', `$System.Status.IsOK(##class(${PMML_PROBE}).Remove())_(##class(${PMML_PROBE}).Left()="")_(##class(${PMML_EXPORT_BASE}).ExportLeft("Twice"))`);
+    assert.equal(gone.value, '11', `the export and the probe are removed: ${gone.output}`);
   }
 });

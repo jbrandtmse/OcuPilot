@@ -21,12 +21,24 @@ Parameter PARTNERB = "OcuProbe205PartnerB";
 /// removes each one.</p>
 Parameter PARTNERPREFIX = "OcuProbe226";
 
-/// <p>Store <var>pValue</var> for <var>pKey</var> of <var>pTable</var>, creating the table, as the vendor does.</p>
-ClassMethod Put(pTable As %String, pKey As %String, pValue As %String) As %Status
+/// <p>Every system default setting the default setting tests (Story 24.15) create has a production named this and a suffix, in
+/// <parameter>NAMESPACE</parameter> or <parameter>OTHERNAMESPACE</parameter>; <method>Clear</method> removes each one in both.</p>
+Parameter DEFAULTPREFIX = "OcuProbe2415";
+
+/// <p>Every credential the credential tests (Story 24.15) create is named this and a suffix, in <parameter>NAMESPACE</parameter> or
+/// <parameter>OTHERNAMESPACE</parameter>; <method>Clear</method> removes each one in both, with its password node.</p>
+Parameter CREDENTIALPREFIX = "OcuProbe2415";
+
+/// <p>The second namespace a comparison of default settings reads.</p>
+Parameter OTHERNAMESPACE = "HSCUSTOM";
+
+/// <p>Store <var>pValue</var> for <var>pKey</var> of <var>pTable</var> in <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when
+/// empty), creating the table, as the vendor does.</p>
+ClassMethod Put(pTable As %String, pKey As %String, pValue As %String, pNamespace As %String = "") As %Status
 {
     Set tOrigNS = $NAMESPACE
     Try {
-        Set $NAMESPACE = ..#NAMESPACE
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
         Set tSC = ##class(Ens.Util.LookupTable).%UpdateValue(pTable, pKey, pValue, 1)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
@@ -51,14 +63,14 @@ ClassMethod Remove(pTable As %String, pKey As %String) As %Status
     Quit tSC
 }
 
-/// <p>Remove table <var>pTable</var>, exactly as named, and every entry it holds, as the vendor's own table delete does; no other
-/// table is touched.</p>
-ClassMethod Drop(pTable As %String) As %Status
+/// <p>Remove table <var>pTable</var>, exactly as named, and every entry it holds, from <var>pNamespace</var>
+/// (<parameter>NAMESPACE</parameter> when empty), as the vendor's own table delete does; no other table is touched.</p>
+ClassMethod Drop(pTable As %String, pNamespace As %String = "") As %Status
 {
     Set tOrigNS = $NAMESPACE
     Set tSC = $$$OK
     Try {
-        Set $NAMESPACE = ..#NAMESPACE
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
         Do ##class(Ens.Util.LookupTable).%ClearTable(pTable)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
@@ -68,13 +80,14 @@ ClassMethod Drop(pTable As %String) As %Status
     Quit tSC
 }
 
-/// <p>Whether table <var>pTable</var> exists under exactly that name.</p>
-ClassMethod Exists(pTable As %String) As %Boolean
+/// <p>Whether table <var>pTable</var> exists under exactly that name in <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when
+/// empty).</p>
+ClassMethod Exists(pTable As %String, pNamespace As %String = "") As %Boolean
 {
     Set tOrigNS = $NAMESPACE
     Set tExists = 0
     Try {
-        Set $NAMESPACE = ..#NAMESPACE
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
         Set tExists = ##class(Ens.Util.LookupTable).%ExistsTable(pTable)
         Set $NAMESPACE = tOrigNS
     } Catch {
@@ -83,14 +96,14 @@ ClassMethod Exists(pTable As %String) As %Boolean
     Quit ''tExists
 }
 
-/// <p>The entries of <var>pTable</var> as <code>key=value</code> joined by <code>;</code>, in the vendor's order; <code>""</code>
-/// for a table that is absent or empty.</p>
-ClassMethod Entries(pTable As %String) As %String
+/// <p>The entries of <var>pTable</var> in <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty) as <code>key=value</code>
+/// joined by <code>;</code>, in the vendor's order; <code>""</code> for a table that is absent or empty.</p>
+ClassMethod Entries(pTable As %String, pNamespace As %String = "") As %String
 {
     Set tOrigNS = $NAMESPACE
     Set tText = ""
     Try {
-        Set $NAMESPACE = ..#NAMESPACE
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
         Set tKey = ""
         For {
             Set tKey = $Order(^Ens.LookupTable(pTable, tKey))
@@ -168,17 +181,155 @@ ClassMethod Clear() As %Status
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
-    Quit $$$ADDSC(tSC, ..DropPartners(..#PARTNERPREFIX))
+    Set tSC = $$$ADDSC(tSC, ..DropPartners(..#PARTNERPREFIX))
+    Set tSC = $$$ADDSC(tSC, ..DropCredentials(..#CREDENTIALPREFIX))
+    Set tSC = $$$ADDSC(tSC, ##class(OcuPilot.Test.InteropScheduleFixture).DropSchedules())
+    Quit $$$ADDSC(tSC, ..DropDefaults(..#DEFAULTPREFIX))
+}
+
+/// <p>Store the system default setting of the key <var>pProduction</var>, <var>pItem</var>, <var>pHostClass</var>, <var>pSetting</var> in
+/// <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty), with <var>pValue</var>, <var>pDescription</var> and
+/// <var>pDeployable</var>, through the vendor's own save, which updates a setting the namespace already holds (Story 24.15).</p>
+ClassMethod PutDefault(pProduction As %String, pItem As %String, pHostClass As %String, pSetting As %String, pValue As %String, pDescription As %String = "", pDeployable As %Boolean = 0, pNamespace As %String = "") As %Status
+{
+    Set tOrigNS = $NAMESPACE
+    If pNamespace = "" Set pNamespace = ..#NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSetting = ##class(Ens.Config.DefaultSettings).%OpenId(pProduction _ "||" _ pItem _ "||" _ pHostClass _ "||" _ pSetting)
+        If '$IsObject(tSetting) {
+            Set tSetting = ##class(Ens.Config.DefaultSettings).%New()
+            Set tSetting.ProductionName = pProduction
+            Set tSetting.ItemName = pItem
+            Set tSetting.HostClassName = pHostClass
+            Set tSetting.SettingName = pSetting
+        }
+        Set tSetting.SettingValue = pValue
+        Set tSetting.Description = pDescription
+        Set tSetting.Deployable = pDeployable
+        Set tSC = tSetting.%Save()
+        Set tSetting = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The system default setting of the key <var>pProduction</var>, <var>pItem</var>, <var>pHostClass</var>, <var>pSetting</var> in
+/// <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty) as <code>value|description|deployable</code>, or
+/// <code>&lt;absent&gt;</code> when the namespace does not hold it (Story 24.15).</p>
+ClassMethod DefaultText(pProduction As %String, pItem As %String, pHostClass As %String, pSetting As %String, pNamespace As %String = "") As %String
+{
+    Set tOrigNS = $NAMESPACE
+    If pNamespace = "" Set pNamespace = ..#NAMESPACE
+    Set tText = "<absent>"
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSetting = ##class(Ens.Config.DefaultSettings).%OpenId(pProduction _ "||" _ pItem _ "||" _ pHostClass _ "||" _ pSetting)
+        If $IsObject(tSetting) Set tText = tSetting.SettingValue _ "|" _ tSetting.Description _ "|" _ (''tSetting.Deployable)
+        Set tSetting = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tText = "<error " _ ex.DisplayString() _ ">"
+    }
+    Quit tText
+}
+
+/// <p>How many system default settings of <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty) have a production whose
+/// name begins with <var>pPrefix</var>, in any letter case (Story 24.15).</p>
+ClassMethod DefaultCount(pPrefix As %String, pNamespace As %String = "") As %Integer
+{
+    Set tOrigNS = $NAMESPACE
+    If pNamespace = "" Set pNamespace = ..#NAMESPACE
+    Set tCount = 0
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tProduction = ""
+        For {
+            Set tProduction = $Order(^Ens.Config.DefaultSettingsD(tProduction))
+            If tProduction = "" Quit
+            If $ZConvert($Extract(tProduction, 1, $Length(pPrefix)), "U") '= $ZConvert(pPrefix, "U") Continue
+            Set tItem = ""
+            For {
+                Set tItem = $Order(^Ens.Config.DefaultSettingsD(tProduction, tItem))
+                If tItem = "" Quit
+                Set tClass = ""
+                For {
+                    Set tClass = $Order(^Ens.Config.DefaultSettingsD(tProduction, tItem, tClass))
+                    If tClass = "" Quit
+                    Set tName = ""
+                    For {
+                        Set tName = $Order(^Ens.Config.DefaultSettingsD(tProduction, tItem, tClass, tName))
+                        If tName = "" Quit
+                        Set tCount = tCount + 1
+                    }
+                }
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tCount = -1
+    }
+    Quit tCount
+}
+
+/// <p>Remove every system default setting whose production begins with <var>pPrefix</var>, in any letter case, from
+/// <parameter>NAMESPACE</parameter> and <parameter>OTHERNAMESPACE</parameter>, as the vendor's own delete does; no other setting is touched
+/// (Story 24.15).</p>
+ClassMethod DropDefaults(pPrefix As %String) As %Status
+{
+    Set tOrigNS = $NAMESPACE
+    Set tSC = $$$OK
+    For tNamespace = ..#NAMESPACE, ..#OTHERNAMESPACE {
+        Try {
+            Set $NAMESPACE = tNamespace
+            Kill tIds
+            Set tProduction = ""
+            For {
+                Set tProduction = $Order(^Ens.Config.DefaultSettingsD(tProduction))
+                If tProduction = "" Quit
+                If $ZConvert($Extract(tProduction, 1, $Length(pPrefix)), "U") '= $ZConvert(pPrefix, "U") Continue
+                Set tItem = ""
+                For {
+                    Set tItem = $Order(^Ens.Config.DefaultSettingsD(tProduction, tItem))
+                    If tItem = "" Quit
+                    Set tClass = ""
+                    For {
+                        Set tClass = $Order(^Ens.Config.DefaultSettingsD(tProduction, tItem, tClass))
+                        If tClass = "" Quit
+                        Set tName = ""
+                        For {
+                            Set tName = $Order(^Ens.Config.DefaultSettingsD(tProduction, tItem, tClass, tName))
+                            If tName = "" Quit
+                            Set tIds($Increment(tIds)) = tProduction _ "||" _ tItem _ "||" _ tClass _ "||" _ tName
+                        }
+                    }
+                }
+            }
+            For tI = 1:1:$Get(tIds) {
+                Set tSC = $$$ADDSC(tSC, ##class(Ens.Config.DefaultSettings).%DeleteId(tIds(tI)))
+            }
+            Set $NAMESPACE = tOrigNS
+        } Catch ex {
+            Set $NAMESPACE = tOrigNS
+            Set tSC = $$$ADDSC(tSC, ex.AsStatus())
+        }
+    }
+    Quit tSC
 }
 
 /// <p>Remove every business partner whose name begins with <var>pPrefix</var>, in any letter case, as the vendor's own delete does
-/// (Story 20.26); no other partner is touched.</p>
-ClassMethod DropPartners(pPrefix As %String) As %Status
+/// (Story 20.26), from <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty); no other partner is touched.</p>
+ClassMethod DropPartners(pPrefix As %String, pNamespace As %String = "") As %Status
 {
     Set tOrigNS = $NAMESPACE
     Set tSC = $$$OK
     Try {
-        Set $NAMESPACE = ..#NAMESPACE
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
         Kill tNames
         Set tName = ""
         For {
@@ -203,13 +354,13 @@ ClassMethod DropPartners(pPrefix As %String) As %Status
 /// <p>Create the probe partner <var>pName</var> (<parameter>PARTNER</parameter> when empty) with both contacts. Each member of
 /// <var>pFields</var>, when it is an object, replaces the field of that name (<code>Description</code>, <code>PrimaryContact</code>,
 /// <code>PrimaryPhone</code> and so on, as <class>OcuPilot.Port.InteropPort</class>'s <parameter>PARTNERFIELDS</parameter> names
-/// them).</p>
-ClassMethod PutPartner(pName As %String = "", pFields As %DynamicObject = "") As %Status
+/// them). It is created in <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty).</p>
+ClassMethod PutPartner(pName As %String = "", pFields As %DynamicObject = "", pNamespace As %String = "") As %Status
 {
     Set tOrigNS = $NAMESPACE
     If pName = "" Set pName = ..#PARTNER
     Try {
-        Set $NAMESPACE = ..#NAMESPACE
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
         Set tPartner = ##class(Ens.Config.BusinessPartner).%New()
         Set tPartner.PartnerName = pName
         Set tPartner.Description = "Probe partner description"
@@ -250,13 +401,13 @@ ClassMethod PutPartner(pName As %String = "", pFields As %DynamicObject = "") As
 }
 
 /// <p>The probe partner <var>pName</var> as <code>description|primary contact|primary phone|alternative notes</code>, or
-/// <code>&lt;absent&gt;</code> when the namespace does not hold it (Story 20.26).</p>
-ClassMethod PartnerText(pName As %String) As %String
+/// <code>&lt;absent&gt;</code> when <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty) does not hold it (Story 20.26).</p>
+ClassMethod PartnerText(pName As %String, pNamespace As %String = "") As %String
 {
     Set tOrigNS = $NAMESPACE
     Set tText = "<absent>"
     Try {
-        Set $NAMESPACE = ..#NAMESPACE
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
         Set tPartner = ##class(Ens.Config.BusinessPartner).%OpenId(pName)
         If $IsObject(tPartner) {
             Set tPrimary = tPartner.PrimaryContact
@@ -288,6 +439,132 @@ ClassMethod PartnerEmail(pName As %String) As %String
         Set tText = "<error " _ ex.DisplayString() _ ">"
     }
     Quit tText
+}
+
+/// <p>Store the credential <var>pName</var> in <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty) with <var>pUsername</var> and
+/// <var>pPartner</var>, and the password <var>pPassword</var> when it is not empty, through the vendor's own calls (Story 24.15).</p>
+ClassMethod PutCredential(pName As %String, pUsername As %String = "", pPartner As %String = "", pPassword As %String = "", pNamespace As %String = "") As %Status
+{
+    Set tOrigNS = $NAMESPACE
+    Set tSC = $$$OK
+    Try {
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
+        Set tCredential = ##class(Ens.Config.Credentials).%New()
+        Set tCredential.SystemName = pName
+        Set tCredential.Username = pUsername
+        Set tCredential.BusinessPartner = pPartner
+        If pPassword '= "" Set tSC = tCredential.PasswordSet(pPassword)
+        If $$$ISOK(tSC) Set tSC = tCredential.%Save()
+        Set tCredential = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The credential <var>pName</var> of <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty) as
+/// <code>username|partner|stored</code>, the last 1 when the vendor's password node holds something and 0 when it does not, or
+/// <code>&lt;absent&gt;</code> when the namespace does not hold it exactly. It reads only whether the node is empty and never holds what it holds
+/// (Story 24.15).</p>
+ClassMethod CredentialText(pName As %String, pNamespace As %String = "") As %String
+{
+    Set tOrigNS = $NAMESPACE
+    Set tText = "<absent>"
+    Try {
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
+        Set tCredential = ##class(Ens.Config.Credentials).%OpenId(pName)
+        If $IsObject(tCredential) Set tText = tCredential.Username _ "|" _ tCredential.BusinessPartner _ "|" _ ($Length($Get(^Ens.SecondaryData.Password(pName))) > 0)
+        Set tCredential = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tText = "<error " _ ex.DisplayString() _ ">"
+    }
+    Quit tText
+}
+
+/// <p>Whether the vendor holds a password node, empty or not, for <var>pName</var> in <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when
+/// empty): what a removal must leave none of (Story 24.15).</p>
+ClassMethod PasswordNode(pName As %String, pNamespace As %String = "") As %Boolean
+{
+    Set tOrigNS = $NAMESPACE
+    Set tHeld = 1
+    Try {
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
+        Set tHeld = ''$Data(^Ens.SecondaryData.Password(pName))
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tHeld
+}
+
+/// <p>How many credentials and password nodes of <var>pNamespace</var> (<parameter>NAMESPACE</parameter> when empty) are named with
+/// <var>pPrefix</var>, in any letter case (Story 24.15).</p>
+ClassMethod CredentialCount(pPrefix As %String, pNamespace As %String = "") As %Integer
+{
+    Set tOrigNS = $NAMESPACE
+    Set tCount = 0
+    Try {
+        Set $NAMESPACE = $Select(pNamespace '= "": pNamespace, 1: ..#NAMESPACE)
+        Set tName = ""
+        For {
+            Set tName = $Order(^Ens.Conf.CredentialsD(tName))
+            If tName = "" Quit
+            If $ZConvert($Extract(tName, 1, $Length(pPrefix)), "U") = $ZConvert(pPrefix, "U") Set tCount = tCount + 1
+        }
+        Set tName = ""
+        For {
+            Set tName = $Order(^Ens.SecondaryData.Password(tName))
+            If tName = "" Quit
+            If $ZConvert($Extract(tName, 1, $Length(pPrefix)), "U") = $ZConvert(pPrefix, "U") Set tCount = tCount + 1
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tCount = -1
+    }
+    Quit tCount
+}
+
+/// <p>Remove every credential, and every password node, named with <var>pPrefix</var>, in any letter case, from <parameter>NAMESPACE</parameter>
+/// and <parameter>OTHERNAMESPACE</parameter>, as the vendor's own delete does; no other credential is touched (Story 24.15).</p>
+ClassMethod DropCredentials(pPrefix As %String) As %Status
+{
+    Set tOrigNS = $NAMESPACE
+    Set tSC = $$$OK
+    For tNamespace = ..#NAMESPACE, ..#OTHERNAMESPACE {
+        Try {
+            Set $NAMESPACE = tNamespace
+            Kill tIds
+            Set tName = ""
+            For {
+                Set tName = $Order(^Ens.Conf.CredentialsD(tName))
+                If tName = "" Quit
+                If $ZConvert($Extract(tName, 1, $Length(pPrefix)), "U") = $ZConvert(pPrefix, "U") Set tIds($Increment(tIds)) = tName
+            }
+            For tI = 1:1:$Get(tIds) {
+                Set tSC = $$$ADDSC(tSC, ##class(Ens.Config.Credentials).%DeleteId(tIds(tI)))
+            }
+            Kill tNodes
+            Set tName = ""
+            For {
+                Set tName = $Order(^Ens.SecondaryData.Password(tName))
+                If tName = "" Quit
+                If $ZConvert($Extract(tName, 1, $Length(pPrefix)), "U") = $ZConvert(pPrefix, "U") Set tNodes($Increment(tNodes)) = tName
+            }
+            For tI = 1:1:$Get(tNodes) {
+                Kill ^Ens.SecondaryData.Password(tNodes(tI))
+            }
+            Set $NAMESPACE = tOrigNS
+        } Catch ex {
+            Set $NAMESPACE = tOrigNS
+            Set tSC = $$$ADDSC(tSC, ex.AsStatus())
+        }
+    }
+    Quit tSC
 }
 
 /// <p>Everything the lookup and partner reads must leave alone, as one SHA-256: the whole of <code>^Ens.LookupTable</code>

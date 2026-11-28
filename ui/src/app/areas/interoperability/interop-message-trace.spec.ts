@@ -262,7 +262,14 @@ describe('the message Trace block', () => {
     expect(links.map((link) => link.classList.contains('ocu-trace-error'))).toEqual([false, false, true, false]);
     const model = traceModel(SESSION);
     expect(links.map((link) => link.getAttribute('aria-label'))).toEqual(model.arrows.map((arrow) => arrowName(arrow)));
-    expect(links[2].getAttribute('aria-label')).toBe('Message 13: Response from Op to Proc, Error');
+    expect(links[2].getAttribute('aria-label')).toBe('Message 13 (no body) [ERROR]: Response from Op to Proc, Error');
+    links.forEach((link, index) => {
+      const name = link.getAttribute('aria-label') ?? '';
+      expect(name).toContain(model.arrows[index].id);
+      expect(name).toContain(model.arrows[index].label);
+      expect(name).toContain(link.querySelector('.ocu-trace-id')?.textContent ?? '\u0000');
+      expect(name).toContain(link.querySelector('.ocu-trace-label')?.textContent ?? '\u0000');
+    });
   });
 
   // Mutation (Rule 19): drop the template's `@else` branch (the loop path of a self call) -> the loop leg goes red; drop the arrowhead

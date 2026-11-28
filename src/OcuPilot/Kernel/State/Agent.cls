@@ -436,6 +436,19 @@ ClassMethod GuardedCredentialOwned(pName As %String, Output pOwned As %Boolean) 
     Quit tSC
 }
 
+/// <p>Whether an enabled definition of the <code>creds</code> rung names the credential <var>pName</var> in its
+/// <property>CredentialName</property>, matched exactly as the rung's own read opens the entry (Story 24.15). It reads the stored rows at the call: no
+/// value is kept between calls. An empty <var>pName</var> is named by nothing and is answered without a query; a failed read is the error status,
+/// and <var>pNamed</var> is then 0.</p>
+ClassMethod GuardedCredentialNamedByEnabled(pName As %String, Output pNamed As %Boolean) As %Status
+{
+    Set pNamed = 0
+    If pName = "" Quit $$$OK
+    Set tSC = ..GuardedIdsWhere("SELECT TOP 1 ID FROM OcuPilot_Kernel_State.Agent WHERE %EXACT(CredentialName) = ? AND Enabled = 1 AND %EXACT(CredType) = 'creds' ORDER BY ID", pName, .tIds)
+    If $$$ISOK(tSC) Set pNamed = ($Get(tIds(1)) '= "")
+    Quit tSC
+}
+
 /// <p>The version definition <var>pId</var> currently carries, or <code>""</code> when no row
 /// holds that id. The snapshot a caller that reads, does slow work and then writes hands back to
 /// <method>GuardedSetVerification</method>.</p>

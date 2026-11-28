@@ -18,12 +18,14 @@ import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page
 import { TaskEditorPage } from '../areas/tasks/task-editor.page';
 import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { InteropMessageHeaderPage } from '../areas/interoperability/interop-message-header.page';
-import { AuditPage } from '../areas/logs/audit.page';
+import { InteropMessageListPage } from '../areas/interoperability/interop-message-list.page';
 import { MappingFormPage } from '../areas/os-management/mapping-form.page';
 import { NamespaceListPage } from '../areas/os-management/namespace-list.page';
 import { ServiceEditorPage } from '../areas/permissions/service-editor.page';
 import { LdapEditorPage } from '../areas/security/ldap-editor.page';
 import { CodeListPage } from '../areas/system-explorer/code-list.page';
+import { SqlSchemaPage } from '../areas/system-explorer/sql-schema.page';
+import { SqlTablePage } from '../areas/system-explorer/sql-table.page';
 import { DetailPage } from './detail-page';
 import { ExternalPage } from './external-page';
 import { ListPage } from './list-page';
@@ -633,13 +635,21 @@ describe('the descriptor map (DW-369)', () => {
     }
   });
 
+  it('Story 21.25: a table Info tab and a schema Tables tab resolve to the pages that draw their writes', async () => {
+    // Mutation (Rule 19): drop ExplorerSqlSchema from `DESCRIPTOR_PAGES` -> it falls to the detail page and
+    // this goes red.
+    expect(await pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, 'OcuPilot.Screen.Descriptor.ExplorerSqlTable', 'detail'))).toBe(SqlTablePage);
+    expect(await pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, 'OcuPilot.Screen.Descriptor.ExplorerSqlSchema', 'detail'))).toBe(SqlSchemaPage);
+  });
+
   it('Story 20.31: a message\u2019s Header tab resolves to its own page, while the Messages search and the other tabs keep their archetypes\u2019', async () => {
     // Mutation (Rule 19): drop InteropMessageHeaderTab from `DESCRIPTOR_PAGES` -> the Header tab falls to the detail page and
     // neither of its actions has a page to register them.
     const resolve = (name: string, archetype: string) =>
       pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, `OcuPilot.Screen.Descriptor.${name}`, archetype));
     expect(await resolve('InteropMessageHeaderTab', 'detail')).toBe(InteropMessageHeaderPage);
-    expect(await resolve('InteropMessageList', 'list (server criteria)')).toBe(AuditPage);
+    // Story 24.16 Batch 3: the Messages search has a page of its own, which registers Export over the shared search page.
+    expect(await resolve('InteropMessageList', 'list (server criteria)')).toBe(InteropMessageListPage);
     expect(await resolve('InteropItemQueueTab', 'detail')).toBe(DetailPage);
   });
 

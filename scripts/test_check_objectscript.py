@@ -129,6 +129,54 @@ class TestVendorRootAdmittedInOneFile(FixtureTreeCase):
         )
 
 
+class TestVendorAtelierAdmittedInOneFile(FixtureTreeCase):
+    """`%Atelier` is a rename-checklist token, admitted in the source-code port alone (Story 21.38)."""
+
+    PORT = "src/OcuPilot/Port/AtelierPort.cls"
+    OTHER = "src/OcuPilot/Port/OtherPort.cls"
+
+    def body(self, name: str) -> str:
+        return (
+            f"Class OcuPilot.Port.{name} Extends %RegisteredObject\n"
+            '{\n\nParameter QUERY = "SELECT * FROM %Atelier_v1_Utils.Extension_AfterUserAction(?)";\n\n}\n'
+        )
+
+    def test_the_source_code_port_may_name_the_query(self):
+        self.write(self.PORT, self.body("AtelierPort"))
+        problems: list[str] = []
+        co.check_rename_tokens(problems)
+        self.assertEqual(problems, [], f"expected the port admitted, got {problems}")
+
+    def test_any_other_file_naming_it_is_refused(self):
+        self.write(self.OTHER, self.body("OtherPort"))
+        problems: list[str] = []
+        co.check_rename_tokens(problems)
+        self.assertTrue(
+            any("OtherPort.cls" in p and "%Atelier" in p for p in problems),
+            f"expected the other file refused, got {problems}",
+        )
+
+    def test_a_file_whose_name_extends_the_ports_is_refused(self):
+        self.write("src/OcuPilot/Port/AtelierPortX.cls", self.body("AtelierPortX"))
+        problems: list[str] = []
+        co.check_rename_tokens(problems)
+        self.assertTrue(
+            any("AtelierPortX.cls" in p and "%Atelier" in p for p in problems),
+            f"expected the prefix-named file refused, got {problems}",
+        )
+
+    def test_a_file_in_a_directory_named_like_the_port_is_refused(self):
+        self.write("src/OcuPilot/Port/AtelierPort/AtelierPort.cls", self.body("AtelierPort"))
+        self.write("src/OcuPilot/Port/AtelierTools/Helper.cls", self.body("Helper"))
+        problems: list[str] = []
+        co.check_rename_tokens(problems)
+        for rel in ("Port/AtelierPort/AtelierPort.cls", "Port/AtelierTools/Helper.cls"):
+            self.assertTrue(
+                any(rel in p and "%Atelier" in p for p in problems),
+                f"expected {rel} refused, got {problems}",
+            )
+
+
 class TestNamingCapScopedToStorageClasses(FixtureTreeCase):
     """The rescoped `MAX_CLASS_NAME_LENGTH` cap (Consistency Conventions, 2026-09-12): binds a
     class that gets a data global -- extends `%Persistent`, directly or transitively through
@@ -760,6 +808,58 @@ class TestEscalationContainmentAdmitsTheTargetKeyStep(FixtureTreeCase):
         co.check_escalation_containment(problems)
         self.assertEqual(len(problems), 1, f"expected the later method alone refused, got {problems}")
         self.assertIn("Installer.cls:12:", problems[0])
+
+
+class TestEscalationContainmentAdmitsThePurgeFrame(FixtureTreeCase):
+    """Story 24.16: `New $ROLES` is accepted in the interoperability port's `PurgeFrame` alone, which contains the roles the vendor's bitmap cleanup adds."""
+
+    PORT = "src/OcuPilot/Port/InteropPort.cls"
+
+    def port(self, body: str, method: str = "PurgeFrame", path: str = PORT) -> list[str]:
+        self.write(
+            path,
+            "Class OcuPilot.Port.InteropPort Extends %RegisteredObject\n{\n\n"
+            f"ClassMethod {method}() As %Status\n{{\n{body}\n    Quit $$$OK\n}}\n\n}}\n",
+        )
+        problems: list[str] = []
+        co.check_escalation_containment(problems)
+        return problems
+
+    def test_new_roles_in_the_purge_frame_is_accepted(self):
+        self.assertEqual(self.port("    New $ROLES"), [])
+
+    def test_new_roles_in_another_port_method_is_refused(self):
+        problems = self.port("    New $ROLES", method="PerformPurge")
+        self.assertTrue(any("InteropPort.cls" in p for p in problems), f"expected a refusal, got {problems}")
+
+    def test_add_roles_in_the_purge_frame_is_refused(self):
+        problems = self.port("    Set tSC = $SYSTEM.Security.AddRoles(\"OcuPilotState\")")
+        self.assertTrue(problems, "AddRoles is refused in the purge frame as it is everywhere else")
+
+    def test_new_roles_in_a_same_named_method_of_another_file_is_refused(self):
+        problems = self.port("    New $ROLES", path="src/OcuPilot/Port/OtherPort.cls")
+        self.assertTrue(any("OtherPort.cls" in p for p in problems), f"expected a refusal, got {problems}")
+
+    def after_the_frame(self, member: str) -> list[str]:
+        self.write(
+            self.PORT,
+            "Class OcuPilot.Port.InteropPort Extends %RegisteredObject\n{\n\n"
+            "ClassMethod PurgeFrame() As %Status\n{\n    New $ROLES\n    Quit $$$OK\n}\n\n"
+            f"{member}\n{{\n    New $ROLES\n    Quit $$$OK\n}}\n\n}}\n",
+        )
+        problems: list[str] = []
+        co.check_escalation_containment(problems)
+        return problems
+
+    def test_new_roles_in_a_method_after_the_purge_frame_is_refused(self):
+        problems = self.after_the_frame("ClassMethod PerformPurge() As %Status")
+        self.assertEqual(len(problems), 1, f"expected one refusal, on the second method, got {problems}")
+        self.assertIn("InteropPort.cls:12:", problems[0])
+
+    def test_new_roles_in_a_trigger_after_the_purge_frame_is_refused(self):
+        problems = self.after_the_frame("Trigger PurgeLog [ Event = INSERT ]")
+        self.assertEqual(len(problems), 1, f"expected one refusal, on the trigger, got {problems}")
+        self.assertIn("InteropPort.cls:12:", problems[0])
 
 
 class TestHandlerWireTestRule(FixtureTreeCase):
@@ -2697,6 +2797,110 @@ class TestDestructiveTestGuardRealClass(unittest.TestCase):
         wires = {wire for _, wire in co.marking_tools()}
         for wire in ("security.auditing.update", "security.audituserevents.update"):
             self.assertIn(wire, wires, f"expected {wire} among the shipped marking tools, got {sorted(wires)}")
+
+
+class TestParameterExpressionsNameOnlyDependedClasses(FixtureTreeCase):
+    """A column-0 `Parameter X = {...}` naming a project class needs that class in `DependsOn` or
+    `Extends` (rule 2, called from `check_naming`)."""
+
+    FIXTURE = "OcuPilot.Test.InteropResendFixture"
+    PATH = "src/OcuPilot/Test/InteropEditResend.cls"
+
+    def write_fixture_class(self) -> None:
+        self.write(
+            "src/OcuPilot/Test/InteropResendFixture.cls",
+            "Class OcuPilot.Test.InteropResendFixture Extends %RegisteredObject\n"
+            '{\n\nParameter BODYCLASS = "OcuPilot.Test.Body";\n\n}\n',
+        )
+
+    def write_parent(self) -> None:
+        self.write(
+            "src/OcuPilot/Test/InteropResendCase.cls",
+            "Class OcuPilot.Test.InteropResendCase Extends %RegisteredObject\n"
+            f'{{\n\nParameter FIXTURE = "{self.FIXTURE}";\n\n}}\n',
+        )
+
+    def write_resend(self, keywords: str, expression: str, extends: str = "OcuPilot.Test.InteropResendCase") -> None:
+        self.write(
+            self.PATH,
+            f"Class OcuPilot.Test.InteropEditResend Extends {extends}{keywords}\n"
+            "{\n\n"
+            f"Parameter BODYCLASS = {{{expression}}};\n\n"
+            "}\n",
+        )
+
+    def problems(self) -> list[str]:
+        found: list[str] = []
+        co.check_naming(found)
+        return found
+
+    def test_a_class_without_dependson_is_flagged(self):
+        self.write_fixture_class()
+        self.write_parent()
+        self.write_resend("", f'$Parameter("{self.FIXTURE}", "BODYCLASS")')
+        found = self.problems()
+        self.assertTrue(
+            any("InteropEditResend.cls:4" in p and "'BODYCLASS'" in p and self.FIXTURE in p for p in found),
+            f"expected the class and the parameter named, got {found}",
+        )
+
+    def test_a_class_naming_it_in_dependson_is_clean(self):
+        self.write_fixture_class()
+        self.write_parent()
+        self.write_resend(f" [ DependsOn = {self.FIXTURE} ]", f'$Parameter("{self.FIXTURE}", "BODYCLASS")')
+        self.assertEqual(self.problems(), [])
+
+    def test_a_class_naming_it_in_extends_is_clean(self):
+        self.write_fixture_class()
+        self.write_resend("", '##class(OcuPilot.Test.InteropResendFixture).#BODYCLASS', extends=self.FIXTURE)
+        self.assertEqual(self.problems(), [])
+
+    def test_a_held_class_name_is_resolved_through_the_superclass_and_flagged(self):
+        self.write_fixture_class()
+        self.write_parent()
+        self.write_resend("", '$Parameter(..#FIXTURE, "BODYCLASS")')
+        found = self.problems()
+        self.assertTrue(
+            any("(through ..#FIXTURE)" in p and self.FIXTURE in p for p in found),
+            f"expected the resolved class named, got {found}",
+        )
+
+    def test_a_held_class_name_that_resolves_to_a_depended_class_is_clean(self):
+        self.write_fixture_class()
+        self.write_parent()
+        self.write_resend(f" [ DependsOn = ({self.FIXTURE}) ]", '$Parameter(..#FIXTURE, "BODYCLASS")')
+        self.assertEqual(self.problems(), [])
+
+    def test_a_held_class_name_no_class_declares_is_flagged(self):
+        self.write_fixture_class()
+        self.write_resend("", '$Parameter(..#FIXTURE, "BODYCLASS")', extends="%RegisteredObject")
+        found = self.problems()
+        self.assertTrue(any("..#FIXTURE" in p and "no class in its Extends chain" in p for p in found), found)
+
+    def test_a_vendor_class_and_a_string_that_looks_like_a_call_are_not_flagged(self):
+        self.write_resend("", '"##class(OcuPilot.Test.Nowhere)" _ ##class(%SYSTEM.Version).GetNumber()', extends="%RegisteredObject")
+        self.assertEqual(self.problems(), [])
+
+
+class TestShippedParameterExpressions(unittest.TestCase):
+    """The rule over the real tree, which is the population it protects."""
+
+    def test_the_shipped_tree_names_no_undepended_class(self):
+        problems: list[str] = []
+        co.check_parameter_dependencies(problems)
+        self.assertEqual(problems, [])
+
+    def test_the_shipped_tree_has_expressions_naming_project_classes_to_judge(self):
+        classes = co.read_parameter_classes()
+        judged = 0
+        for name, info in classes.items():
+            for m in co.PARAMETER_EXPRESSION_RE.finditer(info["text"]):
+                end = co.expression_end(info["text"], m.end())
+                expression = info["text"][m.end() : end]
+                judged += len(co.PARAMETER_CLASS_REF_RE.findall(expression))
+        self.assertGreater(judged, 20, "expected the shipped expressions that name a class to be read, not skipped")
+        resend = classes["OcuPilot.Test.InteropEditResend"]
+        self.assertIn("OcuPilot.Test.InteropResendFixture", resend["depends"])
 
 
 if __name__ == "__main__":

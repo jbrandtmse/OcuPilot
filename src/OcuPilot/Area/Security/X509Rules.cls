@@ -288,12 +288,7 @@ ClassMethod Taken(pAlias As %String, Output pTaken As %Boolean) As %Status
 {
     Set pTaken = 0
     Set tSC = ..Read(..#IMPORTTOOL, pAlias, "", .tFresh, .tHttp, .tFault)
-    If $$$ISERR(tSC) {
-        If +$Get(tHttp) = 404 Quit $$$OK
-        Quit tSC
-    }
-    Set pTaken = ($IsObject(tFresh) && tFresh.%IsA("%Library.DynamicObject"))
-    Quit $$$OK
+    Quit ##class(OcuPilot.Kernel.Proposal.ScreenSaveRules).ReadTaken(tSC, $Get(tHttp), $Get(tFresh), .pTaken)
 }
 
 /// <p>The present credential <var>pAlias</var>, read through the edit tool's own port, endpoint and

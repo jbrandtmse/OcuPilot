@@ -105,6 +105,9 @@ const NAMESPACE_ENTITY_TYPE = 'namespace';
 /** A screen's adjusted permissions (AD-64, Story 20.15): a change to any of them moves the map's verdicts. */
 const SCREEN_PERMISSION_ENTITY_TYPE = 'screen-permission';
 
+/** A classic page's custom resource (AD-44, Story 21.37): a screen that declares the page follows it, so a change moves the map's verdicts. */
+const PAGE_RESOURCE_ENTITY_TYPE = 'page-resource';
+
 /**
  * The areas of `areas` that apply in the namespace the map was read for, in their order. An area
  * that declares no `appliesWhen` always applies. Applicability is not a privilege gate (AD-8,
@@ -340,10 +343,15 @@ export function listForDocumentScreen(screen: ScreenDeclaration): ScreenDeclarat
  * parent naming both a per-row detail screen and a sub-resource list -- Task schedule's Task
  * details and its per-task History both declare `parentScope` `tasks/schedule` -- resolves each
  * through its own function rather than this one picking whichever sorts first.
+ *
+ * **A `log-viewer` child answers only when no other child does** (Story 21.36): Task schedule's
+ * History and its Task output both declare it as their parent, and the History list is the one its
+ * name links resolve to; a viewer reached from a link of its own is never the list's sub-resource list.
  */
 export function childListFor(screen: ScreenDeclaration): ScreenDeclaration | null {
   if (screen.route === '') return null;
-  return SCREENS.find((child) => isChildListOf(child, screen)) ?? null;
+  const children = SCREENS.filter((child) => isChildListOf(child, screen));
+  return children.find((child) => child.archetype !== 'log-viewer') ?? children[0] ?? null;
 }
 
 /**
@@ -1219,7 +1227,7 @@ export class NavigationService {
    */
   private onChange(event: ChangeEvent): void {
     if (event.kind !== 'changed') return;
-    if (event.type === SCREEN_PERMISSION_ENTITY_TYPE) {
+    if (event.type === SCREEN_PERMISSION_ENTITY_TYPE || event.type === PAGE_RESOURCE_ENTITY_TYPE) {
       this.reload();
       return;
     }

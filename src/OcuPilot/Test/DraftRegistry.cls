@@ -43,7 +43,7 @@ Parameter TARGETID = "OcuPilotDraftSource/OcuPilotDraftType/OcuPilotDraftName";
 /// <p>The entity types whose port splits the target id into its composite parts, comma-separated
 /// (Story 18.14's mappings, keyed <code>[namespace, Name]</code>): their synthetic id is
 /// <parameter>SPLITTARGETID</parameter>, since a port answers no step for an id it cannot split.</p>
-Parameter SPLITTARGETS = "global-mapping,routine-mapping,package-mapping,docdb-application";
+Parameter SPLITTARGETS = "global-mapping,routine-mapping,package-mapping,docdb-application,interop-workflow-member";
 
 /// <p>The parts of the synthetic id a <parameter>SPLITTARGETS</parameter> type is given, joined as
 /// a composite.</p>
@@ -56,8 +56,8 @@ Parameter PCTTARGETID = "all-applications,AllowClass,%Utility.Example";
 /// <code>&lt;type&gt;=&lt;id&gt;</code> entries separated by <code>;</code>: a <code>process</code>
 /// id is a pid set, which the broadcast's port refuses to compose from anything else (Story
 /// 16.6); a <code>lock</code> id is a <code>DeleteID</code>, whose third piece names its owner (Story
-/// 16.12); a <code>superserver</code> id is a port whose bind address reads as every interface (Story 18.25); a <code>rest-service</code> id is a package name with no slash, which the port's create accepts (Story 18.32); an SQL Shell, TSQL or ISQL setting id is a name on the port's roster, which renders no script for any other (Story 21.4); an NLS default id is the locale-format switch, the one default the port renders a script for (Story 21.14).</p>
-Parameter TYPEDTARGETIDS = "process=812,907;lock=313131008,13,P905,;superserver=21825;rest-service=OcuDraftRest;sql-shell-setting=SelectMode;tsql-setting=ANSI_NULLS;isql-setting=DELIMIDENT;nls-default=LocaleFormat;system-security-setting=InactiveLimit;task-mail-setting=Port";
+/// 16.12); a <code>superserver</code> id is a port whose bind address reads as every interface (Story 18.25); a <code>rest-service</code> id is a package name with no slash, which the port's create accepts (Story 18.32); an SQL Shell, TSQL or ISQL setting id is a name on the port's roster, which renders no script for any other (Story 21.4); an NLS default id is the locale-format switch, the one default the port renders a script for (Story 21.14); a PMML model id is a class and a model name, which the export's script reads (Story 24.14).</p>
+Parameter TYPEDTARGETIDS = "process=812,907;lock=313131008,13,P905,;superserver=21825;rest-service=OcuDraftRest;sql-shell-setting=SelectMode;sql-runtime-stats-setting=CollectionLevel;tsql-setting=ANSI_NULLS;isql-setting=DELIMIDENT;nls-default=LocaleFormat;system-security-setting=InactiveLimit;task-mail-setting=Port;pmml-model=Draft.Probe||Model;interop-purge-setting=Description;interop-message=12;interop-archive-setting=Number of days before archiving;interop-managed-alert=2417;interop-workflow-task=20001;interop-hl7-schema=OcuDraftHl7";
 /// <p>The fields a tool's declared port adds to its fresh read, which its stored payload therefore
 /// carries, as <code>tool=field</code> entries, comma-separated (Story 18.3's file edit: the database
 /// port answers the configuration's directory for a file read by name, and the script addresses
@@ -67,8 +67,8 @@ Parameter PORTREADFIELDS = "osmgmt.localdatabases.update=Directory";
 /// <p>The value a tool's one enum argument takes in its stored payload, where a probe string would name
 /// no member and its port would render no step, as <code>tool=field:value</code> entries,
 /// comma-separated (Story 18.20's status change: the port builds <code>{Action}</code> from
-/// <code>Status</code>).</p>
-Parameter ARGUMENTVALUES = "osmgmt.ecpdataservers.changestatus=Status:disabled";
+/// <code>Status</code>; Story 24.14's export: its script renders no step for a source or a class name its port's shape checks refuse, so the probe names a dataset, two classes and a cube and leaves the SQL and the class to link to empty).</p>
+Parameter ARGUMENTVALUES = "explorer.sqlruntimestatssettings.set=Value:On for all modules,explorer.sqlindexanalysis.run=Report:TS,osmgmt.ecpdataservers.changestatus=Status:disabled,analytics.pmmlmodel.export=Source:dataset,analytics.pmmlmodel.export=SQL:,analytics.pmmlmodel.export=SourceClass:,analytics.pmmlmodel.export=ResultClass:Draft.Result,analytics.pmmlmodel.export=CubeClass:Draft.Cube,analytics.pmmlmodel.export=Cube:DraftCube,interop.purge.run=DaysToKeep:30,interop.rulelog.purge=DaysToKeep:30,interop.processlog.purge=DaysToKeep:30,interop.messages.export=Separator:CRLF,interop.messages.export=Charset:UTF8,interop.archivesettings.set=Value:90,interop.managedalerts.update=Reason:Draft,interop.managedalerts.update=Open:0,interop.managedalerts.update=EscalationLevel:,interop.managedalerts.update=NextActionMinutes:,interop.workflowtasks.assign=Priority:3,interop.workflowtasks.assign=User:OcuDraftUser";
 
 /// <p>The tools whose port resolves the synthetic target against the instance and refuses it, so the
 /// script is the refusal's one <code>comment</code> step and carries no secret, comma-separated (Story
@@ -83,6 +83,15 @@ Parameter ARGUMENTVALUES = "osmgmt.ecpdataservers.changestatus=Status:disabled";
 /// Story 21.15's locale import reads the file its script writes the records of, so a synthetic file is refused; its script is pinned against a real file by
 /// <method>OcuPilot.Test.LocaleImportRules.TestAnImportAndAnExportRenderTheirScript</method>.</p>
 Parameter REFUSEDDRAFTS = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator,security.databaseencryption.activate,security.dataelementencryption.activate,security.encryptionstartup.update,osmgmt.locales.import";
+
+/// <p>The write tools that have no draft, comma-separated: a person's answer to a source-control question (Story 21.38), reached by the person's own action alone, never
+/// minted, carded or offered to the agent. <method>TestEveryWriteToolHasAScriptForm</method> holds each to being unadvertised and to its port naming no script form for it,
+/// so a tool the agent can reach never hides here.</p>
+Parameter NODRAFTTOOLS = "explorer.classes.answer,explorer.routines.answer";
+
+/// <p>The secrets a screen declares that one of its tools never sends, as <code>&lt;tool&gt;=&lt;name&gt;</code> entries, comma-separated: the tool's synthetic row carries no
+/// probe for one, since its own write sends a body that has no such member (Story 21.36: Task Manager email's setting set beside the mail password's tool).</p>
+Parameter UNSENTSECRETS = "tasks.mail.set=AuthPassword,interop.credentials.update=Password,interop.credentials.remove=Password";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -111,6 +120,7 @@ ClassMethod WriteTools(Output pTools, Output pCount As %Integer) As %Status
     Set tIterator = tList.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tTool) {
         If tTool.%Get("kind") '= "write" Continue
+        If $ListFind($ListFromString(..#NODRAFTTOOLS), tTool.%Get("name")) Continue
         Set pTools(tTool.%Get("name")) = tTool
         Set pCount = pCount + 1
     }
@@ -165,6 +175,20 @@ Method TestEveryWriteToolHasAScriptForm()
         If (..Origin(tClass, "AfterWrite") '= ..#WRITEBASE) && (..Origin(tClass, "SnippetAfter") = "") Set tMissing = tMissing _ "; " _ tName _ " (overrides AfterWrite and defines no SnippetAfter)"
     }
     Do $$$AssertEquals(tMissing, "", "every write tool has a script form" _ tMissing)
+    Set tExempt = $ListFromString(..#NODRAFTTOOLS)
+    Set tNotExempt = ""
+    Set tFound = 0
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).ListTools(.tAll), "the registry lists its tools again")
+    Set tIterator = tAll.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tTool) {
+        If '$ListFind(tExempt, tTool.%Get("name")) Continue
+        Set tFound = tFound + 1
+        Set tClass = tTool.%Get("class")
+        Set tPort = ##class(OcuPilot.Kernel.Proposal.Operation).PortClassOf(tClass, ..#DEFAULTPORT)
+        If ($ClassMethod(tClass, "Advertised") '= 0) || ($ClassMethod(tPort, "SnippetForm", $ClassMethod(tClass, "Endpoint"), ##class(OcuPilot.Kernel.Proposal.Operation).WriteType(tClass)) '= "") Set tNotExempt = tNotExempt _ " " _ tTool.%Get("name")
+    }
+    Do $$$AssertEquals(tFound, $ListLength(tExempt), "every tool NODRAFTTOOLS names is registered")
+    Do $$$AssertEquals(tNotExempt, "", "and each is unadvertised and has no script form, so none the agent can reach is exempt")
 }
 
 /// <p>The class that defines <var>pClass</var>'s compiled method <var>pMethod</var>, or
@@ -287,6 +311,7 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
     If '$ListValid(tComposed) Set tComposed = ""
     Set tDiff = []
     For tI = 1:1:$ListLength(tSecrets) {
+        If $ListFind($ListFromString(..#UNSENTSECRETS), pTool.%Get("name") _ "=" _ $List(tSecrets, tI)) Continue
         If $ListFind(tComposed, $List(tSecrets, tI)) {
             Do tDiff.%Push({"field": ($List(tSecrets, tI)), "before": "", "after": ""})
             Continue

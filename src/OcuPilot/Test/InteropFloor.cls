@@ -4,7 +4,7 @@
 /// <method>Tools</method> declare for it, and is refused every other surface naming the pair it
 /// lacks. Derived legs hold the rosters: every screen opened replaces a classic page whose compiled
 /// <code>RESOURCE</code> the principal holds a declared pair of, and no principal holds a write
-/// tool. The routes are <class>OcuPilot.Test.InteropFloorRoutes</class>', the turn
+/// tool beyond <parameter>ADMINISTRATORWRITES</parameter>. The routes are <class>OcuPilot.Test.InteropFloorRoutes</class>', the turn
 /// <class>OcuPilot.Test.InteropFloorTurn</class>'s, and the pair every surface declares
 /// <class>OcuPilot.Test.InteropFloorOwnPairs</class>'.</p>
 /// <p>It needs <parameter>ARMINGVARIABLE</parameter> armed: <class>OcuPilot.Test.InteropFloorFixture</class>
@@ -39,17 +39,19 @@ Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";
 /// <p>What the <code>%Ens_Portal</code> holder and the Monitor role open on the floor alone: the
 /// agent's owner-scoped screens, Home (an empty classic <code>RESOURCE</code>), the analytics log
 /// (the public <code>%DeepSee_Portal</code>), Analytics' Cubes with its three tabs (Story 20.11), whose one pair is that
-/// public one, and Analytics' User Portal link (Story 20.32), whose one pair it is too. These principals hold no
+/// public one, Analytics' User Portal link (Story 20.32), whose one pair it is too, and the Workflow tasks and Workflow worklist screens (Story 24.17 Batch 4), whose classic pages
+/// declare no resource and so admit the portal's pair alone. These principals hold no
 /// <code>%Development:USE</code>, so they do not open Folder items, none holds <code>%DeepSee_PortalEdit:USE</code>, so none
 /// opens Term lists, and none holds <code>%DeepSee_Architect:USE</code> or <code>%DeepSee_Analyzer:USE</code>, so none opens
 /// the Architect or Analyzer links.</p>
-Parameter BASESCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,AnalyticsCubeDimensionsTab,AnalyticsCubeList,AnalyticsCubeMeasuresTab,AnalyticsCubeRelationshipsTab,AnalyticsUserPortalLink,Home,LogAnalyticsViewer";
+Parameter BASESCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,AnalyticsCubeDimensionsTab,AnalyticsCubeList,AnalyticsCubeMeasuresTab,AnalyticsCubeRelationshipsTab,AnalyticsUserPortalLink,Home,InteropWorkflowTaskList,InteropWorkflowWorklist,LogAnalyticsViewer";
+
+/// <p>See <parameter>BASESCREENS</parameter>. The Interoperability area is here for the two workflow screens (Story 24.17 Batch 4), whose classic pages declare no resource beyond
+/// <code>%Ens_Portal:USE</code>.</p>
+Parameter BASEAREAS = "agent,analytics,home,interoperability,logs";
 
 /// <p>See <parameter>BASESCREENS</parameter>.</p>
-Parameter BASEAREAS = "agent,analytics,home,logs";
-
-/// <p>See <parameter>BASESCREENS</parameter>.</p>
-Parameter BASETOOLS = "agent.transcripts.read,analytics.cubedimensions.read,analytics.cubemeasures.read,analytics.cuberelationships.read,analytics.cubes.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open,shell.tools.find";
+Parameter BASETOOLS = "agent.transcripts.read,analytics.cubedimensions.read,analytics.cubemeasures.read,analytics.cuberelationships.read,analytics.cubes.read,interop.workflowtasks.read,interop.workflowworklist.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open,shell.tools.find";
 
 /// <p>What the Monitor role adds: the Production monitor, through the <code>%Ens_Dashboard:USE</code> the role holds (Story
 /// 20.4). The Operator and Administrator roles hold it too.</p>
@@ -60,28 +62,39 @@ Parameter MONITORTOOLS = "interop.monitor.read";
 
 /// <p>What the Operator role adds beside the Monitor's: Productions and its Production items list, the item's tabs
 /// (Status, Item settings, Queue, Log, Messages and Jobs) and Queues with Queue messages and Jobs, and Lookup tables with a
-/// table's entries and Business partners (Story 20.5), through <code>%Ens_ProductionConfig:READ</code>,
+/// table's entries and Business partners (Story 20.5), and System default settings with Compare default settings (Story 24.15, through
+/// <code>%Ens_SystemDefaultConfig:READ</code>, which the Operator holds), and Workflow users (Story 24.17 Batch 3a, through <code>%Ens_WorkflowConfig:READ</code>, which the Operator also
+/// holds), and Schedule specs (Story 24.15), through <code>%Ens_ProductionConfig:READ</code>,
 /// <code>%Ens_Queues:READ</code>, <code>%Ens_Jobs:READ</code>, <code>%Ens_EventLog:USE</code>,
 /// <code>%Ens_MessageHeader:USE</code> and <code>%Ens_LookupTables:READ</code>, and the event log through
 /// <code>%Ens_EventLog:USE</code>. The Configuration diagram (Story 20.8) opens through the
 /// <code>%Ens_ProductionConfig:READ</code> the Productions list needs. Messages and a message's Header tab (Story 20.9) open
 /// through the <code>%Ens_MessageHeader:USE</code> the role holds, and a message's Trace tab (Story 20.30) through the
 /// <code>%Ens_MessageTrace:USE</code> it also holds.</p>
-Parameter OPERATORSCREENS = "InteropBusinessPartnerList,InteropItemJobTab,InteropItemList,InteropItemLogTab,InteropItemMessageTab,InteropItemQueueTab,InteropItemSettingList,InteropItemStatusTab,InteropJobList,InteropLookupEntryList,InteropLookupTableList,InteropMessageHeaderTab,InteropMessageList,InteropMessageTraceTab,InteropProductionDiagram,InteropProductionList,InteropQueueList,InteropQueueMessageList,LogEventViewer";
+Parameter OPERATORSCREENS = "InteropBusinessPartnerList,InteropCredentialList,InteropDefaultSettingDiff,InteropDefaultSettingList,InteropItemJobTab,InteropItemList,InteropItemLogTab,InteropItemMessageTab,InteropItemQueueTab,InteropItemSettingList,InteropItemStatusTab,InteropJobList,InteropLookupEntryList,InteropLookupTableList,InteropManagedAlertHistory,InteropManagedAlertList,InteropMessageHeaderTab,InteropMessageList,InteropMessageTraceTab,InteropProcessLogList,InteropProductionDiagram,InteropProductionList,InteropQueueList,InteropQueueMessageList,InteropRuleLogList,InteropScheduleList,InteropSuspendedMessageList,InteropWorkflowMemberList,InteropWorkflowRoleList,InteropWorkflowUserList,LogEventViewer";
 
 /// <p>See <parameter>OPERATORSCREENS</parameter>.</p>
-Parameter OPERATORTOOLS = "interop.businesspartners.read,interop.itemjobs.read,interop.itemlog.read,interop.itemmessages.read,interop.itemqueue.read,interop.items.read,interop.itemsettings.read,interop.itemstatus.read,interop.jobs.read,interop.lookupentries.read,interop.lookuptables.read,interop.messageheader.read,interop.messages.read,interop.messagetrace.read,interop.productions.read,interop.queuemessages.read,interop.queues.read,interop.session.headers,interop.session.summary,interop.session.timeline,interop.sessions.bybodyclass,interop.sessions.byclass,interop.sessions.byid,interop.sessions.bysource,interop.sessions.bystatus,interop.sessions.bysupersession,interop.sessions.bytarget,interop.sessions.bytime,interop.sessions.related,logs.eventlog.read";
+Parameter OPERATORTOOLS = "interop.businesspartners.read,interop.credentials.read,interop.defaultsettings.read,interop.defaultsettingsdiff.read,interop.itemjobs.read,interop.itemlog.read,interop.itemmessages.read,interop.itemqueue.read,interop.items.read,interop.itemsettings.read,interop.itemstatus.read,interop.jobs.read,interop.lookupentries.read,interop.lookuptables.read,interop.managedalerthistory.read,interop.managedalerts.read,interop.messageheader.read,interop.messages.read,interop.messagetrace.read,interop.processlog.read,interop.productions.read,interop.queuemessages.read,interop.queues.read,interop.rulelog.read,interop.schedules.read,interop.session.headers,interop.session.summary,interop.session.timeline,interop.sessions.bybodyclass,interop.sessions.byclass,interop.sessions.byid,interop.sessions.bysource,interop.sessions.bystatus,interop.sessions.bysupersession,interop.sessions.bytarget,interop.sessions.bytime,interop.sessions.related,interop.suspendedmessages.read,interop.workflowmembers.read,interop.workflowroles.read,interop.workflowusers.read,logs.eventlog.read";
 
-/// <p>What the Administrator role adds beside the Operator's: the three code lists and the rule, BPL and DTL editor
+/// <p>What the Administrator role adds beside the Operator's: the Archive manager, Archive settings and Archive errors screens (Story 24.16 Batch 4), through the
+/// <code>%Ens_ArchiveManager:READ</code> the role holds and the Operator and Monitor roles do not (measured), Purge management data and Purge data settings (Story 24.16), through the
+/// <code>%Ens_Purge:USE</code> and <code>%Ens_PurgeSettings:WRITE</code> the role holds and the Operator and Monitor roles do not, the three code lists and the rule, BPL and DTL editor
 /// screens (Story 20.7), each through its own <code>%Ens_Code:READ</code>, and an item's Test tab (Story 20.6) through the <code>%Ens_TestingService:USE</code> the
 /// role holds (measured at that story's plan: <code>%EnsRole_Administrator</code> holds <code>%Ens_TestingService:U</code>, the
 /// Operator and Monitor roles do not), and the Schema viewer (Story 20.8) through the <code>%Ens_EDISchema:READ</code> the
 /// Administrator role holds and the Operator and Monitor roles do not, and a message's Contents tab (Story 20.9) through the
 /// <code>%Ens_MessageContent:USE</code> the Administrator role holds and the Operator role does not.</p>
-Parameter ADMINISTRATORSCREENS = "InteropItemClassTab,InteropItemTestTab,InteropMessageContentsTab,InteropProcessEditor,InteropProcessList,InteropRuleEditor,InteropRuleList,InteropSchemaViewer,InteropTransformEditor,InteropTransformList";
+Parameter ADMINISTRATORSCREENS = "InteropArchiveErrorList,InteropArchiveList,InteropArchiveSettingList,InteropHl7SchemaList,InteropItemClassTab,InteropItemTestTab,InteropMessageContentsTab,InteropProcessEditor,InteropProcessList,InteropPurgeList,InteropPurgeSettingList,InteropRuleEditor,InteropRuleList,InteropSchemaViewer,InteropTransformEditor,InteropTransformList";
 
 /// <p>See <parameter>ADMINISTRATORSCREENS</parameter>.</p>
-Parameter ADMINISTRATORTOOLS = "interop.itemclasses.read,interop.itemtest.read,interop.message.body,interop.message.detail,interop.messagecontents.read,interop.processes.read,interop.rules.read,interop.transforms.read";
+Parameter ADMINISTRATORTOOLS = "interop.archive.read,interop.archiveerrors.read,interop.archivesettings.read,interop.hl7schemas.read,interop.itemclasses.read,interop.itemtest.read,interop.message.body,interop.message.detail,interop.messagecontents.read,interop.processes.read,interop.purge.read,interop.purgesettings.read,interop.rules.read,interop.transforms.read";
+
+/// <p>The write tools whose declared pairs the Administrator principal holds in full, each one parity with a classic page that opens for that role:
+/// <code>interop.messages.export</code>, whose classic Export dialog checks <code>%Ens_MessageExport:USE</code> beside the Message Viewer's
+/// <code>%Ens_MessageHeader:USE</code>, both of which the role holds, and which declares READ alone on the globals database; and <code>interop.hl7schemas.export</code>
+/// (Story 24.18), whose classic page checks <code>%Ens_EDISchema:READ</code> alone, which the role holds, and which also declares READ alone. Any other write tool
+/// whose pairs this principal holds turns <method>TestTheToolsEachPrincipalHoldsAreItsRoster</method> red.</p>
+Parameter ADMINISTRATORWRITES = "interop.hl7schemas.export,interop.messages.export";
 
 /// <p>The principals' password for this run.</p>
 Property PreparedPassword As %String;
@@ -141,7 +154,7 @@ Method OnAfterAllTests() As %Status
 /// <p>The areas the map opens to kind <var>pKind</var>.</p>
 ClassMethod Areas(pKind As %String) As %String
 {
-    Quit ..#BASEAREAS _ $Select($ListFind($ListBuild("monitor", "operator", "administrator"), pKind): ",interoperability", 1: "")
+    Quit ..#BASEAREAS
 }
 
 /// <p>The screens the map opens to kind <var>pKind</var>.</p>
@@ -160,7 +173,7 @@ ClassMethod Tools(pKind As %String) As %String
     Set tList = ..#BASETOOLS
     If $ListFind($ListBuild("monitor", "operator", "administrator"), pKind) Set tList = tList _ "," _ ..#MONITORTOOLS
     If $ListFind($ListBuild("operator", "administrator"), pKind) Set tList = tList _ "," _ ..#OPERATORTOOLS
-    If pKind = "administrator" Set tList = tList _ "," _ ..#ADMINISTRATORTOOLS
+    If pKind = "administrator" Set tList = tList _ "," _ ..#ADMINISTRATORTOOLS _ "," _ ..#ADMINISTRATORWRITES
     Quit tList
 }
 
@@ -487,9 +500,10 @@ Method TestEveryOpenScreenMatchesItsClassicPage()
 }
 
 /// <p><b>Tools.</b> Of every tool the registry lists, the ones whose required pairs each principal
-/// holds are exactly its <method>Tools</method> roster, and none of them is a write tool.</p>
+/// holds are exactly its <method>Tools</method> roster, and none of them is a write tool beyond <parameter>ADMINISTRATORWRITES</parameter>.</p>
 /// <p>Mutation: give <class>OcuPilot.Screen.Descriptor.WebAppList</class> an empty pair set ->
-/// <code>webapp.list.read</code> joins every principal's held set and this goes red.</p>
+/// <code>webapp.list.read</code> joins every principal's held set and this goes red. Empty <parameter>ADMINISTRATORWRITES</parameter>, or give
+/// <class>OcuPilot.Screen.Tool.InteropSuspendedDiscard</class> READ alone on the database -> the Administrator's leg goes red.</p>
 Method TestTheToolsEachPrincipalHoldsAreItsRoster()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
@@ -517,7 +531,7 @@ Method TestTheToolsEachPrincipalHoldsAreItsRoster()
             If tTool.kind = "write" Set tWrites = tWrites _ $Select(tWrites = "": "", 1: ",") _ tTool.name
         }
         Do $$$AssertEquals(##class(OcuPilot.Test.DeveloperFloor).Sorted(tHeld), ##class(OcuPilot.Test.DeveloperFloor).Sorted(..Tools(tKind)), tKind _ ": the tools it holds are its roster")
-        Do $$$AssertEquals(tWrites, "", tKind _ ": and it holds no write tool")
+        Do $$$AssertEquals(tWrites, $Select(tKind = "administrator": ..#ADMINISTRATORWRITES, 1: ""), tKind _ ": and it holds no write tool but the declared ones")
     }
 }
 

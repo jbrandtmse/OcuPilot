@@ -38,6 +38,7 @@ const {
   proposalCancelPath,
   outputLinesOf,
   NAV_REFUSED_UNSAVED_CODE,
+  NAV_LOAD_FAILED_CODE,
   stepLabel,
   confirmedWriteStep,
   turnErrorBanner,
@@ -1104,7 +1105,13 @@ test('settleNavigation posts opened with no code key, and the directive is acted
   await settle();
 });
 
-test('settleNavigation posts refused with the one closed-vocabulary code this client ever authors', async () => {
+test('the two refusal codes this client authors are the instance\'s closed vocabulary', () => {
+  assert.equal(NAV_REFUSED_UNSAVED_CODE, 'NAV.REFUSEDUNSAVED');
+  assert.equal(NAV_LOAD_FAILED_CODE, 'NAV.LOADFAILED');
+});
+
+for (const authoredCode of [NAV_REFUSED_UNSAVED_CODE, NAV_LOAD_FAILED_CODE]) {
+test(`settleNavigation posts refused with ${authoredCode}, a code this client authors`, async () => {
   const { schedule, scheduled } = fakeSchedule();
   const api = fakeApi({
     [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
@@ -1132,13 +1139,14 @@ test('settleNavigation posts refused with the one closed-vocabulary code this cl
   await settle();
   assert.notEqual(turn.navigation(), null);
 
-  await turn.settleNavigation('refused', NAV_REFUSED_UNSAVED_CODE);
+  await turn.settleNavigation('refused', authoredCode);
   const call = api.calls.find((c) => c.path === turnNavigationPath('turn-1'));
-  assert.deepEqual(JSON.parse(call.body), { seq: 1, outcome: 'refused', code: 'NAV.REFUSEDUNSAVED' });
+  assert.deepEqual(JSON.parse(call.body), { seq: 1, outcome: 'refused', code: authoredCode });
 
   scheduled.shift().run();
   await settle();
 });
+}
 
 test('settleNavigation() with no directive pending posts nothing and answers false', async () => {
   const api = fakeApi();
@@ -1682,6 +1690,124 @@ test("a confirm's console lines reach its outcome and the proposal the card rend
   const event = bus.events.find((candidate) => candidate.kind === 'changed');
   assert.ok(event, 'the confirm publishes a change');
   assert.equal(Object.hasOwn(event, 'output'), false, 'the change carries no console line');
+});
+
+test("a confirmed message export's file is saved by the confirming browser and the card gets the status and failure lines only (Story 24.16 Batch 3)", async () => {
+  // AD-39's fifth exception: the bytes are the confirm's own `output.file`; they reach the injected save and nothing else.
+  //
+  // Mutation (Rule 19): hand the card the file's base64 as a line, or the outcome lines in place of the status line -> the card assertion goes red.
+  const failure = `13: ${STRINGS.interopExportOutcomeNotExported}: the vendor said no`;
+  const saved = [];
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'export', state: 'completed', proposals: [wireProposal({ target: { type: 'interop-message', scope: 'USER', id: '12,13' }, tool: 'interop.messages.export' })] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      ok({
+        proposalId: 'p1',
+        state: 'confirmed',
+        closedReason: '',
+        confirmedAt: '2026-09-19T10:01:02Z',
+        action: 'updated',
+        output: { lines: [`12: ${STRINGS.interopExportOutcomeExported}`, failure], file: 'YWJj' },
+      }),
+    ],
+  });
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' }),
+    navigationType: reloadedTab(),
+    now: () => NOW_MS,
+    bus: recordingBus(),
+    saveFile: (bytes, name) => saved.push({ text: new TextDecoder().decode(bytes), name }),
+  });
+  await turn.restore();
+  const outcome = await turn.confirmProposal('p1');
+  assert.deepEqual(saved, [{ text: 'abc', name: 'USER-messages.txt' }], 'the browser saves the bytes under a name that carries the namespace');
+  const lines = ['Saved 1 message as USER-messages.txt.', failure];
+  assert.deepEqual(outcome.output, lines, 'the outcome carries the status line and the failure');
+  assert.deepEqual(turn.entries()[0].proposals[0].output, lines, 'and so does the proposal the card renders');
+  assert.equal(JSON.stringify(turn.entries()).includes('YWJj'), false, 'no part of the file reaches the transcript the card draws');
+});
+
+test('a confirmed export that exported nothing saves no file and shows the lines the instance answered (Story 24.16 Batch 3)', async () => {
+  const failures = [`12: ${STRINGS.interopExportOutcomeNotExported}: refused`];
+  const saved = [];
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'export', state: 'completed', proposals: [wireProposal({ target: { type: 'interop-message', scope: 'USER', id: '12' }, tool: 'interop.messages.export' })] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z', action: 'updated', output: { lines: failures } }),
+    ],
+  });
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' }),
+    navigationType: reloadedTab(),
+    now: () => NOW_MS,
+    bus: recordingBus(),
+    saveFile: (bytes, name) => saved.push({ bytes, name }),
+  });
+  await turn.restore();
+  const outcome = await turn.confirmProposal('p1');
+  assert.deepEqual(saved, [], 'no file is saved');
+  assert.deepEqual(outcome.output, failures, 'the card shows the failure lines');
+});
+
+test("a confirmed write's source-control questions reach its outcome and the card as text, and nothing else (Story 21.38)", async () => {
+  // AD-39's ninth exception: the class's question is the confirm's own `output.questions`, held in memory for the card's dialog; the change event
+  // and the console lines carry none, an unsupported step carries no text, and a step the port flagged shows none of its text.
+  //
+  // Mutation (Rule 19): drop the `questions` spread from `recordProposalState` -> the proposal leg goes red; read an unsupported entry's `target`
+  // in `sourceControlQuestionsOf` -> the unsupported leg goes red.
+  const bus = recordingBus();
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      ok({
+        proposalId: 'p1',
+        state: 'confirmed',
+        closedReason: '',
+        confirmedAt: '2026-11-22T10:01:02Z',
+        action: 'created',
+        output: {
+          questions: [
+            { document: 'A.cls', step: 1, action: 1, target: 'Add <b>A.cls</b>?' },
+            { document: 'A.cls', step: 7, action: 6, target: 'Added.' },
+            { document: 'A.cls', step: 7, action: 3, unsupported: true, target: 'leaked text' },
+            { document: 'A.cls', step: 7, action: 1, unsupported: true, target: 'leaked too' },
+            { document: '', step: 1, action: 1, target: 'no document' },
+            'not an entry',
+          ],
+        },
+      }),
+    ],
+  });
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' }),
+    navigationType: reloadedTab(),
+    now: () => NOW_MS,
+    bus,
+  });
+  await turn.restore();
+  const outcome = await turn.confirmProposal('p1');
+  const questions = [
+    { document: 'A.cls', step: 1, kind: 'question', text: 'Add <b>A.cls</b>?' },
+    { document: 'A.cls', step: 7, kind: 'alert', text: 'Added.' },
+    { document: 'A.cls', step: 7, kind: 'unsupported', text: '' },
+    { document: 'A.cls', step: 7, kind: 'unsupported', text: '' },
+  ];
+  assert.deepEqual(outcome.questions, questions, 'the outcome carries the questions in order');
+  assert.deepEqual(turn.entries()[0].proposals[0].questions, questions, 'and so does the proposal the card renders');
+  assert.deepEqual(outcome.output, [], 'a question is no console line');
+  const event = bus.events.find((candidate) => candidate.kind === 'changed');
+  assert.ok(event, 'the confirm publishes a change');
+  assert.equal(JSON.stringify(event).includes('Add'), false, 'the change carries no question text');
+  assert.equal(JSON.stringify(event).includes('leaked'), false, 'and no text of an unsupported step');
 });
 
 test("a confirmed data transformation test's output reaches its outcome and the card as text, and no compile outcome (Story 20.27)", async () => {

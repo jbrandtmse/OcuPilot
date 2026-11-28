@@ -5,7 +5,7 @@ import { entityUrl, formatNavigationHeading, screenForRoute } from '../core/navi
 import { ScreenArrivals } from '../core/screen-arrival';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
-import { NAV_REFUSED_UNSAVED_CODE, TurnStore, type TurnNavigation } from '../core/turn';
+import { NAV_LOAD_FAILED_CODE, NAV_REFUSED_UNSAVED_CODE, TurnStore, type TurnNavigation } from '../core/turn';
 
 /**
  * How long the announcement stays alone in the transcript before the browser moves (Story 4.7,
@@ -32,12 +32,13 @@ export const NAVIGATIONDELAYMS = 1000;
  * route (`leaveFormGuard`) answers this navigation exactly as it answers a click on the rail or
  * the locator bar, and Back remains this product's one published undo.
  *
- * **The outcome is the promise's own answer, not a guess about why it resolved that way.**
+ * **The outcome is the promise's own answer, not a guess about why it settled that way.**
  * `navigateByUrl` resolves `true` on an ordinary navigation and `false` exactly when a
- * `CanDeactivateFn` declined it -- the only guard on these routes, a dirty form's decline -- so
- * `true` is reported `opened` and `false` is reported `refused` with `NAV_REFUSED_UNSAVED_CODE`,
- * the one code this client is ever the author of on this route (`Api/Turn.cls`'s closed
- * vocabulary refuses any other).
+ * `CanDeactivateFn` declined it -- the only guard on these routes, a dirty form's decline -- and
+ * it rejects when the screen's code could not be loaded. So `true` is reported `opened`, `false`
+ * is reported `refused` with `NAV_REFUSED_UNSAVED_CODE`, and a rejection is reported `refused`
+ * with `NAV_LOAD_FAILED_CODE`: the two codes this client is ever the author of on this route
+ * (`Api/Turn.cls`'s closed vocabulary refuses any other).
  */
 @Injectable({ providedIn: 'root' })
 export class AgentNavigator {
@@ -103,7 +104,15 @@ export class AgentNavigator {
     // The router answers `false` for a move to the URL it is already on, which is not a refusal:
     // the screen is the one asked for, and its mounted page has taken the arrival above.
     const alreadyThere = this.router.serializeUrl(this.router.parseUrl(url)) === this.router.url;
-    const navigated = alreadyThere || (await this.router.navigateByUrl(url).catch(() => false));
+    let navigated = alreadyThere;
+    let loadFailed = false;
+    if (!alreadyThere) {
+      try {
+        navigated = await this.router.navigateByUrl(url);
+      } catch {
+        loadFailed = true;
+      }
+    }
     if (navigated) {
       const screen = screenForRoute(directive.route);
       const title = screen === null ? '' : stringFor(screen.labelKey);
@@ -114,7 +123,7 @@ export class AgentNavigator {
       await this.turn.settleNavigation('opened');
     } else {
       this.arrivals?.clear();
-      await this.turn.settleNavigation('refused', NAV_REFUSED_UNSAVED_CODE);
+      await this.turn.settleNavigation('refused', loadFailed ? NAV_LOAD_FAILED_CODE : NAV_REFUSED_UNSAVED_CODE);
     }
   }
 }

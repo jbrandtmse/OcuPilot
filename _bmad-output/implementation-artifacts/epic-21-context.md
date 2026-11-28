@@ -4,7 +4,7 @@
 
 ## Goal
 
-Make every remaining classic-portal leaf in the instance-administration and data areas reachable through OcuPilot's own API, where the leaf has a backing class but no admin or Atelier route. That covers backup, the mirror monitor, the startup, memory and compatibility tables, NLS locales and the SQL settings, globals with their export, import and find and replace, the SQL tuning track, and the last leaves in the six original areas. Handler bodies are harvested from the MCP suite (`ExecuteMCPv2.REST.*`) through one seam, so no catalog row becomes a rewrite. Interoperability parity, the analytics editors, developer tools, and the agent's 28 harvested tools with undo moved to Epic 24, which runs beside this epic on a second slot. The mirroring writes left this epic for Epic 22's exclusion register: this project's Community license allows no mirroring, and a join needs a second instance.
+Make every remaining classic-portal leaf in the instance-administration and data areas reachable through OcuPilot's own API, where the leaf has a backing class but no admin or Atelier route: backup, the mirror monitor, the startup and memory tables, NLS and SQL settings, globals and the data tools, the SQL tuning track, and the last leaves in the six original areas. Handler bodies harvested from the MCP suite go through one seam. Interoperability, analytics, developer tools and the agent's harvested tools moved to Epic 24. What remains open is the rest of the SQL tuning track, split from Story 21.6: runtime statistics, the index analyzer with its advice, alternate show plans and the troubleshooting reports. Together they give a developer diagnosing a slow query one place to do the whole job.
 
 ## Stories
 
@@ -22,69 +22,89 @@ Make every remaining classic-portal leaf in the instance-administration and data
 - Story 21.16: Custom locales
 - Story 21.17: Global export and import
 - Story 21.18: Global find and replace
+- Story 21.19: Shell, advisor, permission and task leaves
+- Story 21.20: OS management and log leaves
+- Story 21.21: Leaves that wait on the owner
+- Story 21.22: CI flake hardening
+- Story 21.23: Test hygiene and contended client fixes
+- Story 21.24: The Task Manager mail password is masked in OcuPilot's audit read
+- Story 21.25: Index rebuild and tune table
+- Story 21.26: Runtime statistics
+- Story 21.27: The index analyzer and its advice
+- Story 21.28: Alternate show plans
+- Story 21.29: Troubleshooting reports
+- Story 21.30: OcuPilot's guarded storage refuses a caller that is not an administrator
+- Story 21.31: Fixed table statistics
+- Story 21.32: A SQL settings change leaves the instance's class-query lists working
+- Story 21.33: OcuPilot's other guarded stores refuse a caller who may not write them
+- Story 21.34: A backup action leaves the web process's null device open
+- Story 21.35: OcuPilot's install records and other users' state answer only to their callers
+- Story 21.36: Task output and mail password
+- Story 21.37: Page resources
+- Story 21.38: Shared Rules helpers, the source-control follow-up and escalated wording
+- Story 21.39: CI health: the governance renderer stall and the journal reverse-read timeout
+- Story 21.40: The governance page's render cost
+
+All stories are done except 21.26 to 21.29, which are in the backlog.
 
 ## Requirements & Constraints
 
-- **One contract for every screen added after Release 1.** Each screen is declared by exactly one descriptor and reaches outside through exactly one port. Its read tool and its write tools' field lists derive from that descriptor. Every write goes through a server-minted proposal, an instance-computed diff, an explicit confirmation and an agent audit marker. A story is accepted on that contract plus each row's own backing class; anything finer is authored when the row is picked up.
-- **Governance baseline.** Every write key a story adds joins the baseline in that story. A key absent from the baseline defaults to disabled. Every new destructive key ships disabled, and every kill or delete is named as destructive.
-- **Backup (21.2):** every backup write is a confirmed proposal whose destructive key ships disabled. Every freeze OcuPilot issues, from either caller, carries a bounded suspend limit.
-- **Harvested bodies are not yet policed:** a body is a public class method that any code or route could call past `HarvestPort`'s gate, and the port-gate test has no row kind for a body class.
-- **Mirroring (21.12), narrowed:**
-  - The mirror monitor reads the instance's mirror state, including the state of not being a member.
-  - Removing a mirror's configuration with the option that takes its databases out of mirroring is refused from either caller. That covers `SYS.Mirror.RemoveMirrorConfiguration` with `DeleteDB` and `RemoveOneMirrorSet` with `DeleteDBs`. The refusal joins the kernel's prohibited set, and its code is named at the story's spec gate.
-  - The mirroring writes are not built: create, edit for failover and async members, join, and the member and database actions. Each one becomes a row in the exclusion register's license-gated group, naming the license it needs.
-- Each settings change states its restart requirement where one applies (21.3).
-- **SQL, locale and NLS settings (21.4, 21.13 to 21.16):** each story round-trips over its backing class.
-  - 21.4 keeps the SQL, TSQL and ISQL settings, with the SQL Shell settings.
-  - 21.13 holds the system and user DDL mappings.
-  - 21.14 holds the NLS configured defaults and the locale list with its validate, install and delete actions.
-  - 21.15 holds locale and table import, and locale export with the classic page's file browse (owner's answer).
-  - 21.16 holds the rest of the locale definitions editor: copying a locale, the custom locale's properties editor, and loading a locale's tables.
-
-  All five configure the server; OcuPilot's own interface stays English. The owner allowed an AD-51 named entry for each of 21.15 and 21.16, because the vendor call carries a caller's choice (the import file, the table to load); the runner writes each entry into the spine at that story's spec gate.
-- **Globals (21.5, 21.17, 21.18):** every write is a confirmed proposal.
-  - 21.5 keeps list, view, edit and kill; every kill is destructive by name.
-  - 21.17 holds export and import. 21.18 holds find and replace across a global's values; it is bounded, and it states the count it will change.
-  - The owner allowed three spine records, written at 21.5's spec gate: an AD-10 `PROHIBITED.PROTECTEDGLOBAL` arm, an AD-36 record that the node page is screen-only, and an AD-53 record that node save and delete are person-only and unadvertised. The arm refuses any write to OcuPilot's own globals or to a node resolving to OcuPilot's database or a protected database, from both callers, whatever the key.
-  - That arm also covers `.GBL` documents loaded by the shipped System Explorer import, which today judges self-protection by name only.
-  - Importing over an existing global currently refuses as changed, because its version reads as the current time; fix it with 21.17's import.
-  - 21.18 likely needs an AD-51 named entry, since its port builds the write from the person's find and replace text (inference); its plan settles that first.
-- The diagnose-slow-query guided workflow gains the SQL tuning screens it was written for (21.6).
-- **Harvest cautions:**
-  - Take handler bodies and nothing else. The MCP suite's manifest is stale, and its bootstrap is driven from TypeScript.
-  - Two known defects have unverified fix status: the task-history filter, and resource creation with a description. Read the current bodies before harvesting them.
-- **Some legacy CSP pages were never exported**, among them Backup, Journals and Global View/Edit. Their action sets are inferred, so read the page on the instance before building a screen for one.
-- A leaf whose backing class was never inventoried starts by identifying that class on the instance (21.10).
+- **Acceptance for each remaining story:** each leaf round-trips over its backing class. Stories 21.26, 21.27 and 21.28 each add their own read to the `slowquery` guided workflow, and the workflow stays read-only, with no write step. Story 21.29 adds no workflow read.
+- **One contract for every screen:** one descriptor and one port per screen. The read tool and the write tools' field lists derive from the descriptor. Every write is a server-minted proposal with an instance-computed diff, an explicit confirmation and an agent audit marker, reached by two callers (the screen action and the agent).
+- **Governance:** every new write key joins the baseline in the same story. An absent key defaults to disabled, and every new destructive key ships disabled. Keys so far are `true` only where the change is cheap and reversible (freeze, purge, collect statistics). They are `false` where it overrides the optimizer or cannot be undone (clear statistics, clean, fixed values, rebuild). No SQL-track write has been destructive yet, so none needs a typed name.
+- **Leaf inventory, probed read-only on `ocupilot` on 2026-11-15.** Every page needs `%Development` (`USE`), and none had a custom resource. Re-confirm each against the instance before building.
+  - **21.26, runtime statistics:** pages `%CSP.UI.Portal.SQL.QButtons.RuntimeStats` and `RuntimeStatsSettings`. Backed by `$SYSTEM.SQL.SetSQLStats(level, 1, "", terminate)`, which is a system-wide collection level and timeout, and by `%SYS.PTools.StatsSQL` `ViewStatsSQL`, `ViewStatsSQLDetails` and `clearStatsSQL` (a namespace purge). "Plan with stats" runs the query. Expected scope: 2 reads and 2 writes. Its plan settles whether the system-wide level needs an AD-51 named entry or a settings shape.
+  - **21.27, index analyzer and advice:** page `QButtons.IndexAnalyzer`. The reports are `getAllSQLStmts`, `indexUsage`, `tableScans`, `tempIndices`, `joinIndices` and `outlierIndices` in `^%SYS.PTools2`, which the classic page runs as a `job`. Results go to `^%sqlcq($NAMESPACE,"PTools","util")` and are read through `%SYS.PTools.UtilSQLAnalysis`. Each report writes result rows for its namespace. Inputs are a schema and three flags. The advice is harvested from the MCP suite's `SqlAdvisor` (`AdviseData`, behind `iris_sql_analyze`'s `advise`). Its SQL is concatenated and must be rewritten with bound values (AD-21).
+  - **21.28, alternate show plans:** page `QButtons.ShowPlanAlt`, backed by `JobPossiblePlans`, `JobComparePlans` (which calls `ShowPlanAlt^%apiSQL`) and `StatsSQL:possiblePlansStats`. A comparison runs the person's statement once per chosen plan. Its plan decides whether that run is a read (AD-7) or a confirmed run.
+  - **21.29, troubleshooting reports:** generate uses page `QButtons.ReportGenerator`, backed by `%SQL.Manager.QButtons.Base` `InsertQuery` and `WriteAllToFile`. It runs the query, stores a row in `^IRIS.QButtons.BaseD` and writes XML at a server path the caller gives. The classic page also offers a client `mailto:` to vendor support; the server sends nothing. Import uses `QButtons.ReportLoader`, backed by `Base.ConsumeReport(file, "ckd", 1, ns)`, which loads and compiles the class and INT code the XML carries. The story is gated on the owner on two points: the import compiles code from a file, and the page mails the vendor. The catalog ranks both leaves P3.
+  - Measured on 2026-11-15: `GetSQLStatsFlag()` read off. `%SYS_PTools.StatsSQL`, the analyzer's two result tables and `QButtons.Base` held 0 rows. Two leaves have no owner: export and import of frozen plans, and query history.
+- **Tests:** every test makes its own probe through `SqlTuningProbe` and restores what it changed through the same port call. It purges its probe tables' cached queries before dropping them. No test asserts that a store is empty. Never create a schema whose name contains `"` (DW-2851: the vendor's drop of a quoted schema's last table breaks `INFORMATION_SCHEMA.SCHEMATA`). Whole-namespace or system-wide writes go in an armed class (`OCUPILOT_ALLOW_*`, add-only `# classes:` line in `scripts/ci-throwaway.sh`). No test or write runs on `ocupilot` or a slot instance.
 
 ## Technical Decisions
 
-- **The harvest seam (AD-23):** a harvested handler inherits an OcuPilot base class exposing `RenderResponseBody(pStatus As %Status, pMsgPart As %DynamicArray, pResPart As %DynamicObject) As %Status`, the signature called at all 738 harvested call sites. The base class emits OcuPilot's envelope instead of `%Atelier.REST`'s `{status, console, result}`. Only the base class changes; a body is never edited to change response shape.
-- **One envelope, one writer (AD-12, AD-39):** the envelope carries a slug from a fixed enum, a reason, a stable machine code and an optional detail object. Handlers never `Write` to the response. In a nested `Catch`, use `Return $$$OK`, never a bare `Quit`. The no-`}{` double-envelope test must keep passing.
-- **Rename everything harvested:** packages, web paths, globals and the `iris_` tool prefix take OcuPilot's own names.
-- **Ports (AD-29, AD-52):** every port carries its own authorization gate, and the vendor's check is a lower bound, not the whole requirement. A write tool declares its port. The fresh read, the confirm's re-read, the prohibited-set check and the write all resolve through that declaration.
-- **The write model:**
-  - The proposal is single-use, fingerprinted and expires (AD-6).
-  - A screen's action and the agent's write are one operation reached by two callers (AD-53, AD-55).
-  - Action-style writes and create writes are first-class kinds (AD-51, AD-54).
-  - After the write, the target is read back to check it holds what was sent (AD-58).
-  - A confirmed write emits one change event, and screens re-fetch (AD-14).
-- **Prohibited set (AD-10):** a refusal is evaluated on the instance against the resolved target, from either caller, and is declared once in the kernel, never in a policy file or a screen. The self-protection arms already reach OcuPilot's own databases and the protected databases through backup and mirroring paths, by effect.
-- **Bounded reads (AD-36):** a screen and its tool share one declared read, which is capped and reports truncation.
-- **No SQL concatenation and no caller path (AD-21).** This matters for backup, global export and import, and locale and table import: a caller names a file from a fixed enum or a strict single-segment name, never a path.
-- **Guided workflows (AD-66):** a workflow is a catalog entry, never a code path. Each write in it is one confirmed proposal.
-- **Classic page keys (AD-44):** each descriptor declares the classic page class it replaces, and its privilege set includes any custom resource assigned to that page. The mirror monitor's page is `%CSP.UI.Portal.Mirror.Monitor`. The NLS configured defaults use `%CSP.UI.Portal.NLSConfigDefs` (read-only, over `%SYS.NLS.Table` and `Config.NLS.Locales`); the locale list uses `%CSP.UI.Portal.NLS` and its properties editor `NLSEdit` (over `Config.NLS.Locales` and `Config.NLS.Tables`, both requiring `%Admin_Manage`); NLS import's is `%CSP.UI.Portal.NLSImport` (over `Config.NLS.Locales`), the globals list is `%CSP.UI.Portal.GlobalList` (resource `%Development`; its Find pane offers no Replace in `%SYS`), and the DDL mappings use `%CSP.UI.Portal.Config.SQLDataTypes` with a `Subject` of `SystemDataTypes` or `UserDataTypes`. Confirm each against the instance first.
+- **The port is `SqlPort` (`Port/SqlPort.cls`).** Extend it, never copy it.
+  - `TuningInvoke` serves the `Statements`, `CachedQueries` and `Tables` endpoints. `COMPOSEDTYPES` lists each port-composed read and write type.
+  - Vendor calls go through the existing seam (`StatementCall`, then `TableCall`, overridden by `SqlTuningGateSeam`). Widen the seam; do not add a second one.
+  - `SqlPort.ValueProblem` is the single shape check. Tools' `ArgumentProblem` and `ScreenActionDelta` call it, so the mint, the screen and the port refuse with one sentence.
+  - Catalog reads are one more `AtelierPort` `CATALOGTABS` statement with bound `?` values. `Screen/Read` already dispatches any `atelier` endpoint.
+- **Tool bases:** `SqlStatementAction`, then `SqlTableAction`, then `SqlTableTuneAction`, then `SqlTableSetAction`. They provide the precondition field, the state row, `RefusalCode`, `CONSEQUENCECODE`, composite-target ids and optional-value merge. Purges use `SqlCachedQueryPurge`.
+- **Entity types:** a tool's target type is its descriptor's primary type (`Operation.TargetRefOf`). A new SQL screen therefore takes its own type and never `class`, or the class arm would judge `Schema.Table` as a class name. Existing types are `statement-index-entry`, `cached-query`, `sql-table`, `sql-index`, `sql-field` and `sql-schema`. A type change lists its consumers on the server and the client. Stored `class:` citations keep resolving.
+- **Gate (AD-29, AD-61):**
+  - Writes need `%Development:USE` plus `AtelierPort.WritePairs(ns)`. The vendor's own check is only a lower bound.
+  - A missing WRITE pair can make the vendor silently do nothing (freeze) or throw `<PROTECT>` (tune). The read-back (AD-58) exposes the first, and `Applied` catches the second.
+- **Runs in the request (AD-7):** writes run synchronously in the confirm or action request, never in a detached job. This is AD-7's named case for Story 21.25, against the Web Gateway's 60 s response timeout (named limit). The analyzer's and plan comparison's `job` calls need the same treatment, or an AD-7 case, decided after measuring.
+- **Prohibited set (AD-10):**
+  - `PROHIBITED.OCUPILOTSQL` refuses OcuPilot's own statements. `PROHIBITED.OCUPILOTTABLE` refuses OcuPilot's tables and schemas, matching an `OcuPilot` schema, or a class name beginning `OcuPilot` in any case.
+  - Both are read at the write, and a failed read refuses. Any new arm, such as an imported report carrying an OcuPilot document (`OCUPILOTCODE`), goes in the kernel.
+- **No caller path and no concatenation (AD-21):**
+  - Story 21.19's AD-51 case is the precedent for a file argument: a declared root and path resolved through `PathPort`, or a temporary file OcuPilot names and deletes.
+  - Vendor inputs can be evaluated as ObjectScript. A fixed outlier value was measured executing, so the port builds the literal itself. Measure every new vendor input for this.
+- **Spine records:**
+  - A vendor call that carries caller-chosen values needs an AD-51 named entry. Every existing SQL-track case (21.6, 21.25, 21.31) names its composed read type and the exact vendor calls.
+  - The runner writes the entry add-only at the spec gate (Rule 20) when the owner or orchestrator allows it.
+- **Errors:**
+  - New codes go in `Api/AtelierError.cls`, never `Api/Error.cls`.
+  - A hostile id answers 400 `PORT.VALIDATION`, and an absent target answers 404.
+  - A vendor refusal answers 409 with the vendor's message in `detail` only, never logged (AD-39).
+- **Task 0 discipline:** before writing code, measure on `ocupilot-ci` and record the result in the spec:
+  - duration against the 60 s bound;
+  - whether the call writes to the current device (none has so far);
+  - the minimal pairs needed;
+  - concurrency behavior;
+  - whether the vendor actually does what the classic page's wording claims. Earlier stories found several such claims false.
+- **Copy-out (AD-59)**, read-back (AD-58), the change event (AD-14) and namespace save and restore (AD-16) apply to every write.
 
 ## UX & Interaction Patterns
 
-- The proposal card shows the target, before and after rows from a fresh read, the unchanged fields collapsed, and "Reverse:" where a reversal exists.
-- A destructive action uses the typed-name confirm dialog. Its body states the consequence and ends "This cannot be undone." where that is true.
-- New user-facing strings go into EXPERIENCE.md's fixed strings.
+- The new screens join System Explorer's SQL slice. A list takes the next free side-bar position at implement time (the SQL statements list is 20). Tabs join a table's tab set.
+- A row action is drawn by the shell's handler. A whole-target page action (target `*`) is registered by the page. Known limit: page actions register under row-action ids, so they are drawn only after a row is selected.
+- The proposal card shows the target, before and after rows from a fresh read, and the consequence sentence.
+- New strings are escalated as one batch at the spec gate and then added to EXPERIENCE.md's Fixed strings: titles, columns, empty states, actions, consequences, refusals, suggested prompts and command aliases. Reuse a published sentence where one fits.
 
 ## Cross-Story Dependencies
 
-- Stories 21.1 to 21.4 are done. The seam (21.1) comes before every story that harvests a body, including Epic 24's stories.
-- 21.12 was split from 21.2. Its exclusion-register rows land in `docs/exclusion-register.md`. `ui/tools/exclusion-register.test.mjs` holds the register equal to the catalog's P4 rows and to the stage extract's groups, so the catalog and the extract change in the same commit. The mirroring rows are SA-43 to SA-49 and SO-17; SO-16 is the monitor.
-- 21.12, 21.13 and 21.14 are ready for development. 21.5, 21.15, 21.16 and 21.18 are no longer parked; the owner answered both questions that held them.
-- 21.17 and 21.18 were split from 21.5. 21.17 reuses 21.5's global port, Globals list and `global` entity type, so it waits for 21.5 to be done; 21.18 is planned after 21.17. 21.17 extends Story 19.13's System Explorer import and export case, which lists no globals, so the port needs its own presence check and a bound on export size.
-- 21.13, 21.14 and 21.15 were split from 21.4, and 21.16 from 21.14; they are planned in the order 21.13, 21.14, 21.15, 21.16. 21.14 and 21.16 share one catalog row (locale definitions), so 21.16 likely extends 21.14's locale list rather than adding a second one (inference).
-- 21.6 extends Epic 20's diagnose-slow-query workflow. 21.10 adds each leaf to the slice that already owns its neighbors.
+- 21.26, 21.27 and 21.28 build on 21.6's `SqlPort` endpoints, statement index and `slowquery` entry (`Kernel/Agent/Workflow` `XData Catalog`). Adding a workflow read changes the `WorkflowCatalog`, `screen-mirror.test.mjs` and `suggested-prompts.test.mjs` pins. 21.27's advice may recommend a 21.25 rebuild (inference). The recommended order is 21.26 to 21.29.
+- Open deferrals that touch this track:
+  - 21.6's all-namespace purge default is not pinned by any test.
+  - 21.25's delimited-identifier branch of `SqlPort.QuotedName` is untested against the vendor.
+- Epic 24 runs on slot B and edits shared rosters: `Baseline`, `Prohibited`, `EntityType`, `ReadTool`, `ToolEmit`, `ToolRoundTrip`, `screen-action-handler.ts`, `strings.ts`, `EXPERIENCE.md` and `ci-throwaway.sh`. Before editing, check them with `git log origin/OCU-1-epic24 ^origin/feature/OCU-1_ocupilot-mvp`. Keep edits there add-only, and expect count literals to merge as a union.

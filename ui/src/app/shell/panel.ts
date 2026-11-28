@@ -34,6 +34,7 @@ import {
   KILL_SWITCH_ID,
 } from '../core/explain-entry';
 import { classifyFault, isBannerFault } from '../core/fault';
+import type { SourceControlQuestion } from '../core/source-control-question';
 import { FixFinding } from '../core/fix-finding';
 import {
   HOME_AREA_KEY,
@@ -206,6 +207,11 @@ interface PanelProposalView {
   readonly output: readonly string[];
   /** Whether the confirmed compile reported errors (Story 20.17), or `null`. */
   readonly outputErrors: boolean | null;
+  /** What the namespace's source-control class asked after the confirmed write (Story 21.38), for the card's dialog. */
+  readonly questions: readonly SourceControlQuestion[];
+  /** The list screen the card's answers go to (its tool's own), and the namespace the write ran in. */
+  readonly questionDescriptor: string;
+  readonly questionScope: string;
   /** The key prefix of the card's long blocks (`p:<proposal id>`). */
   readonly blockKey: string;
 }
@@ -528,6 +534,9 @@ interface PanelTurnView {
                   [readBack]="proposal.readBack"
                   [output]="proposal.output"
                   [outputErrors]="proposal.outputErrors"
+                  [questions]="proposal.questions"
+                  [questionDescriptor]="proposal.questionDescriptor"
+                  [questionScope]="proposal.questionScope"
                   [blockKey]="proposal.blockKey"
                   [draftLines]="draftLinesOf(proposal.proposalId)"
                   (confirm)="onCardConfirm($event)"
@@ -1190,6 +1199,10 @@ export class Panel {
         proposal.tool.startsWith('explorer.') || proposal.consequence === CONSEQUENCE_INTEROPEDITORRELOADS
           ? (proposal.outputErrors ?? null)
           : null,
+      // Only a System Explorer create or delete asks a source-control question, and its answer is sent to that tool's own list screen.
+      questions: proposal.tool.startsWith('explorer.') ? (proposal.questions ?? []) : [],
+      questionDescriptor: screen === null ? '' : screen.descriptor,
+      questionScope: proposal.target.scope,
       blockKey: `p:${proposal.proposalId}`,
     };
   }

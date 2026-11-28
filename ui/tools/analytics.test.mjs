@@ -7,9 +7,9 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -90,8 +90,9 @@ test('Story 20.11: the port declares its three pair sets and the endpoints the m
   assert.equal(parameter('SETTINGSPAIRS'), '%DeepSee_Portal:USE,%Development:USE');
   assert.equal(
     parameter('ENDPOINTS'),
-    'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas,Settings,Worklists,RuntimeVariables,UserIcons,FolderItemDefinition,DashboardWidgets'
+    'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager,ListingGroups,ListingGroupListings,QualityMeasures,QualityMeasureElements,QualityMeasureMetas,Settings,Worklists,RuntimeVariables,UserIcons,FolderItemDefinition,DashboardWidgets,PmmlModels,PmmlModel'
   );
+  assert.equal(parameter('PMMLPAIRS'), '%DeepSee_Portal:USE,%Development:USE');
   assert.equal(parameter('MANAGERPAIRS'), '%DeepSee_Portal:USE,%DeepSee_Admin:USE');
   assert.equal(parameter('TYPESTATE'), 'STATE');
   assert.equal(parameter('TYPELIST'), 'LIST');
@@ -192,6 +193,50 @@ test('Story 20.33 (QA): the code that runs an MDX statement names nothing the st
       assert.ok(!word.test(codeOf(source, keepStrings)), `${file} holds no ${what}`);
     }
   }
+});
+
+/** Every ObjectScript source under `src/OcuPilot` outside `Test/`, as paths relative to `src/OcuPilot` with `/` separators. */
+function productSources(directory = join(REPO_ROOT, 'src', 'OcuPilot')) {
+  const found = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    const name = relative(join(REPO_ROOT, 'src', 'OcuPilot'), path).split(sep).join('/');
+    if (entry.isDirectory()) {
+      if (name !== 'Test') found.push(...productSources(path));
+    } else if (/\.(cls|mac|inc)$/.test(entry.name)) {
+      found.push(name);
+    }
+  }
+  return found;
+}
+
+test('Story 24.14 Batch 2b: product code calls Terminate( only in the process port and, once, in the PMML test supervisor to end the child it spawned', () => {
+  // Mutation (Rule 19): add a `Terminate(` to AnalyticsPort.cls, or a second one to PmmlTest.cls, or one to PmmlTest.CancelJob -> this goes red naming the file, the count or the method.
+  const hits = new Map();
+  for (const name of productSources()) {
+    const count = [...codeOf(readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', ...name.split('/')), 'utf8'), false).matchAll(/\bTerminate\s*\(/gi)].length;
+    if (count > 0) hits.set(name, count);
+  }
+  assert.deepEqual([...hits.keys()].sort(), ['Area/Analytics/PmmlTest.cls', 'Port/ProcessPort.cls'], 'the two classes that end a process');
+  assert.equal(hits.get('Area/Analytics/PmmlTest.cls'), 1, 'the PMML test run ends a process in one place');
+  const pmml = codeOf(readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Area', 'Analytics', 'PmmlTest.cls'), 'utf8'), false);
+  assert.ok(pmml.includes('$SYSTEM.Process.Terminate(pChild)'), 'and it is the supervisor\'s child, the process it spawned');
+  assert.ok(pmml.includes('SpawnChild(pKey, pUser, pNamespace, pRequest, pClass, .tChild)') && pmml.includes('Reap(pKey, tChild,'), 'whose process id is the one SpawnChild answered, never one read from storage');
+  const cancelAt = pmml.indexOf('ClassMethod CancelJob(');
+  const cancelBody = pmml.slice(cancelAt, pmml.indexOf('\n}\n', cancelAt));
+  assert.ok(cancelAt >= 0 && cancelBody.length > 0, 'the cancel hook is found');
+  assert.ok(!/terminate/i.test(cancelBody), 'and the cancel ends no process: it signals the supervisor');
+});
+
+test('Story 24.14 Batch 2b: the background run holds two JOB commands, Spawn\'s and SpawnChild\'s, and only the PMML test supervisor calls SpawnChild', () => {
+  // Mutation (Rule 19): add a third `Job` to BackgroundRun.cls, or a call of `SpawnChild(` to any other product class -> this goes red naming the count or the class.
+  const shell = codeOf(readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Shell', 'BackgroundRun.cls'), 'utf8'), false);
+  assert.equal([...shell.matchAll(/^\s+Job\s/gim)].length, 2, 'two JOB commands in the background run');
+  const spawnChildAt = shell.indexOf('ClassMethod SpawnChild(');
+  assert.ok(spawnChildAt >= 0 && /^\s+Job\s/im.test(shell.slice(spawnChildAt, shell.indexOf('\n}\n', spawnChildAt))), 'one of them in SpawnChild');
+  const callers = productSources().filter((name) => name !== 'Kernel/Shell/BackgroundRun.cls'
+    && /\bSpawnChild\s*\(/.test(codeOf(readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', ...name.split('/')), 'utf8'), false)));
+  assert.deepEqual(callers, ['Area/Analytics/PmmlTest.cls'], 'and the PMML test supervisor is its one caller');
 });
 
 /** The five refusals of the cube manager's updates (Story 20.34), each pinned to its `strings.ts` key. */
@@ -780,5 +825,145 @@ test('Story 24.14: a saved pivot is composed only by the one seam, and the viewe
   for (const key of ['agentDefinitionFormLabel', 'analyticsTabWidgets', 'analyticsColumnDataSource', 'analyticsFolderItemDefinitionEmpty', 'analyticsDashboardWidgetsEmpty']) {
     assert.ok(strings.includes(`${key}:`), `strings.ts holds ${key}`);
     assert.ok(experience.includes(`"${stringValue(key)}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+});
+
+const PMML_SENTENCES = [
+  ['REASONPMMLINPUT', 'analyticsRefusalPmmlInput'],
+  ['REASONPMMLABSENT', 'analyticsPmmlModelGone'],
+  ['REASONPMMLQUERYONLY', 'analyticsRefusalPmmlQueryOnly'],
+  ['REASONPMMLCUBE', 'analyticsRefusalPmmlCube'],
+  ['REASONPMMLBUSY', 'analyticsRefusalPmmlBusy'],
+  ['REASONPMMLFULL', 'analyticsRefusalPmmlFull'],
+  ['REASONPMMLNOTFOUND', 'analyticsRefusalPmmlNotFound'],
+  ['REASONPMMLLOST', 'analyticsRefusalPmmlLost'],
+];
+
+test('Story 24.14 Batch 2: each PMML refusal is one sentence on both surfaces, and the tester names none of the vendor calls its Never list forbids', () => {
+  // Mutation (Rule 19): change one word of REASONPMMLBUSY in AnalyticsError.cls (or of analyticsRefusalPmmlBusy in strings.ts) -> the first half goes red naming the pair; call %DropAllResults,
+  // CreateFromFile, %ExecuteModel or %GetModelInstance from AnalyticsPort.cls or PmmlTest.cls, or the vendor's run outside PmmlVendor -> the second half goes red naming the call.
+  const errors = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AnalyticsError.cls'), 'utf8');
+  const values = Object.fromEntries(Object.entries(loadStringsValues()).map(([key, value]) => [key, value.replace(/\\'/g, "'")]));
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [parameter, key] of PMML_SENTENCES) {
+    const declared = errors.match(new RegExp(`Parameter ${parameter} = "([^"]*)";`))?.[1];
+    assert.ok(declared !== undefined, `${parameter} is declared`);
+    assert.equal(declared, values[key], `${parameter} equals strings.ts ${key}`);
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  const area = codeOf(readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Area', 'Analytics', 'PmmlTest.cls'), 'utf8'), false);
+  for (const source of [code, area]) {
+    for (const never of [/CreateFromFile/, /CreateFromStream/, /CreateFromString/, /%OnSubmit/, /ExportToCubeDefinition/, /%DropAllResults/, /%DropResults/, /%GetModelInstance/, /%ExecuteModel/]) {
+      assert.ok(!never.test(source), `neither the port nor PmmlTest names ${never}`);
+    }
+  }
+  const seam = /ClassMethod PmmlVendor\([\s\S]*?\n\}\n/.exec(code);
+  assert.notEqual(seam, null, 'the port declares PmmlVendor');
+  for (const call of ['%RunModel(', '%RunModelFromPMMLRows(', '%RunModelFromSQL(']) {
+    assert.equal(code.split(call).length - 1, 1, `${call} is called once in the port`);
+    assert.ok(seam[0].includes(call), `and the one call sits in PmmlVendor`);
+  }
+  assert.ok(!/%RunModel/.test(area), 'PmmlTest runs nothing itself');
+  const drops = [...code.matchAll(/DELETE FROM %DeepSee_PMML_Utils\.TempResult/g)].length;
+  assert.equal(drops, 1, 'the one drop of the vendor\'s result rows is an embedded DELETE in PmmlDrop');
+});
+
+/** The refusals of the PMML definition create (Story 24.14, Batch 3), each pinned to its `strings.ts` key; the class sentence is the listing groups'. */
+const PMML_CREATE_SENTENCES = [
+  ['REASONPMMLCLASS', 'analyticsRefusalListingGroupClass'],
+  ['REASONPMMLTAKEN', 'analyticsRefusalPmmlTaken'],
+  ['REASONPMMLTEXT', 'analyticsRefusalPmmlText'],
+  ['REASONPMMLCOMPILE', 'analyticsRefusalPmmlCompile'],
+  ['REASONPMMLREADONLY', 'analyticsRefusalPmmlReadonly'],
+];
+
+test('Story 24.14 Batch 3: each PMML create refusal and its consequence is one sentence on both surfaces, the text guard refuses a brace, and the create saves only through the source code port', () => {
+  // Mutation (Rule 19): change one word of REASONPMMLCOMPILE in AnalyticsError.cls (or of analyticsRefusalPmmlCompile in strings.ts) -> the first half goes red naming the pair; drop the `}` test from
+  // PmmlTextRefused in AnalyticsPort.cls -> the guard assertion goes red; call a CreateFrom* utility from AnalyticsPort.cls -> the vendor-call assertion goes red naming it.
+  const errors = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AnalyticsError.cls'), 'utf8');
+  const values = Object.fromEntries(Object.entries(loadStringsValues()).map(([key, value]) => [key, value.replace(/\\'/g, "'")]));
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [parameter, key] of PMML_CREATE_SENTENCES) {
+    const declared = errors.match(new RegExp(`Parameter ${parameter} = "([^"]*)";`))?.[1];
+    assert.ok(declared !== undefined, `${parameter} is declared`);
+    assert.equal(declared, values[key], `${parameter} equals strings.ts ${key}`);
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  assert.equal(
+    values.analyticsRefusalPmmlText,
+    'Paste one PMML document of at most 3,000,000 characters, with no document type declaration and no } character.',
+    'the text sentence is the ruled one'
+  );
+  const proposalView = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'proposal-view.ts'), 'utf8');
+  assert.ok(proposalView.includes("CONSEQUENCE_ANALYTICSPMMLSAVE = 'ANALYTICS.PMML.SAVE'"), 'proposal-view.ts holds the create\'s consequence code');
+  assert.ok(proposalView.includes('if (code === CONSEQUENCE_ANALYTICSPMMLSAVE) return STRINGS.analyticsPmmlSaveConsequence;'), 'and maps it to its sentence');
+  assert.ok(experience.includes(`"${values.analyticsPmmlSaveConsequence}"`), 'the consequence is published in EXPERIENCE.md\'s Fixed strings');
+  const tool = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsPmmlModelAdd.cls');
+  assert.equal(classParameter(tool, 'CONSEQUENCECODE'), 'ANALYTICS.PMML.SAVE', 'the create names its consequence code');
+  assert.equal(classParameter(tool, 'DESTINATIONGLOBAL'), '^oddDEF', 'and the database that holds class definitions');
+  assert.ok(readFileSync(tool, 'utf8').includes('Extends OcuPilot.Screen.Tool.AnalyticsListingGroupAction'), 'the create extends the class-write tool base');
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  for (const never of [/CreateFromFile/, /CreateFromStream/, /CreateFromString/, /%OnSubmit/, /%Dictionary\.ClassDefinition\)\.%Save/]) {
+    assert.ok(!never.test(code), `the port never names ${never}`);
+  }
+  const guard = /ClassMethod PmmlTextRefused\([\s\S]*?\n\}\n/.exec(readFileSync(PORT, 'utf8'));
+  assert.notEqual(guard, null, 'the port declares PmmlTextRefused');
+  for (const needle of ['pText [ "}"', '"<!DOCTYPE"', '"<!ENTITY"', '#MAXIMPORTCHARACTERS']) {
+    assert.ok(guard[0].includes(needle), `the text guard holds ${needle}`);
+  }
+});
+
+/** The refusals of the PMML export to a cube (Story 24.14, Batch 4), each pinned to its `strings.ts` key. */
+const PMML_EXPORT_SENTENCES = [
+  ['REASONPMMLSAME', 'analyticsRefusalPmmlSame'],
+  ['REASONPMMLCUBETAKEN', 'analyticsRefusalPmmlCubeTaken'],
+  ['REASONPMMLCUBENAME', 'analyticsRefusalPmmlCubeName'],
+  ['REASONPMMLSOURCECLASS', 'analyticsRefusalPmmlSourceClass'],
+  ['REASONPMMLEXPORTRUN', 'analyticsRefusalPmmlExportRun'],
+  ['REASONPMMLEXPORTCOMPILE', 'analyticsRefusalPmmlExportCompile'],
+  ['REASONPMMLDATAHELD', 'analyticsRefusalPmmlDataHeld'],
+];
+
+test("Story 24.14 Batch 4: each PMML export refusal and its consequence is one sentence on both surfaces, and the export names none of the classic's own writes", () => {
+  // Mutation (Rule 19): change one word of REASONPMMLEXPORTRUN in AnalyticsError.cls (or of analyticsRefusalPmmlExportRun in strings.ts) -> the first half goes red naming the pair; call %DeleteExtent or name
+  // ExportToCubeDefinition or an INSERT INTO from AnalyticsPort.cls -> the vendor-call assertion goes red naming it; give the tool a fingerprint subject -> the tool assertion goes red.
+  const errors = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AnalyticsError.cls'), 'utf8');
+  const values = Object.fromEntries(Object.entries(loadStringsValues()).map(([key, value]) => [key, value.replace(/\\'/g, "'")]));
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [parameter, key] of PMML_EXPORT_SENTENCES) {
+    const declared = errors.match(new RegExp(`Parameter ${parameter} = "([^"]*)";`))?.[1];
+    assert.ok(declared !== undefined, `${parameter} is declared`);
+    assert.equal(declared, values[key], `${parameter} equals strings.ts ${key}`);
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  const proposalView = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'proposal-view.ts'), 'utf8');
+  assert.ok(proposalView.includes("CONSEQUENCE_ANALYTICSPMMLEXPORT = 'ANALYTICS.PMML.EXPORT'"), 'proposal-view.ts holds the export\'s consequence code');
+  assert.ok(proposalView.includes('if (code === CONSEQUENCE_ANALYTICSPMMLEXPORT) return STRINGS.analyticsPmmlExportConsequence;'), 'and maps it to its sentence');
+  for (const key of ['analyticsPmmlExportConsequence', 'analyticsPmmlExportedLine', 'analyticsPmmlExportAction', 'analyticsPmmlModelTestEmptyAgent']) {
+    assert.ok(experience.includes(`"${values[key]}"`), `${key} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  const tool = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsPmmlModelExport.cls');
+  assert.equal(classParameter(tool, 'CONSEQUENCECODE'), 'ANALYTICS.PMML.EXPORT', 'the export names its consequence code');
+  assert.equal(classParameter(tool, 'WRITETYPE'), 'TOCUBE', 'its write type');
+  assert.equal(classParameter(tool, 'READBACKFIELDS'), 'ResultClass,CubeClass,Cube', 'and the three names its read-back compares');
+  assert.equal(classParameter(tool, 'FINGERPRINTSUBJECT'), '', 'it is fingerprinted over its merged payload, which a name taken since the review moves');
+  assert.ok(readFileSync(tool, 'utf8').includes('Extends OcuPilot.Screen.Tool.AnalyticsAction'), 'the export extends the action tool base');
+  const code = codeOf(readFileSync(PORT, 'utf8'), false);
+  for (const never of [/ExportToCubeDefinition/, /%DeleteExtent/, /INSERT\s+INTO/i, /CreateFromFile/, /%OnSubmit/, /\$\$Delete\^%apiOBJ/]) {
+    assert.ok(!never.test(code), `the port never names ${never}`);
+  }
+  const run = /ClassMethod PerformPmmlExport\([\s\S]*?\n\}\n/.exec(readFileSync(PORT, 'utf8'));
+  assert.notEqual(run, null, 'the port declares PerformPmmlExport');
+  for (const needle of ['..WriteClass(', '..PmmlRun(', '..PmmlExportRestore(', '..PmmlExportAudit(']) {
+    assert.ok(run[0].includes(needle), `the export is made with ${needle}`);
+  }
+  for (const never of ['JOB', 'Job ', '.Build', '%BuildCube', 'CancelJob', 'SpawnChild']) {
+    assert.ok(!run[0].includes(never), `the export never uses ${never}: no background run and no build`);
+  }
+  const cubeText = /ClassMethod PmmlCubeClassText\([\s\S]*?\n\}\n/.exec(readFileSync(PORT, 'utf8'));
+  assert.notEqual(cubeText, null, 'the port declares PmmlCubeClassText');
+  for (const needle of ['buildRestriction=""TestId = "', 'ActualValueD', 'PredictedValueD', 'PmmlXmlEscape(pCube)']) {
+    assert.ok(cubeText[0].includes(needle), `the cube text holds ${needle}`);
   }
 });

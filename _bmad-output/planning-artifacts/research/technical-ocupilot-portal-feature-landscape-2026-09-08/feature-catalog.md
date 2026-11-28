@@ -20,22 +20,22 @@ This catalog turns the thirteen research digests and two verification files of t
 
 | section | P0 | P1 | P2 | P3 | P4 | total |
 |---|---|---|---|---|---|---|
-| 0. Portal shell and platform | 11 | 11 | 3 | 3 | 1 | 29 |
+| 0. Portal shell and platform | 11 | 11 | 3 | 1 | 3 | 29 |
 | 1. Co-pilot agent | 24 | 11 | 7 | 1 | 0 | 43 |
-| 2. Area 1: Web apps and REST APIs | 7 | 2 | 5 | 2 | 1 | 17 |
+| 2. Area 1: Web apps and REST APIs | 7 | 2 | 5 | 1 | 2 | 17 |
 | 3. Area 2: Permission management | 16 | 2 | 4 | 2 | 0 | 24 |
 | 4. Area 3: Security and secrets | 16 | 11 | 8 | 4 | 1 | 40 |
-| 5. Area 4: Task management | 13 | 3 | 0 | 3 | 0 | 19 |
+| 5. Area 4: Task management | 13 | 3 | 0 | 2 | 1 | 19 |
 | 6. Area 5: OS management | 12 | 3 | 9 | 6 | 4 | 34 |
 | 7. Area 6: All the logs | 4 | 6 | 1 | 1 | 1 | 13 |
 | 8. System Administration, remainder | 0 | 2 | 20 | 22 | 18 | 62 |
 | 9. System Operation, remainder | 0 | 0 | 8 | 8 | 3 | 19 |
 | 10. System Explorer and data browser | 1 | 0 | 33 | 20 | 4 | 58 |
 | 11. Interoperability | 0 | 1 | 28 | 69 | 20 | 118 |
-| 12. Analytics | 0 | 1 | 9 | 7 | 7 | 24 |
+| 12. Analytics | 0 | 1 | 9 | 7 | 10 | 27 |
 | 13. Developer tools and sibling-tool equivalents | 0 | 0 | 1 | 8 | 3 | 12 |
 | 14. Packaging, deployment and submission | 15 | 9 | 1 | 0 | 1 | 26 |
-| **All sections** | **119** | **62** | **137** | **156** | **64** | **538** |
+| **All sections** | **119** | **62** | **137** | **152** | **71** | **541** |
 
 **SMP leaf coverage** (leaves covered / leaves in digest): System Administration 90/90 (54 Configuration incl. 3 Sharding and 6 Mirror, 30 Security, 2 Licensing, 4 Encryption); System Operation 36/36; System Explorer 11/11; Analytics 18/18 (13 DeepSee + 5 Text Analytics); Interoperability 68/68 live and 76/76 in source (the 8 non-rendered leaves are P4 rows IO-78..IO-81 and IO-90). Distinct write actions on P0/P1/P2 pages have their own rows; P4 pages are one row per page or per group as noted in Gaps.
 
@@ -70,9 +70,9 @@ This catalog turns the thirteen research digests and two verification files of t
 | SH-23 | Session sharing / JWT hand-off for embedded InterSystems Angular editors (%ISCMgtPortal group; null-body POST /api/interop-editors/login) | new | interop-v7 login and /%SYS/session endpoints | irisui-embed §3 | — | P2 | M | none | irisui-embed Session / auth hand-off; api-coverage Leads 1-2 |
 | SH-24 | Directory allow-list for file-browse dialogs (export/import/backup paths) | %CSP.Portal.Utils.GetAllowedDirectories | admin-v2 /fs-access-purposes, /fs-access-purpose/paths | — | — | P2 | M | read | smp-explorer-analytics-home Directory allow-list row; api-coverage FS access row |
 | SH-25 | Product-category gating by namespace (Analytics/Interop namespace picker when the namespace is unsupported) | %CSP.Portal.Home.getNamespaceHTML (XDEEPSEE/XENS) | official-REST GET /api/atelier/v1/:ns (features) | — | — | P2 | M | none | smp-explorer-analytics-home Category selector row |
-| SH-26 | Security escalation (escalate login to role; remove escalation) | %CSP.UI.Portal.Dialog.EscalateLogin | custom(%session.EscalateLogin) | — | — | P3 | M | none | smp-explorer-analytics-home Password change / escalation row |
+| SH-26 | Security escalation (escalate login to role; remove escalation) | %CSP.UI.Portal.Dialog.EscalateLogin | custom(%session.EscalateLogin) | — | — | P4 | M | none | smp-explorer-analytics-home Password change / escalation row — excluded: escalation changes the roles of OcuPilot's own token's session |
 | SH-27 | Assign custom resource to a menu item (resource mode for %Admin_Secure) | %CSP.Portal.ResourceDialog | custom(%CSP.Portal.Utils.%SetCustomResource) | — | — | P3 | M | none | smp-explorer-analytics-home Finder item actions row |
-| SH-28 | Contact / open WRC issue form (send email to WRC) | %CSP.UI.Portal.Contact | custom(SMTP send) | — | — | P3 | M | none | smp-explorer-analytics-home Contact row |
+| SH-28 | Contact / open WRC issue form (send email to WRC) | %CSP.UI.Portal.Contact | custom(SMTP send) | — | — | P4 | M | none | smp-explorer-analytics-home Contact row — excluded: a send to the vendor (NFR-6) |
 | SH-29 | "Did you know?" tips panel | %CSP.Portal.Home.%DrawDidYouKnow | none | — | — | P4 | S | none | smp-explorer-analytics-home Splash row — excluded: cosmetic, no operator value |
 
 ## 1. Co-pilot agent (CP)
@@ -142,7 +142,7 @@ This catalog turns the thirteen research digests and two verification files of t
 | WA-13 | Create spec-based REST service from an OpenAPI document | new (SMP has no page) | mgmnt POST /api/mgmnt/v2/:ns/:app | execute-mcp Interop:RestManage (%REST.API) | iris_interop_rest:create | P2 | M | write-confirm | api-coverage Mgmnt table; harvest-execute-mcp iris_interop_rest |
 | WA-14 | Delete spec-based REST service | new | mgmnt DELETE /api/mgmnt/v2/:ns/:app | execute-mcp Interop:RestManage | iris_interop_rest:delete; iris_rest_manage:delete | P2 | S | write-confirm | same |
 | WA-15 | Web application copy / export / import | Security.Applications Copy/Export/Import (no SMP page) | custom(Security.Applications.Export/Import) | — | — | P3 | M | write-confirm | api-coverage Web applications row (Documatic methods) |
-| WA-16 | Web Gateway Management (gateway systems) | legacy /csp/sys/mgr/UtilSysCSPGateway.csp | custom(backing class not inventoried) | — | — | P3 | M | none | smp-sysadmin Web Gateway Management row (Gap) |
+| WA-16 | Web Gateway Management (gateway systems) | legacy /csp/sys/mgr/UtilSysCSPGateway.csp | custom(backing class not inventoried) | — | — | P4 | M | none | smp-sysadmin Web Gateway Management row (Gap) — excluded: no IRIS class backs it |
 | WA-17 | Client applications (Windows-only registration) | Applications.ClientList / Client | none | — | — | P4 | M | none | smp-sysadmin Client Applications row — excluded: Windows-only menu |
 
 ## 3. Contest area 2: Permission management (PM)
@@ -241,7 +241,7 @@ This catalog turns the thirteen research digests and two verification files of t
 | TM-16 | Portal background tasks list (status, namespace, details, error count; Cancel / Pause / Resume; Purge) | %CSP.UI.Portal.BackgroundTaskList; Background.Dialog.TaskInfo | admin-v2 GET /async-results, /async-result; POST /async-result/cancel, /pause, /resume (admin async tasks); custom(%CSP.UI.System.BackgroundTask) for SMP tasks | — | — | P1 | M | write-confirm | smp-sysop Background Tasks row; api-coverage Async routes |
 | TM-17 | Task output file viewer | new (Task Details "Open output file") | custom(file read) | — | — | P3 | S | read | smp-sysop New Task row (Output file) |
 | TM-18 | Task Manager email (SMTP) settings | legacy /csp/sys/mgr/UtilSysTaskMail.csp | custom(backing not inventoried) | — | — | P3 | M | write-confirm | smp-sysadmin Task Manager Email row (Gap) |
-| TM-19 | Diagnostic Reports (WRC report task: type, archive dir, SMTP, site info; Run) | legacy UtilSysButtons.csp | custom(%SYS.Task DiagnosticReport) | — | — | P3 | M | write-confirm | smp-sysop Diagnostic Reports row |
+| TM-19 | Diagnostic Reports (WRC report task: type, archive dir, SMTP, site info; Run) | legacy UtilSysButtons.csp | custom(%SYS.Task DiagnosticReport) | — | — | P4 | M | none | smp-sysop Diagnostic Reports row — excluded: a send to the vendor (NFR-6) |
 
 ## 6. Contest area 5: OS management (OS)
 
@@ -605,6 +605,9 @@ This catalog turns the thirteen research digests and two verification files of t
 | AN-22 | Text Analytics: Model Tester | %iKnow.Classification.UI.ClassifierTester | none | — | — | P4 | M | none | same — excluded: deprecated |
 | AN-23 | Architect / Analyzer / User Portal rebuilt as OcuPilot screens | %DeepSee.UI.Architect, Analyzer, UserPortal | deepsee (partial) | — | — | P4 | L | none | tier rules — excluded: full applications, link instead (AN-04..06) |
 | AN-24 | Worksheet builder, caption editor, Visual Reporting (dead block), other %DeepSee.UI pages not on the SMP menu | %DeepSee.UI.WorksheetBuilder, CaptionEditor, %DeepSee.Report.UI.* | none | — | — | P4 | M | none | smp-explorer-analytics-home not-in-menu rows — excluded: not on menu / dead code |
+| AN-25 | PMML export to a cube: data only (add rows to, or erase, a result class an earlier export made) | %DeepSee.PMML.UI.AbstractTester.ExportToCubeDefinition | none | — | — | P4 | M | none | Story 24.14 Batch 4 — excluded: the export makes new classes only |
+| AN-26 | PMML export to a cube: overwrite classes (delete and replace the classes the person names) | %DeepSee.PMML.UI.AbstractTester.ExportToCubeDefinition | none | — | — | P4 | M | none | Story 24.14 Batch 4 — excluded: the export refuses a held class and deletes none |
+| AN-27 | PMML export to a cube: iKnow measure (a text measure over the custom SQL's text column) | %DeepSee.PMML.UI.AbstractTester.ExportToCubeDefinition | none | — | — | P4 | S | none | Story 24.14 Batch 4 — excluded: iKnow deprecated |
 
 ## 13. Developer tools and sibling-tool equivalents not covered above (DT)
 

@@ -1390,12 +1390,7 @@ ClassMethod FieldOf(pCode As %String) As %String
 /// <p>The violations as one sentence per broken rule, for the agent's refusal.</p>
 ClassMethod Problem(ByRef pViolations) As %String
 {
-    Set tProblem = ""
-    For tI = 1:1:$Get(pViolations) {
-        Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation($List(pViolations(tI), 2))
-        Set tProblem = tProblem _ $Select(tProblem = "": "", 1: " ") _ "'" _ $List(pViolations(tI), 1) _ "': " _ tReason
-    }
-    Quit tProblem
+    Quit ##class(OcuPilot.Kernel.AgentRules).ViolationsSentence(.pViolations)
 }
 
 /// <p>Refuse a caller who does not hold the form's declared pairs (AD-8): <var>pRefused</var> 1

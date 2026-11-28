@@ -183,12 +183,7 @@ ClassMethod Taken(pPortClass As %String, pNamespace As %String, pName As %String
     Kill tQuery
     Set tQuery($ClassMethod(..#UPDATETOOL, "IdParam")) = ..IdOf(pNamespace, pName)
     Set tSC = $ClassMethod(pPortClass, "Invoke", $ClassMethod(..#UPDATETOOL, "Endpoint"), $ClassMethod(..#UPDATETOOL, "ReadType"), .tQuery, "", .tRead, .tHttp, .tFault)
-    If $$$ISERR(tSC) {
-        If +$Get(tHttp) = 404 Quit $$$OK
-        Quit tSC
-    }
-    Set pTaken = ($IsObject($Get(tRead)) && tRead.%IsA("%Library.DynamicObject"))
-    Quit $$$OK
+    Quit ##class(OcuPilot.Kernel.Proposal.ScreenSaveRules).ReadTaken(tSC, $Get(tHttp), $Get(tRead), .pTaken)
 }
 
 /// <p><method>Check</method> as one problem sentence naming each field and its published sentence, or
@@ -199,10 +194,7 @@ ClassMethod Problem(pNamespace As %String, pName As %String, pBody As %DynamicOb
     Set pProblem = ""
     Set tSC = ..Check(pNamespace, pName, pBody, pFresh, pMode, pPortClass, .tViolations, pFull)
     If $$$ISERR(tSC) Quit tSC
-    For tI = 1:1:$Get(tViolations) {
-        Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation($List(tViolations(tI), 2))
-        Set pProblem = pProblem _ $Select(pProblem = "": "", 1: " ") _ "'" _ $List(tViolations(tI), 1) _ "': " _ tReason
-    }
+    Set pProblem = ##class(OcuPilot.Kernel.AgentRules).ViolationsSentence(.tViolations)
     Quit $$$OK
 }
 

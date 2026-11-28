@@ -230,7 +230,7 @@ Method TestAnUncoveredEntityTypeIsRefusedWholesale()
     Do $$$AssertStatusOK(tSC, "an unparseable reference is answered, not raised")
     Do $$$AssertEquals(tProhibits, 1, "and refused")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVERED"), "as uncovered")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,analytics-setting,analytics-worklist,security-recommendation,task-mail-setting,analytics-runtime-variable,analytics-user-icon,sql-statement,system-alerts", "the set covers exactly ninety-seven entity types -- the running SQL statement and the system alert state since Story 21.20, the Task Manager email setting since Story 21.19, the security recommendation since Story 21.19, the mobile phone provider since Story 21.10, the service and the LDAP configuration since Story 9.9, the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11, the create and import types since Epic 8, the server description since Story 12.4, the resource server since Story 12.6, the namespace since Story 18.2, the web session since Story 16.2, the background task since Story 16.5, the three mapping types since Story 18.14, the database configuration since Story 18.3, the language server since Story 16.10, the database since Story 18.4, the lock since Story 16.12, and the class and the routine since Story 19.2, the journal file since Story 18.5, the journal settings since Story 18.18, and the license key and the license server since Story 18.6, and the ECP data server since Story 18.20, and the ECP settings and the ECP SSL/TLS computer name since Story 18.21, and the encryption key file since Story 18.7, and the active database and data-element encryption keys since Story 18.22, and the encryption startup settings since Story 18.23, and the document database since Story 19.17, and the authentication options since Story 18.8, and the superservers since Story 18.25, and the production since Story 20.2, and the screen permission since Story 20.15, and the percent-class access entry since Story 18.10, and the Doc DB application record since Story 18.30, and the privileged routine application since Story 18.31, and the production item since Story 20.3, and the production item setting since Story 20.22, and the REST service since Story 18.32, and the queue, the queued message and the job since Story 20.23, and the lookup table and the lookup table entry since Story 20.5, and the allowed directory since Story 18.42, and the cube since Story 20.34, and the business partner since Story 20.26, and the startup, memory and compatibility settings since Story 21.3, and the SQL, SQL Shell, TSQL and ISQL settings since Story 21.4, and the mirror since Story 21.12, and the two DDL mappings since Story 21.13, and the NLS default and the locale since Story 21.14, and the locale property since Story 21.16, and the folder item since Story 24.10, and the global and the global node since Story 21.5, and the listing group and its listing since Story 24.11, and the quality measure since Story 24.12, and the system-wide security parameter since Story 21.10, and the analytics setting and the worklist option since Story 24.13, and the run-time variable and the user-defined icon since its Batch 3")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner,backup-task,backup-database,term-list,term-list-entry,startup-setting,memory-setting,compatibility-setting,sql-setting,sql-shell-setting,tsql-setting,isql-setting,mirror,system-ddl-mapping,user-ddl-mapping,folder-item,listing-group,listing-group-listing,quality-measure,quality-measure-element,quality-measure-meta,nls-default,locale,locale-property,global,global-node,system-security-setting,phone-provider,analytics-setting,analytics-worklist,security-recommendation,task-mail-setting,analytics-runtime-variable,analytics-user-icon,sql-statement,system-alerts,pmml-definition,pmml-model,page-resource,default-setting,interop-credential,interop-schedule,statement-index-entry,cached-query,interop-purge,interop-purge-setting,sql-table,sql-index,sql-schema,interop-archive,interop-archive-setting,sql-field,interop-managed-alert,sql-runtime-stat,sql-runtime-stats-setting,interop-rule-log,interop-process-log,interop-workflow-user,interop-workflow-role,interop-workflow-member,sql-index-analysis,interop-workflow-task,interop-hl7-schema,sql-saved-query", "the set covers exactly one hundred and eighteen entity types -- the HL7 schema since Story 24.18 Batch 1 -- the saved troubleshooting report query since Story 21.29, the workflow task since Story 24.17 Batch 4, the workflow role and the workflow member since Story 24.17 Batch 3b, the SQL index analysis since Story 21.27, the workflow user since Story 24.17 Batch 3a, the business rule log and the business process log since Story 24.17 Batch 2, the managed alert since Story 24.17 Batch 1, the archive run and the archive setting since Story 24.16 Batch 4,the SQL table, its index and its schema since Story 21.25, the statement-index entry and the cached query since Story 21.6, the purge and the purge setting since Story 24.16, the credential since Story 24.15, the classic page's custom resource since Story 21.37, the system default setting since Story 24.15, the running SQL statement and the system alert state since Story 21.20, the Task Manager email setting since Story 21.19, the security recommendation since Story 21.19, the mobile phone provider since Story 21.10, the service and the LDAP configuration since Story 9.9, the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11, the create and import types since Epic 8, the server description since Story 12.4, the resource server since Story 12.6, the namespace since Story 18.2, the web session since Story 16.2, the background task since Story 16.5, the three mapping types since Story 18.14, the database configuration since Story 18.3, the language server since Story 16.10, the database since Story 18.4, the lock since Story 16.12, and the class and the routine since Story 19.2, the journal file since Story 18.5, the journal settings since Story 18.18, and the license key and the license server since Story 18.6, and the ECP data server since Story 18.20, and the ECP settings and the ECP SSL/TLS computer name since Story 18.21, and the encryption key file since Story 18.7, and the active database and data-element encryption keys since Story 18.22, and the encryption startup settings since Story 18.23, and the document database since Story 19.17, and the authentication options since Story 18.8, and the superservers since Story 18.25, and the production since Story 20.2, and the screen permission since Story 20.15, and the percent-class access entry since Story 18.10, and the Doc DB application record since Story 18.30, and the privileged routine application since Story 18.31, and the production item since Story 20.3, and the production item setting since Story 20.22, and the REST service since Story 18.32, and the queue, the queued message and the job since Story 20.23, and the lookup table and the lookup table entry since Story 20.5, and the allowed directory since Story 18.42, and the cube since Story 20.34, and the business partner since Story 20.26, and the startup, memory and compatibility settings since Story 21.3, and the SQL, SQL Shell, TSQL and ISQL settings since Story 21.4, and the mirror since Story 21.12, and the two DDL mappings since Story 21.13, and the NLS default and the locale since Story 21.14, and the locale property since Story 21.16, and the folder item since Story 24.10, and the global and the global node since Story 21.5, and the listing group and its listing since Story 24.11, and the quality measure since Story 24.12, and the system-wide security parameter since Story 21.10, and the analytics setting and the worklist option since Story 24.13, and the run-time variable and the user-defined icon since its Batch 3, and the PMML definition and its model since Story 24.14 Batch 3")
 
     ; The refusal reaches a caller as a 403 with the set's own code, not as an error.
     Set tKey = ..Seed(..Payload(), "Description", "probe-id", "log-entry")
@@ -447,7 +447,7 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
             If 'tComposed && 'tValued Do $$$AssertEquals($ListLength(tSettable), 0, tEntry.%Get("name") _ " sends no body, so it admits no field")
             ; Story 20.31: the resend's one value is the digest a person reviewed it at. Story 20.41: the change of class's two are the class
             ; and that digest.
-            If tValued Do $$$AssertEquals(tEntry.%Get("name") _ ":" _ $ListToString(tSettable), $Case(tEntry.%Get("name"), "interop.messages.resend": "interop.messages.resend:Reviewed", "interop.items.changeclass": "interop.items.changeclass:NewClass,Reviewed", "osmgmt.backuptasks.freeze": "osmgmt.backuptasks.freeze:limit", "analytics.listinggroups.copy": "analytics.listinggroups.copy:NewName,NewClass,NewCubes", "analytics.qualitymeasures.copy": "analytics.qualitymeasures.copy:NewName,NewClass", : "osmgmt.localdatabases.delete:DeleteFile"), tEntry.%Get("name") _ " sends no body and admits only the value its screen action declares, which its port reads from its query")
+            If tValued Do $$$AssertEquals(tEntry.%Get("name") _ ":" _ $ListToString(tSettable), $Case(tEntry.%Get("name"), "interop.messages.resend": "interop.messages.resend:Reviewed", "interop.items.changeclass": "interop.items.changeclass:NewClass,Reviewed", "osmgmt.backuptasks.freeze": "osmgmt.backuptasks.freeze:limit", "analytics.listinggroups.copy": "analytics.listinggroups.copy:NewName,NewClass,NewCubes", "analytics.qualitymeasures.copy": "analytics.qualitymeasures.copy:NewName,NewClass", "interop.purge.run": "interop.purge.run:DaysToKeep", "interop.suspendedmessages.resubmit": "interop.suspendedmessages.resubmit:Reviewed", "interop.suspendedmessages.discard": "interop.suspendedmessages.discard:Reviewed", "interop.suspendedmessages.delete": "interop.suspendedmessages.delete:Reviewed", "interop.messages.export": "interop.messages.export:Separator,Charset,Reviewed", "interop.managedalerts.update": "interop.managedalerts.update:Owner,Open,EscalationLevel,NextActionMinutes,Reason", "interop.workflowtasks.assign": "interop.workflowtasks.assign:User,Priority", "interop.rulelog.purge": "interop.rulelog.purge:DaysToKeep", "interop.processlog.purge": "interop.processlog.purge:DaysToKeep",: "osmgmt.localdatabases.delete:DeleteFile"), tEntry.%Get("name") _ " sends no body and admits only the value its screen action declares, which its port reads from its query")
             ; Story 24.10's term list export from its file, its import from its file, its local file and its reviewed digest, and its copy from
             ; its new name; its folder item export from its file and its import from its file, its local file and its reviewed digest.
             ; Story 12.4's key-set refresh is composed from the stored JWKS URL alone, so it admits
@@ -458,7 +458,7 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
             ; run from its statement, its values and its Max rows; Story 20.5's lookup table export from its file and its import from its file, its local
             ; file and its reviewed digest, count and stamp. Story 20.6's host test send from its request class and its fields. Story 24.9's
             ; promote from the other namespace, the pattern, the generated choice and the reviewed plan hash. Story 24.5's unit-test run from its tests and their level. Story 24.6's command run from its command, and its class method run from its class, method and arguments.
-            If tComposed Do $$$AssertEquals($ListLength(tSettable), $Case(tEntry.%Get("name"), "security.oauthserverdescriptions.updatejwks": 0, "security.oauthresourceservers.addmapping": 2, "security.oauthresourceservers.removemapping": 2, "security.oauthserver.rotatekeys": 0, "security.oauthserverclients.updatejwks": 0, "tasks.schedule.export": 2, "tasks.schedule.import": 4, "permissions.resources.export": 2, "permissions.resources.import": 6, "explorer.classes.compile": 3, "explorer.routines.compile": 3, "explorer.classes.delete": 0, "explorer.routines.delete": 0, "explorer.classes.export": 2, "explorer.routines.export": 2, "explorer.classes.import": 6, "explorer.routines.import": 6, "explorer.globals.export": 2, "explorer.globals.import": 6, "explorer.globals.replace": 4, "explorer.classes.save": 3, "explorer.routines.save": 3, "interop.ruleeditor.save": 3, "interop.processeditor.save": 3, "interop.transformeditor.save": 3, "explorer.sqlquery.run": 3, "explorer.sqldata.save": 4, "permissions.users.grantsql": 6, "permissions.roles.grantsql": 6, "permissions.users.revokesql": 5, "permissions.roles.revokesql": 5, "interop.lookuptables.export": 2, "interop.lookuptables.import": 7, "osmgmt.locales.export": 2, "osmgmt.locales.import": 6, "analytics.termlists.export": 2, "analytics.termlists.import": 5, "analytics.termlists.copy": 1, "analytics.listinggroups.copy": 3, "analytics.qualitymeasures.copy": 2, "analytics.folderitems.export": 2, "analytics.folderitems.import": 5, "interop.itemtest.send": 2, "interop.messageheader.editresend": 2, "security.alloweddirectories.update": 3, "explorer.namespacediff.promote": 4, "explorer.unittests.run": 2, "explorer.classmethod.run": 3, "security.auditing.export": 3, : 1), tEntry.%Get("name") _ " sends no body and its port composes one from its arguments")
+            If tComposed Do $$$AssertEquals($ListLength(tSettable), $Case(tEntry.%Get("name"), "explorer.sqlstatements.freeze": 0, "explorer.sqlstatements.unfreeze": 0, "explorer.sqlstatements.clearstatistics": 0, "explorer.sqlstatements.clearerror": 0, "explorer.sqlstatements.clean": 0, "explorer.sqlruntimestats.purge": 0, "explorer.sqlindexanalysis.gather": 2, "explorer.sqlindexanalysis.run": 4, "explorer.sqlindexanalysis.purge": 0, "explorer.sqlreports.save": 2, "explorer.sqlreports.delete": 0, "explorer.sqlreports.generate": 3, "explorer.sqlcachedqueries.purge": 0, "explorer.sqlcachedqueries.purgetable": 0, "explorer.sqlcachedqueries.purgenamespace": 0, "explorer.sqlindices.rebuild": 0, "explorer.sqltable.rebuildindices": 0, "explorer.sqltable.tune": 0, "explorer.sqltable.clearstatistics": 0, "explorer.sqlschematables.tune": 1, "explorer.sqltable.setextentsize": 1, "explorer.sqlindices.setmapsize": 1, "explorer.sqlfieldstatistics.setselectivity": 4, "security.oauthserverdescriptions.updatejwks": 0,"security.oauthresourceservers.addmapping": 2, "security.oauthresourceservers.removemapping": 2, "security.oauthserver.rotatekeys": 0, "security.oauthserverclients.updatejwks": 0, "tasks.schedule.export": 2, "tasks.schedule.import": 4, "permissions.resources.export": 2, "permissions.resources.import": 6, "explorer.classes.compile": 3, "explorer.routines.compile": 3, "explorer.classes.delete": 0, "explorer.routines.delete": 0, "explorer.classes.export": 2, "explorer.routines.export": 2, "explorer.classes.import": 6, "explorer.routines.import": 6, "explorer.globals.export": 2, "explorer.globals.import": 6, "explorer.globals.replace": 4, "explorer.classes.save": 3, "explorer.routines.save": 3, "interop.ruleeditor.save": 3, "interop.processeditor.save": 3, "interop.transformeditor.save": 3, "explorer.sqlquery.run": 3, "explorer.sqldata.save": 4, "permissions.users.grantsql": 6, "permissions.roles.grantsql": 6, "permissions.users.revokesql": 5, "permissions.roles.revokesql": 5, "interop.lookuptables.export": 2, "interop.lookuptables.import": 7, "interop.hl7schemas.export": 2, "interop.hl7schemas.import": 7, "osmgmt.locales.export": 2, "osmgmt.locales.import": 6, "analytics.termlists.export": 2, "analytics.termlists.import": 5, "analytics.termlists.copy": 1, "analytics.listinggroups.copy": 3, "analytics.qualitymeasures.copy": 2, "analytics.folderitems.export": 2, "analytics.folderitems.import": 5, "interop.itemtest.send": 2, "interop.messageheader.editresend": 2, "interop.suspendedmessages.editresubmit": 2, "security.alloweddirectories.update": 3, "explorer.namespacediff.promote": 4, "explorer.unittests.run": 2, "explorer.classmethod.run": 3, "security.auditing.export": 3, "permissions.pageresources.clear": 0, "explorer.classes.answer": 2, "explorer.routines.answer": 2, : 1), tEntry.%Get("name") _ " sends no body and its port composes one from its arguments")
             For tI = 1:1:$ListLength(tPermitted) {
                 ; A type whose identifying field is also a reviewed field (an OAuth 2.0 server
                 ; description can be renamed) names its target by that field; naming is not setting.
@@ -842,7 +842,7 @@ Method TestTheSetHasOneHomeAndOneSentencePerCode()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RegistryClass(), "OcuPilot.Screen.Tool.Registry", "and resolves the tool through the shipped registry")
 
     Set tCodes = ##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 41, "the set declares forty-one codes -- the protected-global code since Story 21.5, the person-only code since Story 24.5, the mirror code since Story 21.12, the sign-in and start codes since Story 18.8, the serving superserver code since Story 18.25, the SQL privilege code since Story 18.9, the own-screen code since Story 20.15, the allow-list code since Story 18.42, the provider SSL/TLS code since Story 18.40, the journal and KMIP start codes since Story 18.48")
+    Do $$$AssertEquals($ListLength(tCodes), 43, "the set declares forty-three codes -- the own-table code since Story 21.25, the provider credential code since Story 24.15, the protected-global code since Story 21.5, the person-only code since Story 24.5, the mirror code since Story 21.12, the sign-in and start codes since Story 18.8, the serving superserver code since Story 18.25, the SQL privilege code since Story 18.9, the own-screen code since Story 20.15, the allow-list code since Story 18.42, the provider SSL/TLS code since Story 18.40, the journal and KMIP start codes since Story 18.48")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " matches the machine-code pattern")
@@ -959,6 +959,305 @@ ClassMethod WithoutAuthoredSecrets(pDescriptor As %String, pSecrets As %List) As
         Set tOut = tOut _ $ListBuild($List(pSecrets, tI))
     }
     Quit tOut
+}
+
+/// <p>Story 21.6's statement arm answers an error status, never permitted, when the statement's tables cannot be read: the arm reads them in the
+/// namespace the stored payload names, here one this instance does not hold, so the port refuses it 400 while the generic target read, made in the
+/// request's scope, finds no such statement. The arm neither permits nor names a code, and the write is refused by the caller's own error check. A
+/// statement the namespace no longer holds (404) is not judged here: the fingerprint re-read closes the proposal.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Kernel.Proposal.Prohibited.StatementEntry</code> answers OK for a read that failed other than with 404 -> the
+/// error assertion goes red.</p>
+Method TestAFailedStatementReadIsNeverPermitted()
+{
+    Do ##class(OcuPilot.Kernel.Scope).Set("USER")
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("statement-index-entry", "USER", "AAAAAAAAAAAAAAAAAAAAAAAAAAA=", .tRef)
+    Do $$$AssertStatusOK(tSC, "the statement has a key")
+    If $$$ISOK(tSC) {
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).Prohibits("explorer.sqlstatements.freeze", tRef, "{""Namespace"":""OcuProbeNoSuchNs216""}", "[]", .tProhibits, .tCode, .tReason)
+        Do $$$AssertEquals($Select($$$ISERR(tSC): "error", 1: "answered") _ "|" _ tProhibits _ "|" _ tCode, "error|0|", "a failed read is an error status, with nothing permitted and no code named")
+    }
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+}
+
+/// <p>Story 21.25's table arm refuses a table whose schema or whose class lies in OcuPilot's own, in either case and whichever of the two it is, and
+/// refuses a read that resolves no table at all: a failed read, a missing one, an empty answer and an answer with no class. A table whose schema and
+/// class are neither OcuPilot's is permitted. An index rebuild is judged by its table the same way. The read is the armed one, so the shipped arm runs
+/// against a table a test composed.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Kernel.Proposal.Prohibited.TableEntry</code> skips the class-name test -> the class assertions go red; skips the
+/// schema test -> the schema assertion goes red; answers permitted for a failed read -> the four failed-read assertions go red;
+/// <code>Prohibits</code> does not send <code>sql-index</code> to it -> the index assertion goes red.</p>
+Method TestATableIsRefusedForItsSchemaOrItsClassAndForAFailedRead()
+{
+    Set tTool = "explorer.sqltable.rebuildindices"
+    Do ##class(OcuPilot.Kernel.Scope).Set("USER")
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("sql-table", "USER", "OcuProbe225.T1", .tRef)
+    Do $$$AssertStatusOK(tSC, "the table has a key")
+    If $$$ISERR(tSC) Quit
+    For tCase = $ListBuild("OcuProbe225.T1", "OcuPilot.Probe225.Row", 1, "an OcuPilot class under another schema"), $ListBuild("OcuProbe225.T1", "ocupilot.probe225.Row", 1, "the class in lower case"), $ListBuild("OcuPilot_Kernel_State.Convo", "User.Probe225", 1, "an OcuPilot schema under another class"), $ListBuild("ocupilot_probe.T1", "User.Probe225", 1, "the schema in lower case"), $ListBuild("OcuProbe225.T1", "User.OcuProbe225.T1", 0, "neither") {
+        Set tArmed = {"Table": ($List(tCase, 1)), "Class": ($List(tCase, 2))}
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm(tArmed.%ToJSON())
+        Set tSC = $ClassMethod(..#SET, "Prohibits", tTool, tRef, "{""Namespace"":""USER""}", "[]", .tProhibits, .tCode, .tReason)
+        Do $$$AssertEquals($Select($$$ISERR(tSC): "error", 1: "answered") _ "|" _ tProhibits _ "|" _ tCode, "answered|" _ $List(tCase, 3) _ "|" _ $Select($List(tCase, 3): "PROHIBITED.OCUPILOTTABLE", 1: ""), $List(tCase, 4))
+    }
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("sql-index", "USER", "OcuProbe225.T1" _ $Char(1) _ "IdxB", .tIndexRef)
+    Do $$$AssertStatusOK(tSC, "the index has a key")
+    For tCase = $ListBuild("OcuPilot.Probe225.Row", 1, "an index of an OcuPilot class under another schema"), $ListBuild("User.OcuProbe225.T1", 0, "an index of neither") {
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm({"Table": "OcuProbe225.T1", "Class": ($List(tCase, 1)), "Map": "IdxB"}.%ToJSON())
+        Set tSC = $ClassMethod(..#SET, "Prohibits", "explorer.sqlindices.rebuild", $Get(tIndexRef), "{""Namespace"":""USER""}", "[]", .tProhibits, .tCode, .tReason)
+        Do $$$AssertEquals($Select($$$ISERR(tSC): "error", 1: "answered") _ "|" _ tProhibits _ "|" _ tCode, "answered|" _ $List(tCase, 2) _ "|" _ $Select($List(tCase, 2): "PROHIBITED.OCUPILOTTABLE", 1: ""), $List(tCase, 3))
+    }
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("sql-field", "USER", "OcuProbe225.T1" _ $Char(1) _ "B", .tFieldRef)
+    Do $$$AssertStatusOK(tSC, "the field has a key")
+    For tCase = $ListBuild("OcuPilot.Probe225.Row", 1, "a field of an OcuPilot class under another schema"), $ListBuild("User.OcuProbe225.T1", 0, "a field of neither") {
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm({"Table": "OcuProbe225.T1", "Class": ($List(tCase, 1)), "Field": "B"}.%ToJSON())
+        Set tSC = $ClassMethod(..#SET, "Prohibits", "explorer.sqlfieldstatistics.setselectivity", $Get(tFieldRef), "{""Namespace"":""USER""}", "[]", .tProhibits, .tCode, .tReason)
+        Do $$$AssertEquals($Select($$$ISERR(tSC): "error", 1: "answered") _ "|" _ tProhibits _ "|" _ tCode, "answered|" _ $List(tCase, 2) _ "|" _ $Select($List(tCase, 2): "PROHIBITED.OCUPILOTTABLE", 1: ""), $List(tCase, 3))
+    }
+    For tFailure = "ArmMissing", "ArmReadFault", "ArmEmpty", "NoClass" {
+        If tFailure = "NoClass" {
+            Do ##class(OcuPilot.Test.ProposalFixture).Arm("{""Table"":""OcuProbe225.T1"",""Class"":""""}")
+        } Else {
+            Do $ClassMethod("OcuPilot.Test.ProposalFixture", tFailure)
+        }
+        Set tSC = $ClassMethod(..#SET, "Prohibits", tTool, tRef, "{""Namespace"":""USER""}", "[]", .tProhibits, .tCode, .tReason)
+        Do $$$AssertEquals($Select($$$ISERR(tSC): "error", 1: "answered") _ "|" _ tProhibits _ "|" _ tCode, "answered|1|PROHIBITED.OCUPILOTTABLE", "a table nobody resolved is refused: " _ tFailure)
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+}
+
+/// <p>Story 21.25's table arm, asked for a schema tune, refuses a schema of OcuPilot's own in either case and a read that resolves no schema: a failed
+/// one, a missing one, an empty answer and an answer that names no schema. A schema that is not OcuPilot's is permitted. The read is the armed one.</p>
+/// <p>Mutation (Rule 19): <code>OcuPilot.Kernel.Proposal.Prohibited.TableEntry</code> judges no schema name when it is asked for a schema -> the schema
+/// assertions go red; answers permitted for a failed read -> the four failed-read assertions go red.</p>
+Method TestASchemaIsRefusedForItsNameAndForAFailedRead()
+{
+    Set tTool = "explorer.sqlschematables.tune"
+    Do ##class(OcuPilot.Kernel.Scope).Set("USER")
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("sql-schema", "USER", "OcuProbe225", .tRef)
+    Do $$$AssertStatusOK(tSC, "the schema has a key")
+    If $$$ISERR(tSC) Quit
+    For tCase = $ListBuild("OcuPilot_Kernel_State", 1, "OcuPilot's own schema"), $ListBuild("ocupilot_kernel_state", 1, "the schema in lower case"), $ListBuild("OcuProbe225", 0, "another schema") {
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm({"Schema": ($List(tCase, 1)), "Tables": 2}.%ToJSON())
+        Set tSC = $ClassMethod(..#SET, "Prohibits", tTool, tRef, "{""Namespace"":""USER""}", "[]", .tProhibits, .tCode, .tReason)
+        Do $$$AssertEquals($Select($$$ISERR(tSC): "error", 1: "answered") _ "|" _ tProhibits _ "|" _ tCode, "answered|" _ $List(tCase, 2) _ "|" _ $Select($List(tCase, 2): "PROHIBITED.OCUPILOTTABLE", 1: ""), $List(tCase, 3))
+    }
+    For tFailure = "ArmMissing", "ArmReadFault", "ArmEmpty", "NoSchema" {
+        If tFailure = "NoSchema" {
+            Do ##class(OcuPilot.Test.ProposalFixture).Arm("{""Tables"":2}")
+        } Else {
+            Do $ClassMethod("OcuPilot.Test.ProposalFixture", tFailure)
+        }
+        Set tSC = $ClassMethod(..#SET, "Prohibits", tTool, tRef, "{""Namespace"":""USER""}", "[]", .tProhibits, .tCode, .tReason)
+        Do $$$AssertEquals($Select($$$ISERR(tSC): "error", 1: "answered") _ "|" _ tProhibits _ "|" _ tCode, "answered|1|PROHIBITED.OCUPILOTTABLE", "a schema nobody resolved is refused: " _ tFailure)
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+}
+
+/// <p>Story 24.16 Batch 4's two archive arms come after every arm an earlier type reaches, so each earlier type keeps its own verdict: a table of OcuPilot's own is still refused by
+/// Story 21.25's table arm, a purge that changes a field is refused <code>PROHIBITED.UNCOVEREDFIELD</code> and a purge setting may change its value; an archive setting may change
+/// its value and nothing else, and an archive run may change nothing.</p>
+/// <p>Mutation (Rule 19): move the <code>interop-archive</code> arm of <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> ahead of the table arm and widen it to
+/// <code>sql-table</code> -- the table leg goes red.</p>
+Method TestTheArchiveArmsLeaveEarlierTypesTheirOwnVerdicts()
+{
+    Set tUncovered = ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELD
+    Set tCases = $ListBuild($ListBuild("sql-table", "OcuProbe225.T1", "explorer.sqltable.rebuildindices", "{""Table"":""OcuProbe225.T1"",""Class"":""OcuPilot.Probe225.Row""}", "{""Namespace"":""USER""}", "", "1|PROHIBITED.OCUPILOTTABLE", "a table of OcuPilot's own, by the table arm"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-purge", "USER", "interop.purge.run", "{""Value"":""before""}", "{""Value"":""after""}", "Value", "1|" _ tUncovered, "a purge that changes a field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-purge-setting", "Description", "interop.purgesettings.set", "{""Value"":""before""}", "{""Value"":""after""}", "Value", "0|", "a purge setting's value"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-archive-setting", "Number of days before archiving", "interop.archivesettings.set", "{""Value"":""before""}", "{""Value"":""after""}", "Value", "0|", "an archive setting's value"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-archive-setting", "Number of days before archiving", "interop.archivesettings.set", "{""Value"":""before""}", "{""Value"":""before"",""Foo"":""x""}", "Foo", "1|" _ tUncovered, "an archive setting's other field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-archive", "USER", "interop.archive.run", "{""Value"":""before""}", "{""Value"":""after""}", "Value", "1|" _ tUncovered, "an archive run that changes a field"))
+    Do ##class(OcuPilot.Kernel.Scope).Set("USER")
+    For tI = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tI)
+        Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key($List(tCase, 1), "USER", $List(tCase, 2), .tRef)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 8) _ ": the target has a key")
+        If $$$ISERR(tSC) Continue
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm($List(tCase, 4))
+        Set tSC = $ClassMethod(..#SET, "Prohibits", $List(tCase, 3), tRef, $List(tCase, 5), ##class(OcuPilot.Test.ProhibitedFixture).Diff($List(tCase, 6)), .tProhibits, .tCode, .tReason)
+        Do $$$AssertEquals($Select($$$ISERR(tSC): "error", 1: tProhibits _ "|" _ tCode), $List(tCase, 7), $List(tCase, 8))
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+}
+
+/// <p>Story 24.17 Batch 1's managed alert arm comes after every arm an earlier type reaches, so each earlier type keeps its own verdict: a table of OcuPilot's own is still refused by
+/// Story 21.25's table arm, a purge that changes a field is refused <code>PROHIBITED.UNCOVEREDFIELD</code>, an archive setting may change its value and an archive run nothing; a managed
+/// alert update may change the values its tool declares, which travel in the port's query, and no other field.</p>
+/// <p>Mutation (Rule 19): move the <code>interop-managed-alert</code> arm of <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> ahead of the table arm and widen it to
+/// <code>sql-table</code> -- the table leg goes red.</p>
+Method TestTheManagedAlertArmLeavesEarlierTypesTheirOwnVerdicts()
+{
+    Set tUncovered = ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELD
+    Set tCases = $ListBuild($ListBuild("sql-table", "OcuProbe225.T1", "explorer.sqltable.rebuildindices", "{""Table"":""OcuProbe225.T1"",""Class"":""OcuPilot.Probe225.Row""}", "{""Namespace"":""USER""}", "", "1|PROHIBITED.OCUPILOTTABLE", "a table of OcuPilot's own, by the table arm"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-purge", "USER", "interop.purge.run", "{""Value"":""before""}", "{""Value"":""after""}", "Value", "1|" _ tUncovered, "a purge that changes a field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-archive-setting", "Number of days before archiving", "interop.archivesettings.set", "{""Value"":""before""}", "{""Value"":""after""}", "Value", "0|", "an archive setting's value"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-archive", "USER", "interop.archive.run", "{""Value"":""before""}", "{""Value"":""after""}", "Value", "1|" _ tUncovered, "an archive run that changes a field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-managed-alert", "2417", "interop.managedalerts.update", "{""Owner"":""before""}", "{""Owner"":""after""}", "Owner", "0|", "a managed alert's declared value"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-managed-alert", "2417", "interop.managedalerts.update", "{""Owner"":""before""}", "{""Owner"":""before"",""Foo"":""x""}", "Foo", "1|" _ tUncovered, "a managed alert's other field"))
+    Do ##class(OcuPilot.Kernel.Scope).Set("USER")
+    For tI = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tI)
+        Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key($List(tCase, 1), "USER", $List(tCase, 2), .tRef)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 8) _ ": the target has a key")
+        If $$$ISERR(tSC) Continue
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm($List(tCase, 4))
+        Set tSC = $ClassMethod(..#SET, "Prohibits", $List(tCase, 3), tRef, $List(tCase, 5), ##class(OcuPilot.Test.ProhibitedFixture).Diff($List(tCase, 6)), .tProhibits, .tCode, .tReason)
+        Do $$$AssertEquals($Select($$$ISERR(tSC): "error", 1: tProhibits _ "|" _ tCode), $List(tCase, 7), $List(tCase, 8))
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+}
+
+/// <p>Story 24.17 Batch 2's business rule log and business process log arm comes after every arm an earlier type reaches, so each earlier type keeps its own verdict: a table of OcuPilot's own is
+/// still refused by Story 21.25's table arm, a purge that changes a field is refused <code>PROHIBITED.UNCOVEREDFIELD</code>, a managed alert update may change the values its tool declares; a
+/// log purge may change the days its tool declares, which travel in the port's query, and no other field.</p>
+/// <p>Mutation (Rule 19): move the <code>interop-rule-log</code> arm of <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> ahead of the table arm and widen it to
+/// <code>sql-table</code> -- the table leg goes red.</p>
+Method TestTheLogPurgeArmLeavesEarlierTypesTheirOwnVerdicts()
+{
+    Set tUncovered = ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELD
+    Set tCases = $ListBuild($ListBuild("sql-table", "OcuProbe225.T1", "explorer.sqltable.rebuildindices", "{""Table"":""OcuProbe225.T1"",""Class"":""OcuPilot.Probe225.Row""}", "{""Namespace"":""USER""}", "", "1|PROHIBITED.OCUPILOTTABLE", "a table of OcuPilot's own, by the table arm"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-purge", "USER", "interop.purge.run", "{""Value"":""before""}", "{""Value"":""after""}", "Value", "1|" _ tUncovered, "a purge that changes a field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-managed-alert", "2417", "interop.managedalerts.update", "{""Owner"":""before""}", "{""Owner"":""after""}", "Owner", "0|", "a managed alert's declared value"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-rule-log", "USER", "interop.rulelog.purge", "{""DaysToKeep"":""30""}", "{""DaysToKeep"":""60""}", "DaysToKeep", "0|", "a rule log purge's declared value"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-rule-log", "USER", "interop.rulelog.purge", "{""DaysToKeep"":""30""}", "{""DaysToKeep"":""30"",""Foo"":""x""}", "Foo", "1|" _ tUncovered, "a rule log purge's other field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-process-log", "USER", "interop.processlog.purge", "{""DaysToKeep"":""30""}", "{""DaysToKeep"":""60""}", "DaysToKeep", "0|", "a business process purge's declared value"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-process-log", "USER", "interop.processlog.purge", "{""DaysToKeep"":""30""}", "{""DaysToKeep"":""30"",""Foo"":""x""}", "Foo", "1|" _ tUncovered, "a business process purge's other field"))
+    Do ##class(OcuPilot.Kernel.Scope).Set("USER")
+    For tI = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tI)
+        Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key($List(tCase, 1), "USER", $List(tCase, 2), .tRef)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 8) _ ": the target has a key")
+        If $$$ISERR(tSC) Continue
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm($List(tCase, 4))
+        Set tSC = $ClassMethod(..#SET, "Prohibits", $List(tCase, 3), tRef, $List(tCase, 5), ##class(OcuPilot.Test.ProhibitedFixture).Diff($List(tCase, 6)), .tProhibits, .tCode, .tReason)
+        Do $$$AssertEquals($Select($$$ISERR(tSC): "error", 1: tProhibits _ "|" _ tCode), $List(tCase, 7), $List(tCase, 8))
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+}
+
+/// <p>Story 24.17 Batch 3a's workflow user arm comes after every arm an earlier type reaches, so each earlier type keeps its own verdict: a table of OcuPilot's own is still refused by the table arm, a
+/// schedule spec change may set the fields its tool declares and no other, a purge that changes a field is refused <code>PROHIBITED.UNCOVEREDFIELD</code>, and a log purge may change the days it declares;
+/// a workflow user change may set the full name and the active state its tool declares and no other field.</p>
+/// <p>Mutation (Rule 19): move the <code>interop-workflow-user</code> arm of <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> ahead of the table arm and widen it to
+/// <code>sql-table</code> -- the table leg goes red; drop <code>IsActive</code> from the type's change fields -- the declared-state leg goes red.</p>
+Method TestTheWorkflowUserArmLeavesEarlierTypesTheirOwnVerdicts()
+{
+    Set tUncovered = ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELD
+    Set tCases = $ListBuild($ListBuild("sql-table", "OcuProbe225.T1", "explorer.sqltable.rebuildindices", "{""Table"":""OcuProbe225.T1"",""Class"":""OcuPilot.Probe225.Row""}", "{""Namespace"":""USER""}", "", "1|PROHIBITED.OCUPILOTTABLE", "a table of OcuPilot's own, by the table arm"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-purge", "USER", "interop.purge.run", "{""Value"":""before""}", "{""Value"":""after""}", "Value", "1|" _ tUncovered, "a purge that changes a field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-schedule", "OcuProbeSched", "interop.schedules.update", "{""Description"":""before""}", "{""Description"":""after""}", "Description", "0|", "a schedule spec's declared field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-schedule", "OcuProbeSched", "interop.schedules.update", "{""Description"":""before""}", "{""Description"":""before"",""Foo"":""x""}", "Foo", "1|" _ tUncovered, "a schedule spec's other field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-rule-log", "USER", "interop.rulelog.purge", "{""DaysToKeep"":""30""}", "{""DaysToKeep"":""60""}", "DaysToKeep", "0|", "a rule log purge's declared value"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-workflow-user", "OcuP2417wProhibited", "interop.workflowusers.update", "{""FullName"":""before""}", "{""FullName"":""after""}", "FullName", "0|", "a workflow user's full name"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-workflow-user", "OcuP2417wProhibited", "interop.workflowusers.update", "{""IsActive"":true}", "{""IsActive"":false}", "IsActive", "0|", "a workflow user's active state"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-workflow-user", "OcuP2417wProhibited", "interop.workflowusers.update", "{""FullName"":""before""}", "{""FullName"":""before"",""Foo"":""x""}", "Foo", "1|" _ tUncovered, "a workflow user's other field"))
+    Do ##class(OcuPilot.Kernel.Scope).Set("USER")
+    For tI = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tI)
+        Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key($List(tCase, 1), "USER", $List(tCase, 2), .tRef)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 8) _ ": the target has a key")
+        If $$$ISERR(tSC) Continue
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm($List(tCase, 4))
+        Set tSC = $ClassMethod(..#SET, "Prohibits", $List(tCase, 3), tRef, $List(tCase, 5), ##class(OcuPilot.Test.ProhibitedFixture).Diff($List(tCase, 6)), .tProhibits, .tCode, .tReason)
+        Do $$$AssertEquals($Select($$$ISERR(tSC): "error", 1: tProhibits _ "|" _ tCode), $List(tCase, 7), $List(tCase, 8))
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+}
+
+/// <p>Story 24.17 Batch 3b's workflow role and workflow member arms come after every arm an earlier type reaches, so each earlier type keeps its own verdict: a table of OcuPilot's own is still
+/// refused by the table arm, a purge that changes a field is refused <code>PROHIBITED.UNCOVEREDFIELD</code>, a workflow user change may set the fields its tool declares; a workflow role change may
+/// set the description and the capacity its tool declares and no other field, and a member has no field to change.</p>
+/// <p>Mutation (Rule 19): drop <code>Capacity</code> from the role's change fields in <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -- the declared-capacity leg goes red.</p>
+Method TestTheWorkflowRoleAndMemberArmsLeaveEarlierTypesTheirOwnVerdicts()
+{
+    Set tUncovered = ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELD
+    Set tMember = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("OcuP2417wProhibitedRole", "OcuP2417wProhibited"))
+    Set tCases = $ListBuild($ListBuild("sql-table", "OcuProbe225.T1", "explorer.sqltable.rebuildindices", "{""Table"":""OcuProbe225.T1"",""Class"":""OcuPilot.Probe225.Row""}", "{""Namespace"":""USER""}", "", "1|PROHIBITED.OCUPILOTTABLE", "a table of OcuPilot's own, by the table arm"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-purge", "USER", "interop.purge.run", "{""Value"":""before""}", "{""Value"":""after""}", "Value", "1|" _ tUncovered, "a purge that changes a field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-workflow-user", "OcuP2417wProhibited", "interop.workflowusers.update", "{""FullName"":""before""}", "{""FullName"":""after""}", "FullName", "0|", "a workflow user's declared field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-workflow-role", "OcuP2417wProhibitedRole", "interop.workflowroles.update", "{""Description"":""before""}", "{""Description"":""after""}", "Description", "0|", "a workflow role's description"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-workflow-role", "OcuP2417wProhibitedRole", "interop.workflowroles.update", "{""Capacity"":10}", "{""Capacity"":20}", "Capacity", "0|", "a workflow role's capacity"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-workflow-role", "OcuP2417wProhibitedRole", "interop.workflowroles.update", "{""Description"":""before""}", "{""Description"":""before"",""Foo"":""x""}", "Foo", "1|" _ tUncovered, "a workflow role's other field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-workflow-member", tMember, "interop.workflowmembers.remove", "{""Ranking"":2}", "{""Ranking"":2,""Foo"":""x""}", "Foo", "1|" _ tUncovered, "a workflow member's other field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-workflow-member", tMember, "interop.workflowmembers.remove", "{""Ranking"":2}", "{""Ranking"":2}", "", "0|", "a workflow member's removal, which sets no field"))
+    Do ##class(OcuPilot.Kernel.Scope).Set("USER")
+    For tI = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tI)
+        Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key($List(tCase, 1), "USER", $List(tCase, 2), .tRef)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 8) _ ": the target has a key")
+        If $$$ISERR(tSC) Continue
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm($List(tCase, 4))
+        Set tSC = $ClassMethod(..#SET, "Prohibits", $List(tCase, 3), tRef, $List(tCase, 5), ##class(OcuPilot.Test.ProhibitedFixture).Diff($List(tCase, 6)), .tProhibits, .tCode, .tReason)
+        Do $$$AssertEquals($Select($$$ISERR(tSC): "error", 1: tProhibits _ "|" _ tCode), $List(tCase, 7), $List(tCase, 8))
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+}
+
+/// <p>Story 24.17 Batch 4's workflow task arm comes after every arm an earlier type reaches, so each earlier type keeps its own verdict: the instance's own <code>task</code> type, which a workflow task
+/// is not, still answers the verdicts it had; a workflow task's assign and cancel set no field of their own, so a task write that changes a field its tool does not cover is refused
+/// <code>PROHIBITED.UNCOVEREDFIELD</code> and one that changes none passes.</p>
+/// <p>Mutation (Rule 19): make the workflow task arm of <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> answer no prohibition -- the other-field leg goes red.</p>
+Method TestTheWorkflowTaskArmLeavesEarlierTypesTheirOwnVerdicts()
+{
+    Set tUncovered = ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELD
+    Set tCases = $ListBuild($ListBuild("interop-purge", "USER", "interop.purge.run", "{""Value"":""before""}", "{""Value"":""after""}", "Value", "1|" _ tUncovered, "a purge that changes a field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-workflow-role", "OcuP2417wProhibitedRole", "interop.workflowroles.update", "{""Description"":""before""}", "{""Description"":""before"",""Foo"":""x""}", "Foo", "1|" _ tUncovered, "a workflow role's other field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-workflow-task", "20001", "interop.workflowtasks.cancel", "{""Status"":""Unassigned""}", "{""Status"":""Unassigned"",""Foo"":""x""}", "Foo", "1|" _ tUncovered, "a workflow task's other field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-workflow-task", "20001", "interop.workflowtasks.cancel", "{""Status"":""Unassigned""}", "{""Status"":""Unassigned""}", "", "0|", "a workflow task's cancel, which sets no field"))
+    Do ##class(OcuPilot.Kernel.Scope).Set("USER")
+    For tI = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tI)
+        Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key($List(tCase, 1), "USER", $List(tCase, 2), .tRef)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 8) _ ": the target has a key")
+        If $$$ISERR(tSC) Continue
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm($List(tCase, 4))
+        Set tSC = $ClassMethod(..#SET, "Prohibits", $List(tCase, 3), tRef, $List(tCase, 5), ##class(OcuPilot.Test.ProhibitedFixture).Diff($List(tCase, 6)), .tProhibits, .tCode, .tReason)
+        Do $$$AssertEquals($Select($$$ISERR(tSC): "error", 1: tProhibits _ "|" _ tCode), $List(tCase, 7), $List(tCase, 8))
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Set tTaskCovered = ##class(OcuPilot.Kernel.Proposal.Prohibited).#TYPETASK
+    Do $$$AssertEquals(tTaskCovered _ "|" _ ##class(OcuPilot.Kernel.Proposal.Prohibited).#TYPEINTEROPWORKFLOWTASK, "task|interop-workflow-task", "the two types keep their own names, so the instance's task type is not the workflow task type")
+    Set tList = $ListFromString(##class(OcuPilot.Kernel.Proposal.Prohibited).#COVEREDTYPES, ",")
+    Do $$$AssertEquals($List(tList, $ListLength(tList) - 2) _ "|" _ $List(tList, $ListLength(tList) - 1) _ "|" _ $List(tList, $ListLength(tList)), "interop-workflow-task|interop-hl7-schema|sql-saved-query", "and the workflow task type is the last of the covered types but Story 24.18's and Story 21.29's, after every earlier one")
+}
+
+/// <p>Story 24.18 Batch 1's HL7 schema arm and the import arm beside it come after every arm an earlier type reaches, so each earlier type keeps its own verdict (a workflow task's and a lookup
+/// table's, the two nearest families), and the HL7 schema type is the last of the covered types but Story 21.29's: a schema write that changes a field its tool does not cover is refused
+/// <code>PROHIBITED.UNCOVEREDFIELD</code>, one that changes none passes, and an import is judged without reading a target.</p>
+/// <p>Mutation (Rule 19): place the HL7 schema import arm before the lookup table import arm and make it answer a prohibition for any type -- the earlier legs go red; make the HL7 schema arm answer no
+/// prohibition -- the other-field leg goes red.</p>
+Method TestTheHl7SchemaArmLeavesEarlierTypesTheirOwnVerdicts()
+{
+    Set tUncovered = ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELD
+    Set tCases = $ListBuild($ListBuild("interop-workflow-task", "20001", "interop.workflowtasks.cancel", "{""Status"":""Unassigned""}", "{""Status"":""Unassigned"",""Foo"":""x""}", "Foo", "1|" _ tUncovered, "a workflow task's other field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("lookup-table", "OcuProbe2418Lut", "interop.lookuptables.delete", "{""Entries"":1}", "{""Entries"":1,""Foo"":""x""}", "Foo", "1|" _ tUncovered, "a lookup table's other field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("lookup-table", "import", "interop.lookuptables.import", "{}", "{""Foo"":""x""}", "Foo", "0|", "a lookup table's import, which reads no target"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-hl7-schema", "OcuProbe2418Prohibited", "interop.hl7schemas.delete", "{""Description"":""before""}", "{""Description"":""before"",""Foo"":""x""}", "Foo", "1|" _ tUncovered, "an HL7 schema's other field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-hl7-schema", "OcuProbe2418Prohibited", "interop.hl7schemas.delete", "{""Description"":""before""}", "{""Description"":""before""}", "", "0|", "an HL7 schema's delete, which sets no field"))
+    Set tCases = tCases _ $ListBuild($ListBuild("interop-hl7-schema", "import", "interop.hl7schemas.import", "{}", "{""Foo"":""x""}", "Foo", "0|", "an HL7 schema's import, which reads no target"))
+    Do ##class(OcuPilot.Kernel.Scope).Set("USER")
+    For tI = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tI)
+        Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key($List(tCase, 1), "USER", $List(tCase, 2), .tRef)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 8) _ ": the target has a key")
+        If $$$ISERR(tSC) Continue
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm($List(tCase, 4))
+        Set tSC = $ClassMethod(..#SET, "Prohibits", $List(tCase, 3), tRef, $List(tCase, 5), ##class(OcuPilot.Test.ProhibitedFixture).Diff($List(tCase, 6)), .tProhibits, .tCode, .tReason)
+        Do $$$AssertEquals($Select($$$ISERR(tSC): "error", 1: tProhibits _ "|" _ tCode), $List(tCase, 7), $List(tCase, 8))
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Set tList = $ListFromString(##class(OcuPilot.Kernel.Proposal.Prohibited).#COVEREDTYPES, ",")
+    Do $$$AssertEquals($List(tList, $ListLength(tList) - 1), "interop-hl7-schema", "the HL7 schema type is the last of the covered types but Story 21.29's, after every earlier one")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).#TYPEINTEROPHL7SCHEMA _ "|" _ ##class(OcuPilot.Kernel.Proposal.Prohibited).#HL7IMPORTWRITETYPE, "interop-hl7-schema|IMPORTHL7SCHEMA", "and names its import write type, which no earlier write type is")
 }
 
 /// <p>The values <var>pClass</var>'s screen actions declare (AD-56 (ii)), each once, in declaration

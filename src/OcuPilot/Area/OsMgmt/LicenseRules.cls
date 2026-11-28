@@ -128,11 +128,7 @@ ClassMethod Problem(pIdValue As %String, pArgs As %DynamicObject, pMode As %Stri
     Set pProblem = ""
     Set tSC = ..Validate(pIdValue, pArgs, .tViolations, pMode, 0)
     If $$$ISERR(tSC) Quit tSC
-    For tI = 1:1:$Get(tViolations) {
-        Set tField = $List(tViolations(tI), 1)
-        Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation($List(tViolations(tI), 2))
-        Set pProblem = pProblem _ $Select(pProblem = "": "", 1: " ") _ "'" _ tField _ "': " _ tReason
-    }
+    Set pProblem = ##class(OcuPilot.Kernel.AgentRules).ViolationsSentence(.tViolations)
     Quit $$$OK
 }
 
@@ -150,12 +146,7 @@ ClassMethod Taken(pName As %String, Output pTaken As %Boolean) As %Status
 {
     Set pTaken = 0
     Set tSC = ..Read(..#CREATETOOL, pName, .tFresh, .tHttp, .tFault)
-    If $$$ISERR(tSC) {
-        If +$Get(tHttp) = 404 Quit $$$OK
-        Quit tSC
-    }
-    Set pTaken = ($IsObject(tFresh) && tFresh.%IsA("%Library.DynamicObject"))
-    Quit $$$OK
+    Quit ##class(OcuPilot.Kernel.Proposal.ScreenSaveRules).ReadTaken(tSC, $Get(tHttp), $Get(tFresh), .pTaken)
 }
 
 /// <p>The present license server <var>pName</var>, read through the edit tool's own port, in

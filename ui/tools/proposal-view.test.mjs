@@ -60,6 +60,11 @@ const {
   CONSEQUENCE_NAMESPACEINTEROP,
   CONSEQUENCE_SYSTEMGLOBAL,
   CONSEQUENCE_SCREENACCESSLOWERED,
+  CONSEQUENCE_PAGERESOURCECHANGED,
+  CONSEQUENCE_PAGERESOURCECLEARED,
+  pageResourceSentence,
+  shownChangedRows,
+  shownUnchangedRows,
   CONSEQUENCE_RUNSASOTHER,
   CONSEQUENCE_SERVESOCUPILOT,
   CONSEQUENCE_SERVICEUNAUTHENTICATED,
@@ -68,6 +73,21 @@ const {
   CONSEQUENCE_JOURNALSWITCHFILE,
   CONSEQUENCE_BACKUPRUN,
   CONSEQUENCE_BACKUPFREEZE,
+  CONSEQUENCE_SQLSTATEMENTFREEZE,
+  CONSEQUENCE_SQLSTATEMENTUNFREEZE,
+  CONSEQUENCE_SQLSTATEMENTCLEARSTATISTICS,
+  CONSEQUENCE_SQLSTATEMENTCLEARERROR,
+  CONSEQUENCE_SQLSTATEMENTCLEAN,
+  CONSEQUENCE_SQLCACHEDQUERYPURGE,
+  CONSEQUENCE_SQLRUNTIMESTATSPURGE,
+  CONSEQUENCE_SQLRUNTIMESTATSSET,
+  CONSEQUENCE_SQLINDEXANALYSISGATHER,
+  CONSEQUENCE_SQLINDEXANALYSISGATHERSYSTEM,
+  CONSEQUENCE_SQLINDEXANALYSISRUN,
+  CONSEQUENCE_SQLINDEXANALYSISPURGE,
+  CONSEQUENCE_SQLREPORTSAVE,
+  CONSEQUENCE_SQLREPORTDELETE,
+  CONSEQUENCE_SQLREPORTGENERATE,
   CONSEQUENCE_CONFIGSETTINGRESTART,
   CONSEQUENCE_CONFIGMAPPINGDELETE,
   CONSEQUENCE_CONFIGNLSRELOAD,
@@ -106,6 +126,16 @@ const {
   CONSEQUENCE_SYSTEMSECURITYSET,
   CONSEQUENCE_PHONEPROVIDERDELETE,
   CONSEQUENCE_AUDITENCRYPTIONCHANGE,
+  CONSEQUENCE_INTEROPSCHEDULEREMOVE,
+  CONSEQUENCE_INTEROPSCHEDULECHANGE,
+  CONSEQUENCE_INTEROPWORKFLOWUSERREMOVE,
+  CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE,
+  CONSEQUENCE_INTEROPWORKFLOWROLEREMOVE,
+  CONSEQUENCE_INTEROPWORKFLOWMEMBERADD,
+  CONSEQUENCE_INTEROPWORKFLOWMEMBERREMOVE,
+  CONSEQUENCE_INTEROPWORKFLOWTASKASSIGN,
+  CONSEQUENCE_INTEROPWORKFLOWTASKUNASSIGN,
+  CONSEQUENCE_INTEROPWORKFLOWTASKCANCEL,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
   CONFIRMED_TIME_PLACEHOLDER,
@@ -113,6 +143,14 @@ const {
   RESIDUE_COUNT_PLACEHOLDER,
   USER_NAME_PLACEHOLDER,
   consequenceSentence,
+  CONSEQUENCE_SQLTABLEREBUILD,
+  CONSEQUENCE_SQLTABLEREBUILDALL,
+  CONSEQUENCE_SQLTABLETUNE,
+  CONSEQUENCE_SQLTABLECLEARSTATISTICS,
+  CONSEQUENCE_SQLTABLETUNESCHEMA,
+  CONSEQUENCE_SQLTABLESETEXTENTSIZE,
+  CONSEQUENCE_SQLTABLESETSELECTIVITY,
+  CONSEQUENCE_SQLTABLESETMAPSIZE,
   countdownPhase,
   countdownRemaining,
   formatCountdown,
@@ -307,6 +345,34 @@ test("the resource import's consequence code resolves to its published sentence"
   assert.equal(consequenceSentence(CONSEQUENCE_RESOURCEFILEIMPORT), STRINGS.resourceImportConsequence);
 });
 
+// Story 21.25: each table write's consequence code resolves to its own published sentence.
+//
+// Mutation (Rule 19): point the REBUILDALL branch of `consequenceSentence` at the single rebuild's sentence -> the REBUILDALL leg goes red.
+test("the table writes' consequence codes resolve to their published sentences", () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLTABLEREBUILD), STRINGS.sqlTableRebuildConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLTABLEREBUILDALL), STRINGS.sqlTableRebuildAllConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLTABLETUNE), STRINGS.sqlTableTuneConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLTABLECLEARSTATISTICS), STRINGS.sqlTableClearStatisticsConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLTABLETUNESCHEMA), STRINGS.sqlSchemaTuneConsequence);
+  assert.notEqual(STRINGS.sqlTableRebuildConsequence, STRINGS.sqlTableRebuildAllConsequence, 'the two rebuilds publish different sentences');
+});
+
+// Story 21.31: the three fixed-statistics setters' consequence codes each resolve to the one sentence they share, and each is the code the
+// server declares.
+//
+// Mutation (Rule 19): drop the CONSEQUENCE_SQLTABLESETMAPSIZE leg of the setters' branch in `consequenceSentence` -> the map size leg goes red.
+test("the fixed-statistics setters' consequence codes resolve to their shared published sentence", () => {
+  const server = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Api', 'AtelierError.cls'), 'utf8');
+  for (const [constant, parameter] of [
+    [CONSEQUENCE_SQLTABLESETEXTENTSIZE, 'TABLESETEXTENTSIZE'],
+    [CONSEQUENCE_SQLTABLESETSELECTIVITY, 'TABLESETSELECTIVITY'],
+    [CONSEQUENCE_SQLTABLESETMAPSIZE, 'TABLESETMAPSIZE'],
+  ]) {
+    assert.equal(new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(server)?.[1], constant, `${parameter} is the server's code`);
+    assert.equal(consequenceSentence(constant), STRINGS.sqlTableSetConsequence, `${constant} resolves to the setters' sentence`);
+  }
+});
+
 // Story 14.2, AC10: the agent's audit purge is minted destructive carrying the purge tool's own
 // consequence code, read here from `AuditPurge.cls` rather than restated, and the card says what it
 // removes.
@@ -344,6 +410,73 @@ test("the system-global mapping's and the mapping copy's consequence codes resol
   assert.equal(consequenceSentence(CONSEQUENCE_COPYMAPPINGS), STRINGS.namespaceCopyMappingsConsequence);
 });
 
+// Story 24.15: a schedule spec's remove and change carry the codes the server mints, and each resolves to the
+// sentence its own screen shows, published once.
+//
+// Mutation (Rule 19): drop either schedule branch from `consequenceSentence` -> its leg goes red.
+test("a schedule spec's remove and change consequence codes resolve to their published sentences", () => {
+  const errors = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Api', 'InteropError.cls'), 'utf8');
+  const remove = /^Parameter SCHEDULEREMOVE = "([^"]+)";/m.exec(errors);
+  const change = /^Parameter SCHEDULECHANGE = "([^"]+)";/m.exec(errors);
+  assert.ok(remove && change, 'InteropError.cls declares both schedule consequence codes');
+  assert.equal(CONSEQUENCE_INTEROPSCHEDULEREMOVE, remove[1]);
+  assert.equal(CONSEQUENCE_INTEROPSCHEDULECHANGE, change[1]);
+  assert.equal(consequenceSentence(CONSEQUENCE_INTEROPSCHEDULEREMOVE), STRINGS.interopScheduleRemoveConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_INTEROPSCHEDULECHANGE), STRINGS.interopScheduleChangeConsequence);
+});
+
+// Story 24.17 Batch 3a: a workflow user's remove and deactivation carry the codes the server mints, and each resolves to
+// the sentence its own screen shows, published once.
+//
+// Mutation (Rule 19): drop either workflow user branch from `consequenceSentence` -> its leg goes red.
+test("a workflow user's remove and inactive consequence codes resolve to their published sentences", () => {
+  const errors = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Api', 'InteropError.cls'), 'utf8');
+  const remove = /^Parameter WORKFLOWUSERREMOVE = "([^"]+)";/m.exec(errors);
+  const inactive = /^Parameter WORKFLOWUSERINACTIVE = "([^"]+)";/m.exec(errors);
+  assert.ok(remove && inactive, 'InteropError.cls declares both workflow user consequence codes');
+  assert.equal(CONSEQUENCE_INTEROPWORKFLOWUSERREMOVE, remove[1]);
+  assert.equal(CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE, inactive[1]);
+  assert.equal(consequenceSentence(CONSEQUENCE_INTEROPWORKFLOWUSERREMOVE), STRINGS.interopWorkflowUserRemoveConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_INTEROPWORKFLOWUSERINACTIVE), STRINGS.interopWorkflowUserInactiveConsequence);
+});
+
+// Story 24.17 Batch 3b: a workflow role's remove, a member's add and a member's remove carry the codes the server mints, and each resolves to the
+// sentence its own screen shows, published once.
+//
+// Mutation (Rule 19): drop any of the three workflow role and member branches from `consequenceSentence` -> its leg goes red.
+test("a workflow role's remove and a member's add and remove consequence codes resolve to their published sentences", () => {
+  const errors = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Api', 'InteropError.cls'), 'utf8');
+  const rows = [
+    ['WORKFLOWROLEREMOVE', CONSEQUENCE_INTEROPWORKFLOWROLEREMOVE, STRINGS.interopWorkflowRoleRemoveConsequence],
+    ['WORKFLOWMEMBERADD', CONSEQUENCE_INTEROPWORKFLOWMEMBERADD, STRINGS.interopWorkflowMemberAddConsequence],
+    ['WORKFLOWMEMBERREMOVE', CONSEQUENCE_INTEROPWORKFLOWMEMBERREMOVE, STRINGS.interopWorkflowMemberRemoveConsequence],
+  ];
+  for (const [parameter, constant, sentence] of rows) {
+    const declared = new RegExp(`^Parameter ${parameter} = "([^"]+)";`, 'm').exec(errors);
+    assert.ok(declared, `InteropError.cls declares ${parameter}`);
+    assert.equal(constant, declared[1], `${parameter}'s code is the constant the card reads`);
+    assert.equal(consequenceSentence(constant), sentence, `${parameter} resolves to its published sentence`);
+  }
+});
+
+// Story 24.17 Batch 4: a workflow task's assign, unassign and cancel carry the codes the server mints, and each resolves to the sentence its own screen shows, published once.
+//
+// Mutation (Rule 19): drop any of the three workflow task branches from `consequenceSentence` -> its leg goes red.
+test("a workflow task's assign, unassign and cancel consequence codes resolve to their published sentences", () => {
+  const errors = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Api', 'InteropError.cls'), 'utf8');
+  const rows = [
+    ['WORKFLOWTASKASSIGN', CONSEQUENCE_INTEROPWORKFLOWTASKASSIGN, STRINGS.interopWorkflowTaskAssignConsequence],
+    ['WORKFLOWTASKUNASSIGN', CONSEQUENCE_INTEROPWORKFLOWTASKUNASSIGN, STRINGS.interopWorkflowTaskUnassignConsequence],
+    ['WORKFLOWTASKCANCEL', CONSEQUENCE_INTEROPWORKFLOWTASKCANCEL, STRINGS.interopWorkflowTaskCancelConsequence],
+  ];
+  for (const [parameter, constant, sentence] of rows) {
+    const declared = new RegExp(`^Parameter ${parameter} = "([^"]+)";`, 'm').exec(errors);
+    assert.ok(declared, `InteropError.cls declares ${parameter}`);
+    assert.equal(constant, declared[1], `${parameter}'s code is the constant the card reads`);
+    assert.equal(consequenceSentence(constant), sentence, `${parameter} resolves to its published sentence`);
+  }
+});
+
 // Story 20.18, AD-64: an agent change to a screen's permissions that drops a pair is destructive with the
 // lowering dialog's sentence, published once.
 //
@@ -354,6 +487,127 @@ test("the screen-permission lowering's consequence code resolves to its publishe
   assert.ok(declared, 'Prohibited.cls declares the lowering effect');
   assert.equal(CONSEQUENCE_SCREENACCESSLOWERED, declared[1]);
   assert.equal(consequenceSentence(CONSEQUENCE_SCREENACCESSLOWERED), STRINGS.screenPermissionsLowerConsequence);
+});
+
+// Story 21.37, AD-10, AD-64: an agent change or clear of the custom resource of a page an OcuPilot screen follows carries its consequence code,
+// and the card's sentence names the screens from the proposal's own `Screen` value.
+//
+// Mutation (Rule 19): drop either code's branch from `pageResourceSentence` -> its leg goes red; read the `Screen` row from the changed rows
+// alone -> the unchanged leg goes red.
+test("the page resource consequence codes are the kernel's own and resolve to their sentences naming the proposal's Screen value", () => {
+  const prohibited = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Prohibited.cls'), 'utf8');
+  const changed = /^Parameter EFFECTPAGERESOURCECHANGED = "([^"]+)";/m.exec(prohibited);
+  const cleared = /^Parameter EFFECTPAGERESOURCECLEARED = "([^"]+)";/m.exec(prohibited);
+  assert.ok(changed && cleared, 'Prohibited.cls declares both effects');
+  assert.equal(CONSEQUENCE_PAGERESOURCECHANGED, changed[1]);
+  assert.equal(CONSEQUENCE_PAGERESOURCECLEARED, cleared[1]);
+  const named = (consequence, rows) => ({ consequence, changed: [], unchanged: rows });
+  const screens = [{ field: 'Screen', value: 'Users, Roles' }];
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, screens)),
+    'Accounts that hold only the old resource can no longer open Users, Roles.'
+  );
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECLEARED, screens)),
+    'More accounts may open Users, Roles. The instance still checks what they do there.'
+  );
+  assert.equal(
+    pageResourceSentence({ consequence: CONSEQUENCE_PAGERESOURCECLEARED, changed: [{ field: 'Screen', before: '', after: '$&<screen>' }], unchanged: [] }),
+    'More accounts may open $&<screen>. The instance still checks what they do there.',
+    'a title holding a placeholder is shown as written'
+  );
+  assert.equal(pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, [])), '', 'a proposal carrying no Screen value states nothing');
+  assert.equal(pageResourceSentence(named('SOMETHING.ELSE', screens)), '', 'and no other consequence is this sentence');
+  assert.equal(consequenceSentence(CONSEQUENCE_PAGERESOURCECHANGED), '', 'consequenceSentence leaves both to the card, which has the screens');
+  assert.equal(
+    journalSentence({ ...named(CONSEQUENCE_PAGERESOURCECHANGED, screens), name: 'Change the resource of %CSP.UI.Portal.Users to Res' }),
+    'Accounts that hold only the old resource can no longer open Users, Roles.',
+    'the card states it through the view-based sentence it already draws'
+  );
+});
+
+// Story 21.38 (DW-2823), AC4: a page only a write tool declares is named by that action and never by the screen-open sentence; a page declared both
+// ways carries both sentences; a labeled tool and a tool with no label share one sentence, the second by the unnamed form. The `Action` row's
+// value is drawn as its phrases, never as a descriptor class or an id.
+//
+// Mutation (Rule 19): the `Action` row's bare entries are read as writes -> the both-ways leg goes red; the unlabeled form is dropped for the id
+// -> the labeled-and-unlabeled leg goes red; `shownChangedRows` returns the rows as they are -> the row-display leg goes red.
+test("the page resource card names a tool-only page by its action, a both-ways page by both, and draws the Action row as phrases", () => {
+  const RESOURCES = 'OcuPilot.Screen.Descriptor.ResourceList';
+  const named = (consequence, screen, action) => ({
+    consequence,
+    changed: [
+      { field: 'Screen', before: screen, after: screen },
+      { field: 'Action', before: action, after: action },
+    ],
+    unchanged: [],
+  });
+  // Tool-only: the Screen row names the tool's screen, the Action row only the writes.
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, 'Resources', `${RESOURCES}#export`)),
+    'Accounts that hold only the old resource can no longer use: Export on Resources.',
+    'a tool-only page never says a screen can no longer be opened'
+  );
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECLEARED, 'Resources', `${RESOURCES}#export`)),
+    'More accounts may use: Export on Resources. The instance still checks what they do there.'
+  );
+  // Both ways: the Action row lists the opening screen beside the write, and the Screen row keeps every declaring title.
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, 'Resources, Users', `${RESOURCES}#export,OcuPilot.Screen.Descriptor.UserList`)),
+    'Accounts that hold only the old resource can no longer open Users. Accounts that hold only the old resource can no longer use: Export on Resources.'
+  );
+  // Both ways on one screen: the screen opens the page and carries a write that declares it.
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, 'Resources', `${RESOURCES}#export,${RESOURCES}`)),
+    'Accounts that hold only the old resource can no longer open Resources. Accounts that hold only the old resource can no longer use: Export on Resources.',
+    'a screen that opens the page and carries a write that declares it is named in both sentences'
+  );
+  const sameScreen = {
+    targetType: 'page-resource',
+    changed: [{ field: 'Action', before: `${RESOURCES}#export,${RESOURCES}`, after: `${RESOURCES}#export,${RESOURCES}` }],
+    unchanged: [],
+  };
+  assert.deepEqual(
+    shownChangedRows(sameScreen).map((row) => [row.field, row.before, row.after]),
+    [['Action', 'Export on Resources', 'Export on Resources']],
+    'the bare opening-screen entry never prints, and no descriptor class or id does'
+  );
+  // One labeled and one unlabeled tool on one page: one sentence, S11 and S12 in one line.
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, 'Resources', `${RESOURCES}#export,${RESOURCES}#import`)),
+    'Accounts that hold only the old resource can no longer use: Export on Resources, changes on Resources.'
+  );
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, 'Resources', `${RESOURCES}#import,${RESOURCES}#`)),
+    'Accounts that hold only the old resource can no longer use: changes on Resources.',
+    'an unlabeled tool is named once however many declare the page'
+  );
+  assert.equal(
+    pageResourceSentence(named(CONSEQUENCE_PAGERESOURCECHANGED, 'Resources', 'Nope.Descriptor#export')),
+    '',
+    'a descriptor the mirror does not hold names nothing'
+  );
+  // The row display.
+  const view = {
+    targetType: 'page-resource',
+    changed: [
+      { field: 'Screen', before: 'Resources', after: 'Resources' },
+      { field: 'Action', before: `${RESOURCES}#export,${RESOURCES}#import`, after: `${RESOURCES}#export,${RESOURCES}#import` },
+    ],
+    unchanged: [{ field: 'Action', value: `${RESOURCES}#export` }],
+  };
+  assert.deepEqual(
+    shownChangedRows(view).map((row) => [row.field, row.after]),
+    [
+      ['Screen', 'Resources'],
+      ['Action', 'Export on Resources, changes on Resources'],
+    ]
+  );
+  assert.deepEqual(shownUnchangedRows(view).map((row) => row.value), ['Export on Resources']);
+  const other = { ...view, targetType: 'user' };
+  assert.equal(shownChangedRows(other), other.changed, 'another entity type keeps its rows as they are, even for a field named Action');
+  assert.equal(shownUnchangedRows(other), other.unchanged);
 });
 
 // Story 18.15: an enable of interoperability is destructive with its own consequence, the typed-name
@@ -1214,6 +1468,45 @@ test('Story 21.2: a backup run and a freeze state their consequence on the card'
   const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
   assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('BackupRun'))?.[1], CONSEQUENCE_BACKUPRUN, 'BackupRun.cls declares the run code the card reads');
   assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('BackupFreeze'))?.[1], CONSEQUENCE_BACKUPFREEZE, 'BackupFreeze.cls declares the freeze code the card reads');
+});
+
+// Story 21.6: each statement write and the three purges state their ruled sentence on the card, each tool declaring the code the card reads.
+// Mutation (Rule 19): swap two returns in `consequenceSentence`'s SQL branches -> the sentence assertion goes red naming the code.
+test('Story 21.6: the SQL statement writes and the cached-query purges state their consequence on the card', () => {
+  const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
+  const rows = [
+    ['ExplorerSqlStatementFreeze', 'SQL.STATEMENT.FREEZE', CONSEQUENCE_SQLSTATEMENTFREEZE, STRINGS.sqlStatementFreezeConsequence],
+    ['ExplorerSqlStatementUnfreeze', 'SQL.STATEMENT.UNFREEZE', CONSEQUENCE_SQLSTATEMENTUNFREEZE, STRINGS.sqlStatementUnfreezeConsequence],
+    ['ExplorerSqlStatementClearStatistics', 'SQL.STATEMENT.CLEARSTATISTICS', CONSEQUENCE_SQLSTATEMENTCLEARSTATISTICS, STRINGS.sqlStatementClearStatisticsConsequence],
+    ['ExplorerSqlStatementClearError', 'SQL.STATEMENT.CLEARERROR', CONSEQUENCE_SQLSTATEMENTCLEARERROR, STRINGS.sqlStatementClearErrorConsequence],
+    ['ExplorerSqlStatementClean', 'SQL.STATEMENT.CLEAN', CONSEQUENCE_SQLSTATEMENTCLEAN, STRINGS.sqlStatementCleanConsequence],
+    ['SqlCachedQueryPurge', 'SQL.CACHEDQUERY.PURGE', CONSEQUENCE_SQLCACHEDQUERYPURGE, STRINGS.sqlCachedQueryPurgeConsequence],
+    // Story 21.26: the runtime statistics purge and the collection setting's set.
+    ['ExplorerSqlRuntimeStatsPurge', 'SQL.RUNTIMESTATS.PURGE', CONSEQUENCE_SQLRUNTIMESTATSPURGE, STRINGS.sqlRuntimeStatsPurgeConsequence],
+    ['ExplorerSqlRuntimeStatsSettingSet', 'SQL.RUNTIMESTATS.SET', CONSEQUENCE_SQLRUNTIMESTATSSET, STRINGS.sqlRuntimeStatsSetConsequence],
+    // Story 21.27: the index analyzer's gather, run and purge; a gather that includes system classes states its own sentence, pinned below.
+    ['ExplorerSqlIndexAnalysisGather', 'SQL.INDEXANALYSIS.GATHER', CONSEQUENCE_SQLINDEXANALYSISGATHER, STRINGS.sqlIndexAnalysisGatherConsequence],
+    ['ExplorerSqlIndexAnalysisRun', 'SQL.INDEXANALYSIS.RUN', CONSEQUENCE_SQLINDEXANALYSISRUN, STRINGS.sqlIndexAnalysisRunConsequence],
+    ['ExplorerSqlIndexAnalysisPurge', 'SQL.INDEXANALYSIS.PURGE', CONSEQUENCE_SQLINDEXANALYSISPURGE, STRINGS.sqlIndexAnalysisPurgeConsequence],
+    // Story 21.29: the troubleshooting reports' save, delete and generate to a server file.
+    ['ExplorerSqlReportSave', 'EXPLORER.SQLREPORT.SAVE', CONSEQUENCE_SQLREPORTSAVE, STRINGS.sqlReportsSaveConsequence],
+    ['ExplorerSqlReportDelete', 'EXPLORER.SQLREPORT.DELETE', CONSEQUENCE_SQLREPORTDELETE, STRINGS.sqlReportsDeleteConsequence],
+    ['ExplorerSqlReportGenerate', 'EXPLORER.SQLREPORT.GENERATE', CONSEQUENCE_SQLREPORTGENERATE, STRINGS.sqlReportsGenerateConsequence],
+  ];
+  for (const [name, code, constant, sentence] of rows) {
+    assert.equal(constant, code, `${name}'s code is the constant the card reads`);
+    assert.equal(consequenceSentence(constant), sentence, `${code} states its ruled sentence`);
+    assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool(name))?.[1], code, `${name}.cls declares the code the card reads`);
+  }
+  // Each of the three purge tools inherits the one purge code.
+  for (const name of ['ExplorerSqlCachedQueryPurge', 'ExplorerSqlCachedQueryPurgeTable', 'ExplorerSqlCachedQueryPurgeNamespace']) {
+    assert.ok(/Extends OcuPilot\.Screen\.Tool\.SqlCachedQueryPurge\b/.test(tool(name)), `${name} inherits the purge code`);
+  }
+  // Story 21.27: the gathering that includes system classes and routines answers its own code, with the sentence beside the other.
+  // Mutation (Rule 19): drop the GATHERSYSTEM line from `consequenceSentence` -> this goes red on ''.
+  assert.equal(CONSEQUENCE_SQLINDEXANALYSISGATHERSYSTEM, 'SQL.INDEXANALYSIS.GATHERSYSTEM');
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLINDEXANALYSISGATHERSYSTEM), STRINGS.sqlIndexAnalysisGatherSystemConsequence);
+  assert.ok(tool('ExplorerSqlIndexAnalysisGather').includes(`"${CONSEQUENCE_SQLINDEXANALYSISGATHERSYSTEM}"`), 'Gather.cls answers the code the card reads');
 });
 
 // Story 21.3: a startup, memory or compatibility setting that takes effect only at the next restart states the reused restart sentence on the

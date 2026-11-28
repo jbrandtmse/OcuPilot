@@ -14,6 +14,7 @@ import { ScreenArrivals } from '../../core/screen-arrival';
 import { createScreenRead } from '../../core/screen-read';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
+import { type SourceControlQuestion, sourceControlQuestionsOf } from '../../core/source-control-question';
 import { STRINGS, stringFor } from '../../core/strings';
 import { rowFor, rowKey } from '../../core/table-model';
 import { reasonForField } from '../../core/violations';
@@ -26,6 +27,7 @@ import { CodeListSearch, CodeListWrite, compileLinesOf, deletedDocumentsOf, expo
 import { ExplorerCompileDialog, type CompileChoice } from './explorer-compile-dialog';
 import { ExplorerExportDialog, type ExportChoice } from './explorer-export-dialog';
 import { ExplorerImportDialog, type ImportChoice } from './explorer-import-dialog';
+import { SourceControlQuestionDialog } from './source-control-question-dialog';
 
 /** The two write actions the Classes and Routines lists declare (Story 19.2). */
 export const COMPILE_ACTION = 'compile';
@@ -146,7 +148,7 @@ const PANE_SINK: ActionSink = { setRefusal: () => undefined };
 @Component({
   selector: 'app-code-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataTable, ExplorerCompileDialog, ExplorerExportDialog, ExplorerImportDialog, ScreenActionDialogs, TypedNameDialog],
+  imports: [DataTable, ExplorerCompileDialog, ExplorerExportDialog, ExplorerImportDialog, ScreenActionDialogs, SourceControlQuestionDialog, TypedNameDialog],
   template: `<section class="ocu-list-page">
     @if (list; as view) {
       <form class="ocu-criteria-form" data-ocu-explorer="criteria" (submit)="onSearch($event)">
@@ -222,6 +224,14 @@ const PANE_SINK: ActionSink = { setRefusal: () => undefined };
           (cancelled)="onCloseDelete()"
         />
       }
+      @if (askOpen) {
+        <app-source-control-question-dialog
+          [questions]="asked()"
+          [descriptor]="view.screen.descriptor"
+          [scope]="askScope"
+          (finished)="onCloseQuestions()"
+        />
+      }
       @if (exportCount; as count) {
         <app-explorer-export-dialog
           [count]="count"
@@ -282,6 +292,12 @@ export class CodeListPage {
 
   /** Whether the import dialog is open. */
   private readonly importing = signal(false);
+
+  /** The questions the namespace's source-control class asked after the last delete, in order, or `[]` while none is open. */
+  protected readonly asked = signal<readonly SourceControlQuestion[]>([]);
+
+  /** The namespace those questions were asked in, which each answer is pinned to. */
+  protected askScope = '';
 
   /** The allowed directories both transfer dialogs offer, read each time one opens. */
   protected readonly directories = new AllowedDirectoriesStore();
@@ -532,17 +548,37 @@ export class CodeListPage {
     this.deleting.set([]);
   }
 
-  /** One `delete` over the checked set; its refusal is the list's banner, and an applied one clears the checks. */
+  /**
+   * One `delete` over the checked set; its refusal is the list's banner, and an applied one clears the checks. A source-control class that asked
+   * after a deleted document opens its questions once the delete has landed.
+   */
   protected async onDelete(): Promise<void> {
     const names = this.deleting();
     this.deleting.set([]);
     const view = this.list;
     if (view === null || names.length === 0) return;
+    const scope = this.scope.namespace();
+    let questions: readonly SourceControlQuestion[] = [];
     const applied = await this.write.runDelete(names, async () => {
       const sent = await this.handler.sendFor(view.screen.descriptor, DELETE_ACTION, checkedSetTarget(view.screen, names));
-      return { applied: sent, documents: deletedDocumentsOf(this.handler.lastOutput()) };
+      const output = this.handler.lastOutput();
+      questions = sent ? sourceControlQuestionsOf(output) : [];
+      return { applied: sent, documents: deletedDocumentsOf(output) };
     });
     if (applied) view.store.setChecked([]);
+    if (applied && questions.length > 0) {
+      this.askScope = scope;
+      this.asked.set(questions);
+    }
+  }
+
+  /** Whether the source-control class's questions are on screen. */
+  protected get askOpen(): boolean {
+    return this.asked().length > 0;
+  }
+
+  protected onCloseQuestions(): void {
+    this.asked.set([]);
   }
 
   /** Export on the checked rows, or on the one selected row of a list that checks none: opens the export dialog, under the same conditions as Compile. */
@@ -647,7 +683,7 @@ export class CodeListPage {
 
   /** Whether a write runs or one of this page's dialogs is open, when no other may open. */
   private dialogOpen(): boolean {
-    return this.write.running() || this.compiling().length > 0 || this.deleting().length > 0 || this.exporting().length > 0 || this.importing();
+    return this.write.running() || this.compiling().length > 0 || this.deleting().length > 0 || this.exporting().length > 0 || this.importing() || this.asked().length > 0;
   }
 
   /**

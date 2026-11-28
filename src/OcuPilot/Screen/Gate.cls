@@ -22,7 +22,7 @@
 /// <p><b>No namespace switch.</b> <class>%CSP.Portal.Utils</class> is <code>%</code>-mapped and
 /// the read carries no privilege guard of its own; verified live from <code>HSCUSTOM</code>
 /// 2026-09-12, where the store holds no rows and the lookup answers <code>""</code>. The write
-/// path is guarded and is not something OcuPilot ever takes.</p>
+/// path is <class>OcuPilot.Port.PortalResourcePort</class>'s, under the caller's own pairs (AD-44).</p>
 Class OcuPilot.Screen.Gate Extends %RegisteredObject
 {
 

@@ -111,7 +111,7 @@ describe('a reviewed resend through the generic handler (Story 20.31)', () => {
   it('draws Resend refused over more rows than the cap, and available at the cap', () => {
     // Mutation (Rule 19): declare `max` 101 in the Messages descriptor and regenerate -> the refused leg goes red.
     const screen = SCREENS.find((entry) => entry.descriptor === INTEROP_MESSAGE_LIST)!;
-    expect(screen.multiSelect).toEqual({ action: 'resend', max: 100 });
+    expect(screen.multiSelect).toEqual({ action: 'resend', max: 100, extraActions: ['export'] });
     expect(checkedSetReason(screen, 0)).toBe(STRINGS.tableCheckRowsFirst);
     expect(checkedSetReason(screen, 100)).toBe('');
     expect(checkedSetReason(screen, 101)).toBe(formatCount(STRINGS.tableCheckAtMost, 100));

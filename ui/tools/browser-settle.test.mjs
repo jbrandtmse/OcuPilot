@@ -297,29 +297,13 @@ test('a settle helper that waits on nothing is found, and one that reads what it
  * list goes with the last copy.
  */
 const RESIDUAL_COPIES = [
-  'database-operations.browser-spec.mjs',
-  'ecp-data-servers.browser-spec.mjs',
-  'encryption-key-file.browser-spec.mjs',
   'interop-editors.browser-spec.mjs',
   'interop-lookup-transfer.browser-spec.mjs',
   'interop-message-trace.browser-spec.mjs',
   'interop-messages.browser-spec.mjs',
   'interop-transform-test.browser-spec.mjs',
   'interop-viewers.browser-spec.mjs',
-  'journal-records.browser-spec.mjs',
-  'journals.browser-spec.mjs',
-  'ldap-editor.browser-spec.mjs',
-  'local-databases.browser-spec.mjs',
   'namespace-interop.browser-spec.mjs',
-  'namespace-mappings.browser-spec.mjs',
-  'namespaces.browser-spec.mjs',
-  'oauth-client-editor.browser-spec.mjs',
-  'oauth-resource-server-editor.browser-spec.mjs',
-  'oauth-server-editor.browser-spec.mjs',
-  'remote-databases.browser-spec.mjs',
-  'service-editor.browser-spec.mjs',
-  'system-explorer-write.browser-spec.mjs',
-  'wallet-secret.browser-spec.mjs',
 ];
 
 /**

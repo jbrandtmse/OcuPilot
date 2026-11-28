@@ -2,7 +2,8 @@
 /// namespace's routines database and of <code>IRISSYS</code> is refused
 /// <code>PROHIBITED.OCUPILOTDATABASE</code> on both callers, matched by directory, with no write sent and
 /// the reason stated when the Dismount dialog opens; a protected directory spelled another way is
-/// refused too; a failed own-set read refuses; a probe database
+/// refused too; a failed own-set read refuses; the set is judged without the admin API, through the
+/// database port's configuration reads, which skip a missing name; a probe database
 /// standing as an own database is refused; and a mount, truncate, compact or defragment of a protected
 /// database stays permitted.</p>
 /// <p>Every write goes to <class>OcuPilot.Test.DatabaseAcceptPort</class>, which reads the instance and
@@ -48,7 +49,7 @@ Method OnBeforeAllTests() As %Status
 
 Method OnAfterOneTest() As %Status
 {
-    Kill ^||OcuPilotDatabaseWritePort, ^||OcuPilotDatabaseProhibited, ^||OcuPilotDatabaseOwnProbe, ^||OcuPilotDatabaseOwnFail
+    Kill ^||OcuPilotDatabaseWritePort, ^||OcuPilotDatabaseProhibited, ^||OcuPilotDatabaseOwnProbe, ^||OcuPilotDatabaseOwnFail, ^||OcuPilotDatabaseOwnPort
     Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited("")
     Do $ClassMethod(..#ACCEPT, "Clear")
     Merge tRows = ..PreparedPolicy
@@ -162,6 +163,58 @@ Method TestAnOwnProbeAndAFailedOwnSetReadAreRefused()
     }
     Do $$$AssertEquals($ClassMethod(..#ACCEPT, "Writes"), "", "no write reached the port")
     Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).StateOf(tDirectory, "Mounted"), "true", "and the database is still mounted")
+}
+
+/// <p>The protected set without the admin API (AC2, DW-1850): with the recording port answering a failure
+/// for <code>Namespace.Namespace</code> <code>GET</code> and <code>Database.ConfigCRUD</code>
+/// <code>LIST</code>, the dismount of OcuPilot's own database, the install namespace's routines database
+/// and <code>IRISSYS</code> is still refused <code>PROHIBITED.OCUPILOTDATABASE</code> on both callers, a
+/// probe database's dismount is permitted on both, and neither route was called.</p>
+/// <p>Mutation (Rule 19): the dismount arm of <method>OcuPilot.Kernel.Proposal.Prohibited.Database</method>
+/// passes 0 for <code>pFromConfig</code> -> every dismount is refused for the failed admin read, the probe's
+/// is no write, and this goes red.</p>
+Method TestTheDismountJudgesTheSetWithoutTheAdminRoutes()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.DatabaseActions).Enable(..#DISMOUNTKEY), "the agent's dismount key is enabled, so only the prohibited set stands in the way")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Add", ..#NAME), "a probe database is created")
+    Set tProbe = $ClassMethod(..#PROBE, "DirectoryOf", ..#NAME)
+    Set ^||OcuPilotDatabaseWritePort = ..#ACCEPT
+    Set ^||OcuPilotDatabaseProhibited = "OcuPilot.Test.DatabaseProhibitedFixture"
+    Set ^||OcuPilotDatabaseOwnPort = ..#ACCEPT
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited("OcuPilot.Test.DatabaseProhibitedFixture")
+    Set tRoutines = ##class(OcuPilot.Test.DatabaseWrite).InstallRoutines()
+    Set tFailed = "Namespace.Namespace/GET,Database.ConfigCRUD/LIST"
+    For tName = "OCUPILOT", tRoutines, "IRISSYS" {
+        Set tDirectory = ##class(OcuPilot.Test.DatabaseWriteProbe).Stored(tName, "Directory")
+        Do $ClassMethod(..#ACCEPT, "Clear")
+        Do $ClassMethod(..#ACCEPT, "FailOn", tFailed)
+        Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).Act("dismount", tDirectory), "403 " _ ..#OWNCODE, tName _ ": the screen's dismount is refused with the admin routes failing")
+        Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).Agent(..#DISMOUNTTOOL, tDirectory, {}), "403 " _ ..#OWNCODE, tName _ ": and the agent's")
+        Do $$$AssertEquals($ClassMethod(..#ACCEPT, "Writes"), "", tName _ ": no write reached the port")
+    }
+    Do $ClassMethod(..#ACCEPT, "Clear")
+    Do $ClassMethod(..#ACCEPT, "FailOn", tFailed)
+    Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).Act("dismount", tProbe), "200 ", "a probe database's dismount is permitted on the screen")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).Agent(..#DISMOUNTTOOL, tProbe, {}), "200 ", "and on the agent's confirm")
+    Do $$$AssertEquals($ClassMethod(..#ACCEPT, "Writes"), "Database.Actions/DISMOUNT,Database.Actions/DISMOUNT", "each reached the port's dismount")
+    Do $$$AssertTrue(('$ListFind($ListFromString($ClassMethod(..#ACCEPT, "CallTypes")), "Namespace.Namespace/GET")) && ('$ListFind($ListFromString($ClassMethod(..#ACCEPT, "CallTypes")), "Database.ConfigCRUD/LIST")), "and neither admin route was called")
+}
+
+/// <p>The two configuration reads behind the dismount's protected set (AD-27's named case): a name with
+/// no configuration is skipped and the others read, an unknown namespace is an error status, and the
+/// caller's namespace is the same after each (AD-16).</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.DatabasePort.ConfigDirectories</method> refuses on every
+/// vendor error -> the missing name fails the read and this goes red.</p>
+Method TestTheConfigurationReadsSkipAMissingNameAndRestoreTheNamespace()
+{
+    Set tNamespace = $NAMESPACE
+    Set tSystem = ##class(OcuPilot.Test.DatabaseWriteProbe).Stored("IRISSYS", "Directory")
+    Do $$$AssertStatusOK(##class(OcuPilot.Port.DatabasePort).ConfigDirectories($ListBuild("OCUPROBE2121NONE", "IRISSYS"), .tDirectories), "a name with no configuration is skipped, not an error")
+    Do $$$AssertTrue(($ListLength(tDirectories) = 1) && ##class(OcuPilot.Port.DatabasePort).SameDirectory($List(tDirectories, 1), tSystem), "and the configured name's directory is read (" _ $ListToString(tDirectories) _ ")")
+    Do $$$AssertEquals($NAMESPACE, tNamespace, "in the caller's namespace afterwards")
+    Do $$$AssertStatusNotOK(##class(OcuPilot.Port.DatabasePort).ProtectedNamespaceDatabases("OCUPROBE2121NONE", .tNames), "an unknown namespace is an error status, which the arm refuses on")
+    Do $$$AssertEquals(tNames, "", "with no names")
+    Do $$$AssertEquals($NAMESPACE, tNamespace, "and the caller's namespace is restored")
 }
 
 /// <p>The dismount's impact for the database in <var>pDirectory</var>, as the screen's dialog asks it

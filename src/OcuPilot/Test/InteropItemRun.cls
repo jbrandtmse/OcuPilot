@@ -81,6 +81,7 @@ Method OnAfterOneTest() As %Status
     Do $ClassMethod(..#SEAM, "Restore")
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Do $$$AssertEquals($ClassMethod(..#CONTROL, "RemoveNamelessJob"), 0, "no planted job row or ghost row is left, and their log lines are removed")
     Do $$$AssertStatusOK($ClassMethod(..#CONTROL, "Reset"), "the probe production is left stopped with its items as they began")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the probe proposals and turns are removed")
     Quit $$$OK
@@ -141,12 +142,7 @@ ClassMethod JobsTab() As %Integer
 /// needs</code> as <code>name=value</code> pairs; the refusal's code when the read is refused.</p>
 ClassMethod Facts(pName As %String = {..#OPNAME}) As %String
 {
-    Kill tQuery
-    Set tQuery("namespace") = ..#NAMESPACE
-    Set tQuery("id") = $ClassMethod(..#CONTROL, "IdOf", pName)
-    Set tSC = $ClassMethod(..#PORT, "Invoke", "Items", "ITEMRUN", .tQuery, "", .tRow, .tHttp, .tFault)
-    If '$IsObject($Get(tRow)) Quit +$Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "")
-    Quit "enabled=" _ +tRow.Enabled _ " stopped=" _ +tRow.TemporarilyStopped _ " own=" _ +tRow.OwnJobs _ " jobs=" _ tRow.Jobs _ " needs=" _ +tRow.NeedsUpdate
+    Quit $ClassMethod(..#CONTROL, "ItemFacts", pName)
 }
 
 /// <p>One call of <var>pType</var> on the item <var>pName</var> through <class>OcuPilot.Test.InteropItemSeam</class>; its HTTP status and the
@@ -358,6 +354,55 @@ Method TestTheStartHelperWaitsForTheProductionsOwnUpdate()
     Do $$$AssertTrue(tLocked, "this process held the runtime lock across the start")
     Do $$$AssertStatusNotOK(tSC, "the helper does not answer OK while the startup update cannot run")
     Do $$$AssertTrue($System.Status.GetErrorText(tSC) [ "logged no update", "its status names the missing update: " _ $System.Status.GetErrorText(tSC))
+}
+
+/// <p>The shared start helper answers a failing status that names the HTTP status and the code of a start the port refuses: a second
+/// start of the production that already runs.</p>
+/// <p>Mutation (Rule 19): delete the answer check after the port's <code>START</code> in
+/// <method>OcuPilot.Test.InteropItemControl.StartProduction</method> -- this test goes red, the helper answering OK from the item's
+/// facts.</p>
+Method TestTheStartHelperNamesAStartThePortRefuses()
+{
+    Do $$$AssertStatusOK(..StartProbe(), "the probe production runs with the operation's job")
+    Set tSC = $ClassMethod(..#CONTROL, "StartProduction")
+    Set tText = $System.Status.GetErrorText(tSC)
+    Do $$$AssertStatusNotOK(tSC, "a second start of the running production does not answer OK")
+    Do $$$AssertTrue((tText [ "HTTP 409") && (tText [ "INTEROP.PRODUCTION.RUNNING"), "its status names the refusal's HTTP status and code: " _ tText)
+}
+
+/// <p>With a job row that carries no configuration name stored before the operation's (the vendor's job list cannot read it), the item's
+/// facts still read the operation's job -- the read <method>OcuPilot.Test.InteropItemControl.StartProduction</method> waits on -- and
+/// the job list names the row it cannot read beside the operation instead of reading as no job. The production's start clears the
+/// job rows, so the row is stored after it.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Test.InteropItemControl.Jobs</method> stop at the first row it cannot read -- the
+/// operation is missing from the list and this test goes red.</p>
+Method TestTheJobListNamesAnUnreadableRowBesideTheOperation()
+{
+    Do $$$AssertStatusOK(..StartProbe(), "the probe production runs with the operation's job")
+    Do $ClassMethod(..#CONTROL, "PlantNamelessJob")
+    Try {
+        Set tJobs = $ClassMethod(..#CONTROL, "Jobs")
+        Do $$$AssertTrue(tJobs [ "unread row", "the job list names the row it cannot read: " _ tJobs)
+        Do $$$AssertTrue($ListFind($ListFromString(tJobs), ..#OPNAME), "and still lists the operation: " _ tJobs)
+        Do $$$AssertEquals(..Facts(), "enabled=1 stopped=0 own=1 jobs=1 needs=0", "and the item's facts still read its job")
+    } Catch ex {
+        Do $$$AssertTrue(0, "the read beside a nameless job row threw " _ ex.DisplayString())
+    }
+}
+
+/// <p>The failure text of a start whose operation reads no job (<method>OcuPilot.Test.InteropItemControl.NoJobText</method>), built
+/// while the probe runs, names the start's answer it is given, the production's state, the operation's facts and a job row.</p>
+/// <p>Mutation (Rule 19): drop the <code>Jobs(1)</code> read from <method>OcuPilot.Test.InteropItemControl.NoJobText</method> -- the job
+/// row assertion goes red.</p>
+Method TestTheNoJobFailureTextNamesTheStartTheStateTheFactsAndAJobRow()
+{
+    Do $$$AssertStatusOK(..StartProbe(), "the probe production runs with the operation's job")
+    Set tAnswer = "HTTP 200, code '', state 'Running'"
+    Set tText = $ClassMethod(..#CONTROL, "NoJobText", tAnswer)
+    Do $$$AssertTrue(tText [ ("(" _ tAnswer _ ")"), "the text names the start's answer: " _ tText)
+    Do $$$AssertTrue(tText [ ("the production reads " _ $ClassMethod(..#PRODUCTIONS, "State")), "and the production's state: " _ tText)
+    Do $$$AssertTrue(tText [ ("the item " _ ..Facts() _ ","), "and the operation's facts: " _ tText)
+    Do $$$AssertTrue(($Piece(tText, "the job rows: ", 2) [ (..#OPNAME _ " (")), "and a job row of the operation: " _ tText)
 }
 
 /// <p>AC2: <method>OcuPilot.Port.InteropPort.ItemRunRefusal</method> judges in the matrix's order -- the production, the name, the item's

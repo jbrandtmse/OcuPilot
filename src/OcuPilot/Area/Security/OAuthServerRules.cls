@@ -263,12 +263,7 @@ ClassMethod Taken(pIssuer As %String, Output pTaken As %Boolean) As %Status
     Kill tQuery
     Set tQuery($ClassMethod(..#CREATETOOL, "IdParam")) = pIssuer
     Set tSC = $ClassMethod(..PortClass(), "Invoke", $ClassMethod(..#CREATETOOL, "Endpoint"), "GET", .tQuery, "", .tFresh, .tHttp, .tFault)
-    If $$$ISERR(tSC) {
-        If +$Get(tHttp) = 404 Quit $$$OK
-        Quit tSC
-    }
-    Set pTaken = ($IsObject(tFresh) && tFresh.%IsA("%Library.DynamicObject"))
-    Quit $$$OK
+    Quit ##class(OcuPilot.Kernel.Proposal.ScreenSaveRules).ReadTaken(tSC, $Get(tHttp), $Get(tFresh), .pTaken)
 }
 
 /// <p>The member violations of <var>pMetadata</var>: a member the derived list does not name, and a

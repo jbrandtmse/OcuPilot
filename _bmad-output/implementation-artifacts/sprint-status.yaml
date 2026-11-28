@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '11-20-2026 15:59'
+last_updated: '11-28-2026 07:21'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -394,7 +394,7 @@ development_status:
   21-3-startup-memory-and-compatibility-settings: done
   21-4-nls-locales-and-sql-settings: done
   21-5-globals-and-the-data-tools: done
-  21-6-the-sql-tuning-track: ready-for-dev
+  21-6-the-sql-tuning-track: done
   21-10-the-remaining-leaves-across-the-six-areas: done
   21-12-mirroring: done
   21-13-ddl-mappings: done
@@ -405,22 +405,26 @@ development_status:
   21-18-global-find-and-replace: done
   21-19-shell-advisor-permission-and-task-leaves: done
   21-20-os-management-and-log-leaves: done
-  21-21-leaves-that-wait-on-the-owner: ready-for-dev
+  21-21-leaves-that-wait-on-the-owner: done
   21-22-ci-flake-hardening: done
-  21-23-test-hygiene-and-contended-client-fixes: backlog
+  21-23-test-hygiene-and-contended-client-fixes: done
   21-24-the-task-manager-mail-password-is-masked-in-ocupilot-s-audit: done
-  21-25-index-rebuild-and-tune-table: ready-for-dev
-  21-26-runtime-statistics: backlog
-  21-27-the-index-analyzer-and-its-advice: backlog
-  21-28-alternate-show-plans: backlog
-  21-29-troubleshooting-reports: backlog
+  21-25-index-rebuild-and-tune-table: done
+  21-26-runtime-statistics: done
+  21-27-the-index-analyzer-and-its-advice: done
+  21-28-alternate-show-plans: done
+  21-29-troubleshooting-reports: done
   21-30-ocupilot-s-guarded-storage-refuses-a-caller-that-is-not-an-a: done
-  21-31-fixed-table-statistics: backlog
+  21-31-fixed-table-statistics: done
   21-32-a-sql-settings-change-leaves-the-instance-s-class-query-list: done
   21-33-ocupilot-s-other-guarded-stores-refuse-a-caller-who-may-not: done
   21-34-a-backup-action-leaves-the-web-process-s-null-device-open: done
   21-35-ocupilot-s-install-records-and-other-users-state-answer-only: done
-  21-36-task-output-and-mail-password: backlog
+  21-36-task-output-and-mail-password: done
+  21-37-page-resources: done
+  21-38-shared-rules-helpers-the-source-control-follow-up-and-escala: done
+  21-39-ci-health-the-governance-renderer-stall-and-the-journal-reve: done
+  21-40-the-governance-page-s-render-cost: done
   epic-21-retrospective: optional
 
   epic-22: done
@@ -459,10 +463,10 @@ development_status:
   24-11-listing-groups: done
   24-12-quality-measures: done
   24-13-analytics-settings: done
-  24-14-pmml-model-tester-and-dashboard-viewer: in-progress
-  24-15-credentials-default-settings-and-schedules: backlog
-  24-16-purge-suspended-messages-export-and-the-archive-manager: backlog
-  24-17-managed-alerts-logs-the-system-monitor-and-workflow: backlog
+  24-14-pmml-model-tester-and-dashboard-viewer: done
+  24-15-credentials-default-settings-and-schedules: done
+  24-16-purge-suspended-messages-export-and-the-archive-manager: done
+  24-17-managed-alerts-logs-the-system-monitor-and-workflow: done
   24-18-pex-record-maps-and-hl7-authoring: backlog
   24-19-the-registries-interface-maps-and-references-port-authority: backlog
   24-20-undo-by-snapshot-and-revert: backlog

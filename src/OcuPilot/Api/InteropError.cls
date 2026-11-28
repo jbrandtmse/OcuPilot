@@ -430,6 +430,354 @@ Parameter PARTNERREMOVE = "INTEROP.PARTNER.REMOVE";
 
 Parameter REASONPARTNERREMOVE = "Removing this business partner deletes its description and both contacts, and it cannot be restored from OcuPilot.";
 
+/// <p>The system default settings' refusals, violations and consequences (Story 24.15). <code>TAKEN</code>, <code>SECRET</code> and
+/// <code>SOURCECONTROL</code> are 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, <code>RESTRICTED</code> is 403, and
+/// <code>KEY</code> and <code>VALUE</code> are 422. <code>TOOMANY</code> is 409 on the comparison.</p>
+Parameter DEFAULTSETTINGTAKEN = "INTEROP.DEFAULTSETTING.TAKEN";
+
+Parameter REASONDEFAULTSETTINGTAKEN = "This namespace already has a default setting for that production, item, host class and setting.";
+
+Parameter DEFAULTSETTINGSECRET = "INTEROP.DEFAULTSETTING.SECRET";
+
+Parameter REASONDEFAULTSETTINGSECRET = "This setting names a credential, so OcuPilot neither shows nor sets its value. Set it in the classic System Default Settings page.";
+
+Parameter DEFAULTSETTINGKEY = "INTEROP.DEFAULTSETTING.KEY";
+
+Parameter REASONDEFAULTSETTINGKEY = "Production, item, host class and setting are each 1 to 255 characters, may be * for any, and may not contain two vertical bars.";
+
+Parameter DEFAULTSETTINGVALUE = "INTEROP.DEFAULTSETTING.VALUE";
+
+Parameter REASONDEFAULTSETTINGVALUE = "This value is not valid for that setting.";
+
+Parameter DEFAULTSETTINGRESTRICTED = "INTEROP.DEFAULTSETTING.RESTRICTED";
+
+Parameter REASONDEFAULTSETTINGRESTRICTED = "You may not change the default for this setting.";
+
+Parameter DEFAULTSETTINGSOURCECONTROL = "INTEROP.DEFAULTSETTING.SOURCECONTROL";
+
+Parameter REASONDEFAULTSETTINGSOURCECONTROL = "This namespace uses source control, so change default settings in the classic System Default Settings page.";
+
+Parameter DEFAULTSETTINGTOOMANY = "INTEROP.DEFAULTSETTING.TOOMANY";
+
+Parameter REASONDEFAULTSETTINGTOOMANY = "One of these namespaces has more default settings than one comparison covers.";
+
+Parameter DEFAULTSETTINGREMOVE = "INTEROP.DEFAULTSETTING.REMOVE";
+
+Parameter REASONDEFAULTSETTINGREMOVE = "Items that took this value use their own setting or the class default again, and it cannot be restored from OcuPilot.";
+
+Parameter DEFAULTSETTINGPENDING = "INTEROP.DEFAULTSETTING.PENDING";
+
+Parameter REASONDEFAULTSETTINGPENDING = "A running production uses the new value once it is updated.";
+
+/// <p>The credentials' refusals, violations and consequences (Story 24.15). <code>TAKEN</code> is 409 on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, and <code>NAME</code>, <code>PARTNER</code> and <code>VALUE</code> are 422.</p>
+Parameter CREDENTIALTAKEN = "INTEROP.CREDENTIAL.TAKEN";
+
+Parameter REASONCREDENTIALTAKEN = "This namespace already has a credential with that name, in some letter case.";
+
+Parameter CREDENTIALNAME = "INTEROP.CREDENTIAL.NAME";
+
+Parameter REASONCREDENTIALNAME = "A credential name is 1 to 50 characters and holds no control characters.";
+
+Parameter CREDENTIALPARTNER = "INTEROP.CREDENTIAL.PARTNER";
+
+Parameter REASONCREDENTIALPARTNER = "This namespace has no business partner with that name.";
+
+Parameter CREDENTIALVALUE = "INTEROP.CREDENTIAL.VALUE";
+
+Parameter REASONCREDENTIALVALUE = "The instance did not accept this user name.";
+
+Parameter CREDENTIALREMOVE = "INTEROP.CREDENTIAL.REMOVE";
+
+Parameter REASONCREDENTIALREMOVE = "Anything that names this credential can no longer use it. This cannot be undone.";
+
+Parameter CREDENTIALCHANGE = "INTEROP.CREDENTIAL.CHANGE";
+
+Parameter REASONCREDENTIALCHANGE = "Anything that signs in with this credential uses the change from its next connection.";
+
+/// <p>The schedule specs' refusals, violations and consequences (Story 24.15). <code>TAKEN</code> and <code>SOURCECONTROL</code> are 409 on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, and <code>NAME</code>, <code>SPEC</code> and <code>DESCRIPTION</code> are 422.</p>
+Parameter SCHEDULETAKEN = "INTEROP.SCHEDULE.TAKEN";
+
+Parameter REASONSCHEDULETAKEN = "This namespace already has a schedule spec with that name, in some letter case.";
+
+Parameter SCHEDULENAME = "INTEROP.SCHEDULE.NAME";
+
+Parameter REASONSCHEDULENAME = "A schedule spec name is 1 to 50 characters and holds no control characters.";
+
+Parameter SCHEDULESPEC = "INTEROP.SCHEDULE.SPEC";
+
+Parameter REASONSCHEDULESPEC = "This schedule is not valid. Each part is START or STOP, a colon and a date and time.";
+
+Parameter SCHEDULEDESCRIPTION = "INTEROP.SCHEDULE.DESCRIPTION";
+
+Parameter REASONSCHEDULEDESCRIPTION = "A description is at most 256 characters.";
+
+Parameter SCHEDULESOURCECONTROL = "INTEROP.SCHEDULE.SOURCECONTROL";
+
+Parameter REASONSCHEDULESOURCECONTROL = "This namespace uses source control, so change schedule specs in the classic Schedule Specs page.";
+
+Parameter SCHEDULEREMOVE = "INTEROP.SCHEDULE.REMOVE";
+
+Parameter REASONSCHEDULEREMOVE = "Items that name this schedule spec keep running until the production is next updated, and are then disabled and stopped until the schedule spec is added again. It cannot be restored from OcuPilot.";
+
+Parameter SCHEDULECHANGE = "INTEROP.SCHEDULE.CHANGE";
+
+Parameter REASONSCHEDULECHANGE = "A running production that uses this schedule spec follows a changed spec at once.";
+
+/// <p>The workflow users' refusals, violations and consequences (Story 24.17 Batch 3a). <code>USERTAKEN</code> and <code>SOURCECONTROL</code> are 409 on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, and <code>USERNAME</code> and <code>FULLNAME</code> are 422. <code>SOURCECONTROL</code> is shared with the
+/// workflow roles' writes.</p>
+Parameter WORKFLOWSOURCECONTROL = "INTEROP.WORKFLOW.SOURCECONTROL";
+
+Parameter REASONWORKFLOWSOURCECONTROL = "This namespace uses source control, so change workflow users and roles in the classic Workflow Users and Workflow Roles pages.";
+
+Parameter WORKFLOWUSERNAME = "INTEROP.WORKFLOW.USERNAME";
+
+Parameter REASONWORKFLOWUSERNAME = "A new workflow user must be a user of this instance, named exactly as the user list spells it.";
+
+Parameter WORKFLOWUSERTAKEN = "INTEROP.WORKFLOW.USERTAKEN";
+
+Parameter REASONWORKFLOWUSERTAKEN = "This namespace already has a workflow user with that name, in some letter case.";
+
+Parameter WORKFLOWFULLNAME = "INTEROP.WORKFLOW.FULLNAME";
+
+Parameter REASONWORKFLOWFULLNAME = "A full name is at most 128 characters and holds no control characters.";
+
+Parameter WORKFLOWUSERREMOVE = "INTEROP.WORKFLOW.USERREMOVE";
+
+Parameter REASONWORKFLOWUSERREMOVE = "Removing this workflow user takes them out of every workflow role, deletes their worklist and leaves each task they hold unassigned. It cannot be restored from OcuPilot.";
+
+Parameter WORKFLOWUSERINACTIVE = "INTEROP.WORKFLOW.USERINACTIVE";
+
+Parameter REASONWORKFLOWUSERINACTIVE = "An inactive workflow user is sent no new tasks through their workflow roles; their worklist is deleted and each task they hold is left unassigned.";
+
+/// <p>The workflow roles' and their members' refusals, violations and consequences (Story 24.17 Batch 3b). <code>ROLETAKEN</code> and <code>MEMBERTAKEN</code> are 409 on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug and the others are 422; the source control refusal is <parameter>WORKFLOWSOURCECONTROL</parameter>.</p>
+Parameter WORKFLOWROLENAME = "INTEROP.WORKFLOW.ROLENAME";
+
+Parameter REASONWORKFLOWROLENAME = "A workflow role name is 1 to 128 characters and holds no control characters.";
+
+Parameter WORKFLOWROLETAKEN = "INTEROP.WORKFLOW.ROLETAKEN";
+
+Parameter REASONWORKFLOWROLETAKEN = "This namespace already has a workflow role with that name, in some letter case.";
+
+Parameter WORKFLOWROLEDESCRIPTION = "INTEROP.WORKFLOW.ROLEDESCRIPTION";
+
+Parameter REASONWORKFLOWROLEDESCRIPTION = "A description is at most 2,000 characters.";
+
+Parameter WORKFLOWROLECAPACITY = "INTEROP.WORKFLOW.ROLECAPACITY";
+
+Parameter REASONWORKFLOWROLECAPACITY = "Capacity is a whole number from 1 to 100.";
+
+Parameter WORKFLOWMEMBERUSER = "INTEROP.WORKFLOW.MEMBERUSER";
+
+Parameter REASONWORKFLOWMEMBERUSER = "This namespace has no workflow user with that name.";
+
+Parameter WORKFLOWMEMBERTAKEN = "INTEROP.WORKFLOW.MEMBERTAKEN";
+
+Parameter REASONWORKFLOWMEMBERTAKEN = "This workflow user is already a member of this role.";
+
+Parameter WORKFLOWMEMBERRANK = "INTEROP.WORKFLOW.MEMBERRANK";
+
+Parameter REASONWORKFLOWMEMBERRANK = "Rank is a whole number from 1 to 5.";
+
+Parameter WORKFLOWMEMBERTITLE = "INTEROP.WORKFLOW.MEMBERTITLE";
+
+Parameter REASONWORKFLOWMEMBERTITLE = "A title is at most 128 characters and holds no control characters.";
+
+Parameter WORKFLOWROLEREMOVE = "INTEROP.WORKFLOW.ROLEREMOVE";
+
+Parameter REASONWORKFLOWROLEREMOVE = "Removing this workflow role also removes each of its members from it. Tasks already sent through it are left as they are. It cannot be restored from OcuPilot.";
+
+Parameter WORKFLOWMEMBERADD = "INTEROP.WORKFLOW.MEMBERADD";
+
+Parameter REASONWORKFLOWMEMBERADD = "An active member is sent each unassigned task of this role.";
+
+Parameter WORKFLOWMEMBERREMOVE = "INTEROP.WORKFLOW.MEMBERREMOVE";
+
+Parameter REASONWORKFLOWMEMBERREMOVE = "Removing this member deletes their worklist for this role and leaves each task they hold through it unassigned.";
+
+/// <p>The workflow tasks' refusals, violations and consequences (Story 24.17 Batch 4). <code>TASKCOMPLETE</code>, <code>TASKUNCHANGED</code> and <code>TASKSENDER</code> are 409 on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug and <code>TASKUSER</code> and <code>TASKPRIORITY</code> are 422.</p>
+Parameter WORKFLOWTASKCOMPLETE = "INTEROP.WORKFLOW.TASKCOMPLETE";
+
+Parameter REASONWORKFLOWTASKCOMPLETE = "This task is already complete.";
+
+Parameter WORKFLOWTASKUSER = "INTEROP.WORKFLOW.TASKUSER";
+
+Parameter REASONWORKFLOWTASKUSER = "Assign the task to an active workflow user of this namespace, or to Unassigned.";
+
+Parameter WORKFLOWTASKPRIORITY = "INTEROP.WORKFLOW.TASKPRIORITY";
+
+Parameter REASONWORKFLOWTASKPRIORITY = "Priority is a whole number from 1 to 5.";
+
+Parameter WORKFLOWTASKUNCHANGED = "INTEROP.WORKFLOW.TASKUNCHANGED";
+
+Parameter REASONWORKFLOWTASKUNCHANGED = "Nothing would change. Choose another user or priority.";
+
+Parameter WORKFLOWTASKSENDER = "INTEROP.WORKFLOW.TASKSENDER";
+
+Parameter REASONWORKFLOWTASKSENDER = "This task cannot be canceled, because the business process that sent it is not waiting for it in the running production.";
+
+Parameter WORKFLOWTASKASSIGN = "INTEROP.WORKFLOW.TASKASSIGN";
+
+Parameter REASONWORKFLOWTASKASSIGN = "Assigning this task takes it off every other user's worklist.";
+
+Parameter WORKFLOWTASKUNASSIGN = "INTEROP.WORKFLOW.TASKUNASSIGN";
+
+Parameter REASONWORKFLOWTASKUNASSIGN = "Unassigning this task sends it to every active member of its workflow role.";
+
+Parameter WORKFLOWTASKCANCEL = "INTEROP.WORKFLOW.TASKCANCEL";
+
+Parameter REASONWORKFLOWTASKCANCEL = "Canceling this task takes it off every worklist and returns it, canceled, to the business process that sent it. It cannot be undone.";
+
+/// <p>The HL7 schemas' refusals, violations and consequences (Story 24.18 Batch 1). <code>NAME</code>, <code>BASE</code> and <code>DESCRIPTION</code> are 422 on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug; the others are 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug.</p>
+Parameter HL7SOURCECONTROL = "INTEROP.HL7.SOURCECONTROL";
+
+Parameter REASONHL7SOURCECONTROL = "This namespace uses source control, so change HL7 schemas in the classic HL7 Schema Structures page.";
+
+Parameter HL7NAME = "INTEROP.HL7.NAME";
+
+Parameter REASONHL7NAME = "An HL7 schema name is 1 to 64 letters, digits, periods, underscores and hyphens, and begins with a letter or digit.";
+
+Parameter HL7TAKEN = "INTEROP.HL7.TAKEN";
+
+Parameter REASONHL7TAKEN = "This namespace already has an HL7 schema with that name, in some letter case.";
+
+Parameter HL7BASE = "INTEROP.HL7.BASE";
+
+Parameter REASONHL7BASE = "Choose a base schema this namespace holds, or none.";
+
+Parameter HL7DESCRIPTION = "INTEROP.HL7.DESCRIPTION";
+
+Parameter REASONHL7DESCRIPTION = "A description is at most 2,000 characters.";
+
+Parameter HL7STANDARD = "INTEROP.HL7.STANDARD";
+
+Parameter REASONHL7STANDARD = "This is a standard HL7 schema, which the instance provides, so it cannot be changed or deleted.";
+
+Parameter HL7IMPORTSHAPE = "INTEROP.HL7.IMPORTSHAPE";
+
+Parameter REASONHL7IMPORTSHAPE = "An import file must hold exactly one HL7 schema and nothing else, in the form the Export action writes.";
+
+Parameter HL7IMPORTSTANDARD = "INTEROP.HL7.IMPORTSTANDARD";
+
+Parameter REASONHL7IMPORTSTANDARD = "This file holds a standard HL7 schema, which the instance provides, so it is not imported.";
+
+Parameter HL7IMPORTCHANGED = "INTEROP.HL7.IMPORTCHANGED";
+
+Parameter REASONHL7IMPORTCHANGED = "The file or the schema changed after the import was reviewed, so nothing was imported. Review the import again.";
+
+Parameter HL7CASE = "INTEROP.HL7.CASE";
+
+Parameter REASONHL7CASE = "An HL7 schema whose name differs from this one only in letter case already exists. Use its spelling, or choose another name.";
+
+Parameter HL7TOOLARGE = "INTEROP.HL7.TOOLARGE";
+
+Parameter REASONHL7TOOLARGE = "An HL7 schema file holds at most 3,000,000 characters, and this one holds more.";
+
+Parameter HL7LOCKED = "INTEROP.HL7.LOCKED";
+
+Parameter REASONHL7LOCKED = "Someone else is changing this HL7 schema right now, so nothing was written. Try again in a moment.";
+
+Parameter HL7DELETE = "INTEROP.HL7.DELETE";
+
+Parameter REASONHL7DELETE = "Deleting this HL7 schema removes everything it defines. Schemas based on it, and items and rules that name it, can no longer find it. It cannot be restored from OcuPilot.";
+
+Parameter HL7IMPORT = "INTEROP.HL7.IMPORT";
+
+Parameter REASONHL7IMPORT = "Importing replaces this namespace's HL7 schema of the same name with the file's, and anything the file does not define is removed.";
+
+/// <p>The purge's refusals and consequences (Story 24.16). <code>DAYS</code> is 422 on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug and
+/// <code>RUNNING</code> is 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug.</p>
+Parameter PURGEDAYS = "INTEROP.PURGE.DAYS";
+
+Parameter REASONPURGEDAYS = "Older than (days) is a whole number from 0 to 99999.";
+
+Parameter PURGERUNNING = "INTEROP.PURGE.RUNNING";
+
+Parameter REASONPURGERUNNING = "A purge is already running in this namespace. Try again when it has finished.";
+
+Parameter PURGERUN = "INTEROP.PURGE.RUN";
+
+Parameter REASONPURGERUN = "Deletes this namespace's event log entries, messages, completed business process records, business rule log entries, I/O log entries, host monitor data and managed alerts older than the days to keep, and their message bodies when Include message bodies is on. When Purge only completed sessions is on, a session with a message still in progress is kept whole, and so is an open managed alert. With 0 days, everything up to the end of today is deleted, except managed alerts from today. It cannot be undone.";
+
+Parameter PURGEBITMAP = "INTEROP.PURGE.BITMAP";
+
+Parameter REASONPURGEBITMAP = "Deletes this namespace's event log entries, messages, completed business process records, business rule log entries, I/O log entries, host monitor data and managed alerts older than the days to keep, and their message bodies when Include message bodies is on. When Purge only completed sessions is on, a session with a message still in progress is kept whole, and so is an open managed alert. With 0 days, everything up to the end of today is deleted, except managed alerts from today. It cannot be undone. Bitmap cleanup then runs over every class in this namespace with full system rights, and can take a long time. Those rights end when it finishes.";
+
+/// <p>The consequences of the business rule log purge and the business process purge (Story 24.17 Batch 2); neither has a refusal of its own beyond
+/// <parameter>PURGEDAYS</parameter>.</p>
+Parameter RULELOGPURGE = "INTEROP.RULELOG.PURGE";
+
+Parameter REASONRULELOGPURGE = "Deletes this namespace's business rule log entries older than the days to keep. With 0 days, everything up to the end of today is deleted. It cannot be undone.";
+
+Parameter PROCESSLOGPURGE = "INTEROP.PROCESSLOG.PURGE";
+
+Parameter REASONPROCESSLOGPURGE = "Deletes this namespace's completed business process records older than the days to keep; a business process still running is kept. With 0 days, every completed one up to the end of today is deleted. It cannot be undone.";
+
+/// <p>The local archive manager's refusals and consequence (Story 24.16 Batch 4), each 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug: a run already
+/// running, no other interoperability namespace to archive to, a namespace that archives with its own class, a namespace holding more messages than one run takes, and a
+/// target that already holds an id the run would move. <parameter>ACCEPTSNOARCHIVETARGET</parameter> is what Archive to namespace accepts when no other namespace is
+/// listed.</p>
+Parameter ARCHIVERUNNING = "INTEROP.ARCHIVE.RUNNING";
+
+Parameter REASONARCHIVERUNNING = "An archive is already running in this namespace. Try again when it has finished.";
+
+Parameter ARCHIVENOTARGET = "INTEROP.ARCHIVE.NOTARGET";
+
+Parameter REASONARCHIVENOTARGET = "Archive to namespace is not set to another interoperability namespace. Set it under Archive settings first.";
+
+Parameter ARCHIVECLASS = "INTEROP.ARCHIVE.CLASS";
+
+Parameter REASONARCHIVECLASS = "This namespace archives with its own archive manager class, which runs code OcuPilot does not run. Run it from the classic Archive Manager page.";
+
+Parameter ARCHIVETOOMANY = "INTEROP.ARCHIVE.TOOMANY";
+
+Parameter REASONARCHIVETOOMANY = "This namespace holds more messages than one archive run here can take. Purge older messages first, or run the archive from the classic Archive Manager page.";
+
+Parameter ARCHIVETAKEN = "INTEROP.ARCHIVE.TAKEN";
+
+Parameter REASONARCHIVETAKEN = "Archive to namespace already holds a message with the id of one this run would move, so nothing was archived. Choose a namespace kept for archives.";
+
+Parameter ARCHIVERUN = "INTEROP.ARCHIVE.RUN";
+
+Parameter REASONARCHIVERUN = "Archiving moves every message in this namespace older than the number of days before archiving, whatever its status, to the namespace set as Archive to namespace: its header is saved there under its own message id and its body as text, and then both are deleted here. A body that is not an EDI document or an object that can be written as XML is kept there only as its class name and id. With 0 days, everything up to the end of today is moved. The last run's history and error log are replaced. It cannot be undone.";
+
+Parameter ACCEPTSNOARCHIVETARGET = "No other interoperability namespace on this instance.";
+
+/// <p>The managed alert update's refusals and consequence (Story 24.17 Batch 1): an alert that is gone (404), a value outside its rule (422: the owner, the escalation level, the
+/// next action time and the reason) and an update that would change nothing (409).</p>
+Parameter ALERTNOTFOUND = "INTEROP.ALERT.NOTFOUND";
+
+Parameter REASONALERTNOTFOUND = "This managed alert no longer exists.";
+
+Parameter ALERTUNCHANGED = "INTEROP.ALERT.UNCHANGED";
+
+Parameter REASONALERTUNCHANGED = "Nothing would change. Choose a new owner, open state, escalation level or next action time.";
+
+Parameter ALERTOWNER = "INTEROP.ALERT.OWNER";
+
+Parameter REASONALERTOWNER = "The owner must be unassigned, you, or a user who can work on managed alerts in this namespace.";
+
+Parameter ALERTLEVEL = "INTEROP.ALERT.LEVEL";
+
+Parameter REASONALERTLEVEL = "The escalation level moves one step up or down from its current level, and never below 0.";
+
+Parameter ALERTNEXTACTION = "INTEROP.ALERT.NEXTACTION";
+
+Parameter REASONALERTNEXTACTION = "Next action in (minutes) is a whole number from 1 to 20160.";
+
+Parameter ALERTREASON = "INTEROP.ALERT.REASON";
+
+Parameter REASONALERTREASON = "Give a reason of 1 to 500 characters, with no control characters.";
+
+Parameter ALERTUPDATE = "INTEROP.ALERT.UPDATE";
+
+Parameter REASONALERTUPDATE = "Updating saves each change in the alert's history with your username and the reason given. The alert can be updated again, and a closed alert can be opened again.";
+
 /// <p>The startup settings' refusals, violations and consequences (Story 24.3): the auto-start production and a production's shutdown
 /// group. <code>SAME</code> is 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, <code>ALLNAMESPACES</code> is 403,
 /// <code>READONLY</code> is 409, and <code>PRIORITY</code>, <code>GROUP</code> and <code>NOPRIORITY</code> are 422.</p>
@@ -597,17 +945,97 @@ Parameter OUTCOMERESENT = "resent as";
 
 Parameter OUTCOMEFAILED = "not resent";
 
+/// <p>The suspended messages' refusals (Story 24.16), each 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug: none of the messages
+/// named can be acted on, and the messages changed after a person reviewed them.</p>
+Parameter SUSPENDEDNONE = "INTEROP.SUSPENDED.NONE";
+
+Parameter REASONSUSPENDEDNONE = "None of these messages can be acted on now. Each one's line says why.";
+
+Parameter SUSPENDEDCHANGED = "INTEROP.SUSPENDED.CHANGED";
+
+Parameter REASONSUSPENDEDCHANGED = "These messages changed after they were reviewed, so nothing was changed. Review them again.";
+
+/// <p>The consequence codes the four suspended message proposals and dialogs carry (Story 24.16). The client maps each to its published sentence.</p>
+Parameter SUSPENDEDRESUBMIT = "INTEROP.SUSPENDED.RESUBMIT";
+
+Parameter REASONSUSPENDEDRESUBMIT = "Resubmitting puts each message marked to be resubmitted back on its target's queue under its own message id, and the running production processes it. It cannot be undone.";
+
+Parameter SUSPENDEDEDIT = "INTEROP.SUSPENDED.EDIT";
+
+Parameter REASONSUSPENDEDEDIT = "Edit and resubmit saves the edited body as a new copy and puts the message back on its target's queue with it, under its own message id. The original body is kept. It cannot be undone.";
+
+Parameter SUSPENDEDDISCARD = "INTEROP.SUSPENDED.DISCARD";
+
+Parameter REASONSUSPENDEDDISCARD = "Discarding marks each message marked to be discarded as Discarded, so it is no longer suspended and is not processed. The message and its body are kept, and it can still be resent from Messages.";
+
+Parameter SUSPENDEDDELETE = "INTEROP.SUSPENDED.DELETE";
+
+Parameter REASONSUSPENDEDDELETE = "Deleting removes each message marked to be deleted, its body when no other message uses it, and its search table entries. It cannot be undone.";
+
+/// <p>The words of the verdicts a suspended message reads beyond <parameter>VERDICTS</parameter>' (Story 24.16): no longer suspended, and what each action will do.
+/// <parameter>OcuPilot.Port.InteropPort.SUSPENDEDVERDICTS</parameter> lists every verdict a suspended action reads.</p>
+Parameter VERDICTNOTSUSPENDED = "is no longer suspended";
+
+Parameter VERDICTRESUBMIT = "will be resubmitted";
+
+Parameter VERDICTDISCARD = "will be discarded";
+
+Parameter VERDICTDELETE = "will be deleted";
+
+/// <p>The words that follow a message id in the outcome of a suspended write (Story 24.16): <code>&lt;id&gt;: resubmitted</code> and
+/// <code>&lt;id&gt;: not resubmitted: &lt;text&gt;</code>, and so for a discard and a delete.</p>
+Parameter OUTCOMERESUBMITTED = "resubmitted";
+
+Parameter OUTCOMENOTRESUBMITTED = "not resubmitted";
+
+Parameter OUTCOMEDISCARDED = "discarded";
+
+Parameter OUTCOMENOTDISCARDED = "not discarded";
+
+Parameter OUTCOMEDELETED = "deleted";
+
+Parameter OUTCOMENOTDELETED = "not deleted";
+
+/// <p>The refusals and words of the message export (Story 24.16 Batch 3): no message that can be exported, a review the messages moved past, and a file over the
+/// size OcuPilot sends, each 409; the consequence code the proposal and the dialog carry; the verdicts a message reads before an export
+/// (<parameter>EXPORTVERDICTS</parameter>, in the order they are judged) and the words that follow a message id in an outcome line.</p>
+Parameter EXPORTNONE = "INTEROP.EXPORT.NONE";
+
+Parameter REASONEXPORTNONE = "None of these messages can be exported. Each one's line says why.";
+
+Parameter EXPORTCHANGED = "INTEROP.EXPORT.CHANGED";
+
+Parameter REASONEXPORTCHANGED = "These messages changed after they were reviewed, so nothing was exported. Review them again.";
+
+Parameter EXPORTTOOLARGE = "INTEROP.EXPORT.TOOLARGE";
+
+Parameter REASONEXPORTTOOLARGE = "The file is larger than OcuPilot imports or exports.";
+
+Parameter MESSAGEEXPORT = "INTEROP.MESSAGE.EXPORT";
+
+Parameter REASONMESSAGEEXPORT = "Exporting saves the body of each message marked to be exported to one file in this browser's downloads, in message id order, each marked off by the chosen separator. Each body exported is recorded in the audit log as viewed. Anyone who can open the file can read the messages.";
+
+Parameter EXPORTVERDICTS = "gone,nobody,notext,export";
+
+Parameter VERDICTEXPORT = "will be exported";
+
+Parameter VERDICTNOTEXT = "its body cannot be exported as text";
+
+Parameter OUTCOMEEXPORTED = "exported";
+
+Parameter OUTCOMENOTEXPORTED = "not exported";
+
 /// <p>The refusals the port answers with, as a <class>%List</class>: every code that is not a
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..StartupCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..DefaultSettingCodes() _ ..CredentialCodes() _ ..ScheduleCodes() _ ..WorkflowCodes() _ ..PurgeCodes() _ ..ArchiveCodes() _ ..AlertCodes() _ ..SuspendedCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes() _ ..ExportCodes() _ ..StartupCodes() _ ..Hl7Codes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND, ..#AUTOSTART, ..#SHUTDOWNGROUP, ..#DEFAULTSETTINGREMOVE, ..#DEFAULTSETTINGPENDING, ..#CREDENTIALREMOVE, ..#CREDENTIALCHANGE, ..#SCHEDULEREMOVE, ..#SCHEDULECHANGE, ..#PURGERUN, ..#PURGEBITMAP, ..#ARCHIVERUN, ..#SUSPENDEDRESUBMIT, ..#SUSPENDEDEDIT, ..#SUSPENDEDDISCARD, ..#SUSPENDEDDELETE, ..#MESSAGEEXPORT, ..#ALERTUPDATE, ..#RULELOGPURGE, ..#PROCESSLOGPURGE, ..#WORKFLOWUSERREMOVE, ..#WORKFLOWUSERINACTIVE, ..#WORKFLOWROLEREMOVE, ..#WORKFLOWMEMBERADD, ..#WORKFLOWMEMBERREMOVE, ..#WORKFLOWTASKASSIGN, ..#WORKFLOWTASKUNASSIGN, ..#WORKFLOWTASKCANCEL, ..#HL7DELETE, ..#HL7IMPORT)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -679,6 +1107,121 @@ ClassMethod PartnerPreconditionCodes() As %List
     Quit $ListBuild(..#PARTNERTAKEN, ..#PARTNERNAMECASE, ..#PARTNERNAMED, ..#PARTNERSOURCECONTROL)
 }
 
+/// <p>The system default setting codes (Story 24.15), as a <class>%List</class>: the six refusals and violations a default setting read
+/// or write answers with, and the comparison's refusal of a namespace with too many settings. The two consequence codes are
+/// <method>ConsequenceCodes</method>'s.</p>
+ClassMethod DefaultSettingCodes() As %List
+{
+    Quit $ListBuild(..#DEFAULTSETTINGTAKEN, ..#DEFAULTSETTINGSECRET, ..#DEFAULTSETTINGKEY, ..#DEFAULTSETTINGVALUE, ..#DEFAULTSETTINGRESTRICTED, ..#DEFAULTSETTINGSOURCECONTROL, ..#DEFAULTSETTINGTOOMANY)
+}
+
+/// <p>The default setting refusals a default setting tool's fresh read answers when the action does not fit the setting, as a
+/// <class>%List</class>; the two violations, the restricted refusal and the comparison's refusal, which the write or the comparison
+/// alone judges, are not among them.</p>
+ClassMethod DefaultSettingPreconditionCodes() As %List
+{
+    Quit $ListBuild(..#DEFAULTSETTINGTAKEN, ..#DEFAULTSETTINGSECRET, ..#DEFAULTSETTINGSOURCECONTROL)
+}
+
+/// <p>The credential codes (Story 24.15), as a <class>%List</class>: the refusal of a name the namespace holds in some letter case and the
+/// three violations. The two consequence codes are <method>ConsequenceCodes</method>'s.</p>
+ClassMethod CredentialCodes() As %List
+{
+    Quit $ListBuild(..#CREDENTIALTAKEN, ..#CREDENTIALNAME, ..#CREDENTIALPARTNER, ..#CREDENTIALVALUE)
+}
+
+/// <p>The credential refusals a credential tool's fresh read answers when the action does not fit the credential, as a
+/// <class>%List</class>; the three violations, which the write alone judges, are not among them.</p>
+ClassMethod CredentialPreconditionCodes() As %List
+{
+    Quit $ListBuild(..#CREDENTIALTAKEN)
+}
+
+/// <p>The schedule spec codes (Story 24.15), as a <class>%List</class>: the refusals of a name the namespace holds in some letter case and of a
+/// namespace under source control, and the three violations. The two consequence codes are <method>ConsequenceCodes</method>'s.</p>
+ClassMethod ScheduleCodes() As %List
+{
+    Quit $ListBuild(..#SCHEDULETAKEN, ..#SCHEDULENAME, ..#SCHEDULESPEC, ..#SCHEDULEDESCRIPTION, ..#SCHEDULESOURCECONTROL)
+}
+
+/// <p>The schedule spec refusals a schedule tool's fresh read answers when the action does not fit the namespace or the schedule spec, as a
+/// <class>%List</class>; the three violations, which the write alone judges, are not among them.</p>
+ClassMethod SchedulePreconditionCodes() As %List
+{
+    Quit $ListBuild(..#SCHEDULETAKEN, ..#SCHEDULESOURCECONTROL)
+}
+
+/// <p>The workflow codes (Story 24.17 Batch 3a), as a <class>%List</class>: the refusals of a name the namespace holds in some letter case and of a
+/// namespace under source control, and the two violations of a new user's name and a full name. The two consequence codes are
+/// <method>ConsequenceCodes</method>'s.</p>
+ClassMethod WorkflowCodes() As %List
+{
+    Quit $ListBuild(..#WORKFLOWUSERTAKEN, ..#WORKFLOWUSERNAME, ..#WORKFLOWFULLNAME, ..#WORKFLOWSOURCECONTROL, ..#WORKFLOWROLENAME, ..#WORKFLOWROLETAKEN, ..#WORKFLOWROLEDESCRIPTION, ..#WORKFLOWROLECAPACITY, ..#WORKFLOWMEMBERUSER, ..#WORKFLOWMEMBERTAKEN, ..#WORKFLOWMEMBERRANK, ..#WORKFLOWMEMBERTITLE, ..#WORKFLOWTASKCOMPLETE, ..#WORKFLOWTASKUSER, ..#WORKFLOWTASKPRIORITY, ..#WORKFLOWTASKUNCHANGED, ..#WORKFLOWTASKSENDER)
+}
+
+/// <p>The workflow refusals a workflow user tool's fresh read answers when the action does not fit the namespace or the user, as a
+/// <class>%List</class>; the two violations, which the write alone judges, are not among them.</p>
+ClassMethod WorkflowPreconditionCodes() As %List
+{
+    Quit $ListBuild(..#WORKFLOWUSERTAKEN, ..#WORKFLOWSOURCECONTROL)
+}
+
+/// <p>The HL7 schema codes (Story 24.18 Batch 1), as a <class>%List</class>: the refusals and the three violations a create judges. The two consequence codes are
+/// <method>ConsequenceCodes</method>'s.</p>
+ClassMethod Hl7Codes() As %List
+{
+    Quit $ListBuild(..#HL7SOURCECONTROL, ..#HL7NAME, ..#HL7TAKEN, ..#HL7BASE, ..#HL7DESCRIPTION, ..#HL7STANDARD, ..#HL7IMPORTSHAPE, ..#HL7IMPORTSTANDARD, ..#HL7IMPORTCHANGED, ..#HL7CASE, ..#HL7TOOLARGE, ..#HL7LOCKED)
+}
+
+/// <p>The refusals an HL7 schema tool's fresh read answers when the action does not fit the namespace or the schema, as a <class>%List</class>; the violations, which the
+/// write alone judges, are not among them.</p>
+ClassMethod Hl7PreconditionCodes() As %List
+{
+    Quit $ListBuild(..#HL7SOURCECONTROL, ..#HL7TAKEN, ..#HL7STANDARD, ..#HL7IMPORTSHAPE, ..#HL7IMPORTSTANDARD, ..#HL7CASE, ..#HL7TOOLARGE)
+}
+
+/// <p>The purge codes (Story 24.16), as a <class>%List</class>: the refusal of days that are not a whole number from 0 to 99999 and of a purge
+/// that is already running. The two consequence codes are <method>ConsequenceCodes</method>'s.</p>
+ClassMethod PurgeCodes() As %List
+{
+    Quit $ListBuild(..#PURGEDAYS, ..#PURGERUNNING)
+}
+
+/// <p>The purge refusal a purge tool's fresh read answers when the action does not fit the namespace: a purge that is already running. The days,
+/// which the write alone judges, are not among them.</p>
+ClassMethod PurgePreconditionCodes() As %List
+{
+    Quit $ListBuild(..#PURGERUNNING)
+}
+
+/// <p>The archive codes (Story 24.16 Batch 4), as a <class>%List</class>: a run already running, no target, a stored class that is not the vendor's, too many messages in the
+/// namespace, and a target that holds an id the run would move. The consequence code is <method>ConsequenceCodes</method>'s.</p>
+ClassMethod ArchiveCodes() As %List
+{
+    Quit $ListBuild(..#ARCHIVERUNNING, ..#ARCHIVENOTARGET, ..#ARCHIVECLASS, ..#ARCHIVETOOMANY, ..#ARCHIVETAKEN)
+}
+
+/// <p>The archive refusals an archive tool's fresh read answers when the action does not fit the namespace: the four the namespace itself decides. A target that holds an id the run
+/// would move is judged at the write alone, since the review does not read the target.</p>
+ClassMethod ArchivePreconditionCodes() As %List
+{
+    Quit $ListBuild(..#ARCHIVERUNNING, ..#ARCHIVENOTARGET, ..#ARCHIVECLASS, ..#ARCHIVETOOMANY)
+}
+
+/// <p>The managed alert codes (Story 24.17 Batch 1), as a <class>%List</class>: an alert that is gone, an update that changes nothing and the four value rules. The consequence code is
+/// <method>ConsequenceCodes</method>'s.</p>
+ClassMethod AlertCodes() As %List
+{
+    Quit $ListBuild(..#ALERTNOTFOUND, ..#ALERTUNCHANGED, ..#ALERTOWNER, ..#ALERTLEVEL, ..#ALERTNEXTACTION, ..#ALERTREASON)
+}
+
+/// <p>The suspended message codes (Story 24.16), as a <class>%List</class>: the refusal of a selection none of which can be acted on and of a selection that changed
+/// after it was reviewed. The four consequence codes are <method>ConsequenceCodes</method>'s.</p>
+ClassMethod SuspendedCodes() As %List
+{
+    Quit $ListBuild(..#SUSPENDEDNONE, ..#SUSPENDEDCHANGED)
+}
+
 /// <p>The startup codes (Story 24.3), as a <class>%List</class>: the three violations, the refusal of a value the production
 /// already holds, the all-namespaces refusal and the read-only refusal. The two consequence codes are
 /// <method>ConsequenceCodes</method>'s.</p>
@@ -726,6 +1269,13 @@ ClassMethod MessageCodes() As %List
     Quit $ListBuild(..#MESSAGECONTENTS, ..#RESENDNONE, ..#RESENDCHANGED, ..#EDITNOTEDITABLE, ..#EDITNOCHANGE, ..#EDITFIELD, ..#EDITSECRET, ..#EDITVALUE)
 }
 
+/// <p>The message export's refusals (Story 24.16 Batch 3), as a <class>%List</class>: none to export, a moved review and a file over the cap. The consequence code is
+/// <method>ConsequenceCodes</method>'s.</p>
+ClassMethod ExportCodes() As %List
+{
+    Quit $ListBuild(..#EXPORTNONE, ..#EXPORTCHANGED, ..#EXPORTTOOLARGE)
+}
+
 /// <p>The words that say <var>pVerdict</var>, one of <parameter>VERDICTS</parameter>, or <code>""</code> for any other.</p>
 ClassMethod VerdictSentence(pVerdict As %String) As %String
 {
@@ -734,6 +1284,12 @@ ClassMethod VerdictSentence(pVerdict As %String) As %String
     If pVerdict = "nobody" Quit ..#VERDICTNOBODY
     If pVerdict = "targetoff" Quit ..#VERDICTTARGETOFF
     If pVerdict = "noreplyqueue" Quit ..#VERDICTNOREPLYQUEUE
+    If pVerdict = "notsuspended" Quit ..#VERDICTNOTSUSPENDED
+    If pVerdict = "resubmit" Quit ..#VERDICTRESUBMIT
+    If pVerdict = "discard" Quit ..#VERDICTDISCARD
+    If pVerdict = "delete" Quit ..#VERDICTDELETE
+    If pVerdict = "export" Quit ..#VERDICTEXPORT
+    If pVerdict = "notext" Quit ..#VERDICTNOTEXT
     Quit ""
 }
 
@@ -840,6 +1396,86 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#PARTNERNAME Quit ..#REASONPARTNERNAME
     If pCode = ..#PARTNERLENGTH Quit ..#REASONPARTNERLENGTH
     If pCode = ..#PARTNERREMOVE Quit ..#REASONPARTNERREMOVE
+    If pCode = ..#DEFAULTSETTINGTAKEN Quit ..#REASONDEFAULTSETTINGTAKEN
+    If pCode = ..#DEFAULTSETTINGSECRET Quit ..#REASONDEFAULTSETTINGSECRET
+    If pCode = ..#DEFAULTSETTINGKEY Quit ..#REASONDEFAULTSETTINGKEY
+    If pCode = ..#DEFAULTSETTINGVALUE Quit ..#REASONDEFAULTSETTINGVALUE
+    If pCode = ..#DEFAULTSETTINGRESTRICTED Quit ..#REASONDEFAULTSETTINGRESTRICTED
+    If pCode = ..#DEFAULTSETTINGSOURCECONTROL Quit ..#REASONDEFAULTSETTINGSOURCECONTROL
+    If pCode = ..#DEFAULTSETTINGTOOMANY Quit ..#REASONDEFAULTSETTINGTOOMANY
+    If pCode = ..#DEFAULTSETTINGREMOVE Quit ..#REASONDEFAULTSETTINGREMOVE
+    If pCode = ..#DEFAULTSETTINGPENDING Quit ..#REASONDEFAULTSETTINGPENDING
+    If pCode = ..#CREDENTIALTAKEN Quit ..#REASONCREDENTIALTAKEN
+    If pCode = ..#CREDENTIALNAME Quit ..#REASONCREDENTIALNAME
+    If pCode = ..#CREDENTIALPARTNER Quit ..#REASONCREDENTIALPARTNER
+    If pCode = ..#CREDENTIALVALUE Quit ..#REASONCREDENTIALVALUE
+    If pCode = ..#CREDENTIALREMOVE Quit ..#REASONCREDENTIALREMOVE
+    If pCode = ..#CREDENTIALCHANGE Quit ..#REASONCREDENTIALCHANGE
+    If pCode = ..#SCHEDULETAKEN Quit ..#REASONSCHEDULETAKEN
+    If pCode = ..#SCHEDULENAME Quit ..#REASONSCHEDULENAME
+    If pCode = ..#SCHEDULESPEC Quit ..#REASONSCHEDULESPEC
+    If pCode = ..#SCHEDULEDESCRIPTION Quit ..#REASONSCHEDULEDESCRIPTION
+    If pCode = ..#SCHEDULESOURCECONTROL Quit ..#REASONSCHEDULESOURCECONTROL
+    If pCode = ..#SCHEDULEREMOVE Quit ..#REASONSCHEDULEREMOVE
+    If pCode = ..#SCHEDULECHANGE Quit ..#REASONSCHEDULECHANGE
+    If pCode = ..#WORKFLOWSOURCECONTROL Quit ..#REASONWORKFLOWSOURCECONTROL
+    If pCode = ..#WORKFLOWUSERNAME Quit ..#REASONWORKFLOWUSERNAME
+    If pCode = ..#WORKFLOWUSERTAKEN Quit ..#REASONWORKFLOWUSERTAKEN
+    If pCode = ..#WORKFLOWFULLNAME Quit ..#REASONWORKFLOWFULLNAME
+    If pCode = ..#WORKFLOWUSERREMOVE Quit ..#REASONWORKFLOWUSERREMOVE
+    If pCode = ..#WORKFLOWUSERINACTIVE Quit ..#REASONWORKFLOWUSERINACTIVE
+    If pCode = ..#WORKFLOWROLENAME Quit ..#REASONWORKFLOWROLENAME
+    If pCode = ..#WORKFLOWROLETAKEN Quit ..#REASONWORKFLOWROLETAKEN
+    If pCode = ..#WORKFLOWROLEDESCRIPTION Quit ..#REASONWORKFLOWROLEDESCRIPTION
+    If pCode = ..#WORKFLOWROLECAPACITY Quit ..#REASONWORKFLOWROLECAPACITY
+    If pCode = ..#WORKFLOWMEMBERUSER Quit ..#REASONWORKFLOWMEMBERUSER
+    If pCode = ..#WORKFLOWMEMBERTAKEN Quit ..#REASONWORKFLOWMEMBERTAKEN
+    If pCode = ..#WORKFLOWMEMBERRANK Quit ..#REASONWORKFLOWMEMBERRANK
+    If pCode = ..#WORKFLOWMEMBERTITLE Quit ..#REASONWORKFLOWMEMBERTITLE
+    If pCode = ..#WORKFLOWROLEREMOVE Quit ..#REASONWORKFLOWROLEREMOVE
+    If pCode = ..#WORKFLOWMEMBERADD Quit ..#REASONWORKFLOWMEMBERADD
+    If pCode = ..#WORKFLOWMEMBERREMOVE Quit ..#REASONWORKFLOWMEMBERREMOVE
+    If pCode = ..#WORKFLOWTASKCOMPLETE Quit ..#REASONWORKFLOWTASKCOMPLETE
+    If pCode = ..#WORKFLOWTASKUSER Quit ..#REASONWORKFLOWTASKUSER
+    If pCode = ..#WORKFLOWTASKPRIORITY Quit ..#REASONWORKFLOWTASKPRIORITY
+    If pCode = ..#WORKFLOWTASKUNCHANGED Quit ..#REASONWORKFLOWTASKUNCHANGED
+    If pCode = ..#WORKFLOWTASKSENDER Quit ..#REASONWORKFLOWTASKSENDER
+    If pCode = ..#WORKFLOWTASKASSIGN Quit ..#REASONWORKFLOWTASKASSIGN
+    If pCode = ..#WORKFLOWTASKUNASSIGN Quit ..#REASONWORKFLOWTASKUNASSIGN
+    If pCode = ..#WORKFLOWTASKCANCEL Quit ..#REASONWORKFLOWTASKCANCEL
+    If pCode = ..#HL7SOURCECONTROL Quit ..#REASONHL7SOURCECONTROL
+    If pCode = ..#HL7NAME Quit ..#REASONHL7NAME
+    If pCode = ..#HL7TAKEN Quit ..#REASONHL7TAKEN
+    If pCode = ..#HL7BASE Quit ..#REASONHL7BASE
+    If pCode = ..#HL7DESCRIPTION Quit ..#REASONHL7DESCRIPTION
+    If pCode = ..#HL7STANDARD Quit ..#REASONHL7STANDARD
+    If pCode = ..#HL7IMPORTSHAPE Quit ..#REASONHL7IMPORTSHAPE
+    If pCode = ..#HL7IMPORTSTANDARD Quit ..#REASONHL7IMPORTSTANDARD
+    If pCode = ..#HL7IMPORTCHANGED Quit ..#REASONHL7IMPORTCHANGED
+    If pCode = ..#HL7CASE Quit ..#REASONHL7CASE
+    If pCode = ..#HL7TOOLARGE Quit ..#REASONHL7TOOLARGE
+    If pCode = ..#HL7LOCKED Quit ..#REASONHL7LOCKED
+    If pCode = ..#HL7DELETE Quit ..#REASONHL7DELETE
+    If pCode = ..#HL7IMPORT Quit ..#REASONHL7IMPORT
+    If pCode = ..#PURGEDAYS Quit ..#REASONPURGEDAYS
+    If pCode = ..#PURGERUNNING Quit ..#REASONPURGERUNNING
+    If pCode = ..#PURGERUN Quit ..#REASONPURGERUN
+    If pCode = ..#PURGEBITMAP Quit ..#REASONPURGEBITMAP
+    If pCode = ..#RULELOGPURGE Quit ..#REASONRULELOGPURGE
+    If pCode = ..#PROCESSLOGPURGE Quit ..#REASONPROCESSLOGPURGE
+    If pCode = ..#ARCHIVERUNNING Quit ..#REASONARCHIVERUNNING
+    If pCode = ..#ARCHIVENOTARGET Quit ..#REASONARCHIVENOTARGET
+    If pCode = ..#ARCHIVECLASS Quit ..#REASONARCHIVECLASS
+    If pCode = ..#ARCHIVETOOMANY Quit ..#REASONARCHIVETOOMANY
+    If pCode = ..#ARCHIVETAKEN Quit ..#REASONARCHIVETAKEN
+    If pCode = ..#ARCHIVERUN Quit ..#REASONARCHIVERUN
+    If pCode = ..#ALERTNOTFOUND Quit ..#REASONALERTNOTFOUND
+    If pCode = ..#ALERTUNCHANGED Quit ..#REASONALERTUNCHANGED
+    If pCode = ..#ALERTOWNER Quit ..#REASONALERTOWNER
+    If pCode = ..#ALERTLEVEL Quit ..#REASONALERTLEVEL
+    If pCode = ..#ALERTNEXTACTION Quit ..#REASONALERTNEXTACTION
+    If pCode = ..#ALERTREASON Quit ..#REASONALERTREASON
+    If pCode = ..#ALERTUPDATE Quit ..#REASONALERTUPDATE
     If pCode = ..#STARTUPSAME Quit ..#REASONSTARTUPSAME
     If pCode = ..#STARTUPPRIORITY Quit ..#REASONSTARTUPPRIORITY
     If pCode = ..#STARTUPGROUP Quit ..#REASONSTARTUPGROUP
@@ -871,6 +1507,16 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#EDITVALUE Quit ..#REASONEDITVALUE
     If pCode = ..#MESSAGERESEND Quit ..#REASONMESSAGERESEND
     If pCode = ..#MESSAGEEDITRESEND Quit ..#REASONMESSAGEEDITRESEND
+    If pCode = ..#SUSPENDEDNONE Quit ..#REASONSUSPENDEDNONE
+    If pCode = ..#SUSPENDEDCHANGED Quit ..#REASONSUSPENDEDCHANGED
+    If pCode = ..#SUSPENDEDRESUBMIT Quit ..#REASONSUSPENDEDRESUBMIT
+    If pCode = ..#SUSPENDEDEDIT Quit ..#REASONSUSPENDEDEDIT
+    If pCode = ..#SUSPENDEDDISCARD Quit ..#REASONSUSPENDEDDISCARD
+    If pCode = ..#SUSPENDEDDELETE Quit ..#REASONSUSPENDEDDELETE
+    If pCode = ..#EXPORTNONE Quit ..#REASONEXPORTNONE
+    If pCode = ..#EXPORTCHANGED Quit ..#REASONEXPORTCHANGED
+    If pCode = ..#EXPORTTOOLARGE Quit ..#REASONEXPORTTOOLARGE
+    If pCode = ..#MESSAGEEXPORT Quit ..#REASONMESSAGEEXPORT
     Quit ""
 }
 

@@ -16,11 +16,15 @@ Parameter CONFIRM = "OcuPilot.Test.DatabaseConfirm";
 
 Parameter RECORD = "OcuPilot.Test.DatabaseRecordPort";
 
+/// <p>The port a step marked <code>accept</code> writes through: it records a write and sends none.</p>
+Parameter ACCEPT = "OcuPilot.Test.DatabaseAcceptPort";
+
 /// <p>Log in as <var>pUsername</var>, run the JSON array <var>pPlan</var>, and signal
 /// <code>{loggedIn, username, steps}</code> to process <var>pParent</var>, or <code>{error}</code>. A
 /// step is <code>{kind: "act", screen, action, id, values}</code>, <code>{kind: "update", name,
 /// body}</code>, <code>{kind: "confirm", proposalId}</code> or <code>{kind: "dispatch", turnKey, tool,
-/// input}</code>; its answer is <code>{http, code, failedPair, calls, types}</code>, where
+/// input}</code>, any of them with <code>accept: true</code> to write through <parameter>ACCEPT</parameter>;
+/// its answer is <code>{http, code, failedPair, calls, types}</code>, where
 /// <code>calls</code> and <code>types</code> are what the recording port was asked during that step
 /// alone, and a dispatch's <code>http</code> is 403 for a pair refusal, 400 for any other refused call
 /// and 200 for an answered one.</p>
@@ -51,6 +55,7 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
     Set tCode = ""
     Set tPair = ""
     Set tBody = ""
+    Set ^||OcuPilotDatabaseWritePort = $Select(pStep.%Get("accept"): ..#ACCEPT, 1: ..#RECORD)
     Do $ClassMethod(..#RECORD, "Clear")
     Set tKind = pStep.%Get("kind")
     If tKind = "confirm" {

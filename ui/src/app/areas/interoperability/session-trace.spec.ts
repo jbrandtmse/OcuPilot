@@ -89,6 +89,7 @@ describe('traceModel', () => {
     expect(arrowName(model.arrows[0])).toBe(
       STRINGS.interopTraceArrow
         .replace('<id>', '11')
+        .replace('<label>', STRINGS.interopTraceNoBody)
         .replace('<type>', 'Request')
         .replace('<source>', STRINGS.interopTraceNoName)
         .replace('<target>', 'Op')
@@ -99,7 +100,18 @@ describe('traceModel', () => {
   // Mutation (Rule 19): substitute the placeholders one after another in `arrowName` -> this goes red.
   it('writes a name that holds a placeholder into an arrow\'s accessible name as the text it is', () => {
     const [arrow] = traceModel([row(1, 'A<target>', 'B<status>')]).arrows;
-    expect(arrowName(arrow)).toBe('Message 11: Request from A<target> to B<status>, Completed');
+    expect(arrowName(arrow)).toBe('Message 11 (no body): Request from A<target> to B<status>, Completed');
+  });
+
+  // Mutation (Rule 19): drop `label` from `arrowName`'s values -> this goes red.
+  it('holds the message id and the label the diagram draws, error mark included, in an arrow\'s accessible name', () => {
+    const model = traceModel(FIXTURE);
+    const item = { arrow: model.arrows[2] };
+    const name = arrowName(item.arrow);
+    expect(name).toContain(item.arrow.id);
+    expect(name).toContain(item.arrow.label);
+    expect(item.arrow.label).toBe(`${STRINGS.interopTraceNoBody} ${STRINGS.interopTraceErrorMark}`);
+    expect(name).toBe(`Message 13 (no body) [ERROR]: Response from ${MARKER}Op to ${MARKER} Proc;1, Error`);
   });
 
   // Mutation (Rule 19): make every arrow a request -> the kinds leg goes red.

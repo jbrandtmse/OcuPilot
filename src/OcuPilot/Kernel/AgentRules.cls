@@ -443,4 +443,17 @@ ClassMethod ViolationsJson(ByRef pViolations) As %DynamicArray
     Quit tArray
 }
 
+/// <p>The violations as one problem sentence, or <code>""</code> for none: each entry as the field in single quotes,
+/// a colon and <class>OcuPilot.Api.Error</class>'s sentence for the entry's code, the entries joined by one space in
+/// the order they were reported. The sentence is always the code's; a third list element is not read.</p>
+ClassMethod ViolationsSentence(ByRef pViolations) As %String
+{
+    Set tProblem = ""
+    For tI = 1:1:+$Get(pViolations) {
+        Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation($List(pViolations(tI), 2))
+        Set tProblem = tProblem _ $Select(tProblem = "": "", 1: " ") _ "'" _ $List(pViolations(tI), 1) _ "': " _ tReason
+    }
+    Quit tProblem
+}
+
 }

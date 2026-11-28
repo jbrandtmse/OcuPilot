@@ -33,14 +33,14 @@ XData Groups
 {
   "Tasks": ["tasks.schedule", "tasks.ondemand", "tasks.upcoming", "tasks.history", "tasks.taskhistory", "tasks.background", "logs.taskerrors"],
   "Databases": ["osmgmt.databases", "osmgmt.localdatabases", "osmgmt.remotedatabases", "osmgmt.databasefreespace", "osmgmt.ecpdataservers", "explorer.docdb"],
-  "Logs": ["logs.messages", "logs.applicationerrors", "logs.alerts", "logs.systemmonitor", "logs.xdbc", "logs.sqldiagnostics", "logs.eventlog", "logs.analytics", "logs.hub", "logs.audit", "osmgmt.integritylog", "interop.messages"],
+  "Logs": ["logs.messages", "logs.applicationerrors", "logs.alerts", "logs.systemmonitor", "logs.xdbc", "logs.sqldiagnostics", "logs.eventlog", "logs.analytics", "logs.hub", "logs.audit", "osmgmt.integritylog", "interop.messages", "interop.suspendedmessages"],
   "Processes": ["osmgmt.processes", "osmgmt.activeprocesses", "interop.processes", "interop.jobs"],
   "Audit": ["security.auditsystemevents", "security.audituserevents", "security.auditing"],
-  "SQL statements": ["osmgmt.sqlactivity", "explorer.sqltablestatements", "explorer.sqlviewstatements", "explorer.sqlprocedurestatements"],
+  "SQL statements": ["osmgmt.sqlactivity", "explorer.sqlstatements", "explorer.sqltablestatements", "explorer.sqlviewstatements", "explorer.sqlprocedurestatements", "explorer.sqlruntimestats", "explorer.sqlindexanalysis", "explorer.sqlreports"],
   "SQL schema objects": ["explorer.sqlschematables", "explorer.sqlschemaviews", "explorer.sqlschemaprocedures"],
   "Cubes": ["analytics.cubes", "analytics.cubemanager"],
   "Backup": ["osmgmt.backuptasks", "osmgmt.backuphistory", "osmgmt.backupdatabases"],
-  "Configuration settings": ["osmgmt.startupsettings", "osmgmt.memorysettings", "osmgmt.compatibilitysettings", "osmgmt.sqlsettings", "osmgmt.sqlshellsettings", "osmgmt.tsqlsettings", "osmgmt.isqlsettings", "osmgmt.systemddlmappings", "osmgmt.userddlmappings", "security.systemsecurity", "tasks.mail"],
+  "Configuration settings": ["osmgmt.startupsettings", "osmgmt.memorysettings", "osmgmt.compatibilitysettings", "osmgmt.sqlsettings", "osmgmt.sqlshellsettings", "osmgmt.tsqlsettings", "osmgmt.isqlsettings", "osmgmt.systemddlmappings", "osmgmt.userddlmappings", "security.systemsecurity", "tasks.mail", "explorer.sqlruntimestatssettings"],
   "NLS": ["osmgmt.nlsdefaults", "osmgmt.locales", "osmgmt.localeproperties"]
 }
 }
@@ -277,7 +277,7 @@ Method TestEveryConfusableToolCarriesItsLabel()
         Do $$$AssertTrue(tLabel '= "", tName _ " declares its label")
         If $Data(tReads(tName)) && (tLabel '= "") Do $$$AssertTrue($List(tReads(tName), 2) [ tLabel, tName _ ": its description carries its label")
     }
-    Do $$$AssertEquals(tCount, 58, "eleven groups name 58 distinct read tools")
+    Do $$$AssertEquals(tCount, 64, "eleven groups name 64 distinct read tools")
     Set tId = ""
     Set tNamed = 0
     For {

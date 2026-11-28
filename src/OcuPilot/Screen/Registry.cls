@@ -1220,8 +1220,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query", "parts", "rows"))
         If tProblem '= "" Quit
         Set tPort = tSource.%Get("port")
-        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND, ##class(OcuPilot.Screen.Read).#SOURCEATELIER, ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION, ##class(OcuPilot.Screen.Read).#SOURCEDOCDB, ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY, ##class(OcuPilot.Screen.Read).#SOURCEINTEROP, ##class(OcuPilot.Screen.Read).#SOURCEACCESS, ##class(OcuPilot.Screen.Read).#SOURCEMONITOR, ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS, ##class(OcuPilot.Screen.Read).#SOURCEDEVTOOL, ##class(OcuPilot.Screen.Read).#SOURCEBACKUP, ##class(OcuPilot.Screen.Read).#SOURCECONFIG, ##class(OcuPilot.Screen.Read).#SOURCEMIRROR, ##class(OcuPilot.Screen.Read).#SOURCELOCALE, ##class(OcuPilot.Screen.Read).#SOURCEGLOBAL, ##class(OcuPilot.Screen.Read).#SOURCEPHONE, ##class(OcuPilot.Screen.Read).#SOURCEADVISOR), tPort) {
-            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEATELIER _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDOCDB _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEINTEROP _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEACCESS _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMONITOR _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDEVTOOL _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKUP _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCECONFIG _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMIRROR _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOCALE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEGLOBAL _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPHONE _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEADVISOR _ "', the twenty-three sources a declared read names (AD-36)"
+        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND, ##class(OcuPilot.Screen.Read).#SOURCEATELIER, ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION, ##class(OcuPilot.Screen.Read).#SOURCEDOCDB, ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY, ##class(OcuPilot.Screen.Read).#SOURCEINTEROP, ##class(OcuPilot.Screen.Read).#SOURCEACCESS, ##class(OcuPilot.Screen.Read).#SOURCEMONITOR, ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS, ##class(OcuPilot.Screen.Read).#SOURCEDEVTOOL, ##class(OcuPilot.Screen.Read).#SOURCEBACKUP, ##class(OcuPilot.Screen.Read).#SOURCECONFIG, ##class(OcuPilot.Screen.Read).#SOURCEMIRROR, ##class(OcuPilot.Screen.Read).#SOURCELOCALE, ##class(OcuPilot.Screen.Read).#SOURCEGLOBAL, ##class(OcuPilot.Screen.Read).#SOURCEPHONE, ##class(OcuPilot.Screen.Read).#SOURCEADVISOR, ##class(OcuPilot.Screen.Read).#SOURCEPORTALRESOURCE), tPort) {
+            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEATELIER _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDOCDB _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEINTEROP _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEACCESS _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMONITOR _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDEVTOOL _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKUP _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCECONFIG _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMIRROR _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOCALE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEGLOBAL _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPHONE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEADVISOR _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEPORTALRESOURCE _ "', the twenty-four sources a declared read names (AD-36)"
             Quit
         }
         If (tSource.%GetTypeOf("endpoint") '= "string") || '$Match(tSource.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
@@ -1448,6 +1448,26 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
                 Set tKeyType = tSource.%GetTypeOf(tKey)
                 If (tKeyType = "unassigned") || (tKeyType = "null") Continue
                 Set tProblem = "read.source." _ tKey _ " is declared on an advisor source, which answers its list whole (AD-36)"
+                Quit
+            }
+            If tProblem '= "" Quit
+        }
+        ; A portalresource source lists the classic pages that hold a custom resource through OcuPilot.Port.PortalResourcePort, which answers its
+        ; endpoint whole behind its own gate (AD-29, AD-36, Story 21.37): its endpoint, a LIST, and nothing the port would have to issue per row,
+        ; per parent, under a fixed query or in parts.
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCEPORTALRESOURCE {
+            If tSource.%Get("endpoint") '= ##class(OcuPilot.Port.PortalResourcePort).#ENDPOINT {
+                Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not the portal resource port's endpoint ('" _ ##class(OcuPilot.Port.PortalResourcePort).#ENDPOINT _ "') (AD-29)"
+                Quit
+            }
+            If tSource.%Get("type") '= ##class(OcuPilot.Port.PortalResourcePort).#LISTTYPE {
+                Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on a portal resource source, which lists the classic pages that hold a custom resource (AD-36)"
+                Quit
+            }
+            For tKey = "rowGet", "forEach", "query", "parts" {
+                Set tKeyType = tSource.%GetTypeOf(tKey)
+                If (tKeyType = "unassigned") || (tKeyType = "null") Continue
+                Set tProblem = "read.source." _ tKey _ " is declared on a portal resource source, which answers its list whole (AD-36)"
                 Quit
             }
             If tProblem '= "" Quit
@@ -1951,7 +1971,8 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
         }
         ; AD-36 as amended (Story 20.11): an analytics read takes criteria only as its parent's route id, on a parent-scoped list.
         ; Story 21.16: a locale read takes criteria only as its parent's route id (one locale's properties), on a parent-scoped list.
-        Set tParentOnly = (tPort = ##class(OcuPilot.Screen.Read).#SOURCEINTEROP) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCELOCALE)
+        ; Story 21.36: a log source's task output takes criteria only as its parent's route id (the task), on a parent-scoped list.
+        Set tParentOnly = (tPort = ##class(OcuPilot.Screen.Read).#SOURCEINTEROP) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCELOCALE) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE)
         If (tPort '= "admin") && (tPort '= "mgmnt") && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEATELIER) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCETIMELINE) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEDEVTOOL) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEGLOBAL) && ('tParentOnly || ('tParented && 'tSearches)) {
             Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)"
             Quit
@@ -4113,6 +4134,104 @@ ClassMethod DescriptorForTool(pToolIdentifier As %String) As %String
         Set tFound = ""
     }
     Quit tFound
+}
+
+/// <p>The built screens that declare the classic page <var>pPage</var> (a normalized class name, spelled as the screen declares it), as a
+/// <class>%List</class> of descriptor class names in descriptor order, each once. A screen declares a page by its descriptor's
+/// <code>classicPage</code> or <parameter>OcuPilot.Screen.Descriptor.Base.CLASSICPAGES</parameter>, or by a write tool's
+/// <parameter>OcuPilot.Screen.Tool.Write.CLASSICPAGES</parameter>, the tool's screen being its <code>DESCRIPTORCLASS</code> or else the
+/// descriptor whose <code>toolIdentifier</code> is the first two segments of the tool's name (AD-44, AD-64).</p>
+/// <p><b>It reads the registry on every call and caches nothing.</b> <var>pResolved</var> is 1 only when the registry was read, so a caller
+/// can tell a page no screen declares from a registry that could not be read; an unread registry answers <code>""</code> and 0.</p>
+ClassMethod ScreensDeclaringPage(pPage As %String, Output pResolved As %Boolean) As %List
+{
+    Set tFound = ""
+    Set pResolved = 0
+    Try {
+        Do ..PageDeclarations(pPage, .tOpens, .tActions, .tResolved)
+        If 'tResolved Quit
+        Set tSC = ..Descriptors(.tList)
+        If $$$ISERR(tSC) Quit
+        Kill tDeclared
+        For tI = 1:1:$ListLength(tActions) Set tDeclared($List($List(tActions, tI), 1)) = ""
+        For tI = 1:1:$ListLength(tOpens) Set tDeclared($List(tOpens, tI)) = ""
+        For tI = 1:1:$ListLength(tList) {
+            Set tClass = $List(tList, tI)
+            If $Data(tDeclared(tClass)) Set tFound = tFound _ $ListBuild(tClass)
+        }
+        Set pResolved = 1
+    } Catch {
+        Set tFound = ""
+        Set pResolved = 0
+    }
+    Quit tFound
+}
+
+/// <p>How the built screens declare the classic page <var>pPage</var> (a normalized class name, spelled as the screen declares it), read from the
+/// registry on every call. <var>pOpens</var> is a <class>%List</class> of the descriptor classes whose own <code>classicPage</code> or
+/// <parameter>OcuPilot.Screen.Descriptor.Base.CLASSICPAGES</parameter> name the page, in descriptor order and each once: the screens
+/// <method>OcuPilot.Screen.Gate.RequiredPairs</method> gates by the page's resource. <var>pActions</var> is a <class>%List</class> of one
+/// <code>$ListBuild(descriptor class, screen-action id)</code> for each write tool whose
+/// <parameter>OcuPilot.Screen.Tool.Write.CLASSICPAGES</parameter> name the page, in the tool registry's order, where the descriptor is the tool's
+/// screen (<code>DESCRIPTORCLASS</code>, else the descriptor whose <code>toolIdentifier</code> is the first two segments of the tool's name) and the
+/// id is the first of the tool's <code>SCREENACTIONS</code>, <code>""</code> for a tool with none; the same pair is listed once.
+/// <var>pResolved</var> is 1 only when the registry was read, and both lists are <code>""</code> otherwise (AD-44, AD-64).</p>
+ClassMethod PageDeclarations(pPage As %String, Output pOpens As %List, Output pActions As %List, Output pResolved As %Boolean)
+{
+    Set pOpens = ""
+    Set pActions = ""
+    Set pResolved = 0
+    Try {
+        If pPage = "" Quit
+        Set tSC = ..Descriptors(.tList)
+        If $$$ISERR(tSC) Quit
+        Set tToolSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
+        If $$$ISERR(tToolSC) Quit
+        Set tOpens = ""
+        Set tActions = ""
+        Kill tBuilt, tSeen
+        For tI = 1:1:$ListLength(tList) {
+            Set tClass = $List(tList, tI)
+            If '$ClassMethod(tClass, "IsBuilt") Continue
+            Set tBuilt(tClass) = ""
+            If ($ClassMethod(tClass, "ClassicPage") = pPage) || ..PageListed($Parameter(tClass, "CLASSICPAGES"), pPage) Set tOpens = tOpens _ $ListBuild(tClass)
+        }
+        Set tIterator = tTools.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tTool) {
+            If tTool.%Get("kind") '= "write" Continue
+            Set tToolClass = tTool.%Get("class")
+            If '..PageListed($Parameter(tToolClass, "CLASSICPAGES"), pPage) Continue
+            Set tToolDescriptor = $Parameter(tToolClass, "DESCRIPTORCLASS")
+            If tToolDescriptor = "" Set tToolDescriptor = ..DescriptorForTool($Piece(tTool.%Get("name"), ".", 1, 2))
+            If (tToolDescriptor = "") || '$Data(tBuilt(tToolDescriptor)) Continue
+            Set tActionIds = $ClassMethod(tToolClass, "ScreenActionIds")
+            Set tActionId = $Select($ListLength(tActionIds): $List(tActionIds, 1), 1: "")
+            If $Data(tSeen(tToolDescriptor _ "#" _ tActionId)) Continue
+            Set tSeen(tToolDescriptor _ "#" _ tActionId) = ""
+            Set tActions = tActions _ $ListBuild($ListBuild(tToolDescriptor, tActionId))
+        }
+        Set pOpens = tOpens
+        Set pActions = tActions
+        Set pResolved = 1
+    } Catch {
+        Set pOpens = ""
+        Set pActions = ""
+        Set pResolved = 0
+    }
+}
+
+/// <p>Whether <var>pPage</var> is one of the comma-separated class names <var>pPages</var> (a <code>CLASSICPAGES</code> value), compared as
+/// spelled.</p>
+ClassMethod PageListed(pPages As %String, pPage As %String) As %Boolean [ Private ]
+{
+    Set tListed = 0
+    For tI = 1:1:$Length(pPages, ",") {
+        If $ZStrip($Piece(pPages, ",", tI), "<>W") = pPage {
+            Set tListed = 1
+            Quit
+        }
+    }
+    Quit tListed
 }
 
 /// <p>The descriptor class declared at <var>pRoute</var>, or <code>""</code>. The route is the

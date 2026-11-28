@@ -349,4 +349,30 @@ Method TestASqlErrorIsTheInternalFaultWithNothingSent()
     }
 }
 
+/// <p>The instance's own failure to list its schemas answers the query route's error and a result with no content, as a live read of the list
+/// does when the instance's schema index cannot be read: the schemas list is 500 <code>INTERNAL</code> with no rows at all, never an empty list
+/// that reads as a database with no schemas, its vendor text logged and in no field of the fault.</p>
+/// <p>A result with no content and no error is the fault as well.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.AtelierPort.CatalogQuery</method> reads a result with no content as an empty list -> the
+/// no-error leg goes red alone; with <method>OcuPilot.Port.AtelierPort.Outcome</method> also dropping the envelope's errors from its soft-error test,
+/// the vendor-shaped leg goes red as well, since either guard alone still refuses it.</p>
+Method TestAFailedSchemasReadIsTheFaultNeverAnEmptyList()
+{
+    Set tFailure = "{""status"":{""errors"":[{""error"":""ERROR #5002: ObjectScript error: <SYNTAX>OCUPROBE225SCHEMAINDEX+11^%SYS.SQLSEC"",""code"":5002}],""summary"":""""},""console"":[],""result"":{}}"
+    Set tNoContent = "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{}}"
+    For tLeg = 1, 2 {
+        Do ..ClearFixtures()
+        Do ..ArmCatalog()
+        Do ##class(OcuPilot.Test.AtelierPortFixture).Arm("Query", "200 OK", $Select(tLeg = 1: tFailure, 1: tNoContent))
+        Kill tQuery
+        Set tSC = ..Read("Catalog.Schemas", .tQuery, .tRows, .tHttp, .tFault)
+        Set tWhere = $Select(tLeg = 1: "an error and no content", 1: "no content and no error")
+        Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.code _ " " _ tFault.reason, 1: "") _ " [" _ tRows _ "]", "500 INTERNAL " _ ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON _ " []", tWhere _ ": the schemas list is the internal fault with no rows, not an empty list")
+        If tLeg = 1 {
+            Do $$$AssertTrue($Select($IsObject(tFault): tFault.%ToJSON(), 1: "") '[ "OCUPROBE225SCHEMAINDEX", "the vendor's text is in no field of the fault")
+            Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") [ "OCUPROBE225SCHEMAINDEX", "and is logged")
+        }
+    }
+}
+
 }

@@ -127,6 +127,34 @@ Method TestTheDeclarationValidatesAndIsDeclaredAsTaskDetails()
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RouteEntityType(tClass), "task", "its route id names a task, resolved through its parent (DW-1020)")
 }
 
+/// <p>The output location (Story 21.36): <code>OpenOutputFile</code>, <code>OutputDirectory</code> and
+/// <code>OutputFilename</code> are read, filterable, sortable and in the screen context, the last two are
+/// shown as columns, and the screen still declares no action.</p>
+/// <p>Mutation: remove <code>OutputFilename</code> from the context fields -&gt; this goes red naming it.</p>
+Method TestTheOutputLocationIsReadAndShownAndStillOpensNoAction()
+{
+    Set tSC = $ClassMethod(..#DESCRIPTOR, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Set tFields = $ListBuild("OpenOutputFile", "OutputDirectory", "OutputFilename")
+    For tI = 1:1:$ListLength(tFields) {
+        Set tField = $List(tFields, tI)
+        Do $$$AssertTrue(tDeclaration.read.fields.%ToJSON() [ ("""" _ tField _ """"), tField _ " is a read field")
+        Do $$$AssertTrue(tDeclaration.read.filter.%ToJSON() [ ("""" _ tField _ """"), tField _ " is filterable")
+        Do $$$AssertTrue(tDeclaration.read.sort.fields.%ToJSON() [ ("""" _ tField _ """"), tField _ " is sortable")
+        Do $$$AssertTrue(tDeclaration.context.fields.%ToJSON() [ ("""" _ tField _ """"), tField _ " is in the screen context")
+    }
+    Set tColumns = ""
+    Set tIterator = tDeclaration.table.columns.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tColumn) {
+        Set tColumns = tColumns _ $ListBuild(tColumn.field _ "=" _ tColumn.labelKey)
+    }
+    Do $$$AssertTrue($ListFind(tColumns, "OutputFilename=taskOutputFilename") > 0, "Output file name is a column")
+    Do $$$AssertTrue($ListFind(tColumns, "OutputDirectory=taskOutputDirectory") > 0, "and so is Output directory")
+    Do $$$AssertEquals($ListFind(tColumns, "OpenOutputFile=taskOpenOutputFile"), 0, "the flag is read, not drawn")
+    Do $$$AssertEquals($ListLength($ClassMethod(..#DESCRIPTOR, "RowActionIds")) + ($ClassMethod(..#DESCRIPTOR, "PrimaryActionId") '= ""), 0, "and there is still no action")
+}
+
 /// <p>Matrix "Demo task" -- the demo task's own read answers every declared field as a key, with
 /// <code>Name</code> the demo task, <code>TimePeriod</code> "Daily", <code>DailyFrequency</code>
 /// "Once", <code>DailyStartTime</code> "03:00:00", <code>Suspended</code> true and a non-empty

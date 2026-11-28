@@ -52,6 +52,7 @@ ClassMethod Roster() As %DynamicArray
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.InteropItemMint", "args": {"Production": "Probe.Production", "Name": "ProbeItem"}, "idValue": "ProbeItem", "parts": ["Probe.Production", "ProbeItem"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.InteropItemChangeClassMint", "args": {"Production": "Probe.Production", "Name": "ProbeItem", "NewClass": "Probe.NewClass"}, "idValue": "ProbeItem", "parts": ["Probe.Production", "ProbeItem"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.InteropLookupEntryMint", "args": {"Table": "ProbeTable", "Key": "ProbeKey"}, "idValue": "ProbeKey", "parts": ["ProbeTable", "ProbeKey"]})
+    Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.InteropWorkflowMemberMint", "args": {"Role": "ProbeRole", "User": "ProbeUser"}, "idValue": "ProbeUser", "parts": ["ProbeRole", "ProbeUser"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.InteropSettingMint", "args": {"Production": "Probe.Production", "Item": "ProbeItem", "Target": "Host", "Name": "ProbeSetting"}, "idValue": "ProbeSetting", "parts": ["Probe.Production", "ProbeItem", "Host", "ProbeSetting"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.SuperserverMint", "args": {"Port": "51999", "BindAddress": "127.0.0.1"}, "idValue": "51999", "parts": ["51999", "127.0.0.1"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.ErrorDeleteMint", "args": {"namespace": "USER", "date": "2026-10-01", "errorNumber": "3"}, "idValue": "USER", "parts": ["USER", "2026-10-01", "3"]})
@@ -66,6 +67,9 @@ ClassMethod Roster() As %DynamicArray
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.AnalyticsWorklistMint", "args": {"Page": "ProbePage", "Panel": "1", "Class": "ProbeClass"}, "idValue": "ProbeClass", "parts": ["ProbePage", "1", "ProbeClass"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.SecurityAdvisorMint", "args": {"type": "Roles", "element": "ProbeRole", "code": "RoleHasSecure"}, "idValue": "RoleHasSecure", "parts": ["Roles", "ProbeRole", "RoleHasSecure"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.SqlActivityMint", "args": {"server": "ProbeServer:1972", "processId": "4242", "statementHash": "ProbeHash"}, "idValue": "4242", "parts": ["ProbeServer:1972", "4242", "ProbeHash"]})
+    Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.InteropDefaultSettingMint", "args": {"Production": "Probe.Production", "Item": "ProbeItem", "HostClass": "ProbeHost", "Setting": "ProbeSetting"}, "idValue": "ProbeSetting", "parts": ["Probe.Production", "ProbeItem", "ProbeHost", "ProbeSetting"]})
+    Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.SqlIndexMint", "args": {"Table": "ProbeSchema.ProbeTable", "Map": "ProbeIndex"}, "idValue": "ProbeIndex", "parts": ["ProbeSchema.ProbeTable", "ProbeIndex"]})
+    Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.SqlFieldMint", "args": {"Table": "ProbeSchema.ProbeTable", "Field": "ProbeField"}, "idValue": "ProbeField", "parts": ["ProbeSchema.ProbeTable", "ProbeField"]})
     Quit tRoster
 }
 

@@ -251,6 +251,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/analytics/pivot/background/:id/cancel" Method="POST" Call="AnalyticsPivotBackgroundCancel"/>
   <Route Url="/analytics/pivot/background/:id" Method="GET" Call="AnalyticsPivotBackgroundPoll"/>
   <Route Url="/analytics/pivot/background" Method="POST" Call="AnalyticsPivotBackgroundStart"/>
+  <Route Url="/analytics/pmml/background/:id/cancel" Method="POST" Call="AnalyticsPmmlBackgroundCancel"/>
+  <Route Url="/analytics/pmml/background/:id" Method="GET" Call="AnalyticsPmmlBackgroundPoll"/>
+  <Route Url="/analytics/pmml/background" Method="POST" Call="AnalyticsPmmlBackgroundStart"/>
   <Route Url="/ecp-settings/form" Method="GET" Call="EcpSettingsFormRead"/>
   <Route Url="/ecp-settings" Method="PUT" Call="EcpSettingsUpdate"/>
   <Route Url="/explorer/sql/data" Method="POST" Call="ExplorerSqlData"/>
@@ -287,11 +290,20 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/analytics/listing-group-listings" Method="POST" Call="AnalyticsListingCreate"/>
   <Route Url="/analytics/quality-measures/form" Method="GET" Call="AnalyticsQualityMeasureForm"/>
   <Route Url="/analytics/quality-measures" Method="POST" Call="AnalyticsQualityMeasureCreate"/>
+  <Route Url="/analytics/pmml-models" Method="POST" Call="AnalyticsPmmlDefinitionCreate"/>
   <Route Url="/analytics/quality-measure-elements" Method="POST" Call="AnalyticsQualityMeasureElementCreate"/>
   <Route Url="/analytics/quality-measure-metas" Method="POST" Call="AnalyticsQualityMeasureMetaCreate"/>
   <Route Url="/analytics/runtime-variables" Method="POST" Call="AnalyticsRuntimeVariableCreate"/>
   <Route Url="/analytics/user-icons" Method="POST" Call="AnalyticsUserIconCreate"/>
   <Route Url="/interop/business-partners" Method="POST" Call="InteropPartnerCreate"/>
+  <Route Url="/interop/default-settings" Method="POST" Call="InteropDefaultSettingCreate"/>
+  <Route Url="/interop/credentials" Method="POST" Call="InteropCredentialCreate"/>
+  <Route Url="/interop/schedules" Method="POST" Call="InteropScheduleCreate"/>
+  <Route Url="/interop/workflow-users/choices" Method="GET" Call="InteropWorkflowUserChoices"/>
+  <Route Url="/interop/workflow-users" Method="POST" Call="InteropWorkflowUserCreate"/>
+  <Route Url="/interop/workflow-roles" Method="POST" Call="InteropWorkflowRoleCreate"/>
+  <Route Url="/interop/workflow-members" Method="POST" Call="InteropWorkflowMemberCreate"/>
+  <Route Url="/interop/hl7-schemas" Method="POST" Call="InteropHl7SchemaCreate"/>
   <Route Url="/config/ddl-mappings" Method="POST" Call="DdlMappingCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
   <Route Url="/allowed-directories" Method="POST" Call="AllowedDirectorySave"/>
@@ -1911,6 +1923,26 @@ ClassMethod AnalyticsPivotBackgroundStart() As %Status
     Quit ##class(OcuPilot.Area.Analytics.PivotRun).HandleStart()
 }
 
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/pmml/background/:id/cancel</code> (Story
+/// 24.14): a PMML model test's cancel, delegating to <class>OcuPilot.Area.Analytics.PmmlTest</class>. The two
+/// <code>:id</code> routes precede <code>/analytics/pmml/background</code>.</p>
+ClassMethod AnalyticsPmmlBackgroundCancel(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.PmmlTest).HandleCancel(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /analytics/pmml/background/:id</code>: a PMML model test's poll.</p>
+ClassMethod AnalyticsPmmlBackgroundPoll(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.PmmlTest).HandlePoll(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/pmml/background</code>: a PMML model test's start.</p>
+ClassMethod AnalyticsPmmlBackgroundStart() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.PmmlTest).HandleStart()
+}
+
 /// <p>Thin <code>Call=</code> target for <code>GET /ecp-settings/form</code> (Story 18.21): ECP settings'
 /// form read, delegating to <class>OcuPilot.Area.OsMgmt.EcpSettingsRules</class>. It precedes
 /// <code>/ecp-settings</code>.</p>
@@ -2045,6 +2077,13 @@ ClassMethod AnalyticsQualityMeasureCreate() As %Status
     Quit ##class(OcuPilot.Area.Analytics.QualityMeasureSave).HandleCreate()
 }
 
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/pmml-models</code> (Story 24.14, Batch 3): PMML models' New PMML definition, resolved through the one tool the agent's confirm uses
+/// (AD-55).</p>
+ClassMethod AnalyticsPmmlDefinitionCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.PmmlDefinitionSave).HandleCreate()
+}
+
 /// <p>Thin <code>Call=</code> target for <code>POST /analytics/quality-measure-elements</code> (Story 24.12): the Groups and elements screen's Add element, resolved through the one tool the agent's
 /// confirm uses (AD-55).</p>
 ClassMethod AnalyticsQualityMeasureElementCreate() As %Status
@@ -2078,6 +2117,61 @@ ClassMethod AnalyticsUserIconCreate() As %Status
 ClassMethod InteropPartnerCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Interop.PartnerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/default-settings</code> (Story 24.15): System default settings' New default
+/// setting, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod InteropDefaultSettingCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.DefaultSettingSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/credentials</code> (Story 24.15): Credentials' New credential, resolved through the one
+/// tool the agent's confirm uses (AD-55).</p>
+ClassMethod InteropCredentialCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.CredentialSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/schedules</code> (Story 24.15): Schedule specs' New schedule spec, resolved through the one
+/// tool the agent's confirm uses (AD-55).</p>
+ClassMethod InteropScheduleCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.ScheduleSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/workflow-users</code> (Story 24.17 Batch 3a): Workflow users' New workflow user, resolved through the one tool the agent's
+/// confirm uses (AD-55).</p>
+ClassMethod InteropWorkflowUserCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.WorkflowUserSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /interop/workflow-users/choices</code> (Story 24.17 Batch 3a): the users of the instance the New workflow user dialog offers its Name from.</p>
+ClassMethod InteropWorkflowUserChoices() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.WorkflowUserSave).HandleChoices()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/workflow-roles</code> (Story 24.17 Batch 3b): Workflow roles' New workflow role, resolved through the one tool the agent's confirm
+/// uses (AD-55).</p>
+ClassMethod InteropWorkflowRoleCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.WorkflowRoleSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/hl7-schemas</code> (Story 24.18 Batch 1): HL7 schemas' New HL7 schema, resolved through the one tool the agent's confirm uses
+/// (AD-55).</p>
+ClassMethod InteropHl7SchemaCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.Hl7SchemaSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/workflow-members</code> (Story 24.17 Batch 3b): Role members' Add member, resolved through the one tool the agent's confirm uses
+/// (AD-55).</p>
+ClassMethod InteropWorkflowMemberCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.WorkflowMemberSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /config/ddl-mappings</code> (Story 21.13): User DDL mappings' New mapping, resolved

@@ -164,6 +164,19 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.JournalList': () => import('../areas/os-management/journal-list.page').then((m) => m.JournalListPage),
   'OcuPilot.Screen.Descriptor.BackupTaskList': () => import('../areas/os-management/backup-task-list.page').then((m) => m.BackupTaskListPage),
   'OcuPilot.Screen.Descriptor.BackupDatabaseList': () => import('../areas/os-management/backup-database-list.page').then((m) => m.BackupDatabaseListPage),
+  // Story 21.6: the SQL statements list with its Clean stale statements, and a table's Cached queries tab with its two purges.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlStatementList': () => import('../areas/system-explorer/sql-statement-list.page').then((m) => m.SqlStatementListPage),
+  'OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries': () => import('../areas/system-explorer/sql-cached-queries.page').then((m) => m.SqlCachedQueriesPage),
+  // Story 21.26: SQL runtime statistics with its Purge statistics, and Runtime statistics collection on the settings page.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStats': () => import('../areas/system-explorer/sql-runtime-stats.page').then((m) => m.SqlRuntimeStatsPage),
+  'OcuPilot.Screen.Descriptor.ExplorerSqlRuntimeStatsSettings': CONFIG_SETTINGS_PAGE,
+  // Story 21.27: SQL index analyzer with its Gather statements, Run report and Purge analysis.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlIndexAnalysis': () => import('../areas/system-explorer/sql-index-analysis.page').then((m) => m.SqlIndexAnalysisPage),
+  // Story 21.29: SQL troubleshooting reports with its Save query and Generate report.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlReports': () => import('../areas/system-explorer/sql-reports.page').then((m) => m.SqlReportsPage),
+  // Story 21.25: a table's Table info tab with its three page actions, and a schema's Tables tab with Tune all tables.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlTable': () => import('../areas/system-explorer/sql-table.page').then((m) => m.SqlTablePage),
+  'OcuPilot.Screen.Descriptor.ExplorerSqlSchema': () => import('../areas/system-explorer/sql-schema.page').then((m) => m.SqlSchemaPage),
   // Story 24.13 Batch 2: Analytics' General settings, a detail tab, on the same page: its Set value, and its key's masked dialog.
   'OcuPilot.Screen.Descriptor.AnalyticsSettingList': CONFIG_SETTINGS_PAGE,
   // Story 21.3: Startup, Memory and Compatibility settings, the one page that adds Set value over the shared list.
@@ -201,6 +214,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.EcpDataServerList': () => import('../areas/os-management/ecp-data-server-list.page').then((m) => m.EcpDataServerListPage),
   // Story 20.15: Screen permissions, whose Change permissions dialog opens over the shared list page.
   'OcuPilot.Screen.Descriptor.AgentScreenPermissions': () => import('../areas/agent/screen-permissions.page').then((m) => m.ScreenPermissionsPage),
+  // Story 21.37: Page resources, whose Assign, Change and Clear dialogs open over the shared list page.
+  'OcuPilot.Screen.Descriptor.PageResourceList': () => import('../areas/permissions/page-resources.page').then((m) => m.PageResourcesPage),
   'OcuPilot.Screen.Descriptor.EcpDataServerForm': () => import('../areas/os-management/ecp-data-server-form.page').then((m) => m.EcpDataServerFormPage),
   // Story 18.21: ECP settings, a form over the screen's own declared read; ECP application servers'
   // two tabs take the detail page's strip.
@@ -275,6 +290,44 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': () => import('../areas/interoperability/interop-lookup-entry-list.page').then((m) => m.InteropLookupEntryListPage),
   // Story 20.26: Business partners, the list with its New business partner and Edit dialog.
   'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': () => import('../areas/interoperability/interop-business-partner-list.page').then((m) => m.InteropBusinessPartnerListPage),
+  // Story 24.15: System default settings, the list with its New default setting and Edit dialog.
+  'OcuPilot.Screen.Descriptor.InteropDefaultSettingList': () => import('../areas/interoperability/interop-default-setting-list.page').then((m) => m.InteropDefaultSettingListPage),
+  // Story 24.15: Credentials, the list with its New credential, Edit and Set password dialog.
+  'OcuPilot.Screen.Descriptor.InteropCredentialList': () => import('../areas/interoperability/interop-credential-list.page').then((m) => m.InteropCredentialListPage),
+  // Story 24.15: Schedule specs, the list with its New schedule spec and Edit dialog.
+  'OcuPilot.Screen.Descriptor.InteropScheduleList': () => import('../areas/interoperability/interop-schedule-list.page').then((m) => m.InteropScheduleListPage),
+  // Story 24.17 Batch 3a: Workflow users, the list with its New workflow user and Edit dialog.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowUserList': () =>
+    import('../areas/interoperability/interop-workflow-user-list.page').then((m) => m.InteropWorkflowUserListPage),
+  // Story 24.17 Batch 3b: Workflow roles, the list with its New workflow role and Edit dialog, and Role members, the list with its Add member dialog.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowRoleList': () =>
+    import('../areas/interoperability/interop-workflow-role-list.page').then((m) => m.InteropWorkflowRoleListPage),
+  'OcuPilot.Screen.Descriptor.InteropWorkflowMemberList': () =>
+    import('../areas/interoperability/interop-workflow-member-list.page').then((m) => m.InteropWorkflowMemberListPage),
+  // Story 24.17 Batch 4: Workflow tasks, the list with its Assign task dialog. Workflow worklist is read-only and takes the shared list page.
+  'OcuPilot.Screen.Descriptor.InteropWorkflowTaskList': () =>
+    import('../areas/interoperability/interop-workflow-task-list.page').then((m) => m.InteropWorkflowTaskListPage),
+  // Story 24.18 Batch 1: HL7 schemas, the list with its New HL7 schema dialog and its Export and Import dialogs.
+  'OcuPilot.Screen.Descriptor.InteropHl7SchemaList': () => import('../areas/interoperability/interop-hl7-schema-list.page').then((m) => m.InteropHl7SchemaListPage),
+  // Story 24.17 Batch 5: System monitor, the vendor's meters in groups with three tables drawn from its drill-downs' own reads. The three drill-downs are the shared list page.
+  'OcuPilot.Screen.Descriptor.InteropSystemMonitor': () =>
+    import('../areas/interoperability/interop-system-monitor.page').then((m) => m.InteropSystemMonitorPage),
+  // Story 24.16: Purge management data, the list with its Purge dialog, and Purge data settings, on the settings page that adds Set value over the shared list.
+  'OcuPilot.Screen.Descriptor.InteropPurgeList': () => import('../areas/interoperability/interop-purge-list.page').then((m) => m.InteropPurgeListPage),
+  'OcuPilot.Screen.Descriptor.InteropPurgeSettingList': CONFIG_SETTINGS_PAGE,
+  // Story 24.16 Batch 4: Archive manager, the list with its Run archive dialog, and Archive settings, on the settings page that adds Set value over the shared list.
+  'OcuPilot.Screen.Descriptor.InteropArchiveList': () => import('../areas/interoperability/interop-archive-list.page').then((m) => m.InteropArchiveListPage),
+  'OcuPilot.Screen.Descriptor.InteropArchiveSettingList': CONFIG_SETTINGS_PAGE,
+  // Story 24.17 Batch 1: Managed alerts, the list with its Update alert dialog. Alert history is the shared list page.
+  'OcuPilot.Screen.Descriptor.InteropManagedAlertList': () =>
+    import('../areas/interoperability/interop-managed-alert-list.page').then((m) => m.InteropManagedAlertListPage),
+  // Story 24.17 Batch 2: Business rule log and Business process log, the lists with their Purge dialog.
+  'OcuPilot.Screen.Descriptor.InteropRuleLogList': () => import('../areas/interoperability/interop-log-purge-list.page').then((m) => m.InteropLogPurgeListPage),
+  'OcuPilot.Screen.Descriptor.InteropProcessLogList': () => import('../areas/interoperability/interop-log-purge-list.page').then((m) => m.InteropLogPurgeListPage),
+  // Story 24.16 Batch 3: Messages, the search with its Export dialog.
+  'OcuPilot.Screen.Descriptor.InteropMessageList': () => import('../areas/interoperability/interop-message-list.page').then((m) => m.InteropMessageListPage),
+  // Story 24.16: Suspended messages, the list with its Edit and resubmit form.
+  'OcuPilot.Screen.Descriptor.InteropSuspendedMessageList': () => import('../areas/interoperability/interop-suspended-message-list.page').then((m) => m.InteropSuspendedMessageListPage),
   // Story 20.27: Data transformations, the list with its Test dialog.
   'OcuPilot.Screen.Descriptor.InteropTransformList': () => import('../areas/interoperability/interop-transform-list.page').then((m) => m.InteropTransformListPage),
   // Story 20.7: the rule, BPL and DTL editor screens, the vendor's editor in a frame at <list>/document/<class>.cls.
@@ -302,11 +355,15 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureList': () => import('../areas/analytics/quality-measure-list.page').then((m) => m.QualityMeasureListPage),
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureElementList': () => import('../areas/analytics/quality-measure-element-list.page').then((m) => m.QualityMeasureElementListPage),
   'OcuPilot.Screen.Descriptor.AnalyticsQualityMeasureMetaList': () => import('../areas/analytics/quality-measure-meta-list.page').then((m) => m.QualityMeasureMetaListPage),
+  // Story 24.14 Batch 3: PMML models with their New PMML definition dialog.
+  'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelList': () => import('../areas/analytics/pmml-model-list.page').then((m) => m.PmmlModelListPage),
   // Story 24.13 Batch 3: Run-time variables and User-defined icons, with their Add and Change dialogs.
   'OcuPilot.Screen.Descriptor.AnalyticsRuntimeVariableList': () => import('../areas/analytics/analytics-setting-entry-list.page').then((m) => m.AnalyticsSettingEntryListPage),
   'OcuPilot.Screen.Descriptor.AnalyticsUserIconList': () => import('../areas/analytics/analytics-setting-entry-list.page').then((m) => m.AnalyticsSettingEntryListPage),
   // Story 24.14: a folder item's Definition tab, the detail page with a saved pivot's Run beneath it.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemDefinitionTab': () => import('../areas/analytics/folder-item-definition.page').then((m) => m.FolderItemDefinitionPage),
+  // Story 24.14 Batch 2: a PMML model's Test screen, the detail page with the model's test beneath it.
+  'OcuPilot.Screen.Descriptor.AnalyticsPmmlModelTest': () => import('../areas/analytics/pmml-model-test.page').then((m) => m.PmmlModelTestPage),
   // Story 24.10: Folder items with their Export, Import and Delete.
   'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList': () => import('../areas/analytics/folder-item-list.page').then((m) => m.FolderItemListPage),
 };

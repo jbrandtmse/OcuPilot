@@ -73,6 +73,8 @@ XData Keys [ MimeType = application/json ]
   "osmgmt.routinemappings.create": true,
   "osmgmt.routinemappings.delete": true,
   "osmgmt.routinemappings.update": true,
+  "permissions.pageresources.assign": true,
+  "permissions.pageresources.clear": true,
   "permissions.resources.create": true,
   "permissions.resources.delete": true,
   "permissions.resources.export": true,
@@ -197,6 +199,7 @@ XData Keys [ MimeType = application/json ]
   "tasks.background.pause": true,
   "tasks.background.resume": true,
   "tasks.mail.set": true,
+  "tasks.mail.password": true,
   "osmgmt.processes.broadcast": true,
   "tasks.schedule.export": true,
   "tasks.schedule.import": false,
@@ -237,6 +240,32 @@ XData Keys [ MimeType = application/json ]
   "explorer.globals.export": true,
   "explorer.globals.import": false,
   "explorer.globals.replace": false,
+  "explorer.classes.answer": false,
+  "explorer.routines.answer": false,
+  "explorer.sqlstatements.freeze": true,
+  "explorer.sqlstatements.unfreeze": true,
+  "explorer.sqlstatements.clearstatistics": false,
+  "explorer.sqlstatements.clearerror": true,
+  "explorer.sqlstatements.clean": false,
+  "explorer.sqlcachedqueries.purge": true,
+  "explorer.sqlcachedqueries.purgetable": true,
+  "explorer.sqlcachedqueries.purgenamespace": true,
+  "explorer.sqlindices.rebuild": false,
+  "explorer.sqltable.rebuildindices": false,
+  "explorer.sqltable.tune": true,
+  "explorer.sqltable.clearstatistics": false,
+  "explorer.sqlschematables.tune": false,
+  "explorer.sqltable.setextentsize": false,
+  "explorer.sqlindices.setmapsize": false,
+  "explorer.sqlfieldstatistics.setselectivity": false,
+  "explorer.sqlruntimestats.purge": false,
+  "explorer.sqlruntimestatssettings.set": true,
+  "explorer.sqlindexanalysis.gather": true,
+  "explorer.sqlindexanalysis.run": true,
+  "explorer.sqlindexanalysis.purge": false,
+  "explorer.sqlreports.save": true,
+  "explorer.sqlreports.delete": false,
+  "explorer.sqlreports.generate": true,
   "interop.productions.start": true,
   "interop.productions.stop": true,
   "interop.productions.restart": true,
@@ -272,6 +301,7 @@ XData Keys [ MimeType = application/json ]
   "interop.processeditor.save": true,
   "interop.transformeditor.save": true,
   "interop.messages.resend": false,
+  "interop.messages.export": true,
   "interop.messageheader.editresend": false,
   "analytics.cubemanager.build": false,
   "analytics.cubemanager.synchronize": true,
@@ -314,9 +344,46 @@ XData Keys [ MimeType = application/json ]
   "analytics.usericons.add": true,
   "analytics.usericons.set": true,
   "analytics.usericons.remove": false,
+  "analytics.pmmlmodels.add": true,
+  "analytics.pmmlmodel.export": true,
   "interop.businesspartners.add": true,
   "interop.businesspartners.update": true,
   "interop.businesspartners.remove": false,
+  "interop.defaultsettings.add": true,
+  "interop.defaultsettings.update": true,
+  "interop.defaultsettings.remove": false,
+  "interop.credentials.add": true,
+  "interop.credentials.update": true,
+  "interop.credentials.password": true,
+  "interop.credentials.remove": false,
+  "interop.schedules.add": true,
+  "interop.schedules.update": true,
+  "interop.schedules.remove": false,
+  "interop.purgesettings.set": true,
+  "interop.purge.run": false,
+  "interop.suspendedmessages.resubmit": false,
+  "interop.suspendedmessages.editresubmit": false,
+  "interop.suspendedmessages.discard": true,
+  "interop.suspendedmessages.delete": false,
+  "interop.archive.run": false,
+  "interop.archivesettings.set": true,
+  "interop.managedalerts.update": true,
+  "interop.processlog.purge": false,
+  "interop.rulelog.purge": false,
+  "interop.workflowmembers.add": true,
+  "interop.workflowmembers.remove": true,
+  "interop.workflowroles.add": true,
+  "interop.workflowroles.remove": false,
+  "interop.workflowroles.update": true,
+  "interop.workflowtasks.assign": true,
+  "interop.workflowtasks.cancel": false,
+  "interop.workflowusers.add": true,
+  "interop.workflowusers.update": true,
+  "interop.workflowusers.remove": false,
+  "interop.hl7schemas.add": true,
+  "interop.hl7schemas.delete": false,
+  "interop.hl7schemas.export": true,
+  "interop.hl7schemas.import": false,
   "osmgmt.backuptasks.run": false,
   "osmgmt.backuptasks.freeze": false,
   "osmgmt.backuptasks.thaw": false,
@@ -360,6 +427,19 @@ ClassMethod Seed(pKey As %String, Output pListed As %Boolean) As %Boolean
     If tKeys.%GetTypeOf(pKey) '= "boolean" Quit 0
     Set pListed = 1
     Quit ''tKeys.%Get(pKey)
+}
+
+/// <p><method>Seed</method>'s lookup over <var>pList</var>, a list <method>Keys</method> already
+/// parsed: the value <var>pList</var> lists for <var>pKey</var>, with <var>pListed</var> 1, or
+/// <code>0</code> with <var>pListed</var> 0 for a key it does not list or a <var>pList</var> that is
+/// not an object. It reads nothing.</p>
+ClassMethod SeedFrom(pList As %DynamicObject, pKey As %String, Output pListed As %Boolean) As %Boolean
+{
+    Set pListed = 0
+    If '$IsObject($Get(pList)) Quit 0
+    If pList.%GetTypeOf(pKey) '= "boolean" Quit 0
+    Set pListed = 1
+    Quit ''pList.%Get(pKey)
 }
 
 /// <p>Every listed key and its value, as the <class>%DynamicObject</class> the XData block

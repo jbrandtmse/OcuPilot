@@ -150,8 +150,9 @@ Method TestAPasswordStatementIsRefusedByItsText()
     Do $$$AssertEquals($Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code _ " " _ tFault.reason, 1: ""), "422 EXPLORER.SQL.PASSWORD " _ ##class(OcuPilot.Api.AtelierError).#REASONSQLPASSWORD, "the port refuses it with the published sentence")
 }
 
-/// <p>The port serves its one endpoint and two types, and its one id, refusing anything else before
-/// any call; with no statement its fresh read is the empty guard, every member present.</p>
+/// <p>The console's endpoint serves two types and one id, refusing anything else before any call; with no statement its fresh read is the empty
+/// guard, every member present. The tuning track's two endpoints answer through <method>OcuPilot.Port.SqlPort.TuningInvoke</method>, which
+/// <class>OcuPilot.Test.SqlStatementRead</class> pins.</p>
 Method TestInvokeServesOneEndpointTwoTypesAndOneId()
 {
     Set tPort = ..#PORT
@@ -190,7 +191,8 @@ Method TestTheScriptPreparesAndBindsLiterals()
 }
 
 /// <p>The source pin: the port names no class of the source code API and calls no other port's
-/// <code>Invoke</code>; it reuses only <class>OcuPilot.Port.AtelierPort</class>'s pair set.</p>
+/// <code>Invoke</code>; it reuses only <class>OcuPilot.Port.AtelierPort</class>'s pair set. Every
+/// <code>%Prepare</code> in it passes privilege checks on, whatever its first argument is named.</p>
 Method TestThePortNamesNoSourceCodeApiClass()
 {
     Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsString($NAMESPACE, ..#PORT, .tText)
@@ -198,7 +200,18 @@ Method TestThePortNamesNoSourceCodeApiClass()
     Do $$$AssertTrue($Length(tText) > 1000, "and is not empty")
     Do $$$AssertTrue(tText '[ ("%Api" _ "."), "it names no %Api class")
     Do $$$AssertTrue(tText '[ ("AtelierPort)" _ ".Invoke"), "it calls no AtelierPort.Invoke")
-    Do $$$AssertTrue((tText '[ ("%Prepare(pText, " _ "0)")) && (tText '[ ("%ExecDirectNo" _ "Priv")), "it never prepares with privilege checks off")
+    Set tOff = 0
+    Set tOn = 0
+    For tI = 1:1:$Length(tText, $Char(10)) {
+        Set tLine = $Translate($Piece(tText, $Char(10), tI), $Char(13))
+        If (tLine '[ "%Prepare") || ($Extract($ZStrip(tLine, "<W"), 1, 3) = "///") Continue
+        If $Match(tLine, ".*%Prepare(ClassQuery)?\(.*,\s*(0|\$\$\$NO|'1)\s*[,)].*") Set tOff = tOff + 1
+        If $Match(tLine, ".*%Prepare\(.*,\s*1\s*\).*") Set tOn = tOn + 1
+    }
+    Do $$$AssertEquals(tOff, 0, "no prepare or class-query prepare passes 0 for its privilege flag, in any argument position")
+    Do $$$AssertTrue(tOn > 0, "and the scan sees code lines that pass 1, so a zero count is not a missed scan")
+    Do $$$AssertTrue(tText '[ ("%ExecDirectNo" _ "Priv"), "it never executes without the privilege check")
+    Do $$$AssertTrue(tText '[ ("&s" _ "ql("), "it runs no embedded SQL, which checks no privileges")
     Do $$$AssertTrue(tText [ "AtelierPort).Pairs()", "it reuses the source code port's pair set")
 }
 

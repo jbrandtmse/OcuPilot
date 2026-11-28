@@ -54,10 +54,33 @@ Parameter REASONPAIRSTOOMANY = "A screen requires at most 8 permissions.";
 /// <p>The most pairs a screen's adjusted set holds.</p>
 Parameter MAXPAIRS = 8;
 
+/// <p>A page name that no classic portal page answers to (Page resources, 422 on <code>Page</code>).</p>
+Parameter PAGEUNKNOWN = "ACCESS.PAGE.UNKNOWN";
+
+Parameter REASONPAGEUNKNOWN = "No classic portal page has that name.";
+
+/// <p>An assign that names no resource (Page resources, 422 on <code>Resource</code>).</p>
+Parameter PAGERESOURCEREQUIRED = "ACCESS.PAGE.RESOURCEREQUIRED";
+
+Parameter REASONPAGERESOURCEREQUIRED = "Name the resource to assign. To remove one, clear it instead.";
+
+/// <p>A clear of a page that holds no custom resource (Page resources, 409).</p>
+Parameter PAGENOTASSIGNED = "ACCESS.PAGE.NOTASSIGNED";
+
+Parameter REASONPAGENOTASSIGNED = "This page has no custom resource, so there is nothing to clear.";
+
 /// <p>Every code, as a <class>%List</class>.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SCREENUNKNOWN, ..#NOTADJUSTED, ..#PAIRSEMPTY, ..#RESOURCEUNKNOWN, ..#PAIRMALFORMED, ..#PAIRABSENT, ..#PAIRPRESENT, ..#PAIRSTOOMANY)
+    Quit $ListBuild(..#SCREENUNKNOWN, ..#NOTADJUSTED, ..#PAIRSEMPTY, ..#RESOURCEUNKNOWN, ..#PAIRMALFORMED, ..#PAIRABSENT, ..#PAIRPRESENT, ..#PAIRSTOOMANY, ..#PAGEUNKNOWN, ..#PAGERESOURCEREQUIRED, ..#PAGENOTASSIGNED)
+}
+
+/// <p>The codes a Page resources write's fresh read refuses with when the action's precondition does not hold, as a
+/// <class>%List</class>: a clear of a page that holds no resource. It depends on the stored resource, so a confirm whose page
+/// moved closes the proposal as target-changed.</p>
+ClassMethod PagePreconditionCodes() As %List
+{
+    Quit $ListBuild(..#PAGENOTASSIGNED)
 }
 
 /// <p>The codes a tool's fresh read refuses with when the action's precondition does not hold, as a
@@ -80,6 +103,9 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#PAIRABSENT Quit ..#REASONPAIRABSENT
     If pCode = ..#PAIRPRESENT Quit ..#REASONPAIRPRESENT
     If pCode = ..#PAIRSTOOMANY Quit ..#REASONPAIRSTOOMANY
+    If pCode = ..#PAGEUNKNOWN Quit ..#REASONPAGEUNKNOWN
+    If pCode = ..#PAGERESOURCEREQUIRED Quit ..#REASONPAGERESOURCEREQUIRED
+    If pCode = ..#PAGENOTASSIGNED Quit ..#REASONPAGENOTASSIGNED
     Quit ""
 }
 

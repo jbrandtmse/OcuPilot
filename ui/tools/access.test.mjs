@@ -30,6 +30,9 @@ const SENTENCES = [
   ['REASONPAIRABSENT', 'accessRefusalPairAbsent'],
   ['REASONPAIRPRESENT', 'accessRefusalPairPresent'],
   ['REASONPAIRSTOOMANY', 'accessRefusalPairsTooMany'],
+  ['REASONPAGEUNKNOWN', 'accessRefusalPageUnknown'],
+  ['REASONPAGERESOURCEREQUIRED', 'accessRefusalPageResourceRequired'],
+  ['REASONPAGENOTASSIGNED', 'accessRefusalPageNotAssigned'],
 ];
 
 /** The value `key` holds in `strings.ts`, which may sit on the line after its key. */
